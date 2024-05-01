@@ -1,2 +1,6 @@
+# InteliJ IDEA
 .idea/
 *.iml
+
+# Project related
+build/

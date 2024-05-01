@@ -1,17 +1,20 @@
 package main
 
 import (
+	_ "embed"
 	"encoding/json"
 	"fmt"
+	"gopkg.in/yaml.v3"
 	"io"
 	"log"
 	"net/http"
 	"os"
-	"strings"
-
-	"gopkg.in/yaml.v3"
 	"rsc.io/quote"
+	"strings"
 )
+
+//go:embed resources/login.html
+var loginHtml []byte
 
 var (
 	redirect string
@@ -94,15 +97,6 @@ func (h *homeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 type authorizeHandler struct{}
 
 func (h *authorizeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	loginHtml := `<!doctype html>
-		<html>
-		<body>
-		<h1>foo & bar</h1>
-		<form method="POST" action="/login">
-		<button type="submit">Login</button>
-		</form>
-		</body>
-		</html>`
 	log.Printf("%s %s %s\n", r.RemoteAddr, r.Method, r.URL)
 	if r.Method == http.MethodGet {
 		responseTypeQueryParameter := r.URL.Query().Get("response_type")
@@ -112,9 +106,10 @@ func (h *authorizeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 		log.Printf("%s", responseType)
 		redirect = r.URL.Query().Get("redirect_uri")
+
 		// http.ServeFile(w, r, "foo.html")
-		bytes := []byte(loginHtml)
-		_, err := w.Write(bytes)
+		// bytes := []byte(loginHtml)
+		_, err := w.Write(loginHtml)
 		if err != nil {
 			return
 		}
