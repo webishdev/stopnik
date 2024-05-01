@@ -18,11 +18,21 @@ func main() {
 
 	mux := http.NewServeMux()
 
+	mux.Handle("/", &homeHandler{})
 	mux.Handle("/authorize", &authorizeHandler{})
 	mux.Handle("/token", &tokenHandler{})
 	mux.Handle("/login", &loginHandler{})
 
 	err := http.ListenAndServe(":8080", mux)
+	if err != nil {
+		return
+	}
+}
+
+type homeHandler struct{}
+
+func (h *homeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	_, err := w.Write([]byte("Hello world!"))
 	if err != nil {
 		return
 	}
