@@ -2,6 +2,8 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"os"
@@ -91,6 +93,20 @@ type tokenHandler struct{}
 func (h *tokenHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	log.Printf("%s %s %s\n", r.RemoteAddr, r.Method, r.URL)
 	if r.Method == http.MethodPost {
+		for k, v := range r.Header {
+			log.Printf("%v: %v\n", k, v)
+		}
+
+		if r.Body != nil {
+			bodyBytes, err := io.ReadAll(r.Body)
+			if err != nil {
+				fmt.Printf("Body reading error: %v", err)
+				return
+			}
+			log.Printf("POST Body:\n%s\n", bodyBytes)
+			defer r.Body.Close()
+		}
+
 		t := map[string]interface{}{
 			"access_token": 1234,
 		}
