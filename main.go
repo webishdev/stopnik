@@ -53,6 +53,7 @@ type Client struct {
 	ClientType ClientType `yaml:"type"`
 }
 type ConfigYaml struct {
+	Port    int      `yaml:"port"`
 	Clients []Client `yaml:"clients"`
 }
 
