@@ -1,13 +1,9 @@
 package handler
 
 import (
-	_ "embed"
 	"log"
 	"net/http"
 )
-
-//go:embed resources/login.html
-var loginHtml []byte
 
 type LoginHandler struct {
 	redirect *string

@@ -5,6 +5,7 @@
 <form method="POST" action="login">
     <input type="text" name="username" />
     <input type="password" name="password" />
+    <input type="hidden" name="auth_session" value="{{.Token}}" />
     <button type="submit">Login</button>
 </form>
 </body>
