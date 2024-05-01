@@ -7,16 +7,67 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strings"
+
+	"gopkg.in/yaml.v3"
+	"rsc.io/quote"
 )
 
 var (
 	redirect string
 )
 
+type ResponseType string
+type ClientType string
+
+const (
+	CODE               ResponseType = "code"
+	TOKEN              ResponseType = "token"
+	PASSWORD           ResponseType = "password"
+	CLIENT_CREDENTIALS ResponseType = "client_credentials"
+)
+
+const (
+	CONFIDENTIAL ClientType = "confidential"
+	PUBLIC       ClientType = "public"
+)
+
+var responseTypeMap = map[string]ResponseType{
+	"code":               CODE,
+	"token":              TOKEN,
+	"password":           PASSWORD,
+	"client_credentials": CLIENT_CREDENTIALS,
+}
+
+func ParseString(str string) (ResponseType, bool) {
+	c, ok := responseTypeMap[strings.ToLower(str)]
+	return c, ok
+}
+
+type Client struct {
+	Id         string     `yaml:"id"`
+	Secret     string     `yaml:"secret"`
+	ClientType ClientType `yaml:"type"`
+}
+type ConfigYaml struct {
+	Clients []Client `yaml:"clients"`
+}
+
 func main() {
 	logger := log.New(os.Stdout, "", log.Ldate|log.Ltime|log.Lshortfile)
+	logger.Printf("%s", quote.Go())
 
-	logger.Printf("foo")
+	data, errf := os.ReadFile("config.yml")
+	if errf != nil {
+		log.Fatalf("unable to read file: %v", errf)
+	}
+
+	config := ConfigYaml{}
+
+	erry := yaml.Unmarshal(data, &config)
+	if erry != nil {
+		log.Fatalf("error: %v", erry)
+	}
 
 	mux := http.NewServeMux()
 
@@ -54,6 +105,12 @@ func (h *authorizeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		</html>`
 	log.Printf("%s %s %s\n", r.RemoteAddr, r.Method, r.URL)
 	if r.Method == http.MethodGet {
+		responseTypeQueryParameter := r.URL.Query().Get("response_type")
+		responseType, valid := ParseString(responseTypeQueryParameter)
+		if !valid {
+			InternalServerErrorHandler(w, r)
+		}
+		log.Printf("%s", responseType)
 		redirect = r.URL.Query().Get("redirect_uri")
 		// http.ServeFile(w, r, "foo.html")
 		bytes := []byte(loginHtml)

@@ -18,6 +18,28 @@ Just a few notes taken during development
 - `response_type` is a required URL parameter, which is an enumeration of `code` (authorization code grant) or `token` (implicit grant)
 - **SHOULD** be TLS
 
+##### Authorization Code Grant
+| Query parameter | Required | Comment |
+| --- | --- | --- |
+| response_type | ☑️ | value is `code` |
+| client_id | ☑️ | |
+| redirect_uri | ✖️ | |
+| scope | ✖️ | |
+| state | ✖️ | |
+| code_challenge | ✖️ | PKCE |
+| code_challenge_method | ✖️ | PKCE |
+
+##### Authorization Code Grant
+| Query parameter | Required | Comment |
+| --- | --- | --- |
+| response_type | ☑️ | value is `code` |
+| client_id | ☑️ | |
+| redirect_uri | ✖️ | |
+| scope | ✖️ | |
+| state | ✖️ | |
+| code_challenge | ✖️ | PKCE |
+| code_challenge_method | ✖️ | PKCE |
+
 #### Response (after login)
 - After successfully verifying the identity of the user (resource owner), the implementation redirects to either the configured (in some configuration) or provided (with `redirect_uri` parameter) URL
 - The URL for redirection is absolute

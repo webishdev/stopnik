@@ -1,0 +1,7 @@
+clients:
+- id: foo
+  secret: foo_sec
+- id: bar
+- id: testclient
+  secret: foo
+  type: confidential
