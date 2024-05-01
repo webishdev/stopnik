@@ -7,13 +7,14 @@ import (
 
 var (
 	redirect string
+	authURI  string
 )
 
 func StartServer() {
 	mux := http.NewServeMux()
 
-	authorizeHandler := handler.CreateAuthorizeHandler(&redirect)
-	loginHandler := handler.CreateLoginHandler(&redirect)
+	authorizeHandler := handler.CreateAuthorizeHandler(&redirect, &authURI)
+	loginHandler := handler.CreateLoginHandler(&redirect, &authURI)
 
 	mux.Handle("/", &handler.HomeHandler{})
 	mux.Handle("/authorize", authorizeHandler)

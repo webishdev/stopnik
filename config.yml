@@ -1,3 +1,5 @@
+server:
+  port: 8080
 clients:
 - id: foo
   secret: foo_sec
@@ -5,3 +7,6 @@ clients:
 - id: testclient
   secret: foo
   type: confidential
+users:
+- username: foo
+  password: bar

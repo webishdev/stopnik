@@ -7,14 +7,25 @@ import (
 	"tiny-gate/src/oauth2"
 )
 
+type Server struct {
+	Port int `yaml:"port"`
+}
+
+type User struct {
+	Username string `yaml:"username"`
+	Password string `yaml:"password"`
+}
+
 type Client struct {
 	Id         string            `yaml:"id"`
 	Secret     string            `yaml:"secret"`
 	ClientType oauth2.ClientType `yaml:"type"`
 }
+
 type Config struct {
-	Port    int      `yaml:"port"`
+	Server  Server   `yaml:"server"`
 	Clients []Client `yaml:"clients"`
+	Users   []User   `yaml:"users"`
 }
 
 func LoadConfig(name string) Config {

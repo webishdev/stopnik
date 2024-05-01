@@ -7,12 +7,14 @@ import (
 )
 
 type AuthorizeHandler struct {
-	Redirect *string
+	redirect *string
+	authURI  *string
 }
 
-func CreateAuthorizeHandler(redirect *string) *AuthorizeHandler {
+func CreateAuthorizeHandler(redirect *string, authURI *string) *AuthorizeHandler {
 	return &AuthorizeHandler{
-		Redirect: redirect,
+		redirect: redirect,
+		authURI:  authURI,
 	}
 }
 
@@ -26,8 +28,9 @@ func (handler *AuthorizeHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 		}
 		log.Printf("Response type: %s", responseType)
 		redirect := r.URL.Query().Get("redirect_uri")
-		log.Printf("Redirect URI: %s", redirect)
-		*handler.Redirect = redirect
+		log.Printf("redirect URI: %s", redirect)
+		*handler.redirect = redirect
+		*handler.authURI = r.URL.RequestURI()
 		// http.ServeFile(w, r, "foo.html")
 		// bytes := []byte(loginHtml)
 		_, err := w.Write(loginHtml)
