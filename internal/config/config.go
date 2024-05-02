@@ -4,7 +4,7 @@ import (
 	"gopkg.in/yaml.v3"
 	"log"
 	"os"
-	"tiny-gate/src/oauth2"
+	"tiny-gate/internal/oauth2"
 )
 
 type Server struct {

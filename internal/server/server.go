@@ -2,7 +2,7 @@ package server
 
 import (
 	"net/http"
-	"tiny-gate/src/server/handler"
+	"tiny-gate/internal/server/handler"
 )
 
 var (

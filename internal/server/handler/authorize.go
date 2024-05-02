@@ -7,7 +7,7 @@ import (
 	"html/template"
 	"log"
 	"net/http"
-	"tiny-gate/src/oauth2"
+	"tiny-gate/internal/oauth2"
 )
 
 //go:embed resources/login.html

@@ -3,8 +3,8 @@ package main
 import (
 	"log"
 	"os"
-	"tiny-gate/src/config"
-	"tiny-gate/src/server"
+	"tiny-gate/internal/config"
+	"tiny-gate/internal/server"
 )
 
 func main() {
