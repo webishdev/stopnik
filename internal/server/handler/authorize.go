@@ -7,6 +7,7 @@ import (
 	"html/template"
 	"log"
 	"net/http"
+	"tiny-gate/internal/cache"
 	"tiny-gate/internal/oauth2"
 )
 
@@ -14,14 +15,12 @@ import (
 var loginHtml []byte
 
 type AuthorizeHandler struct {
-	redirect *string
-	authURI  *string
+	cache *cache.Cache[cache.AuthSession]
 }
 
-func CreateAuthorizeHandler(redirect *string, authURI *string) *AuthorizeHandler {
+func CreateAuthorizeHandler(cache *cache.Cache[cache.AuthSession]) *AuthorizeHandler {
 	return &AuthorizeHandler{
-		redirect: redirect,
-		authURI:  authURI,
+		cache: cache,
 	}
 }
 
@@ -58,8 +57,12 @@ func (handler *AuthorizeHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 		log.Printf("Response type: %s", responseType)
 		redirect := r.URL.Query().Get("redirect_uri")
 		log.Printf("redirect URI: %s", redirect)
-		*handler.redirect = redirect
-		*handler.authURI = r.URL.RequestURI()
+
+		handler.cache.Set(id.String(), cache.AuthSession{
+			Redirect: redirect,
+			AuthURI:  r.URL.RequestURI(),
+		})
+
 		// http.ServeFile(w, r, "foo.html")
 		// bytes := []byte(loginHtml)
 		_, err := w.Write(tpl.Bytes())

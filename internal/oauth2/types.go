@@ -2,6 +2,7 @@ package oauth2
 
 import "strings"
 
+// ResponseType as described in https://datatracker.ietf.org/doc/html/rfc6749#section-3.1.1
 type ResponseType string
 
 const (
@@ -18,6 +19,7 @@ var responseTypeMap = map[string]ResponseType{
 	"client_credentials": CLIENT_CREDENTIALS,
 }
 
+// ClientType as described in https://datatracker.ietf.org/doc/html/rfc6749#section-2.1
 type ClientType string
 
 const (

@@ -2,19 +2,17 @@ package server
 
 import (
 	"net/http"
+	"tiny-gate/internal/cache"
 	"tiny-gate/internal/server/handler"
 )
 
-var (
-	redirect string
-	authURI  string
-)
-
 func StartServer() {
+	authSessionCache := cache.NewCache[cache.AuthSession]()
+
 	mux := http.NewServeMux()
 
-	authorizeHandler := handler.CreateAuthorizeHandler(&redirect, &authURI)
-	loginHandler := handler.CreateLoginHandler(&redirect, &authURI)
+	authorizeHandler := handler.CreateAuthorizeHandler(authSessionCache)
+	loginHandler := handler.CreateLoginHandler(authSessionCache)
 
 	mux.Handle("/", &handler.HomeHandler{})
 	mux.Handle("/authorize", authorizeHandler)
