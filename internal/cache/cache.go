@@ -31,3 +31,11 @@ func (c *Cache[T]) Get(key string) (T, bool) {
 	value, exists := c.cacheMap[key]
 	return value, exists
 }
+
+func (c *Cache[T]) GetAndDelete(key string) (T, bool) {
+	c.mux.Lock()
+	defer c.mux.Unlock()
+	value, exists := c.cacheMap[key]
+	delete(c.cacheMap, key)
+	return value, exists
+}

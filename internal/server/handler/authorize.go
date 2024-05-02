@@ -58,17 +58,25 @@ func (handler *AuthorizeHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 		redirect := r.URL.Query().Get("redirect_uri")
 		log.Printf("redirect URI: %s", redirect)
 
-		handler.cache.Set(id.String(), cache.AuthSession{
-			Redirect: redirect,
-			AuthURI:  r.URL.RequestURI(),
-		})
+		cookie, noCookieError := r.Cookie("STOPIK_AUTH")
 
-		// http.ServeFile(w, r, "foo.html")
-		// bytes := []byte(loginHtml)
-		_, err := w.Write(tpl.Bytes())
-		if err != nil {
-			InternalServerErrorHandler(w, r)
-			return
+		if noCookieError == nil {
+			log.Printf("I like cookies! %s", cookie.Value)
+			w.Header().Set("Location", redirect)
+			w.WriteHeader(http.StatusFound)
+		} else {
+			handler.cache.Set(id.String(), cache.AuthSession{
+				Redirect: redirect,
+				AuthURI:  r.URL.RequestURI(),
+			})
+
+			// http.ServeFile(w, r, "foo.html")
+			// bytes := []byte(loginHtml)
+			_, err := w.Write(tpl.Bytes())
+			if err != nil {
+				InternalServerErrorHandler(w, r)
+				return
+			}
 		}
 	} else {
 		NotFoundHandler(w, r)

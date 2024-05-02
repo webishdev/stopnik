@@ -27,7 +27,7 @@ func (handler *LoginHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		username := r.Form.Get("username")
 		password := r.Form.Get("password")
 		authSessionForm := r.Form.Get("auth_session")
-		authSession, exists := handler.cache.Get(authSessionForm)
+		authSession, exists := handler.cache.GetAndDelete(authSessionForm)
 		if !exists {
 			InternalServerErrorHandler(w, r)
 			return
@@ -37,6 +37,18 @@ func (handler *LoginHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		// redirect with Status 303
 		// When login valid
 		if username == "foo" && password == "bar" {
+
+			cookie := http.Cookie{
+				Name:     "STOPIK_AUTH",
+				Value:    "Hello world!",
+				Path:     "/",
+				MaxAge:   3600,
+				HttpOnly: true,
+				SameSite: http.SameSiteLaxMode,
+			}
+
+			http.SetCookie(w, &cookie)
+
 			w.Header().Set("Location", authSession.Redirect)
 			w.WriteHeader(http.StatusFound)
 		}
