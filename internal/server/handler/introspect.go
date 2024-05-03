@@ -9,6 +9,7 @@ import (
 	"strings"
 )
 
+// as described in https://datatracker.ietf.org/doc/html/rfc7662#section-2.2
 type introspectResponse struct {
 	Active bool `json:"active"`
 }
