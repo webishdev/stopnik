@@ -22,5 +22,5 @@ jobs:
         go-version-file: 'go.mod'
 
     - name: Build
-      run: ./build.sh build dev
+      run: ./build.sh build ci
 
