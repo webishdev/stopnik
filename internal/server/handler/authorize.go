@@ -4,21 +4,21 @@ import (
 	"github.com/google/uuid"
 	"log"
 	"net/http"
-	"tiny-gate/internal/cache"
 	"tiny-gate/internal/config"
 	"tiny-gate/internal/oauth2"
+	"tiny-gate/internal/store"
 	"tiny-gate/internal/template"
 )
 
 type AuthorizeHandler struct {
 	config *config.Config
-	cache  *cache.Cache[cache.AuthSession]
+	store  *store.Store[store.AuthSession]
 }
 
-func CreateAuthorizeHandler(config *config.Config, cache *cache.Cache[cache.AuthSession]) *AuthorizeHandler {
+func CreateAuthorizeHandler(config *config.Config, store *store.Store[store.AuthSession]) *AuthorizeHandler {
 	return &AuthorizeHandler{
 		config: config,
-		cache:  cache,
+		store:  store,
 	}
 }
 
@@ -57,7 +57,7 @@ func (handler *AuthorizeHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 			w.Header().Set("Location", redirect)
 			w.WriteHeader(http.StatusFound)
 		} else {
-			handler.cache.Set(id.String(), cache.AuthSession{
+			handler.store.Set(id.String(), store.AuthSession{
 				Redirect: redirect,
 				AuthURI:  r.URL.RequestURI(),
 			})

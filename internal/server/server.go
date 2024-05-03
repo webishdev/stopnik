@@ -5,18 +5,19 @@ import (
 	"log"
 	"net"
 	"net/http"
-	"tiny-gate/internal/cache"
 	"tiny-gate/internal/config"
 	"tiny-gate/internal/server/handler"
+	"tiny-gate/internal/store"
 )
 
 func StartServer(config *config.Config) {
-	authSessionCache := cache.NewCache[cache.AuthSession]()
+	authSessionStore := store.NewCache[store.AuthSession]()
+	//accessTokenStore := store.NewCache[oauth2.AccessToken]()
 
 	mux := http.NewServeMux()
 
-	authorizeHandler := handler.CreateAuthorizeHandler(config, authSessionCache)
-	loginHandler := handler.CreateLoginHandler(config, authSessionCache)
+	authorizeHandler := handler.CreateAuthorizeHandler(config, authSessionStore)
+	loginHandler := handler.CreateLoginHandler(config, authSessionStore)
 	logoutHandler := handler.CreateLogoutHandler()
 
 	// Server

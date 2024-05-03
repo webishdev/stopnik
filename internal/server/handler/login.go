@@ -5,19 +5,19 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"tiny-gate/internal/cache"
 	"tiny-gate/internal/config"
+	"tiny-gate/internal/store"
 )
 
 type LoginHandler struct {
 	config *config.Config
-	cache  *cache.Cache[cache.AuthSession]
+	store  *store.Store[store.AuthSession]
 }
 
-func CreateLoginHandler(config *config.Config, cache *cache.Cache[cache.AuthSession]) *LoginHandler {
+func CreateLoginHandler(config *config.Config, store *store.Store[store.AuthSession]) *LoginHandler {
 	return &LoginHandler{
 		config: config,
-		cache:  cache,
+		store:  store,
 	}
 }
 
@@ -32,7 +32,7 @@ func (handler *LoginHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		username := r.Form.Get("username")
 		password := r.Form.Get("password")
 		authSessionForm := r.Form.Get("auth_session")
-		authSession, exists := handler.cache.Get(authSessionForm)
+		authSession, exists := handler.store.Get(authSessionForm)
 		if !exists {
 			InternalServerErrorHandler(w, r)
 			return
