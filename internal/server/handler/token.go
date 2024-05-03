@@ -2,8 +2,10 @@ package handler
 
 import (
 	"crypto/sha512"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"github.com/google/uuid"
 	"log"
 	"net/http"
 	"time"
@@ -83,7 +85,9 @@ func (handler *TokenHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		accessToken := oauth2.AccessToken("1234")
+		id := uuid.New()
+		accessTokenValue := base64.RawURLEncoding.EncodeToString([]byte(id.String()))
+		accessToken := oauth2.AccessToken(accessTokenValue)
 		tokenDuration := time.Minute * time.Duration(45)
 		handler.accessTokenStore.SetWithDuration(string(accessToken), accessToken, tokenDuration)
 
