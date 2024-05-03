@@ -1,0 +1,37 @@
+name: Create STOPnik release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        type: string
+        description: Version for the tag
+        required: true
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Show tag
+        run: echo "Will create version ${{ github.event.inputs.version }}"
+
+      - uses: actions/checkout@v2
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: 'go1.22.2'
+
+      - name: Build
+        run: ./build.sh ${{ github.event.inputs.version }}
+
+      - uses: ncipollo/release-action@v1
+        with:
+          tag: ${{ github.event.inputs.version }}
+          body: >
+            STOPnik!
+            Version ${{ github.event.inputs.version }}
+          artifacts: "bin/**/*.zip"
