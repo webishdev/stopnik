@@ -83,7 +83,7 @@ function build_all() {
       build $1 $os_value $arch_value
     done
   done
-  echo "Done!"
+  echo "Build done!"
 }
 
 function task_clean() {
