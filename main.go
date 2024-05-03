@@ -3,8 +3,8 @@ package main
 import (
 	"log"
 	"os"
-	"tiny-gate/internal/config"
-	"tiny-gate/internal/server"
+	"stopnik/internal/config"
+	"stopnik/internal/server"
 )
 
 func main() {

@@ -4,7 +4,7 @@ import (
 	"gopkg.in/yaml.v3"
 	"log"
 	"os"
-	"tiny-gate/internal/oauth2"
+	"stopnik/internal/oauth2"
 )
 
 type TLS struct {

@@ -8,11 +8,11 @@ import (
 	"github.com/google/uuid"
 	"log"
 	"net/http"
+	"stopnik/internal/config"
+	"stopnik/internal/oauth2"
+	"stopnik/internal/pkce"
+	"stopnik/internal/store"
 	"time"
-	"tiny-gate/internal/config"
-	"tiny-gate/internal/oauth2"
-	"tiny-gate/internal/pkce"
-	"tiny-gate/internal/store"
 )
 
 type TokenHandler struct {
@@ -63,19 +63,30 @@ func (handler *TokenHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		codeVerifier := r.PostFormValue("code_verifier") // https://datatracker.ietf.org/doc/html/rfc7636#section-4.1
-		if codeVerifier != "" {
-			code := r.PostFormValue("code")
-			authSession, authSessionExists := handler.authSessionStore.Get(code)
-			if !authSessionExists {
-				ForbiddenHandler(w, r)
-				return
+		grantTypeValue := r.PostFormValue("grant_type")
+		grantType, grantTypeExists := oauth2.GrantTypeFromString(grantTypeValue)
+		if !grantTypeExists {
+			ForbiddenHandler(w, r)
+			return
+		}
+
+		if grantType == oauth2.GtAuthorizationCode {
+
+			codeVerifier := r.PostFormValue("code_verifier") // https://datatracker.ietf.org/doc/html/rfc7636#section-4.1
+			if codeVerifier != "" {
+				code := r.PostFormValue("code")
+				authSession, authSessionExists := handler.authSessionStore.Get(code)
+				if !authSessionExists {
+					ForbiddenHandler(w, r)
+					return
+				}
+				validPKCE := pkce.ValidatePKCE(pkce.S256, authSession.CodeChallenge, codeVerifier)
+				if !validPKCE {
+					ForbiddenHandler(w, r)
+					return
+				}
 			}
-			validPKCE := pkce.ValidatePKCE(pkce.S256, authSession.CodeChallenge, codeVerifier)
-			if !validPKCE {
-				ForbiddenHandler(w, r)
-				return
-			}
+
 		}
 
 		secretHash := fmt.Sprintf("%x", sha512.Sum512([]byte(clientSecret)))

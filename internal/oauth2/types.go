@@ -2,47 +2,67 @@ package oauth2
 
 import "strings"
 
-// ResponseType as described in https://datatracker.ietf.org/doc/html/rfc6749#section-3.1.1
+type GrantType string
+
+// GrantType as described in https://datatracker.ietf.org/doc/html/rfc6749#appendix-A.10
+const (
+	GtAuthorizationCode GrantType = "authorization_code"
+	GtClientCredentials GrantType = "client_credentials"
+	GtPassword          GrantType = "password"
+)
+
+var grantTypeMap = map[string]GrantType{
+	"authorization_code": GtAuthorizationCode,
+	"client_credentials": GtClientCredentials,
+	"password":           GtPassword,
+}
+
+// ResponseType as described in https://datatracker.ietf.org/doc/html/rfc6749#appendix-A.3
 type ResponseType string
 
 const (
-	CODE               ResponseType = "code"
-	TOKEN              ResponseType = "token"
-	PASSWORD           ResponseType = "password"
-	CLIENT_CREDENTIALS ResponseType = "client_credentials"
+	RtCode              ResponseType = "code"
+	RtToken             ResponseType = "token"
+	RtPassword          ResponseType = "password"
+	RtClientCredentials ResponseType = "client_credentials"
 )
 
 var responseTypeMap = map[string]ResponseType{
-	"code":               CODE,
-	"token":              TOKEN,
-	"password":           PASSWORD,
-	"client_credentials": CLIENT_CREDENTIALS,
+	"code":               RtCode,
+	"token":              RtToken,
+	"password":           RtPassword,
+	"client_credentials": RtClientCredentials,
 }
 
 // ClientType as described in https://datatracker.ietf.org/doc/html/rfc6749#section-2.1
 type ClientType string
 
 const (
-	CONFIDENTIAL ClientType = "confidential"
-	PUBLIC       ClientType = "public"
+	CtConfidential ClientType = "confidential"
+	CtPublic       ClientType = "public"
 )
 
 var clientTypeMap = map[string]ClientType{
-	"confidential": CONFIDENTIAL,
-	"public":       PUBLIC,
+	"confidential": CtConfidential,
+	"public":       CtPublic,
 }
 
 // TokenType as described in https://datatracker.ietf.org/doc/html/rfc6749#section-7.1
 type TokenType string
 
 const (
-	BEARER TokenType = "bearer"
-	MAC    TokenType = "mac"
+	TtBearer TokenType = "bearer"
+	TtMAC    TokenType = "mac"
 )
 
 var tokenTypeMap = map[string]TokenType{
-	"bearer": BEARER,
-	"mac":    MAC,
+	"bearer": TtBearer,
+	"mac":    TtMAC,
+}
+
+func GrantTypeFromString(value string) (GrantType, bool) {
+	result, ok := grantTypeMap[strings.ToLower(value)]
+	return result, ok
 }
 
 func ResponseTypeFromString(value string) (ResponseType, bool) {

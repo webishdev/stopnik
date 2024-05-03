@@ -5,10 +5,10 @@ import (
 	"log"
 	"net"
 	"net/http"
-	"tiny-gate/internal/config"
-	"tiny-gate/internal/oauth2"
-	"tiny-gate/internal/server/handler"
-	"tiny-gate/internal/store"
+	"stopnik/internal/config"
+	"stopnik/internal/oauth2"
+	"stopnik/internal/server/handler"
+	"stopnik/internal/store"
 )
 
 func StartServer(config *config.Config) {

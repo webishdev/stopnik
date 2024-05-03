@@ -5,10 +5,10 @@ import (
 	"log"
 	"net/http"
 	"net/url"
-	"tiny-gate/internal/config"
-	"tiny-gate/internal/oauth2"
-	"tiny-gate/internal/store"
-	"tiny-gate/internal/template"
+	"stopnik/internal/config"
+	"stopnik/internal/oauth2"
+	"stopnik/internal/store"
+	"stopnik/internal/template"
 )
 
 type AuthorizeHandler struct {

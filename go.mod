@@ -1,4 +1,4 @@
-module tiny-gate
+module stopnik
 
 go 1.22.2
 

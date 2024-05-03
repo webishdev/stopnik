@@ -6,8 +6,8 @@ import (
 	"log"
 	"net/http"
 	"net/url"
-	"tiny-gate/internal/config"
-	"tiny-gate/internal/store"
+	"stopnik/internal/config"
+	"stopnik/internal/store"
 )
 
 type LoginHandler struct {
