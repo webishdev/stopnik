@@ -30,10 +30,11 @@ type Client struct {
 }
 
 type Config struct {
-	Server  Server   `yaml:"server"`
-	Clients []Client `yaml:"clients"`
-	Users   []User   `yaml:"users"`
-	userMap map[string]*User
+	Server    Server   `yaml:"server"`
+	Clients   []Client `yaml:"clients"`
+	Users     []User   `yaml:"users"`
+	userMap   map[string]*User
+	clientMap map[string]*Client
 }
 
 func LoadConfig(name string) Config {
@@ -49,18 +50,38 @@ func LoadConfig(name string) Config {
 		log.Fatalf("error: %v", parseError)
 	}
 
-	config.userMap = make(map[string]*User)
-	for userIndex := 0; userIndex < len(config.Users); userIndex += 1 {
-		if config.Users[userIndex].Username != "" {
-			config.userMap[config.Users[userIndex].Username] = &config.Users[userIndex]
-		}
+	config.userMap = setup[User](&config.Users, func(user User) string {
+		return user.Username
+	})
 
-	}
+	config.clientMap = setup[Client](&config.Clients, func(client Client) string {
+		return client.Id
+	})
 
 	return config
 }
 
+func setup[T any](values *[]T, accessor func(T) string) map[string]*T {
+	valueMap := make(map[string]*T)
+
+	for index := 0; index < len(*values); index += 1 {
+		value := (*values)[index]
+		key := accessor(value)
+		if key != "" {
+			valueMap[key] = &value
+		}
+
+	}
+
+	return valueMap
+}
+
 func (config *Config) GetUser(name string) (*User, bool) {
 	value, exists := config.userMap[name]
+	return value, exists
+}
+
+func (config *Config) GetClient(name string) (*Client, bool) {
+	value, exists := config.clientMap[name]
 	return value, exists
 }

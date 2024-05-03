@@ -1,19 +1,14 @@
 package handler
 
 import (
-	"bytes"
-	_ "embed"
 	"github.com/google/uuid"
-	"html/template"
 	"log"
 	"net/http"
 	"tiny-gate/internal/cache"
 	"tiny-gate/internal/config"
 	"tiny-gate/internal/oauth2"
+	"tiny-gate/internal/template"
 )
-
-//go:embed resources/login.html
-var loginHtml []byte
 
 type AuthorizeHandler struct {
 	config *config.Config
@@ -33,26 +28,20 @@ func (handler *AuthorizeHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 		responseTypeQueryParameter := r.URL.Query().Get("response_type")
 		responseType, valid := oauth2.ResponseTypeFromString(responseTypeQueryParameter)
 		if !valid {
-			InternalServerErrorHandler(w, r)
+			ForbiddenHandler(w, r)
 			return
 		}
 
-		tmpl, templateError := template.New("name").Parse(string(loginHtml))
-		if templateError != nil {
-			InternalServerErrorHandler(w, r)
+		clientIdParameter := r.URL.Query().Get("client_id")
+		_, exists := handler.config.GetClient(clientIdParameter)
+		if !exists {
+			ForbiddenHandler(w, r)
 			return
 		}
 
 		id := uuid.New()
-		data := struct {
-			Token string
-		}{
-			Token: id.String(),
-		}
-
-		var tpl bytes.Buffer
-		eerr := tmpl.Execute(&tpl, data)
-		if eerr != nil {
+		loginTemplate, templateError := template.LoginTemplate(id.String())
+		if templateError != nil {
 			InternalServerErrorHandler(w, r)
 			return
 		}
@@ -75,7 +64,7 @@ func (handler *AuthorizeHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 
 			// http.ServeFile(w, r, "foo.html")
 			// bytes := []byte(loginHtml)
-			_, err := w.Write(tpl.Bytes())
+			_, err := w.Write(loginTemplate.Bytes())
 			if err != nil {
 				InternalServerErrorHandler(w, r)
 				return
