@@ -63,6 +63,13 @@ func (handler *TokenHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
+		secretHash := fmt.Sprintf("%x", sha512.Sum512([]byte(clientSecret)))
+
+		if secretHash != client.Secret {
+			ForbiddenHandler(w, r)
+			return
+		}
+
 		grantTypeValue := r.PostFormValue("grant_type")
 		grantType, grantTypeExists := oauth2.GrantTypeFromString(grantTypeValue)
 		if !grantTypeExists {
@@ -89,11 +96,20 @@ func (handler *TokenHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 		}
 
-		secretHash := fmt.Sprintf("%x", sha512.Sum512([]byte(clientSecret)))
+		if grantType == oauth2.GtPassword {
+			username := r.PostFormValue("username")
+			password := r.PostFormValue("password")
 
-		if secretHash != client.Secret {
-			ForbiddenHandler(w, r)
-			return
+			user, exists := handler.config.GetUser(username)
+			if !exists {
+				InternalServerErrorHandler(w, r)
+				return
+			}
+			passwordHash := fmt.Sprintf("%x", sha512.Sum512([]byte(password)))
+			if passwordHash != user.Password {
+				ForbiddenHandler(w, r)
+				return
+			}
 		}
 
 		id := uuid.New()
