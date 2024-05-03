@@ -88,7 +88,7 @@ func (handler *LoginHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Location", redirectURL.String())
 		w.WriteHeader(http.StatusFound)
 	} else {
-		MethodNotSupportedHandler(w, r)
+		MethodNotAllowedHandler(w, r)
 		return
 	}
 }

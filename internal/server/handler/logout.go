@@ -41,7 +41,7 @@ func (h *LogoutHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 
 	} else {
-		MethodNotSupportedHandler(w, r)
+		MethodNotAllowedHandler(w, r)
 		return
 	}
 }

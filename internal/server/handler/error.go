@@ -5,7 +5,7 @@ import (
 	"net/http"
 )
 
-func MethodNotSupportedHandler(w http.ResponseWriter, r *http.Request) {
+func MethodNotAllowedHandler(w http.ResponseWriter, r *http.Request) {
 	sendStatus(http.StatusMethodNotAllowed, "405 Method not allowed", w)
 }
 

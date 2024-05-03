@@ -35,7 +35,7 @@ func (handler *IntrospectHandler) ServeHTTP(w http.ResponseWriter, r *http.Reque
 		}
 		NoContentHandler(w, r)
 	} else {
-		ForbiddenHandler(w, r)
+		MethodNotAllowedHandler(w, r)
 		return
 	}
 }

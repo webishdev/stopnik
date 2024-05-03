@@ -97,7 +97,7 @@ func (handler *AuthorizeHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 			}
 		}
 	} else {
-		MethodNotSupportedHandler(w, r)
+		MethodNotAllowedHandler(w, r)
 		return
 	}
 }
