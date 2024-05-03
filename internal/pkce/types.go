@@ -1,7 +1,5 @@
 package pkce
 
-import "strings"
-
 // CodeChallengeMethod as described in https://datatracker.ietf.org/doc/html/rfc7636#section-4.3
 type CodeChallengeMethod string
 
@@ -16,6 +14,6 @@ var codeChallengeMethodMap = map[string]CodeChallengeMethod{
 }
 
 func CodeChallengeMethodFromString(value string) (CodeChallengeMethod, bool) {
-	result, ok := codeChallengeMethodMap[strings.ToLower(value)]
+	result, ok := codeChallengeMethodMap[value]
 	return result, ok
 }

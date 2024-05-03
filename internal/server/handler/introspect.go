@@ -5,6 +5,7 @@ import (
 	"stopnik/internal/config"
 	"stopnik/internal/oauth2"
 	"stopnik/internal/store"
+	"strings"
 )
 
 type IntrospectHandler struct {
@@ -19,6 +20,22 @@ func CreateIntrospectHandler(config *config.Config, accessTokenStore *store.Stor
 	}
 }
 
-func (h *IntrospectHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	NotFoundHandler(w, r)
+func (handler *IntrospectHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if r.Method == http.MethodPost {
+		authorization := r.Header.Get("Authorization")
+		if authorization == "" || !strings.Contains(authorization, "Bearer ") {
+			ForbiddenHandler(w, r)
+			return
+		}
+		token := strings.Replace(authorization, "Bearer ", "", 1)
+		_, exits := handler.accessTokenStore.Get(token)
+		if !exits {
+			ForbiddenHandler(w, r)
+			return
+		}
+		NoContentHandler(w, r)
+	} else {
+		ForbiddenHandler(w, r)
+		return
+	}
 }
