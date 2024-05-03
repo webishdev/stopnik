@@ -7,18 +7,21 @@ import (
 	"net/http"
 	"net/url"
 	"stopnik/internal/config"
+	"stopnik/internal/oauth2"
 	"stopnik/internal/store"
 )
 
 type LoginHandler struct {
 	config           *config.Config
 	authSessionStore *store.Store[store.AuthSession]
+	accessTokenStore *store.Store[oauth2.AccessToken]
 }
 
-func CreateLoginHandler(config *config.Config, authSessionStore *store.Store[store.AuthSession]) *LoginHandler {
+func CreateLoginHandler(config *config.Config, authSessionStore *store.Store[store.AuthSession], accessTokenStore *store.Store[oauth2.AccessToken]) *LoginHandler {
 	return &LoginHandler{
 		config:           config,
 		authSessionStore: authSessionStore,
+		accessTokenStore: accessTokenStore,
 	}
 }
 
@@ -71,7 +74,15 @@ func (handler *LoginHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 
 		query := redirectURL.Query()
-		query.Add("code", authSessionForm)
+		if authSession.ResponseType == string(oauth2.RtToken) {
+			accessTokenResponse := oauth2.CreateAccessTokenResponse(handler.accessTokenStore)
+			query.Add("access_token", string(accessTokenResponse.AccessToken))
+			query.Add("token_type", string(accessTokenResponse.TokenType))
+			query.Add("expires_in", fmt.Sprintf("%d", accessTokenResponse.ExpiresIn))
+		} else {
+			query.Add("code", authSessionForm)
+		}
+
 		redirectURL.RawQuery = query.Encode()
 
 		w.Header().Set("Location", redirectURL.String())

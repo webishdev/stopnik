@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"fmt"
 	"github.com/google/uuid"
 	"log"
 	"net/http"
@@ -14,25 +15,20 @@ import (
 type AuthorizeHandler struct {
 	config           *config.Config
 	authSessionStore *store.Store[store.AuthSession]
+	accessTokenStore *store.Store[oauth2.AccessToken]
 }
 
-func CreateAuthorizeHandler(config *config.Config, authSessionStore *store.Store[store.AuthSession]) *AuthorizeHandler {
+func CreateAuthorizeHandler(config *config.Config, authSessionStore *store.Store[store.AuthSession], accessTokenStore *store.Store[oauth2.AccessToken]) *AuthorizeHandler {
 	return &AuthorizeHandler{
 		config:           config,
 		authSessionStore: authSessionStore,
+		accessTokenStore: accessTokenStore,
 	}
 }
 
 func (handler *AuthorizeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	log.Printf("%s %s %s\n", r.RemoteAddr, r.Method, r.URL)
 	if r.Method == http.MethodGet {
-		responseTypeQueryParameter := r.URL.Query().Get("response_type")
-		responseType, valid := oauth2.ResponseTypeFromString(responseTypeQueryParameter)
-		if !valid {
-			ForbiddenHandler(w, r)
-			return
-		}
-
 		clientIdParameter := r.URL.Query().Get("client_id")
 		_, exists := handler.config.GetClient(clientIdParameter)
 		if !exists {
@@ -40,12 +36,14 @@ func (handler *AuthorizeHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 			return
 		}
 
-		id := uuid.New()
-		loginTemplate, templateError := template.LoginTemplate(id.String())
-		if templateError != nil {
-			InternalServerErrorHandler(w, r)
+		responseTypeQueryParameter := r.URL.Query().Get("response_type")
+		responseType, valid := oauth2.ResponseTypeFromString(responseTypeQueryParameter)
+		if !valid {
+			ForbiddenHandler(w, r)
 			return
 		}
+
+		id := uuid.New()
 
 		log.Printf("Response type: %s", responseType)
 		redirect := r.URL.Query().Get("redirect_uri")
@@ -57,6 +55,7 @@ func (handler *AuthorizeHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 			Redirect:      redirect,
 			AuthURI:       r.URL.RequestURI(),
 			CodeChallenge: codeChallenge,
+			ResponseType:  string(responseType),
 		})
 
 		cookie, noCookieError := r.Cookie("STOPIK_AUTH")
@@ -70,7 +69,16 @@ func (handler *AuthorizeHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 			}
 
 			query := redirectURL.Query()
-			query.Add("code", id.String())
+
+			if responseType == oauth2.RtToken {
+				accessTokenResponse := oauth2.CreateAccessTokenResponse(handler.accessTokenStore)
+				query.Add("access_token", string(accessTokenResponse.AccessToken))
+				query.Add("token_type", string(accessTokenResponse.TokenType))
+				query.Add("expires_in", fmt.Sprintf("%d", accessTokenResponse.ExpiresIn))
+			} else {
+				query.Add("code", id.String())
+			}
+
 			redirectURL.RawQuery = query.Encode()
 
 			w.Header().Set("Location", redirectURL.String())
@@ -78,6 +86,12 @@ func (handler *AuthorizeHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 		} else {
 			// http.ServeFile(w, r, "foo.html")
 			// bytes := []byte(loginHtml)
+			loginTemplate, templateError := template.LoginTemplate(id.String())
+			if templateError != nil {
+				InternalServerErrorHandler(w, r)
+				return
+			}
+
 			_, err := w.Write(loginTemplate.Bytes())
 			if err != nil {
 				InternalServerErrorHandler(w, r)

@@ -23,7 +23,7 @@ type ResponseType string
 const (
 	RtCode              ResponseType = "code"
 	RtToken             ResponseType = "token"
-	RtPassword          ResponseType = "password"
+	RtPassword          ResponseType = "password" // aka "implicit" grant
 	RtClientCredentials ResponseType = "client_credentials"
 )
 

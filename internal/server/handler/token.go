@@ -2,17 +2,14 @@ package handler
 
 import (
 	"crypto/sha512"
-	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"github.com/google/uuid"
 	"log"
 	"net/http"
 	"stopnik/internal/config"
 	"stopnik/internal/oauth2"
 	"stopnik/internal/pkce"
 	"stopnik/internal/store"
-	"time"
 )
 
 type TokenHandler struct {
@@ -112,16 +109,7 @@ func (handler *TokenHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 
-		id := uuid.New()
-		accessTokenValue := base64.RawURLEncoding.EncodeToString([]byte(id.String()))
-		accessToken := oauth2.AccessToken(accessTokenValue)
-		tokenDuration := time.Minute * time.Duration(45)
-		handler.accessTokenStore.SetWithDuration(string(accessToken), accessToken, tokenDuration)
-
-		accessTokenResponse := oauth2.AccessTokenResponse{
-			AccessToken: accessToken,
-			ExpiresIn:   int(tokenDuration / time.Millisecond),
-		}
+		accessTokenResponse := oauth2.CreateAccessTokenResponse(handler.accessTokenStore)
 
 		bytes, err1 := json.Marshal(accessTokenResponse)
 		if err1 != nil {

@@ -17,8 +17,8 @@ func StartServer(config *config.Config) {
 
 	mux := http.NewServeMux()
 
-	authorizeHandler := handler.CreateAuthorizeHandler(config, authSessionStore)
-	loginHandler := handler.CreateLoginHandler(config, authSessionStore)
+	authorizeHandler := handler.CreateAuthorizeHandler(config, authSessionStore, accessTokenStore)
+	loginHandler := handler.CreateLoginHandler(config, authSessionStore, accessTokenStore)
 	logoutHandler := handler.CreateLogoutHandler()
 	tokenHandler := handler.CreateTokenHandler(config, authSessionStore, accessTokenStore)
 
