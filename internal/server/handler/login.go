@@ -10,14 +10,14 @@ import (
 )
 
 type LoginHandler struct {
-	config *config.Config
-	store  *store.Store[store.AuthSession]
+	config           *config.Config
+	authSessionStore *store.Store[store.AuthSession]
 }
 
-func CreateLoginHandler(config *config.Config, store *store.Store[store.AuthSession]) *LoginHandler {
+func CreateLoginHandler(config *config.Config, authSessionStore *store.Store[store.AuthSession]) *LoginHandler {
 	return &LoginHandler{
-		config: config,
-		store:  store,
+		config:           config,
+		authSessionStore: authSessionStore,
 	}
 }
 
@@ -32,7 +32,7 @@ func (handler *LoginHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		username := r.Form.Get("username")
 		password := r.Form.Get("password")
 		authSessionForm := r.Form.Get("auth_session")
-		authSession, exists := handler.store.Get(authSessionForm)
+		authSession, exists := handler.authSessionStore.Get(authSessionForm)
 		if !exists {
 			InternalServerErrorHandler(w, r)
 			return

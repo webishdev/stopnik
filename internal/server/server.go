@@ -6,19 +6,21 @@ import (
 	"net"
 	"net/http"
 	"tiny-gate/internal/config"
+	"tiny-gate/internal/oauth2"
 	"tiny-gate/internal/server/handler"
 	"tiny-gate/internal/store"
 )
 
 func StartServer(config *config.Config) {
 	authSessionStore := store.NewCache[store.AuthSession]()
-	//accessTokenStore := store.NewCache[oauth2.AccessToken]()
+	accessTokenStore := store.NewCache[oauth2.AccessToken]()
 
 	mux := http.NewServeMux()
 
 	authorizeHandler := handler.CreateAuthorizeHandler(config, authSessionStore)
 	loginHandler := handler.CreateLoginHandler(config, authSessionStore)
 	logoutHandler := handler.CreateLogoutHandler()
+	tokenHandler := handler.CreateTokenHandler(accessTokenStore)
 
 	// Server
 	mux.Handle("/", &handler.HomeHandler{})
@@ -27,7 +29,7 @@ func StartServer(config *config.Config) {
 
 	// OAuth2
 	mux.Handle("/authorize", authorizeHandler)
-	mux.Handle("/token", &handler.TokenHandler{})
+	mux.Handle("/token", tokenHandler)
 
 	listener, listenError := net.Listen("tcp", fmt.Sprintf(":%d", config.Server.Port))
 	if listenError != nil {

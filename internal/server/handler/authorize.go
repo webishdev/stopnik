@@ -11,14 +11,14 @@ import (
 )
 
 type AuthorizeHandler struct {
-	config *config.Config
-	store  *store.Store[store.AuthSession]
+	config           *config.Config
+	authSessionStore *store.Store[store.AuthSession]
 }
 
-func CreateAuthorizeHandler(config *config.Config, store *store.Store[store.AuthSession]) *AuthorizeHandler {
+func CreateAuthorizeHandler(config *config.Config, authSessionStore *store.Store[store.AuthSession]) *AuthorizeHandler {
 	return &AuthorizeHandler{
-		config: config,
-		store:  store,
+		config:           config,
+		authSessionStore: authSessionStore,
 	}
 }
 
@@ -57,7 +57,7 @@ func (handler *AuthorizeHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 			w.Header().Set("Location", redirect)
 			w.WriteHeader(http.StatusFound)
 		} else {
-			handler.store.Set(id.String(), store.AuthSession{
+			handler.authSessionStore.Set(id.String(), store.AuthSession{
 				Redirect: redirect,
 				AuthURI:  r.URL.RequestURI(),
 			})

@@ -6,9 +6,20 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"time"
+	"tiny-gate/internal/oauth2"
+	"tiny-gate/internal/store"
 )
 
-type TokenHandler struct{}
+type TokenHandler struct {
+	accessTokenStore *store.Store[oauth2.AccessToken]
+}
+
+func CreateTokenHandler(accessTokenStore *store.Store[oauth2.AccessToken]) *TokenHandler {
+	return &TokenHandler{
+		accessTokenStore: accessTokenStore,
+	}
+}
 
 func (handler *TokenHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	log.Printf("%s %s %s\n", r.RemoteAddr, r.Method, r.URL)
@@ -24,14 +35,24 @@ func (handler *TokenHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 			log.Printf("POST Body:\n%s\n", bodyBytes)
-			defer r.Body.Close()
+			defer func(Body io.ReadCloser) {
+				err := Body.Close()
+				if err != nil {
+
+				}
+			}(r.Body)
 		}
 
-		t := map[string]interface{}{
-			"access_token": 1234,
+		accessToken := oauth2.AccessToken("1234")
+		tokenDuration := time.Minute * time.Duration(45)
+		handler.accessTokenStore.SetWithDuration(string(accessToken), accessToken, tokenDuration)
+
+		accessTokenResponse := oauth2.AccessTokenResponse{
+			AccessToken: accessToken,
+			ExpiresIn:   int(tokenDuration / time.Millisecond),
 		}
 
-		bytes, err1 := json.Marshal(t)
+		bytes, err1 := json.Marshal(accessTokenResponse)
 		if err1 != nil {
 			return
 		}
