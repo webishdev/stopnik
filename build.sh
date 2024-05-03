@@ -96,8 +96,8 @@ function task_build() {
     echo
     exit 1
   fi
-  if [[ ! "$1" =~ ^[0-9].[0-9]$ ]]; then
-    echo "Wrong version format. Should be x.y"
+  if [[ ! "$1" =~ ^[0-9].[0-9]$|ci ]]; then
+    echo "Wrong version format. Should be x.y or ci"
     echo
     exit 1
   fi

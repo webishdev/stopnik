@@ -26,7 +26,7 @@ jobs:
           go-version-file: 'go.mod'
 
       - name: Build
-        run: ./build.sh ${{ github.event.inputs.version }}
+        run: ./build.sh build ${{ github.event.inputs.version }}
 
       - uses: ncipollo/release-action@v1
         with:
