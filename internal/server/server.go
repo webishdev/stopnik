@@ -17,10 +17,16 @@ func StartServer(config *config.Config) {
 
 	mux := http.NewServeMux()
 
-	authorizeHandler := handler.CreateAuthorizeHandler(config, authSessionStore, accessTokenStore)
+	// Own
 	loginHandler := handler.CreateLoginHandler(config, authSessionStore, accessTokenStore)
 	logoutHandler := handler.CreateLogoutHandler()
+
+	// OAuth2
+	authorizeHandler := handler.CreateAuthorizeHandler(config, authSessionStore, accessTokenStore)
 	tokenHandler := handler.CreateTokenHandler(config, authSessionStore, accessTokenStore)
+
+	// OAuth2 extensions
+	introspectHandler := handler.CreateIntrospectHandler(config, accessTokenStore)
 
 	// Server
 	mux.Handle("/", &handler.HomeHandler{})
@@ -30,6 +36,9 @@ func StartServer(config *config.Config) {
 	// OAuth2
 	mux.Handle("/authorize", authorizeHandler)
 	mux.Handle("/token", tokenHandler)
+
+	// OAuth2 extensions
+	mux.Handle("/introspect", introspectHandler)
 
 	listener, listenError := net.Listen("tcp", fmt.Sprintf(":%d", config.Server.Port))
 	if listenError != nil {
