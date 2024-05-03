@@ -7,8 +7,9 @@ import (
 )
 
 type AuthSession struct {
-	Redirect string
-	AuthURI  string
+	Redirect      string
+	AuthURI       string
+	CodeChallenge string
 }
 
 type expiringType[T any] struct {

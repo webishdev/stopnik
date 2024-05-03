@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"net/url"
 	"tiny-gate/internal/config"
 	"tiny-gate/internal/store"
 )
@@ -47,24 +48,34 @@ func (handler *LoginHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		passwordHash := fmt.Sprintf("%x", sha512.Sum512([]byte(password)))
-		if passwordHash == user.Password {
-
-			cookie := http.Cookie{
-				Name:     "STOPIK_AUTH",
-				Value:    "Hello world!",
-				Path:     "/",
-				MaxAge:   3600,
-				HttpOnly: true,
-				SameSite: http.SameSiteLaxMode,
-			}
-
-			http.SetCookie(w, &cookie)
-
-			w.Header().Set("Location", authSession.Redirect)
-			w.WriteHeader(http.StatusFound)
+		if passwordHash != user.Password {
+			w.Header().Set("Location", authSession.AuthURI)
+			w.WriteHeader(http.StatusSeeOther)
 		}
-		w.Header().Set("Location", authSession.AuthURI)
-		w.WriteHeader(http.StatusSeeOther)
+
+		cookie := http.Cookie{
+			Name:     "STOPIK_AUTH",
+			Value:    "Hello world!",
+			Path:     "/",
+			MaxAge:   3600,
+			HttpOnly: true,
+			SameSite: http.SameSiteLaxMode,
+		}
+
+		http.SetCookie(w, &cookie)
+
+		redirectURL, urlParseError := url.Parse(authSession.Redirect)
+		if urlParseError != nil {
+			InternalServerErrorHandler(w, r)
+			return
+		}
+
+		query := redirectURL.Query()
+		query.Add("code", authSessionForm)
+		redirectURL.RawQuery = query.Encode()
+
+		w.Header().Set("Location", redirectURL.String())
+		w.WriteHeader(http.StatusFound)
 	} else {
 		NotFoundHandler(w, r)
 	}

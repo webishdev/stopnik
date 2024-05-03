@@ -20,7 +20,7 @@ func StartServer(config *config.Config) {
 	authorizeHandler := handler.CreateAuthorizeHandler(config, authSessionStore)
 	loginHandler := handler.CreateLoginHandler(config, authSessionStore)
 	logoutHandler := handler.CreateLogoutHandler()
-	tokenHandler := handler.CreateTokenHandler(accessTokenStore)
+	tokenHandler := handler.CreateTokenHandler(config, authSessionStore, accessTokenStore)
 
 	// Server
 	mux.Handle("/", &handler.HomeHandler{})
