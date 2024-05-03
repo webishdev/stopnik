@@ -8,12 +8,16 @@ ARCH_VALUES=(amd64 arm64)
 function prepare() {
   if [[ $(git diff --stat) != '' ]]; then
     echo "Please commit current changes before build"
+    echo
     exit 1
   else
     GIT_HASH=$(git rev-parse --short=11 HEAD)
-    echo "$NAME $VERSION - $GIT_HASH"
+
     echo "$VERSION" > resources/version
     echo "$GIT_HASH" >> resources/version
+
+    echo "$NAME $VERSION - $GIT_HASH"
+    echo
   fi
   mkdir -p bin
 }
@@ -31,8 +35,12 @@ function build() {
   if [[ "$GO_OS" == "windows" ]]; then
     FILE_EXTENSION=".exe"
   fi
+  OS_NAME=$GO_OS
+  if [[ "$GO_OS" == "darwin" ]]; then
+      OS_NAME="macos"
+    fi
   FILE_NAME="$NAME-$GO_ARCH"
-  DIR="$GO_OS-$GO_ARCH"
+  DIR="$OS_NAME-$GO_ARCH"
   echo "Build $GO_OS $GO_ARCH"
   GOOS=$GO_OS GOARCH=$GO_ARCH go build -ldflags="-s -w" -o bin/$DIR/$FILE_NAME$FILE_EXTENSION
   echo "Create SHA256 Sum $GO_OS $GO_ARCH"
