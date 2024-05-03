@@ -7,10 +7,11 @@ import (
 )
 
 type AuthSession struct {
-	Redirect      string
-	AuthURI       string
-	CodeChallenge string
-	ResponseType  string
+	Redirect            string
+	AuthURI             string
+	CodeChallenge       string
+	CodeChallengeMethod string
+	ResponseType        string
 }
 
 type expiringType[T any] struct {

@@ -84,7 +84,12 @@ func (handler *TokenHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 					ForbiddenHandler(w, r)
 					return
 				}
-				validPKCE := pkce.ValidatePKCE(pkce.S256, authSession.CodeChallenge, codeVerifier)
+				codeChallengeMethod, codeChallengeMethodExists := pkce.CodeChallengeMethodFromString(authSession.CodeChallengeMethod)
+				if !codeChallengeMethodExists {
+					ForbiddenHandler(w, r)
+					return
+				}
+				validPKCE := pkce.ValidatePKCE(codeChallengeMethod, authSession.CodeChallenge, codeVerifier)
 				if !validPKCE {
 					ForbiddenHandler(w, r)
 					return

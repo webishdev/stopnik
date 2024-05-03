@@ -50,12 +50,14 @@ func (handler *AuthorizeHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 		log.Printf("redirect URI: %s", redirect)
 
 		codeChallenge := r.URL.Query().Get("code_challenge")
+		codeChallengeMethod := r.URL.Query().Get("code_challenge_method")
 
 		handler.authSessionStore.Set(id.String(), store.AuthSession{
-			Redirect:      redirect,
-			AuthURI:       r.URL.RequestURI(),
-			CodeChallenge: codeChallenge,
-			ResponseType:  string(responseType),
+			Redirect:            redirect,
+			AuthURI:             r.URL.RequestURI(),
+			CodeChallenge:       codeChallenge,
+			CodeChallengeMethod: codeChallengeMethod,
+			ResponseType:        string(responseType),
 		})
 
 		cookie, noCookieError := r.Cookie("STOPIK_AUTH")
