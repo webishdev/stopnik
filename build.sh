@@ -48,7 +48,7 @@ function build() {
   CURRENT_DIR=$(pwd)
   echo "Package"
   cd bin/$DIR
-  zip -q -r ../${NAME}-${$OS_NAME}-${GO_ARCH}.zip ./
+  zip -q -r ../${NAME}-${OS_NAME}-${GO_ARCH}.zip ./
   cd $CURRENT_DIR
   echo
 }
