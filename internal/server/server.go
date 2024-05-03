@@ -19,11 +19,14 @@ func StartServer(config *config.Config) {
 	loginHandler := handler.CreateLoginHandler(config, authSessionCache)
 	logoutHandler := handler.CreateLogoutHandler()
 
+	// Server
 	mux.Handle("/", &handler.HomeHandler{})
-	mux.Handle("/authorize", authorizeHandler)
-	mux.Handle("/token", &handler.TokenHandler{})
 	mux.Handle("/login", loginHandler)
 	mux.Handle("/logout", logoutHandler)
+
+	// OAuth2
+	mux.Handle("/authorize", authorizeHandler)
+	mux.Handle("/token", &handler.TokenHandler{})
 
 	listener, listenError := net.Listen("tcp", fmt.Sprintf(":%d", config.Server.Port))
 	if listenError != nil {
