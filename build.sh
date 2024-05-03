@@ -56,7 +56,7 @@ function build() {
   if [[ "$GO_OS" == "darwin" ]]; then
       OS_NAME="macos"
     fi
-  FILE_NAME="$NAME-$VERSION-$GO_ARCH"
+  FILE_NAME="$NAME$VERSION-$GO_ARCH"
   DIR="$OS_NAME-$GO_ARCH"
   echo "Build $NICE_NAME version $VERSION for $GO_OS $GO_ARCH"
   GOOS=$GO_OS GOARCH=$GO_ARCH go build -ldflags="-s -w" -o bin/$DIR/$FILE_NAME$FILE_EXTENSION
@@ -65,7 +65,7 @@ function build() {
   CURRENT_DIR=$(pwd)
   echo "Package"
   cd bin/$DIR
-  zip -q -r ../${NAME}-${OS_NAME}-${GO_ARCH}.zip ./
+  zip -q -r ../${NAME}${NAME}-${OS_NAME}-${GO_ARCH}.zip ./
   cd $CURRENT_DIR
   echo
 }
