@@ -23,7 +23,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: '>=go1.22'
+          go-version-file: 'go.mod'
 
       - name: Build
         run: ./build.sh ${{ github.event.inputs.version }}
