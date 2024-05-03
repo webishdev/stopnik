@@ -10,8 +10,8 @@ import (
 func main() {
 	logger := log.New(os.Stdout, "", log.Ldate|log.Ltime|log.Lshortfile)
 
-	cf := config.LoadConfig("config.yml")
-	logger.Printf("%d", cf.Server.Port)
+	currentConfig := config.LoadConfig("config.yml")
+	logger.Printf("%d", currentConfig.Server.Port)
 
-	server.StartServer()
+	server.StartServer(&currentConfig)
 }

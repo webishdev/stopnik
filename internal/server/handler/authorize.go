@@ -8,6 +8,7 @@ import (
 	"log"
 	"net/http"
 	"tiny-gate/internal/cache"
+	"tiny-gate/internal/config"
 	"tiny-gate/internal/oauth2"
 )
 
@@ -15,12 +16,14 @@ import (
 var loginHtml []byte
 
 type AuthorizeHandler struct {
-	cache *cache.Cache[cache.AuthSession]
+	config *config.Config
+	cache  *cache.Cache[cache.AuthSession]
 }
 
-func CreateAuthorizeHandler(cache *cache.Cache[cache.AuthSession]) *AuthorizeHandler {
+func CreateAuthorizeHandler(config *config.Config, cache *cache.Cache[cache.AuthSession]) *AuthorizeHandler {
 	return &AuthorizeHandler{
-		cache: cache,
+		config: config,
+		cache:  cache,
 	}
 }
 

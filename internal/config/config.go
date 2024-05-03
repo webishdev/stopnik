@@ -26,6 +26,7 @@ type Config struct {
 	Server  Server   `yaml:"server"`
 	Clients []Client `yaml:"clients"`
 	Users   []User   `yaml:"users"`
+	userMap map[string]*User
 }
 
 func LoadConfig(name string) Config {
@@ -41,5 +42,18 @@ func LoadConfig(name string) Config {
 		log.Fatalf("error: %v", parseError)
 	}
 
+	config.userMap = make(map[string]*User)
+	for userIndex := 0; userIndex < len(config.Users); userIndex += 1 {
+		if config.Users[userIndex].Username != "" {
+			config.userMap[config.Users[userIndex].Username] = &config.Users[userIndex]
+		}
+
+	}
+
 	return config
+}
+
+func (config *Config) GetUser(name string) (*User, bool) {
+	value, exists := config.userMap[name]
+	return value, exists
 }

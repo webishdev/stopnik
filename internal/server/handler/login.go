@@ -1,18 +1,23 @@
 package handler
 
 import (
+	"crypto/sha512"
+	"fmt"
 	"log"
 	"net/http"
 	"tiny-gate/internal/cache"
+	"tiny-gate/internal/config"
 )
 
 type LoginHandler struct {
-	cache *cache.Cache[cache.AuthSession]
+	config *config.Config
+	cache  *cache.Cache[cache.AuthSession]
 }
 
-func CreateLoginHandler(cache *cache.Cache[cache.AuthSession]) *LoginHandler {
+func CreateLoginHandler(config *config.Config, cache *cache.Cache[cache.AuthSession]) *LoginHandler {
 	return &LoginHandler{
-		cache: cache,
+		config: config,
+		cache:  cache,
 	}
 }
 
@@ -27,7 +32,7 @@ func (handler *LoginHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		username := r.Form.Get("username")
 		password := r.Form.Get("password")
 		authSessionForm := r.Form.Get("auth_session")
-		authSession, exists := handler.cache.GetAndDelete(authSessionForm)
+		authSession, exists := handler.cache.Get(authSessionForm)
 		if !exists {
 			InternalServerErrorHandler(w, r)
 			return
@@ -36,7 +41,13 @@ func (handler *LoginHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		// https://en.wikipedia.org/wiki/Post/Redirect/Get
 		// redirect with Status 303
 		// When login valid
-		if username == "foo" && password == "bar" {
+		user, exists := handler.config.GetUser(username)
+		if !exists {
+			InternalServerErrorHandler(w, r)
+			return
+		}
+		passwordHash := fmt.Sprintf("%x", sha512.Sum512([]byte(password)))
+		if passwordHash == user.Password {
 
 			cookie := http.Cookie{
 				Name:     "STOPIK_AUTH",
