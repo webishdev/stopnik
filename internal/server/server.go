@@ -1,6 +1,9 @@
 package server
 
 import (
+	"fmt"
+	"log"
+	"net"
 	"net/http"
 	"tiny-gate/internal/cache"
 	"tiny-gate/internal/config"
@@ -22,8 +25,15 @@ func StartServer(config *config.Config) {
 	mux.Handle("/login", loginHandler)
 	mux.Handle("/logout", logoutHandler)
 
-	err := http.ListenAndServe(":8080", mux)
-	if err != nil {
-		return
+	listener, listenError := net.Listen("tcp", fmt.Sprintf(":%d", config.Server.Port))
+	if listenError != nil {
+		panic(listenError)
+	}
+
+	log.Printf("Will accept connections at %s", listener.Addr().String())
+
+	errorServer := http.Serve(listener, mux)
+	if errorServer != nil {
+		panic(errorServer)
 	}
 }

@@ -7,8 +7,15 @@ import (
 	"tiny-gate/internal/oauth2"
 )
 
+type TLS struct {
+	Port int    `yaml:"port"`
+	Cert string `yaml:"cert"`
+	Key  string `yaml:"key"`
+}
+
 type Server struct {
 	Port int `yaml:"port"`
+	TLS  TLS `yaml:"tls"`
 }
 
 type User struct {
