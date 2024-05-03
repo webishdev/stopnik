@@ -118,12 +118,12 @@ func (handler *TokenHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 		accessTokenResponse := oauth2.CreateAccessTokenResponse(handler.accessTokenStore)
 
-		bytes, err1 := json.Marshal(accessTokenResponse)
-		if err1 != nil {
+		bytes, tokenMarshalError := json.Marshal(accessTokenResponse)
+		if tokenMarshalError != nil {
 			return
 		}
-		_, err2 := w.Write(bytes)
-		if err2 != nil {
+		_, writeError := w.Write(bytes)
+		if writeError != nil {
 			return
 		}
 	} else {
