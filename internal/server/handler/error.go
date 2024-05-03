@@ -5,6 +5,10 @@ import (
 	"net/http"
 )
 
+func MethodNotSupportedHandler(w http.ResponseWriter, r *http.Request) {
+	sendStatus(http.StatusMethodNotAllowed, "405 Method not allowed", w)
+}
+
 func ForbiddenHandler(w http.ResponseWriter, r *http.Request) {
 	sendStatus(http.StatusForbidden, "403 Forbidden", w)
 }
@@ -15,6 +19,14 @@ func InternalServerErrorHandler(w http.ResponseWriter, r *http.Request) {
 
 func NotFoundHandler(w http.ResponseWriter, r *http.Request) {
 	sendStatus(http.StatusNotFound, "404 Not Found", w)
+}
+
+func NoContentHandler(w http.ResponseWriter, r *http.Request) {
+	sendStatus(http.StatusNoContent, "204 No content", w)
+}
+
+func SeeOtherHandler(w http.ResponseWriter, r *http.Request) {
+	sendStatus(http.StatusSeeOther, "303 see other", w)
 }
 
 func sendStatus(status int, message string, w http.ResponseWriter) {

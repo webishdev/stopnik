@@ -1,6 +1,4 @@
-<!doctype html>
-<html lang="en">
-<body>
+{{ template "header" }}
 <h1>foo & bar</h1>
 <form method="POST" action="login">
     <label>
@@ -14,5 +12,4 @@
     <input type="hidden" name="auth_session" value="{{.Token}}" />
     <button type="submit">Login</button>
 </form>
-</body>
-</html>
+{{ template "footer" }}

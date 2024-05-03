@@ -88,6 +88,7 @@ func (handler *LoginHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Location", redirectURL.String())
 		w.WriteHeader(http.StatusFound)
 	} else {
-		NotFoundHandler(w, r)
+		MethodNotSupportedHandler(w, r)
+		return
 	}
 }

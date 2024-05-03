@@ -88,11 +88,7 @@ func (handler *AuthorizeHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 		} else {
 			// http.ServeFile(w, r, "foo.html")
 			// bytes := []byte(loginHtml)
-			loginTemplate, templateError := template.LoginTemplate(id.String())
-			if templateError != nil {
-				InternalServerErrorHandler(w, r)
-				return
-			}
+			loginTemplate := template.LoginTemplate(id.String())
 
 			_, err := w.Write(loginTemplate.Bytes())
 			if err != nil {
@@ -101,6 +97,7 @@ func (handler *AuthorizeHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 			}
 		}
 	} else {
-		NotFoundHandler(w, r)
+		MethodNotSupportedHandler(w, r)
+		return
 	}
 }

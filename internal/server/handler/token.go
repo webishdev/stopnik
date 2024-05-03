@@ -125,6 +125,7 @@ func (handler *TokenHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	} else {
-		NotFoundHandler(w, r)
+		MethodNotSupportedHandler(w, r)
+		return
 	}
 }
