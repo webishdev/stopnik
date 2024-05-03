@@ -50,8 +50,9 @@ func (handler *TokenHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 		clientId, clientSecret, ok := r.BasicAuth()
 		if !ok {
-			ForbiddenHandler(w, r)
-			return
+			// Check fallback
+			clientId = r.PostFormValue("client_id")
+			clientSecret = r.PostFormValue("client_secret")
 		}
 
 		client, clientExists := handler.config.GetClient(clientId)
