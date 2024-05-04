@@ -23,9 +23,6 @@ function prepare() {
     VERSION=$1
     GIT_HASH=$(git rev-parse --short=11 HEAD)
 
-    echo "$VERSION" > resources/version
-    echo "$GIT_HASH" >> resources/version
-
     echo "$NAME $VERSION - $GIT_HASH"
     echo
   fi
