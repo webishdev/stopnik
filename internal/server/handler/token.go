@@ -33,21 +33,6 @@ func (handler *TokenHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			log.Printf("%v: %v\n", k, v)
 		}
 
-		//if r.Body != nil {
-		//	bodyBytes, err := io.ReadAll(r.Body)
-		//	if err != nil {
-		//		fmt.Printf("Body reading error: %v", err)
-		//		return
-		//	}
-		//	log.Printf("POST Body:\n%s\n", bodyBytes)
-		//	defer func(Body io.ReadCloser) {
-		//		err := Body.Close()
-		//		if err != nil {
-		//
-		//		}
-		//	}(r.Body)
-		//}
-
 		// https://datatracker.ietf.org/doc/html/rfc6749#section-2.3.1
 		clientId, clientSecret, ok := r.BasicAuth()
 		if !ok {
