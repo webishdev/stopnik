@@ -76,6 +76,8 @@ func (handler *TokenHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
+		var scopes []string
+
 		if grantType == oauth2.GtAuthorizationCode {
 
 			codeVerifier := r.PostFormValue("code_verifier") // https://datatracker.ietf.org/doc/html/rfc7636#section-4.1
@@ -96,6 +98,7 @@ func (handler *TokenHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 					ForbiddenHandler(w, r)
 					return
 				}
+				scopes = authSession.Scopes
 			}
 
 		}
@@ -116,7 +119,7 @@ func (handler *TokenHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 
-		accessTokenResponse := oauth2.CreateAccessTokenResponse(handler.accessTokenStore)
+		accessTokenResponse := oauth2.CreateAccessTokenResponse(handler.accessTokenStore, clientId, scopes)
 
 		bytes, tokenMarshalError := json.Marshal(accessTokenResponse)
 		if tokenMarshalError != nil {

@@ -10,6 +10,7 @@ import (
 	"stopnik/internal/oauth2"
 	"stopnik/internal/store"
 	"stopnik/internal/template"
+	"strings"
 )
 
 type AuthorizeHandler struct {
@@ -29,8 +30,8 @@ func CreateAuthorizeHandler(config *config.Config, authSessionStore *store.Store
 func (handler *AuthorizeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	log.Printf("%s %s %s\n", r.RemoteAddr, r.Method, r.URL)
 	if r.Method == http.MethodGet {
-		clientIdParameter := r.URL.Query().Get("client_id")
-		_, exists := handler.config.GetClient(clientIdParameter)
+		clientId := r.URL.Query().Get("client_id")
+		_, exists := handler.config.GetClient(clientId)
 		if !exists {
 			ForbiddenHandler(w, r)
 			return
@@ -42,22 +43,27 @@ func (handler *AuthorizeHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 			ForbiddenHandler(w, r)
 			return
 		}
-
-		id := uuid.New()
-
 		log.Printf("Response type: %s", responseType)
+
 		redirect := r.URL.Query().Get("redirect_uri")
-		log.Printf("redirect URI: %s", redirect)
+		log.Printf("Redirect URI: %s", redirect)
+
+		scope := r.URL.Query().Get("scope")
+		log.Printf("Scope: %s", scope)
+		scopes := strings.Split(scope, " ")
 
 		codeChallenge := r.URL.Query().Get("code_challenge")
 		codeChallengeMethod := r.URL.Query().Get("code_challenge_method")
 
+		id := uuid.New()
 		handler.authSessionStore.Set(id.String(), store.AuthSession{
 			Redirect:            redirect,
 			AuthURI:             r.URL.RequestURI(),
 			CodeChallenge:       codeChallenge,
 			CodeChallengeMethod: codeChallengeMethod,
+			ClientId:            clientId,
 			ResponseType:        string(responseType),
+			Scopes:              scopes,
 		})
 
 		validCookie := ValidateCookie(handler.config, r)
@@ -72,8 +78,8 @@ func (handler *AuthorizeHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 			query := redirectURL.Query()
 
 			if responseType == oauth2.RtToken {
-				accessTokenResponse := oauth2.CreateAccessTokenResponse(handler.accessTokenStore)
-				query.Add("access_token", string(accessTokenResponse.AccessToken))
+				accessTokenResponse := oauth2.CreateAccessTokenResponse(handler.accessTokenStore, clientId, scopes)
+				query.Add("access_token", accessTokenResponse.AccessTokenKey)
 				query.Add("token_type", string(accessTokenResponse.TokenType))
 				query.Add("expires_in", fmt.Sprintf("%d", accessTokenResponse.ExpiresIn))
 			} else {

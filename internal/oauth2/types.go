@@ -51,8 +51,8 @@ var clientTypeMap = map[string]ClientType{
 type TokenType string
 
 const (
-	TtBearer TokenType = "bearer"
-	TtMAC    TokenType = "mac"
+	TtBearer TokenType = "Bearer" // https://www.rfc-editor.org/rfc/rfc6750#section-6.1.1
+	TtMAC    TokenType = "mac"    // https://datatracker.ietf.org/doc/html/draft-ietf-oauth-v2-http-mac-05#section-9.3.1
 )
 
 var tokenTypeMap = map[string]TokenType{

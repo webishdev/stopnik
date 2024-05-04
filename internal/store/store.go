@@ -12,6 +12,8 @@ type AuthSession struct {
 	CodeChallenge       string
 	CodeChallengeMethod string
 	ResponseType        string
+	ClientId            string
+	Scopes              []string
 }
 
 type expiringType[T any] struct {
