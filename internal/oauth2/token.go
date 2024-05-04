@@ -22,7 +22,7 @@ type AccessTokenResponse struct {
 	RefreshTokenKey string    `json:"refresh_token,omitempty"`
 }
 
-func CreateAccessTokenResponse(accessTokenStore *store.Store[AccessToken], clientId string, scopes []string) AccessTokenResponse {
+func CreateAccessTokenResponse(accessTokenStore *store.Store[AccessToken], clientId string, scopes []string, accessTTL int) AccessTokenResponse {
 	id := uuid.New()
 	accessTokenKey := base64.RawURLEncoding.EncodeToString([]byte(id.String()))
 	accessToken := AccessToken{
@@ -30,7 +30,7 @@ func CreateAccessTokenResponse(accessTokenStore *store.Store[AccessToken], clien
 		ClientId: clientId,
 		Scopes:   scopes,
 	}
-	tokenDuration := time.Minute * time.Duration(15)
+	tokenDuration := time.Minute * time.Duration(accessTTL)
 	accessTokenStore.SetWithDuration(accessTokenKey, accessToken, tokenDuration)
 
 	return AccessTokenResponse{

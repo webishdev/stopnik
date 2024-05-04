@@ -119,7 +119,7 @@ func (handler *TokenHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 
-		accessTokenResponse := oauth2.CreateAccessTokenResponse(handler.accessTokenStore, clientId, scopes)
+		accessTokenResponse := oauth2.CreateAccessTokenResponse(handler.accessTokenStore, client.Id, scopes, client.GetAccessTTL())
 
 		bytes, tokenMarshalError := json.Marshal(accessTokenResponse)
 		if tokenMarshalError != nil {

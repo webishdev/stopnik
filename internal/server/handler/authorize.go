@@ -31,7 +31,7 @@ func (handler *AuthorizeHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 	log.Printf("%s %s %s\n", r.RemoteAddr, r.Method, r.URL)
 	if r.Method == http.MethodGet {
 		clientId := r.URL.Query().Get("client_id")
-		_, exists := handler.config.GetClient(clientId)
+		client, exists := handler.config.GetClient(clientId)
 		if !exists {
 			ForbiddenHandler(w, r)
 			return
@@ -78,7 +78,7 @@ func (handler *AuthorizeHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 			query := redirectURL.Query()
 
 			if responseType == oauth2.RtToken {
-				accessTokenResponse := oauth2.CreateAccessTokenResponse(handler.accessTokenStore, clientId, scopes)
+				accessTokenResponse := oauth2.CreateAccessTokenResponse(handler.accessTokenStore, clientId, scopes, client.GetAccessTTL())
 				query.Add("access_token", accessTokenResponse.AccessTokenKey)
 				query.Add("token_type", string(accessTokenResponse.TokenType))
 				query.Add("expires_in", fmt.Sprintf("%d", accessTokenResponse.ExpiresIn))

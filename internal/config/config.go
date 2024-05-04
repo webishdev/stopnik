@@ -32,6 +32,8 @@ type Client struct {
 	Id         string            `yaml:"id"`
 	Secret     string            `yaml:"secret"`
 	ClientType oauth2.ClientType `yaml:"type"`
+	AccessTTL  int               `yaml:"accessTTL"`
+	RefreshTTL int               `yaml:"refreshTTL"`
 }
 
 type Config struct {
@@ -118,4 +120,8 @@ func (config *Config) GetAuthCookieName() string {
 
 func (config *Config) GetServerSecret() string {
 	return GetOrDefaultString(config.Server.Secret, config.generatedSecret)
+}
+
+func (client *Client) GetAccessTTL() int {
+	return GetOrDefaultInt(client.AccessTTL, 5)
 }
