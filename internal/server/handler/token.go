@@ -62,6 +62,7 @@ func (handler *TokenHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 
 		var scopes []string
+		var username string
 
 		if grantType == oauth2.GtAuthorizationCode {
 
@@ -84,27 +85,29 @@ func (handler *TokenHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 					return
 				}
 				scopes = authSession.Scopes
+				username = authSession.Username
 			}
 
 		}
 
 		if grantType == oauth2.GtPassword {
-			username := r.PostFormValue("username")
-			password := r.PostFormValue("password")
+			usernameFrom := r.PostFormValue("username")
+			passwordForm := r.PostFormValue("password")
 
-			user, exists := handler.config.GetUser(username)
+			user, exists := handler.config.GetUser(usernameFrom)
 			if !exists {
 				InternalServerErrorHandler(w, r)
 				return
 			}
-			passwordHash := fmt.Sprintf("%x", sha512.Sum512([]byte(password)))
+			passwordHash := fmt.Sprintf("%x", sha512.Sum512([]byte(passwordForm)))
 			if passwordHash != user.Password {
 				ForbiddenHandler(w, r)
 				return
 			}
+			username = usernameFrom
 		}
 
-		accessTokenResponse := oauth2.CreateAccessTokenResponse(handler.accessTokenStore, client.Id, scopes, client.GetAccessTTL())
+		accessTokenResponse := oauth2.CreateAccessTokenResponse(handler.accessTokenStore, username, client.Id, scopes, client.GetAccessTTL())
 
 		bytes, tokenMarshalError := json.Marshal(accessTokenResponse)
 		if tokenMarshalError != nil {

@@ -11,7 +11,11 @@ import (
 
 // as described in https://datatracker.ietf.org/doc/html/rfc7662#section-2.2
 type introspectResponse struct {
-	Active bool `json:"active"`
+	Active    bool             `json:"active"`
+	Scope     string           `json:"scope,omitempty"`
+	ClientId  string           `json:"client_id,omitempty"`
+	Username  string           `json:"username,omitempty"`
+	TokenType oauth2.TokenType `json:"token_type,omitempty"`
 }
 
 type IntrospectHandler struct {
@@ -33,18 +37,25 @@ func (handler *IntrospectHandler) ServeHTTP(w http.ResponseWriter, r *http.Reque
 			ForbiddenHandler(w, r)
 			return
 		}
-		authorizationToken := strings.Replace(authorization, "Bearer ", "", 1)
-		_, authorizationTokenExists := handler.accessTokenStore.Get(authorizationToken)
-		if !authorizationTokenExists {
+		authorizationHeader := strings.Replace(authorization, "Bearer ", "", 1)
+		_, authorizationHeaderExists := handler.accessTokenStore.Get(authorizationHeader)
+		if !authorizationHeaderExists {
 			ForbiddenHandler(w, r)
 			return
 		}
 
 		token := r.PostFormValue("token")
-		_, tokenExists := handler.accessTokenStore.Get(token)
+		accessToken, tokenExists := handler.accessTokenStore.Get(token)
 
 		introspectResponse := introspectResponse{
 			Active: tokenExists,
+		}
+
+		if tokenExists {
+			introspectResponse.Username = accessToken.Username
+			introspectResponse.ClientId = accessToken.ClientId
+			introspectResponse.Scope = strings.Join(accessToken.Scopes, " ")
+			introspectResponse.TokenType = accessToken.TokenType
 		}
 
 		bytes, introspectMarshalError := json.Marshal(introspectResponse)

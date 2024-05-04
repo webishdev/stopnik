@@ -12,6 +12,7 @@ type AuthSession struct {
 	CodeChallenge       string
 	CodeChallengeMethod string
 	ResponseType        string
+	Username            string
 	ClientId            string
 	Scopes              []string
 }
@@ -22,7 +23,7 @@ type expiringType[T any] struct {
 }
 
 type Store[T any] struct {
-	storeMap map[string]expiringType[T]
+	storeMap map[string]expiringType[*T]
 	mux      sync.RWMutex
 	ticker   *time.Ticker
 	duration time.Duration
@@ -35,7 +36,7 @@ func NewCache[T any]() *Store[T] {
 func NewTimedCache[T any](duration time.Duration) *Store[T] {
 	ticker := time.NewTicker(time.Minute * time.Duration(1))
 	cache := &Store[T]{
-		storeMap: make(map[string]expiringType[T]),
+		storeMap: make(map[string]expiringType[*T]),
 		mux:      sync.RWMutex{},
 		ticker:   ticker,
 		duration: duration,
@@ -69,11 +70,11 @@ func (currentCache *Store[T]) cleanUp() {
 	}
 }
 
-func (currentCache *Store[T]) expiredNow(value expiringType[T]) bool {
+func (currentCache *Store[T]) expiredNow(value expiringType[*T]) bool {
 	return currentCache.expired(time.Now(), value)
 }
 
-func (currentCache *Store[T]) expired(time time.Time, value expiringType[T]) bool {
+func (currentCache *Store[T]) expired(time time.Time, value expiringType[*T]) bool {
 	return time.After(value.expireDate)
 }
 
@@ -90,26 +91,26 @@ func (currentCache *Store[T]) delete(key string) {
 	delete(currentCache.storeMap, key)
 }
 
-func (currentCache *Store[T]) Set(key string, value T) {
+func (currentCache *Store[T]) Set(key string, value *T) {
 	currentCache.SetWithDuration(key, value, currentCache.duration)
 }
 
-func (currentCache *Store[T]) SetWithDuration(key string, value T, duration time.Duration) {
+func (currentCache *Store[T]) SetWithDuration(key string, value *T, duration time.Duration) {
 	currentCache.mux.Lock()
 	defer currentCache.mux.Unlock()
-	currentCache.storeMap[key] = expiringType[T]{
+	currentCache.storeMap[key] = expiringType[*T]{
 		value:      value,
 		expireDate: time.Now().Add(duration),
 	}
 }
 
-func (currentCache *Store[T]) Get(key string) (T, bool) {
+func (currentCache *Store[T]) Get(key string) (*T, bool) {
 	currentCache.mux.RLock()
 	defer currentCache.mux.RUnlock()
 	value, exists := currentCache.storeMap[key]
 	if currentCache.expiredNow(value) {
 		var none T
-		return none, false
+		return &none, false
 	}
 	return value.value, exists
 }

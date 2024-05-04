@@ -56,7 +56,7 @@ func (handler *AuthorizeHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 		codeChallengeMethod := r.URL.Query().Get("code_challenge_method")
 
 		id := uuid.New()
-		handler.authSessionStore.Set(id.String(), store.AuthSession{
+		authSession := &store.AuthSession{
 			Redirect:            redirect,
 			AuthURI:             r.URL.RequestURI(),
 			CodeChallenge:       codeChallenge,
@@ -64,11 +64,14 @@ func (handler *AuthorizeHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 			ClientId:            clientId,
 			ResponseType:        string(responseType),
 			Scopes:              scopes,
-		})
+		}
 
-		validCookie := ValidateCookie(handler.config, r)
+		handler.authSessionStore.Set(id.String(), authSession)
+
+		user, validCookie := ValidateCookie(handler.config, r)
+
 		if validCookie {
-
+			authSession.Username = user.Username
 			redirectURL, urlParseError := url.Parse(redirect)
 			if urlParseError != nil {
 				InternalServerErrorHandler(w, r)
@@ -78,7 +81,7 @@ func (handler *AuthorizeHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 			query := redirectURL.Query()
 
 			if responseType == oauth2.RtToken {
-				accessTokenResponse := oauth2.CreateAccessTokenResponse(handler.accessTokenStore, client.Id, scopes, client.GetAccessTTL())
+				accessTokenResponse := oauth2.CreateAccessTokenResponse(handler.accessTokenStore, user.Username, client.Id, scopes, client.GetAccessTTL())
 				query.Add("access_token", accessTokenResponse.AccessTokenKey)
 				query.Add("token_type", string(accessTokenResponse.TokenType))
 				query.Add("expires_in", fmt.Sprintf("%d", accessTokenResponse.ExpiresIn))

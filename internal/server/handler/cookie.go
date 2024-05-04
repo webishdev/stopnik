@@ -12,6 +12,18 @@ import (
 	"stopnik/internal/config"
 )
 
+func DeleteCookie(config *config.Config) http.Cookie {
+	authCookieName := config.GetAuthCookieName()
+	return http.Cookie{
+		Name:     authCookieName,
+		Value:    "",
+		Path:     "/",
+		MaxAge:   -1,
+		HttpOnly: true,
+		SameSite: http.SameSiteLaxMode,
+	}
+}
+
 func CreateCookie(config *config.Config, username string) (http.Cookie, error) {
 	authCookieName := config.GetAuthCookieName()
 	value, err := encryptString(username, config.GetServerSecret())
@@ -28,18 +40,18 @@ func CreateCookie(config *config.Config, username string) (http.Cookie, error) {
 	}, nil
 }
 
-func ValidateCookie(config *config.Config, r *http.Request) bool {
-	authCookieName := config.GetAuthCookieName()
+func ValidateCookie(currentConfig *config.Config, r *http.Request) (*config.User, bool) {
+	authCookieName := currentConfig.GetAuthCookieName()
 	cookie, cookieError := r.Cookie(authCookieName)
 	if cookieError != nil {
-		return false
+		return &config.User{}, false
 	} else {
-		username, err := decryptString(cookie.Value, config.GetServerSecret())
+		username, err := decryptString(cookie.Value, currentConfig.GetServerSecret())
 		if err != nil {
-			return false
+			return &config.User{}, false
 		}
-		_, userExists := config.GetUser(username)
-		return userExists
+		user, userExists := currentConfig.GetUser(username)
+		return user, userExists
 	}
 }
 

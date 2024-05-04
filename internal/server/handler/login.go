@@ -61,6 +61,7 @@ func (handler *LoginHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			InternalServerErrorHandler(w, r)
 			return
 		}
+		authSession.Username = user.Username
 		http.SetCookie(w, &cookie)
 
 		redirectURL, urlParseError := url.Parse(authSession.Redirect)
@@ -76,7 +77,7 @@ func (handler *LoginHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				InternalServerErrorHandler(w, r)
 				return
 			}
-			accessTokenResponse := oauth2.CreateAccessTokenResponse(handler.accessTokenStore, client.Id, authSession.Scopes, client.GetAccessTTL())
+			accessTokenResponse := oauth2.CreateAccessTokenResponse(handler.accessTokenStore, user.Username, client.Id, authSession.Scopes, client.GetAccessTTL())
 			query.Add("access_token", accessTokenResponse.AccessTokenKey)
 			query.Add("token_type", string(accessTokenResponse.TokenType))
 			query.Add("expires_in", fmt.Sprintf("%d", accessTokenResponse.ExpiresIn))

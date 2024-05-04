@@ -8,9 +8,11 @@ import (
 )
 
 type AccessToken struct {
-	Key      string
-	ClientId string
-	Scopes   []string
+	Key       string
+	TokenType TokenType
+	Username  string
+	ClientId  string
+	Scopes    []string
 }
 type RefreshToken string
 
@@ -22,13 +24,15 @@ type AccessTokenResponse struct {
 	RefreshTokenKey string    `json:"refresh_token,omitempty"`
 }
 
-func CreateAccessTokenResponse(accessTokenStore *store.Store[AccessToken], clientId string, scopes []string, accessTTL int) AccessTokenResponse {
+func CreateAccessTokenResponse(accessTokenStore *store.Store[AccessToken], username string, clientId string, scopes []string, accessTTL int) AccessTokenResponse {
 	id := uuid.New()
 	accessTokenKey := base64.RawURLEncoding.EncodeToString([]byte(id.String()))
-	accessToken := AccessToken{
-		Key:      accessTokenKey,
-		ClientId: clientId,
-		Scopes:   scopes,
+	accessToken := &AccessToken{
+		Key:       accessTokenKey,
+		TokenType: TtBearer,
+		Username:  username,
+		ClientId:  clientId,
+		Scopes:    scopes,
 	}
 	tokenDuration := time.Minute * time.Duration(accessTTL)
 	accessTokenStore.SetWithDuration(accessTokenKey, accessToken, tokenDuration)

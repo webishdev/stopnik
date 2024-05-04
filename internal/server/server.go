@@ -19,7 +19,7 @@ func StartServer(config *config.Config) {
 
 	// Own
 	loginHandler := handler.CreateLoginHandler(config, authSessionStore, accessTokenStore)
-	logoutHandler := handler.CreateLogoutHandler()
+	logoutHandler := handler.CreateLogoutHandler(config)
 
 	// OAuth2
 	authorizeHandler := handler.CreateAuthorizeHandler(config, authSessionStore, accessTokenStore)

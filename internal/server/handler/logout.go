@@ -2,32 +2,30 @@ package handler
 
 import (
 	"net/http"
+	"stopnik/internal/config"
 	"stopnik/internal/template"
 )
 
-type LogoutHandler struct{}
-
-func CreateLogoutHandler() *LogoutHandler {
-	return &LogoutHandler{}
+type LogoutHandler struct {
+	config *config.Config
 }
 
-func (h *LogoutHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func CreateLogoutHandler(config *config.Config) *LogoutHandler {
+	return &LogoutHandler{
+		config: config,
+	}
+}
+
+func (handler *LogoutHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	if r.Method == http.MethodPost {
-		cookie := http.Cookie{
-			Name:     "STOPIK_AUTH",
-			Value:    "",
-			Path:     "/",
-			MaxAge:   -1,
-			HttpOnly: true,
-			SameSite: http.SameSiteLaxMode,
-		}
+		cookie := DeleteCookie(handler.config)
 
 		http.SetCookie(w, &cookie)
 		w.WriteHeader(http.StatusNoContent)
 	} else if r.Method == http.MethodGet {
-		_, noCookieError := r.Cookie("STOPIK_AUTH")
-		if noCookieError == nil {
+		_, validCookie := ValidateCookie(handler.config, r)
+		if validCookie {
 			logoutTemplate := template.LogoutTemplate()
 
 			_, err := w.Write(logoutTemplate.Bytes())
