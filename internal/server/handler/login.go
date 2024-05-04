@@ -56,15 +56,11 @@ func (handler *LoginHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusSeeOther)
 		}
 
-		cookie := http.Cookie{
-			Name:     "STOPIK_AUTH",
-			Value:    "Hello world!",
-			Path:     "/",
-			MaxAge:   3600,
-			HttpOnly: true,
-			SameSite: http.SameSiteLaxMode,
+		cookie, err := CreateCookie(handler.config, user.Username)
+		if err != nil {
+			InternalServerErrorHandler(w, r)
+			return
 		}
-
 		http.SetCookie(w, &cookie)
 
 		redirectURL, urlParseError := url.Parse(authSession.Redirect)

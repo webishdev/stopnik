@@ -1,10 +1,13 @@
 package config
 
 import (
+	"fmt"
 	"gopkg.in/yaml.v3"
 	"log"
+	"math/rand"
 	"os"
 	"stopnik/internal/oauth2"
+	"time"
 )
 
 type TLS struct {
@@ -14,8 +17,10 @@ type TLS struct {
 }
 
 type Server struct {
-	Port int `yaml:"port"`
-	TLS  TLS `yaml:"tls"`
+	Port           int    `yaml:"port"`
+	AuthCookieName string `yaml:"authCookieName"`
+	Secret         string `yaml:"secret"`
+	TLS            TLS    `yaml:"tls"`
 }
 
 type User struct {
@@ -30,11 +35,12 @@ type Client struct {
 }
 
 type Config struct {
-	Server    Server   `yaml:"server"`
-	Clients   []Client `yaml:"clients"`
-	Users     []User   `yaml:"users"`
-	userMap   map[string]*User
-	clientMap map[string]*Client
+	Server          Server   `yaml:"server"`
+	Clients         []Client `yaml:"clients"`
+	Users           []User   `yaml:"users"`
+	generatedSecret string
+	userMap         map[string]*User
+	clientMap       map[string]*Client
 }
 
 func LoadConfig(name string) Config {
@@ -58,7 +64,27 @@ func LoadConfig(name string) Config {
 		return client.Id
 	})
 
+	rand.NewSource(time.Now().UnixNano())
+	generatedSecret := fmt.Sprintf("default_%d", rand.Int())
+	config.generatedSecret = generatedSecret
+
 	return config
+}
+
+func GetOrDefaultString(value string, defaultValue string) string {
+	if value == "" {
+		return defaultValue
+	} else {
+		return value
+	}
+}
+
+func GetOrDefaultInt(value int, defaultValue int) int {
+	if value == 0 {
+		return defaultValue
+	} else {
+		return value
+	}
 }
 
 func setup[T any](values *[]T, accessor func(T) string) map[string]*T {
@@ -84,4 +110,12 @@ func (config *Config) GetUser(name string) (*User, bool) {
 func (config *Config) GetClient(name string) (*Client, bool) {
 	value, exists := config.clientMap[name]
 	return value, exists
+}
+
+func (config *Config) GetAuthCookieName() string {
+	return GetOrDefaultString(config.Server.AuthCookieName, "stopnik_auth")
+}
+
+func (config *Config) GetServerSecret() string {
+	return GetOrDefaultString(config.Server.Secret, config.generatedSecret)
 }

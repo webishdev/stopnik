@@ -1,4 +1,6 @@
 server:
+  authCookieName: stopnik_auth
+  secret: WRYldij9ebtDZ5VJSsxNAfCZ
   port: 8080
 clients:
 - id: testclient

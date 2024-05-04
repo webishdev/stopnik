@@ -60,9 +60,8 @@ func (handler *AuthorizeHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 			ResponseType:        string(responseType),
 		})
 
-		cookie, noCookieError := r.Cookie("STOPIK_AUTH")
-		if noCookieError == nil {
-			log.Printf("I like cookies! %s", cookie.Value)
+		validCookie := ValidateCookie(handler.config, r)
+		if validCookie {
 
 			redirectURL, urlParseError := url.Parse(redirect)
 			if urlParseError != nil {
