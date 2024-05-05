@@ -35,9 +35,9 @@ func (handler *LoginHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			InternalServerErrorHandler(w, r)
 			return
 		}
-		username := r.Form.Get("username")
-		password := r.Form.Get("password")
-		authSessionForm := r.Form.Get("auth_session")
+		username := r.Form.Get("stopnik_username")
+		password := r.Form.Get("stopnik_password")
+		authSessionForm := r.Form.Get("stopnik_auth_session")
 		authSession, exists := handler.authSessionStore.Get(authSessionForm)
 		if !exists {
 			InternalServerErrorHandler(w, r)
