@@ -93,7 +93,12 @@ func (handler *TokenHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			username = usernameFrom
 		}
 
-		accessTokenResponse := oauth2.CreateAccessTokenResponse(handler.accessTokenStore, username, client.Id, scopes, client.GetAccessTTL())
+		if grantType == oauth2.GtRefreshToken && client.RefreshTTL <= 0 {
+			ForbiddenHandler(w, r)
+			return
+		}
+
+		accessTokenResponse := oauth2.CreateAccessTokenResponse(handler.accessTokenStore, username, client, scopes)
 
 		bytes, tokenMarshalError := json.Marshal(accessTokenResponse)
 		if tokenMarshalError != nil {

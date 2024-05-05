@@ -87,7 +87,7 @@ func (handler *AuthorizeHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 			query := redirectURL.Query()
 
 			if responseType == oauth2.RtToken {
-				accessTokenResponse := oauth2.CreateAccessTokenResponse(handler.accessTokenStore, user.Username, client.Id, scopes, client.GetAccessTTL())
+				accessTokenResponse := oauth2.CreateAccessTokenResponse(handler.accessTokenStore, user.Username, client, scopes)
 				query.Add(oauth2Parameters.AccessToken, accessTokenResponse.AccessTokenKey)
 				query.Add(oauth2Parameters.TokenType, string(accessTokenResponse.TokenType))
 				query.Add(oauth2Parameters.ExpiresIn, fmt.Sprintf("%d", accessTokenResponse.ExpiresIn))

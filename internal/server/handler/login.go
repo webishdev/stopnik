@@ -79,7 +79,7 @@ func (handler *LoginHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				InternalServerErrorHandler(w, r)
 				return
 			}
-			accessTokenResponse := oauth2.CreateAccessTokenResponse(handler.accessTokenStore, user.Username, client.Id, authSession.Scopes, client.GetAccessTTL())
+			accessTokenResponse := oauth2.CreateAccessTokenResponse(handler.accessTokenStore, user.Username, client, authSession.Scopes)
 			query.Add(oauth2Parameters.AccessToken, accessTokenResponse.AccessTokenKey)
 			query.Add(oauth2Parameters.TokenType, string(accessTokenResponse.TokenType))
 			query.Add(oauth2Parameters.ExpiresIn, fmt.Sprintf("%d", accessTokenResponse.ExpiresIn))

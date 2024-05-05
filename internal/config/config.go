@@ -5,7 +5,6 @@ import (
 	"gopkg.in/yaml.v3"
 	"math/rand"
 	"os"
-	"stopnik/internal/oauth2"
 	"stopnik/log"
 	"time"
 )
@@ -31,12 +30,12 @@ type User struct {
 }
 
 type Client struct {
-	Id         string            `yaml:"id"`
-	Secret     string            `yaml:"secret"`
-	ClientType oauth2.ClientType `yaml:"type"`
-	AccessTTL  int               `yaml:"accessTTL"`
-	RefreshTTL int               `yaml:"refreshTTL"`
-	Introspect bool              `yaml:"introspect"`
+	Id         string `yaml:"id"`
+	Secret     string `yaml:"secret"`
+	ClientType string `yaml:"type"`
+	AccessTTL  int    `yaml:"accessTTL"`
+	RefreshTTL int    `yaml:"refreshTTL"`
+	Introspect bool   `yaml:"introspect"`
 }
 
 type Config struct {

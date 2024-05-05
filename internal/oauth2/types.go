@@ -9,12 +9,14 @@ const (
 	GtAuthorizationCode GrantType = "authorization_code"
 	GtClientCredentials GrantType = "client_credentials"
 	GtPassword          GrantType = "password"
+	GtRefreshToken      GrantType = "refresh_token"
 )
 
 var grantTypeMap = map[string]GrantType{
 	"authorization_code": GtAuthorizationCode,
 	"client_credentials": GtClientCredentials,
 	"password":           GtPassword,
+	"refresh_token":      GtRefreshToken,
 }
 
 // ResponseType as described in https://datatracker.ietf.org/doc/html/rfc6749#appendix-A.3

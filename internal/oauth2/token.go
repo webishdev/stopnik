@@ -3,7 +3,9 @@ package oauth2
 import (
 	"encoding/base64"
 	"github.com/google/uuid"
+	"stopnik/internal/config"
 	"stopnik/internal/store"
+	"stopnik/log"
 	"time"
 )
 
@@ -24,22 +26,31 @@ type AccessTokenResponse struct {
 	RefreshTokenKey string    `json:"refresh_token,omitempty"`
 }
 
-func CreateAccessTokenResponse(accessTokenStore *store.Store[AccessToken], username string, clientId string, scopes []string, accessTTL int) AccessTokenResponse {
-	id := uuid.New()
-	accessTokenKey := base64.RawURLEncoding.EncodeToString([]byte(id.String()))
+func CreateAccessTokenResponse(accessTokenStore *store.Store[AccessToken], username string, client *config.Client, scopes []string) AccessTokenResponse {
+	log.Debug("Creating new access token")
+	accessTokenId := uuid.New()
+	accessTokenKey := base64.RawURLEncoding.EncodeToString([]byte(accessTokenId.String()))
 	accessToken := &AccessToken{
 		Key:       accessTokenKey,
 		TokenType: TtBearer,
 		Username:  username,
-		ClientId:  clientId,
+		ClientId:  client.Id,
 		Scopes:    scopes,
 	}
-	tokenDuration := time.Minute * time.Duration(accessTTL)
+	tokenDuration := time.Minute * time.Duration(client.AccessTTL)
 	accessTokenStore.SetWithDuration(accessTokenKey, accessToken, tokenDuration)
 
-	return AccessTokenResponse{
+	accessTokenResponse := AccessTokenResponse{
 		AccessTokenKey: accessTokenKey,
 		TokenType:      TtBearer,
 		ExpiresIn:      int(tokenDuration / time.Second),
 	}
+
+	if client.RefreshTTL > 0 {
+		refreshTokenId := uuid.New()
+		refreshTokenKey := base64.RawURLEncoding.EncodeToString([]byte(refreshTokenId.String()))
+		accessTokenResponse.RefreshTokenKey = refreshTokenKey
+	}
+
+	return accessTokenResponse
 }
