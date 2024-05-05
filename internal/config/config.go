@@ -34,6 +34,7 @@ type Client struct {
 	ClientType oauth2.ClientType `yaml:"type"`
 	AccessTTL  int               `yaml:"accessTTL"`
 	RefreshTTL int               `yaml:"refreshTTL"`
+	Introspect bool              `yaml:"introspect"`
 }
 
 type Config struct {

@@ -7,7 +7,10 @@ import (
 	"net/http"
 	"net/url"
 	"stopnik/internal/config"
+	httpHeader "stopnik/internal/http"
 	"stopnik/internal/oauth2"
+	oauth2Parameters "stopnik/internal/oauth2/parameters"
+	pkceParameters "stopnik/internal/pkce/parameters"
 	"stopnik/internal/store"
 	"stopnik/internal/template"
 	"strings"
@@ -30,14 +33,14 @@ func CreateAuthorizeHandler(config *config.Config, authSessionStore *store.Store
 func (handler *AuthorizeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	log.Printf("%s %s %s\n", r.RemoteAddr, r.Method, r.URL)
 	if r.Method == http.MethodGet {
-		clientId := r.URL.Query().Get("client_id")
+		clientId := r.URL.Query().Get(oauth2Parameters.ClientId)
 		client, exists := handler.config.GetClient(clientId)
 		if !exists {
 			ForbiddenHandler(w, r)
 			return
 		}
 
-		responseTypeQueryParameter := r.URL.Query().Get("response_type")
+		responseTypeQueryParameter := r.URL.Query().Get(oauth2Parameters.ResponseType)
 		responseType, valid := oauth2.ResponseTypeFromString(responseTypeQueryParameter)
 		if !valid {
 			ForbiddenHandler(w, r)
@@ -45,15 +48,15 @@ func (handler *AuthorizeHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 		}
 		log.Printf("Response type: %s", responseType)
 
-		redirect := r.URL.Query().Get("redirect_uri")
+		redirect := r.URL.Query().Get(oauth2Parameters.RedirectUri)
 		log.Printf("Redirect URI: %s", redirect)
 
-		scope := r.URL.Query().Get("scope")
+		scope := r.URL.Query().Get(oauth2Parameters.Scope)
 		log.Printf("Scope: %s", scope)
 		scopes := strings.Split(scope, " ")
 
-		codeChallenge := r.URL.Query().Get("code_challenge")
-		codeChallengeMethod := r.URL.Query().Get("code_challenge_method")
+		codeChallenge := r.URL.Query().Get(pkceParameters.CodeChallenge)
+		codeChallengeMethod := r.URL.Query().Get(pkceParameters.CodeChallengeMethod)
 
 		id := uuid.New()
 		authSession := &store.AuthSession{
@@ -82,16 +85,16 @@ func (handler *AuthorizeHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 
 			if responseType == oauth2.RtToken {
 				accessTokenResponse := oauth2.CreateAccessTokenResponse(handler.accessTokenStore, user.Username, client.Id, scopes, client.GetAccessTTL())
-				query.Add("access_token", accessTokenResponse.AccessTokenKey)
-				query.Add("token_type", string(accessTokenResponse.TokenType))
-				query.Add("expires_in", fmt.Sprintf("%d", accessTokenResponse.ExpiresIn))
+				query.Add(oauth2Parameters.AccessToken, accessTokenResponse.AccessTokenKey)
+				query.Add(oauth2Parameters.TokenType, string(accessTokenResponse.TokenType))
+				query.Add(oauth2Parameters.ExpiresIn, fmt.Sprintf("%d", accessTokenResponse.ExpiresIn))
 			} else {
-				query.Add("code", id.String())
+				query.Add(oauth2Parameters.Code, id.String())
 			}
 
 			redirectURL.RawQuery = query.Encode()
 
-			w.Header().Set("Location", redirectURL.String())
+			w.Header().Set(httpHeader.Location, redirectURL.String())
 			w.WriteHeader(http.StatusFound)
 		} else {
 			// http.ServeFile(w, r, "foo.html")

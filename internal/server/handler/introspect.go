@@ -3,8 +3,12 @@ package handler
 import (
 	"encoding/json"
 	"net/http"
+	"slices"
 	"stopnik/internal/config"
+	httpHeader "stopnik/internal/http"
 	"stopnik/internal/oauth2"
+	oauth2Parameters "stopnik/internal/oauth2/parameters"
+	"stopnik/internal/server/auth"
 	"stopnik/internal/store"
 	"strings"
 )
@@ -32,19 +36,32 @@ func CreateIntrospectHandler(config *config.Config, accessTokenStore *store.Stor
 
 func (handler *IntrospectHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodPost {
-		authorization := r.Header.Get("Authorization")
-		if authorization == "" || !strings.Contains(authorization, "Bearer ") {
-			ForbiddenHandler(w, r)
-			return
-		}
-		authorizationHeader := strings.Replace(authorization, "Bearer ", "", 1)
-		_, authorizationHeaderExists := handler.accessTokenStore.Get(authorizationHeader)
-		if !authorizationHeaderExists {
-			ForbiddenHandler(w, r)
-			return
+
+		// Check client credentials
+		client, validClientCredentials := auth.ClientCredentials(handler.config, r)
+		if !validClientCredentials {
+
+			// Fall back to access token with scopes
+			_, scopes, userExists := auth.AccessToken(handler.config, handler.accessTokenStore, r)
+			if !userExists {
+				ForbiddenHandler(w, r)
+				return
+			}
+
+			hasIntrospectScope := slices.Contains(scopes, "stopnik:introspect")
+
+			if !hasIntrospectScope {
+				ForbiddenHandler(w, r)
+				return
+			}
+		} else {
+			if !client.Introspect {
+				ForbiddenHandler(w, r)
+				return
+			}
 		}
 
-		token := r.PostFormValue("token")
+		token := r.PostFormValue(oauth2Parameters.Token)
 		accessToken, tokenExists := handler.accessTokenStore.Get(token)
 
 		introspectResponse := introspectResponse{
@@ -62,6 +79,8 @@ func (handler *IntrospectHandler) ServeHTTP(w http.ResponseWriter, r *http.Reque
 		if introspectMarshalError != nil {
 			return
 		}
+
+		w.Header().Set(httpHeader.ContentType, httpHeader.ContentTypeJSON)
 		_, writeError := w.Write(bytes)
 		if writeError != nil {
 			return

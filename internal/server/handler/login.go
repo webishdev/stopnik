@@ -7,7 +7,9 @@ import (
 	"net/http"
 	"net/url"
 	"stopnik/internal/config"
+	httpHeader "stopnik/internal/http"
 	"stopnik/internal/oauth2"
+	oauth2parameters "stopnik/internal/oauth2/parameters"
 	"stopnik/internal/store"
 )
 
@@ -78,16 +80,16 @@ func (handler *LoginHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 			accessTokenResponse := oauth2.CreateAccessTokenResponse(handler.accessTokenStore, user.Username, client.Id, authSession.Scopes, client.GetAccessTTL())
-			query.Add("access_token", accessTokenResponse.AccessTokenKey)
-			query.Add("token_type", string(accessTokenResponse.TokenType))
-			query.Add("expires_in", fmt.Sprintf("%d", accessTokenResponse.ExpiresIn))
+			query.Add(oauth2parameters.AccessToken, accessTokenResponse.AccessTokenKey)
+			query.Add(oauth2parameters.TokenType, string(accessTokenResponse.TokenType))
+			query.Add(oauth2parameters.ExpiresIn, fmt.Sprintf("%d", accessTokenResponse.ExpiresIn))
 		} else {
-			query.Add("code", authSessionForm)
+			query.Add(oauth2parameters.Code, authSessionForm)
 		}
 
 		redirectURL.RawQuery = query.Encode()
 
-		w.Header().Set("Location", redirectURL.String())
+		w.Header().Set(httpHeader.Location, redirectURL.String())
 		w.WriteHeader(http.StatusFound)
 	} else {
 		MethodNotAllowedHandler(w, r)

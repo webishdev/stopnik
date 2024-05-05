@@ -7,8 +7,12 @@ import (
 	"log"
 	"net/http"
 	"stopnik/internal/config"
+	httpHeader "stopnik/internal/http"
 	"stopnik/internal/oauth2"
+	oauth2parameters "stopnik/internal/oauth2/parameters"
 	"stopnik/internal/pkce"
+	pkceParameters "stopnik/internal/pkce/parameters"
+	"stopnik/internal/server/auth"
 	"stopnik/internal/store"
 )
 
@@ -33,28 +37,14 @@ func (handler *TokenHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			log.Printf("%v: %v\n", k, v)
 		}
 
+		client, validClientCredentials := auth.ClientCredentials(handler.config, r)
 		// https://datatracker.ietf.org/doc/html/rfc6749#section-2.3.1
-		clientId, clientSecret, ok := r.BasicAuth()
-		if !ok {
-			// Check fallback
-			clientId = r.PostFormValue("client_id")
-			clientSecret = r.PostFormValue("client_secret")
-		}
-
-		client, clientExists := handler.config.GetClient(clientId)
-		if !clientExists {
+		if !validClientCredentials {
 			ForbiddenHandler(w, r)
 			return
 		}
 
-		secretHash := fmt.Sprintf("%x", sha512.Sum512([]byte(clientSecret)))
-
-		if secretHash != client.Secret {
-			ForbiddenHandler(w, r)
-			return
-		}
-
-		grantTypeValue := r.PostFormValue("grant_type")
+		grantTypeValue := r.PostFormValue(oauth2parameters.GrantType)
 		grantType, grantTypeExists := oauth2.GrantTypeFromString(grantTypeValue)
 		if !grantTypeExists {
 			ForbiddenHandler(w, r)
@@ -66,9 +56,9 @@ func (handler *TokenHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 		if grantType == oauth2.GtAuthorizationCode {
 
-			codeVerifier := r.PostFormValue("code_verifier") // https://datatracker.ietf.org/doc/html/rfc7636#section-4.1
+			codeVerifier := r.PostFormValue(pkceParameters.CodeVerifier) // https://datatracker.ietf.org/doc/html/rfc7636#section-4.1
 			if codeVerifier != "" {
-				code := r.PostFormValue("code")
+				code := r.PostFormValue(oauth2parameters.Code)
 				authSession, authSessionExists := handler.authSessionStore.Get(code)
 				if !authSessionExists {
 					ForbiddenHandler(w, r)
@@ -91,8 +81,8 @@ func (handler *TokenHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if grantType == oauth2.GtPassword {
-			usernameFrom := r.PostFormValue("username")
-			passwordForm := r.PostFormValue("password")
+			usernameFrom := r.PostFormValue(oauth2parameters.Username)
+			passwordForm := r.PostFormValue(oauth2parameters.Password)
 
 			user, exists := handler.config.GetUser(usernameFrom)
 			if !exists {
@@ -113,6 +103,8 @@ func (handler *TokenHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		if tokenMarshalError != nil {
 			return
 		}
+
+		w.Header().Set(httpHeader.ContentType, httpHeader.ContentTypeJSON)
 		_, writeError := w.Write(bytes)
 		if writeError != nil {
 			return
