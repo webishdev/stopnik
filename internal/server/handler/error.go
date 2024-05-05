@@ -30,7 +30,7 @@ func SeeOtherHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func sendStatus(status int, message string, w http.ResponseWriter, r *http.Request) {
-	log.AccessLogResult(r, message)
+	log.AccessLogResult(r, status, message)
 	w.WriteHeader(status)
 	_, err := w.Write([]byte(message))
 	if err != nil {

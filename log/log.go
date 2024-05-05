@@ -48,8 +48,8 @@ func AccessLogRequest(r *http.Request) {
 	}
 }
 
-func AccessLogResult(r *http.Request, message string) {
-	accessLogger.Printf("%s %s %s - %s", r.RemoteAddr, r.Method, r.URL, message)
+func AccessLogResult(r *http.Request, status int, message string) {
+	accessLogger.Printf("%s %s %s - %d %s", r.RemoteAddr, r.Method, r.URL, status, message)
 }
 
 func SetLogLevel(level byte) {
