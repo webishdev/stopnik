@@ -1,5 +1,6 @@
 server:
   authCookieName: stopnik_auth
+  logoutRedirect: http://localhost:8080
   secret: WRYldij9ebtDZ5VJSsxNAfCZ
   port: 8080
 clients:

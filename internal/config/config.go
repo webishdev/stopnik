@@ -21,6 +21,7 @@ type Server struct {
 	AuthCookieName string `yaml:"authCookieName"`
 	Secret         string `yaml:"secret"`
 	TLS            TLS    `yaml:"tls"`
+	LogoutRedirect string `yaml:"logoutRedirect"`
 }
 
 type User struct {

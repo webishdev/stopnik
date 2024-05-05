@@ -3,6 +3,7 @@ package handler
 import (
 	"net/http"
 	"stopnik/internal/config"
+	httpHeader "stopnik/internal/http"
 	"stopnik/internal/template"
 )
 
@@ -22,7 +23,14 @@ func (handler *LogoutHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 		cookie := DeleteCookie(handler.config)
 
 		http.SetCookie(w, &cookie)
-		w.WriteHeader(http.StatusNoContent)
+
+		if handler.config.Server.LogoutRedirect == "" {
+			w.Header().Set(httpHeader.Location, r.URL.RequestURI())
+		} else {
+			w.Header().Set(httpHeader.Location, handler.config.Server.LogoutRedirect)
+		}
+
+		w.WriteHeader(http.StatusSeeOther)
 	} else if r.Method == http.MethodGet {
 		_, validCookie := ValidateCookie(handler.config, r)
 		if validCookie {
