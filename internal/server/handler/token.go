@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"stopnik/internal/config"
-	httpHeader "stopnik/internal/http"
+	internalHttp "stopnik/internal/http"
 	"stopnik/internal/oauth2"
 	"stopnik/internal/pkce"
 	"stopnik/internal/server/auth"
@@ -118,7 +118,7 @@ func (handler *TokenHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		w.Header().Set(httpHeader.ContentType, httpHeader.ContentTypeJSON)
+		w.Header().Set(internalHttp.ContentType, internalHttp.ContentTypeJSON)
 		_, writeError := w.Write(bytes)
 		if writeError != nil {
 			InternalServerErrorHandler(w, r)

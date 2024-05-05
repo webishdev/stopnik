@@ -6,9 +6,9 @@ import (
 	"net/http"
 	"net/url"
 	"stopnik/internal/config"
-	httpHeader "stopnik/internal/http"
+	internalHttp "stopnik/internal/http"
 	"stopnik/internal/oauth2"
-	pkceParameters "stopnik/internal/pkce"
+	"stopnik/internal/pkce"
 	"stopnik/internal/store"
 	"stopnik/internal/template"
 	"stopnik/log"
@@ -51,8 +51,8 @@ func (handler *AuthorizeHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 		redirect := r.URL.Query().Get(oauth2.ParameterRedirectUri)
 		state := r.URL.Query().Get(oauth2.ParameterState)
 		scope := r.URL.Query().Get(oauth2.ParameterScope)
-		codeChallenge := r.URL.Query().Get(pkceParameters.ParameterCodeChallenge)
-		codeChallengeMethod := r.URL.Query().Get(pkceParameters.ParameterCodeChallengeMethod)
+		codeChallenge := r.URL.Query().Get(pkce.ParameterCodeChallenge)
+		codeChallengeMethod := r.URL.Query().Get(pkce.ParameterCodeChallengeMethod)
 
 		log.Debug("Response type: %s", responseType)
 		log.Debug("Redirect URI: %s", redirect)
@@ -75,7 +75,7 @@ func (handler *AuthorizeHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 
 		handler.authSessionStore.Set(id.String(), authSession)
 
-		user, validCookie := ValidateCookie(handler.config, r)
+		user, validCookie := internalHttp.ValidateCookie(handler.config, r)
 
 		if validCookie {
 			authSession.Username = user.Username
@@ -102,7 +102,7 @@ func (handler *AuthorizeHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 
 			redirectURL.RawQuery = query.Encode()
 
-			w.Header().Set(httpHeader.Location, redirectURL.String())
+			w.Header().Set(internalHttp.Location, redirectURL.String())
 			w.WriteHeader(http.StatusFound)
 		} else {
 			// http.ServeFile(w, r, "foo.html")

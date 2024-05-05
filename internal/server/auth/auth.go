@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"stopnik/internal/config"
-	httpHeader "stopnik/internal/http"
+	internalHttp "stopnik/internal/http"
 	"stopnik/internal/oauth2"
 	"stopnik/internal/store"
 	"stopnik/log"
@@ -42,12 +42,12 @@ func ClientCredentials(config *config.Config, r *http.Request) (*config.Client, 
 
 func AccessToken(config *config.Config, accessTokenStore *store.Store[oauth2.AccessToken], r *http.Request) (*config.User, []string, bool) {
 	log.Debug("Validating access token")
-	authorization := r.Header.Get(httpHeader.Authorization)
-	if authorization == "" || !strings.Contains(authorization, httpHeader.AuthBearer) {
+	authorization := r.Header.Get(internalHttp.Authorization)
+	if authorization == "" || !strings.Contains(authorization, internalHttp.AuthBearer) {
 		return nil, []string{}, false
 	}
 
-	replaceBearer := fmt.Sprintf("%s ", httpHeader.AuthBearer)
+	replaceBearer := fmt.Sprintf("%s ", internalHttp.AuthBearer)
 	authorizationHeader := strings.Replace(authorization, replaceBearer, "", 1)
 	accessToken, authorizationHeaderExists := accessTokenStore.Get(authorizationHeader)
 	if !authorizationHeaderExists {

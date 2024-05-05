@@ -59,7 +59,7 @@ func (handler *LoginHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusSeeOther)
 		}
 
-		cookie, err := CreateCookie(handler.config, user.Username)
+		cookie, err := httpHeader.CreateCookie(handler.config, user.Username)
 		if err != nil {
 			InternalServerErrorHandler(w, r)
 			return

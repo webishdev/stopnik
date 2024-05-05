@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"slices"
 	"stopnik/internal/config"
-	httpHeader "stopnik/internal/http"
+	internalHttp "stopnik/internal/http"
 	"stopnik/internal/oauth2"
 	"stopnik/internal/server/auth"
 	"stopnik/internal/store"
@@ -82,7 +82,7 @@ func (handler *IntrospectHandler) ServeHTTP(w http.ResponseWriter, r *http.Reque
 			return
 		}
 
-		w.Header().Set(httpHeader.ContentType, httpHeader.ContentTypeJSON)
+		w.Header().Set(internalHttp.ContentType, internalHttp.ContentTypeJSON)
 		_, writeError := w.Write(bytes)
 		if writeError != nil {
 			InternalServerErrorHandler(w, r)

@@ -21,7 +21,7 @@ func CreateLogoutHandler(config *config.Config) *LogoutHandler {
 func (handler *LogoutHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	log.AccessLogRequest(r)
 	if r.Method == http.MethodPost {
-		cookie := DeleteCookie(handler.config)
+		cookie := httpHeader.DeleteCookie(handler.config)
 
 		http.SetCookie(w, &cookie)
 
@@ -33,7 +33,7 @@ func (handler *LogoutHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 
 		w.WriteHeader(http.StatusSeeOther)
 	} else if r.Method == http.MethodGet {
-		_, validCookie := ValidateCookie(handler.config, r)
+		_, validCookie := httpHeader.ValidateCookie(handler.config, r)
 		if validCookie {
 			logoutTemplate := template.LogoutTemplate()
 
