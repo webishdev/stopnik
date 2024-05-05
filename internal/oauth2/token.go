@@ -16,7 +16,11 @@ type AccessToken struct {
 	ClientId  string
 	Scopes    []string
 }
-type RefreshToken string
+type RefreshToken struct {
+	Key      string
+	ClientId string
+	Scopes   []string
+}
 
 // AccessTokenResponse as described in https://datatracker.ietf.org/doc/html/rfc6749#section-4.1.4
 type AccessTokenResponse struct {
@@ -27,7 +31,7 @@ type AccessTokenResponse struct {
 }
 
 func CreateAccessTokenResponse(accessTokenStore *store.Store[AccessToken], refreshTokenStore *store.Store[RefreshToken], username string, client *config.Client, scopes []string) AccessTokenResponse {
-	log.Debug("Creating new access token")
+	log.Debug("Creating new access token for %s, access TTL %d, refresh TTL %d", client.Id, client.GetAccessTTL(), client.GetRefreshTTL())
 
 	accessTokenId := uuid.New()
 	accessTokenKey := base64.RawURLEncoding.EncodeToString([]byte(accessTokenId.String()))
@@ -38,7 +42,7 @@ func CreateAccessTokenResponse(accessTokenStore *store.Store[AccessToken], refre
 		ClientId:  client.Id,
 		Scopes:    scopes,
 	}
-	accessTokenDuration := time.Minute * time.Duration(client.AccessTTL)
+	accessTokenDuration := time.Minute * time.Duration(client.GetRefreshTTL())
 	accessTokenStore.SetWithDuration(accessTokenKey, accessToken, accessTokenDuration)
 
 	accessTokenResponse := AccessTokenResponse{
@@ -47,12 +51,16 @@ func CreateAccessTokenResponse(accessTokenStore *store.Store[AccessToken], refre
 		ExpiresIn:      int(accessTokenDuration / time.Second),
 	}
 
-	if client.RefreshTTL > 0 {
+	if client.GetRefreshTTL() > 0 {
 		refreshTokenId := uuid.New()
 		refreshTokenKey := base64.RawURLEncoding.EncodeToString([]byte(refreshTokenId.String()))
-		refreshToken := (*RefreshToken)(&refreshTokenKey)
+		refreshToken := &RefreshToken{
+			Key:      refreshTokenKey,
+			ClientId: client.Id,
+			Scopes:   scopes,
+		}
 
-		refreshTokenDuration := time.Minute * time.Duration(client.RefreshTTL)
+		refreshTokenDuration := time.Minute * time.Duration(client.GetRefreshTTL())
 		refreshTokenStore.SetWithDuration(refreshTokenKey, refreshToken, refreshTokenDuration)
 
 		accessTokenResponse.RefreshTokenKey = refreshTokenKey

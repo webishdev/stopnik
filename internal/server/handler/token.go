@@ -95,13 +95,18 @@ func (handler *TokenHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			username = usernameFrom
 		}
 
-		if grantType == oauth2.GtRefreshToken && client.RefreshTTL <= 0 {
+		if grantType == oauth2.GtRefreshToken && client.GetRefreshTTL() <= 0 {
 			ForbiddenHandler(w, r)
 			return
-		} else if grantType == oauth2.GtRefreshToken && client.RefreshTTL > 0 {
+		} else if grantType == oauth2.GtRefreshToken && client.GetRefreshTTL() > 0 {
 			refreshTokenForm := r.PostFormValue(oauth2parameters.RefreshToken)
-			_, refreshTokenExists := handler.refreshTokenStore.Get(refreshTokenForm)
+			refreshToken, refreshTokenExists := handler.refreshTokenStore.Get(refreshTokenForm)
 			if !refreshTokenExists {
+				ForbiddenHandler(w, r)
+				return
+			}
+
+			if refreshToken.ClientId != client.Id {
 				ForbiddenHandler(w, r)
 				return
 			}

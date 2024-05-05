@@ -133,3 +133,7 @@ func (config *Config) GetServerSecret() string {
 func (client *Client) GetAccessTTL() int {
 	return GetOrDefaultInt(client.AccessTTL, 5)
 }
+
+func (client *Client) GetRefreshTTL() int {
+	return GetOrDefaultInt(client.RefreshTTL, 0)
+}
