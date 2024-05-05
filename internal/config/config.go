@@ -75,6 +75,21 @@ func LoadConfig(name string) Config {
 	return config
 }
 
+func setup[T any](values *[]T, accessor func(T) string) map[string]*T {
+	valueMap := make(map[string]*T)
+
+	for index := 0; index < len(*values); index += 1 {
+		value := (*values)[index]
+		key := accessor(value)
+		if key != "" {
+			valueMap[key] = &value
+		}
+
+	}
+
+	return valueMap
+}
+
 func GetOrDefaultString(value string, defaultValue string) string {
 	if value == "" {
 		return defaultValue
@@ -89,21 +104,6 @@ func GetOrDefaultInt(value int, defaultValue int) int {
 	} else {
 		return value
 	}
-}
-
-func setup[T any](values *[]T, accessor func(T) string) map[string]*T {
-	valueMap := make(map[string]*T)
-
-	for index := 0; index < len(*values); index += 1 {
-		value := (*values)[index]
-		key := accessor(value)
-		if key != "" {
-			valueMap[key] = &value
-		}
-
-	}
-
-	return valueMap
 }
 
 func (config *Config) GetUser(name string) (*User, bool) {

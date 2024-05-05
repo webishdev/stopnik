@@ -2,13 +2,13 @@ package server
 
 import (
 	"fmt"
-	"log"
 	"net"
 	"net/http"
 	"stopnik/internal/config"
 	"stopnik/internal/oauth2"
 	"stopnik/internal/server/handler"
 	"stopnik/internal/store"
+	"stopnik/log"
 )
 
 func StartServer(config *config.Config) {
@@ -45,7 +45,7 @@ func StartServer(config *config.Config) {
 		panic(listenError)
 	}
 
-	log.Printf("Will accept connections at %s", listener.Addr().String())
+	log.Info("Will accept connections at %s", listener.Addr().String())
 
 	errorServer := http.Serve(listener, mux)
 	if errorServer != nil {
