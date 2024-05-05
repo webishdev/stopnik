@@ -26,8 +26,9 @@ type AccessTokenResponse struct {
 	RefreshTokenKey string    `json:"refresh_token,omitempty"`
 }
 
-func CreateAccessTokenResponse(accessTokenStore *store.Store[AccessToken], username string, client *config.Client, scopes []string) AccessTokenResponse {
+func CreateAccessTokenResponse(accessTokenStore *store.Store[AccessToken], refreshTokenStore *store.Store[RefreshToken], username string, client *config.Client, scopes []string) AccessTokenResponse {
 	log.Debug("Creating new access token")
+
 	accessTokenId := uuid.New()
 	accessTokenKey := base64.RawURLEncoding.EncodeToString([]byte(accessTokenId.String()))
 	accessToken := &AccessToken{
@@ -37,18 +38,23 @@ func CreateAccessTokenResponse(accessTokenStore *store.Store[AccessToken], usern
 		ClientId:  client.Id,
 		Scopes:    scopes,
 	}
-	tokenDuration := time.Minute * time.Duration(client.AccessTTL)
-	accessTokenStore.SetWithDuration(accessTokenKey, accessToken, tokenDuration)
+	accessTokenDuration := time.Minute * time.Duration(client.AccessTTL)
+	accessTokenStore.SetWithDuration(accessTokenKey, accessToken, accessTokenDuration)
 
 	accessTokenResponse := AccessTokenResponse{
 		AccessTokenKey: accessTokenKey,
 		TokenType:      TtBearer,
-		ExpiresIn:      int(tokenDuration / time.Second),
+		ExpiresIn:      int(accessTokenDuration / time.Second),
 	}
 
 	if client.RefreshTTL > 0 {
 		refreshTokenId := uuid.New()
 		refreshTokenKey := base64.RawURLEncoding.EncodeToString([]byte(refreshTokenId.String()))
+		refreshToken := (*RefreshToken)(&refreshTokenKey)
+
+		refreshTokenDuration := time.Minute * time.Duration(client.RefreshTTL)
+		refreshTokenStore.SetWithDuration(refreshTokenKey, refreshToken, refreshTokenDuration)
+
 		accessTokenResponse.RefreshTokenKey = refreshTokenKey
 	}
 

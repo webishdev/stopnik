@@ -17,16 +17,18 @@ import (
 )
 
 type TokenHandler struct {
-	config           *config.Config
-	authSessionStore *store.Store[store.AuthSession]
-	accessTokenStore *store.Store[oauth2.AccessToken]
+	config            *config.Config
+	authSessionStore  *store.Store[store.AuthSession]
+	accessTokenStore  *store.Store[oauth2.AccessToken]
+	refreshTokenStore *store.Store[oauth2.RefreshToken]
 }
 
-func CreateTokenHandler(config *config.Config, authSessionStore *store.Store[store.AuthSession], accessTokenStore *store.Store[oauth2.AccessToken]) *TokenHandler {
+func CreateTokenHandler(config *config.Config, authSessionStore *store.Store[store.AuthSession], tokenStores *store.TokenStores[oauth2.AccessToken, oauth2.RefreshToken]) *TokenHandler {
 	return &TokenHandler{
-		config:           config,
-		authSessionStore: authSessionStore,
-		accessTokenStore: accessTokenStore,
+		config:            config,
+		authSessionStore:  authSessionStore,
+		accessTokenStore:  tokenStores.AccessTokenStore,
+		refreshTokenStore: tokenStores.RefreshTokenStore,
 	}
 }
 
@@ -96,9 +98,16 @@ func (handler *TokenHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		if grantType == oauth2.GtRefreshToken && client.RefreshTTL <= 0 {
 			ForbiddenHandler(w, r)
 			return
+		} else if grantType == oauth2.GtRefreshToken && client.RefreshTTL > 0 {
+			refreshTokenForm := r.PostFormValue(oauth2parameters.RefreshToken)
+			_, refreshTokenExists := handler.refreshTokenStore.Get(refreshTokenForm)
+			if !refreshTokenExists {
+				ForbiddenHandler(w, r)
+				return
+			}
 		}
 
-		accessTokenResponse := oauth2.CreateAccessTokenResponse(handler.accessTokenStore, username, client, scopes)
+		accessTokenResponse := oauth2.CreateAccessTokenResponse(handler.accessTokenStore, handler.refreshTokenStore, username, client, scopes)
 
 		bytes, tokenMarshalError := json.Marshal(accessTokenResponse)
 		if tokenMarshalError != nil {

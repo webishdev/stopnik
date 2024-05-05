@@ -15,16 +15,22 @@ import (
 func StartServer(config *config.Config) {
 	authSessionStore := store.NewCache[store.AuthSession]()
 	accessTokenStore := store.NewCache[oauth2.AccessToken]()
+	refreshTokenStore := store.NewCache[oauth2.RefreshToken]()
+
+	tokens := &store.TokenStores[oauth2.AccessToken, oauth2.RefreshToken]{
+		AccessTokenStore:  accessTokenStore,
+		RefreshTokenStore: refreshTokenStore,
+	}
 
 	mux := http.NewServeMux()
 
 	// Own
-	loginHandler := handler.CreateLoginHandler(config, authSessionStore, accessTokenStore)
+	loginHandler := handler.CreateLoginHandler(config, authSessionStore, tokens)
 	logoutHandler := handler.CreateLogoutHandler(config)
 
 	// OAuth2
-	authorizeHandler := handler.CreateAuthorizeHandler(config, authSessionStore, accessTokenStore)
-	tokenHandler := handler.CreateTokenHandler(config, authSessionStore, accessTokenStore)
+	authorizeHandler := handler.CreateAuthorizeHandler(config, authSessionStore, tokens)
+	tokenHandler := handler.CreateTokenHandler(config, authSessionStore, tokens)
 
 	// OAuth2 extensions
 	introspectHandler := handler.CreateIntrospectHandler(config, accessTokenStore)

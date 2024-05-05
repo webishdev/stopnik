@@ -10,6 +10,7 @@ const (
 	GrantType    string = "grant_type"
 	TokenType    string = "token_type"
 	AccessToken  string = "access_token"
+	RefreshToken string = "refresh_token"
 	ExpiresIn    string = "expires_in"
 	Code         string = "code"
 	Username     string = "username"

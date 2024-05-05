@@ -14,16 +14,18 @@ import (
 )
 
 type LoginHandler struct {
-	config           *config.Config
-	authSessionStore *store.Store[store.AuthSession]
-	accessTokenStore *store.Store[oauth2.AccessToken]
+	config            *config.Config
+	authSessionStore  *store.Store[store.AuthSession]
+	accessTokenStore  *store.Store[oauth2.AccessToken]
+	refreshTokenStore *store.Store[oauth2.RefreshToken]
 }
 
-func CreateLoginHandler(config *config.Config, authSessionStore *store.Store[store.AuthSession], accessTokenStore *store.Store[oauth2.AccessToken]) *LoginHandler {
+func CreateLoginHandler(config *config.Config, authSessionStore *store.Store[store.AuthSession], tokenStores *store.TokenStores[oauth2.AccessToken, oauth2.RefreshToken]) *LoginHandler {
 	return &LoginHandler{
-		config:           config,
-		authSessionStore: authSessionStore,
-		accessTokenStore: accessTokenStore,
+		config:            config,
+		authSessionStore:  authSessionStore,
+		accessTokenStore:  tokenStores.AccessTokenStore,
+		refreshTokenStore: tokenStores.RefreshTokenStore,
 	}
 }
 
@@ -79,10 +81,12 @@ func (handler *LoginHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				InternalServerErrorHandler(w, r)
 				return
 			}
-			accessTokenResponse := oauth2.CreateAccessTokenResponse(handler.accessTokenStore, user.Username, client, authSession.Scopes)
+			accessTokenResponse := oauth2.CreateAccessTokenResponse(handler.accessTokenStore, handler.refreshTokenStore, user.Username, client, authSession.Scopes)
 			query.Add(oauth2Parameters.AccessToken, accessTokenResponse.AccessTokenKey)
 			query.Add(oauth2Parameters.TokenType, string(accessTokenResponse.TokenType))
 			query.Add(oauth2Parameters.ExpiresIn, fmt.Sprintf("%d", accessTokenResponse.ExpiresIn))
+			// https://datatracker.ietf.org/doc/html/rfc6749#section-4.2.2
+			// The authorization server MUST NOT issue a refresh token.
 		} else {
 			query.Add(oauth2Parameters.Code, authSessionForm)
 		}

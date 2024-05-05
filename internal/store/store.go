@@ -30,6 +30,11 @@ type Store[T any] struct {
 	duration time.Duration
 }
 
+type TokenStores[A any, R any] struct {
+	AccessTokenStore  *Store[A]
+	RefreshTokenStore *Store[R]
+}
+
 func NewCache[T any]() *Store[T] {
 	return NewTimedCache[T](time.Minute * time.Duration(5))
 }
