@@ -46,17 +46,17 @@ func (handler *AuthorizeHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 			ForbiddenHandler(w, r)
 			return
 		}
-		log.Debug("Response type: %s", responseType)
 
 		redirect := r.URL.Query().Get(oauth2Parameters.RedirectUri)
-		log.Debug("Redirect URI: %s", redirect)
-
 		scope := r.URL.Query().Get(oauth2Parameters.Scope)
-		log.Debug("Scope: %s", scope)
 		scopes := strings.Split(scope, " ")
 
 		codeChallenge := r.URL.Query().Get(pkceParameters.CodeChallenge)
 		codeChallengeMethod := r.URL.Query().Get(pkceParameters.CodeChallengeMethod)
+
+		log.Debug("Response type: %s", responseType)
+		log.Debug("Redirect URI: %s", redirect)
+		log.Debug("Scope: %s", scope)
 
 		id := uuid.New()
 		authSession := &store.AuthSession{

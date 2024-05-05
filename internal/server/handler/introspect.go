@@ -50,7 +50,7 @@ func (handler *IntrospectHandler) ServeHTTP(w http.ResponseWriter, r *http.Reque
 				return
 			}
 
-			hasIntrospectScope := slices.Contains(scopes, "stopnik:introspect")
+			hasIntrospectScope := slices.Contains(scopes, handler.config.GetIntrospectScope())
 
 			if !hasIntrospectScope {
 				ForbiddenHandler(w, r)
@@ -79,12 +79,14 @@ func (handler *IntrospectHandler) ServeHTTP(w http.ResponseWriter, r *http.Reque
 
 		bytes, introspectMarshalError := json.Marshal(introspectResponse)
 		if introspectMarshalError != nil {
+			InternalServerErrorHandler(w, r)
 			return
 		}
 
 		w.Header().Set(httpHeader.ContentType, httpHeader.ContentTypeJSON)
 		_, writeError := w.Write(bytes)
 		if writeError != nil {
+			InternalServerErrorHandler(w, r)
 			return
 		}
 	} else {

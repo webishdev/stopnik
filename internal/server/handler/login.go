@@ -54,7 +54,7 @@ func (handler *LoginHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 		passwordHash := fmt.Sprintf("%x", sha512.Sum512([]byte(password)))
 		if passwordHash != user.Password {
-			w.Header().Set("Location", authSession.AuthURI)
+			w.Header().Set(httpHeader.Location, authSession.AuthURI)
 			w.WriteHeader(http.StatusSeeOther)
 		}
 

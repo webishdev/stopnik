@@ -97,12 +97,14 @@ func (handler *TokenHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 		bytes, tokenMarshalError := json.Marshal(accessTokenResponse)
 		if tokenMarshalError != nil {
+			InternalServerErrorHandler(w, r)
 			return
 		}
 
 		w.Header().Set(httpHeader.ContentType, httpHeader.ContentTypeJSON)
 		_, writeError := w.Write(bytes)
 		if writeError != nil {
+			InternalServerErrorHandler(w, r)
 			return
 		}
 	} else {

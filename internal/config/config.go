@@ -17,11 +17,12 @@ type TLS struct {
 }
 
 type Server struct {
-	Port           int    `yaml:"port"`
-	AuthCookieName string `yaml:"authCookieName"`
-	Secret         string `yaml:"secret"`
-	TLS            TLS    `yaml:"tls"`
-	LogoutRedirect string `yaml:"logoutRedirect"`
+	Port            int    `yaml:"port"`
+	AuthCookieName  string `yaml:"authCookieName"`
+	Secret          string `yaml:"secret"`
+	TLS             TLS    `yaml:"tls"`
+	LogoutRedirect  string `yaml:"logoutRedirect"`
+	IntrospectScope string `yaml:"introspectScope"`
 }
 
 type User struct {
@@ -120,6 +121,10 @@ func (config *Config) GetClient(name string) (*Client, bool) {
 
 func (config *Config) GetAuthCookieName() string {
 	return GetOrDefaultString(config.Server.AuthCookieName, "stopnik_auth")
+}
+
+func (config *Config) GetIntrospectScope() string {
+	return GetOrDefaultString(config.Server.IntrospectScope, "stopnik:introspect")
 }
 
 func (config *Config) GetServerSecret() string {
