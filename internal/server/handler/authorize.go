@@ -3,60 +3,67 @@ package handler
 import (
 	"fmt"
 	"github.com/google/uuid"
-	"log"
 	"net/http"
 	"net/url"
 	"stopnik/internal/config"
+	httpHeader "stopnik/internal/http"
 	"stopnik/internal/oauth2"
+	oauth2Parameters "stopnik/internal/oauth2/parameters"
+	pkceParameters "stopnik/internal/pkce/parameters"
 	"stopnik/internal/store"
 	"stopnik/internal/template"
+	"stopnik/log"
 	"strings"
 )
 
 type AuthorizeHandler struct {
-	config           *config.Config
-	authSessionStore *store.Store[store.AuthSession]
-	accessTokenStore *store.Store[oauth2.AccessToken]
+	config            *config.Config
+	authSessionStore  *store.Store[store.AuthSession]
+	accessTokenStore  *store.Store[oauth2.AccessToken]
+	refreshTokenStore *store.Store[oauth2.RefreshToken]
 }
 
-func CreateAuthorizeHandler(config *config.Config, authSessionStore *store.Store[store.AuthSession], accessTokenStore *store.Store[oauth2.AccessToken]) *AuthorizeHandler {
+func CreateAuthorizeHandler(config *config.Config, authSessionStore *store.Store[store.AuthSession], tokenStores *store.TokenStores[oauth2.AccessToken, oauth2.RefreshToken]) *AuthorizeHandler {
 	return &AuthorizeHandler{
-		config:           config,
-		authSessionStore: authSessionStore,
-		accessTokenStore: accessTokenStore,
+		config:            config,
+		authSessionStore:  authSessionStore,
+		accessTokenStore:  tokenStores.AccessTokenStore,
+		refreshTokenStore: tokenStores.RefreshTokenStore,
 	}
 }
 
 func (handler *AuthorizeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	log.Printf("%s %s %s\n", r.RemoteAddr, r.Method, r.URL)
+	log.AccessLogRequest(r)
 	if r.Method == http.MethodGet {
-		clientId := r.URL.Query().Get("client_id")
+		clientId := r.URL.Query().Get(oauth2Parameters.ClientId)
 		client, exists := handler.config.GetClient(clientId)
 		if !exists {
 			ForbiddenHandler(w, r)
 			return
 		}
 
-		responseTypeQueryParameter := r.URL.Query().Get("response_type")
+		responseTypeQueryParameter := r.URL.Query().Get(oauth2Parameters.ResponseType)
 		responseType, valid := oauth2.ResponseTypeFromString(responseTypeQueryParameter)
 		if !valid {
 			ForbiddenHandler(w, r)
 			return
 		}
-		log.Printf("Response type: %s", responseType)
 
-		redirect := r.URL.Query().Get("redirect_uri")
-		log.Printf("Redirect URI: %s", redirect)
+		redirect := r.URL.Query().Get(oauth2Parameters.RedirectUri)
+		state := r.URL.Query().Get(oauth2Parameters.State)
+		scope := r.URL.Query().Get(oauth2Parameters.Scope)
+		codeChallenge := r.URL.Query().Get(pkceParameters.CodeChallenge)
+		codeChallengeMethod := r.URL.Query().Get(pkceParameters.CodeChallengeMethod)
 
-		scope := r.URL.Query().Get("scope")
-		log.Printf("Scope: %s", scope)
+		log.Debug("Response type: %s", responseType)
+		log.Debug("Redirect URI: %s", redirect)
+		log.Debug("State: %s", state)
+		log.Debug("Scope: %s", scope)
+
 		scopes := strings.Split(scope, " ")
 
-		codeChallenge := r.URL.Query().Get("code_challenge")
-		codeChallengeMethod := r.URL.Query().Get("code_challenge_method")
-
 		id := uuid.New()
-		handler.authSessionStore.Set(id.String(), store.AuthSession{
+		authSession := &store.AuthSession{
 			Redirect:            redirect,
 			AuthURI:             r.URL.RequestURI(),
 			CodeChallenge:       codeChallenge,
@@ -64,11 +71,15 @@ func (handler *AuthorizeHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 			ClientId:            clientId,
 			ResponseType:        string(responseType),
 			Scopes:              scopes,
-		})
+			State:               state,
+		}
 
-		validCookie := ValidateCookie(handler.config, r)
+		handler.authSessionStore.Set(id.String(), authSession)
+
+		user, validCookie := ValidateCookie(handler.config, r)
+
 		if validCookie {
-
+			authSession.Username = user.Username
 			redirectURL, urlParseError := url.Parse(redirect)
 			if urlParseError != nil {
 				InternalServerErrorHandler(w, r)
@@ -78,17 +89,21 @@ func (handler *AuthorizeHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 			query := redirectURL.Query()
 
 			if responseType == oauth2.RtToken {
-				accessTokenResponse := oauth2.CreateAccessTokenResponse(handler.accessTokenStore, client.Id, scopes, client.GetAccessTTL())
-				query.Add("access_token", accessTokenResponse.AccessTokenKey)
-				query.Add("token_type", string(accessTokenResponse.TokenType))
-				query.Add("expires_in", fmt.Sprintf("%d", accessTokenResponse.ExpiresIn))
+				accessTokenResponse := oauth2.CreateAccessTokenResponse(handler.accessTokenStore, handler.refreshTokenStore, user.Username, client, scopes)
+				query.Add(oauth2Parameters.AccessToken, accessTokenResponse.AccessTokenKey)
+				query.Add(oauth2Parameters.TokenType, string(accessTokenResponse.TokenType))
+				query.Add(oauth2Parameters.ExpiresIn, fmt.Sprintf("%d", accessTokenResponse.ExpiresIn))
 			} else {
-				query.Add("code", id.String())
+				query.Add(oauth2Parameters.Code, id.String())
+			}
+
+			if state != "" {
+				query.Add(oauth2Parameters.State, state)
 			}
 
 			redirectURL.RawQuery = query.Encode()
 
-			w.Header().Set("Location", redirectURL.String())
+			w.Header().Set(httpHeader.Location, redirectURL.String())
 			w.WriteHeader(http.StatusFound)
 		} else {
 			// http.ServeFile(w, r, "foo.html")

@@ -3,39 +3,43 @@ package handler
 import (
 	"crypto/sha512"
 	"fmt"
-	"log"
 	"net/http"
 	"net/url"
 	"stopnik/internal/config"
+	httpHeader "stopnik/internal/http"
 	"stopnik/internal/oauth2"
+	oauth2Parameters "stopnik/internal/oauth2/parameters"
 	"stopnik/internal/store"
+	"stopnik/log"
 )
 
 type LoginHandler struct {
-	config           *config.Config
-	authSessionStore *store.Store[store.AuthSession]
-	accessTokenStore *store.Store[oauth2.AccessToken]
+	config            *config.Config
+	authSessionStore  *store.Store[store.AuthSession]
+	accessTokenStore  *store.Store[oauth2.AccessToken]
+	refreshTokenStore *store.Store[oauth2.RefreshToken]
 }
 
-func CreateLoginHandler(config *config.Config, authSessionStore *store.Store[store.AuthSession], accessTokenStore *store.Store[oauth2.AccessToken]) *LoginHandler {
+func CreateLoginHandler(config *config.Config, authSessionStore *store.Store[store.AuthSession], tokenStores *store.TokenStores[oauth2.AccessToken, oauth2.RefreshToken]) *LoginHandler {
 	return &LoginHandler{
-		config:           config,
-		authSessionStore: authSessionStore,
-		accessTokenStore: accessTokenStore,
+		config:            config,
+		authSessionStore:  authSessionStore,
+		accessTokenStore:  tokenStores.AccessTokenStore,
+		refreshTokenStore: tokenStores.RefreshTokenStore,
 	}
 }
 
 func (handler *LoginHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	log.Printf("%s %s %s\n", r.RemoteAddr, r.Method, r.URL)
+	log.AccessLogRequest(r)
 	if r.Method == http.MethodPost {
 		parseError := r.ParseForm()
 		if parseError != nil {
 			InternalServerErrorHandler(w, r)
 			return
 		}
-		username := r.Form.Get("username")
-		password := r.Form.Get("password")
-		authSessionForm := r.Form.Get("auth_session")
+		username := r.Form.Get("stopnik_username")
+		password := r.Form.Get("stopnik_password")
+		authSessionForm := r.Form.Get("stopnik_auth_session")
 		authSession, exists := handler.authSessionStore.Get(authSessionForm)
 		if !exists {
 			InternalServerErrorHandler(w, r)
@@ -52,7 +56,7 @@ func (handler *LoginHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 		passwordHash := fmt.Sprintf("%x", sha512.Sum512([]byte(password)))
 		if passwordHash != user.Password {
-			w.Header().Set("Location", authSession.AuthURI)
+			w.Header().Set(httpHeader.Location, authSession.AuthURI)
 			w.WriteHeader(http.StatusSeeOther)
 		}
 
@@ -61,6 +65,7 @@ func (handler *LoginHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			InternalServerErrorHandler(w, r)
 			return
 		}
+		authSession.Username = user.Username
 		http.SetCookie(w, &cookie)
 
 		redirectURL, urlParseError := url.Parse(authSession.Redirect)
@@ -76,17 +81,23 @@ func (handler *LoginHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				InternalServerErrorHandler(w, r)
 				return
 			}
-			accessTokenResponse := oauth2.CreateAccessTokenResponse(handler.accessTokenStore, client.Id, authSession.Scopes, client.GetAccessTTL())
-			query.Add("access_token", accessTokenResponse.AccessTokenKey)
-			query.Add("token_type", string(accessTokenResponse.TokenType))
-			query.Add("expires_in", fmt.Sprintf("%d", accessTokenResponse.ExpiresIn))
+			accessTokenResponse := oauth2.CreateAccessTokenResponse(handler.accessTokenStore, handler.refreshTokenStore, user.Username, client, authSession.Scopes)
+			query.Add(oauth2Parameters.AccessToken, accessTokenResponse.AccessTokenKey)
+			query.Add(oauth2Parameters.TokenType, string(accessTokenResponse.TokenType))
+			query.Add(oauth2Parameters.ExpiresIn, fmt.Sprintf("%d", accessTokenResponse.ExpiresIn))
+			// https://datatracker.ietf.org/doc/html/rfc6749#section-4.2.2
+			// The authorization server MUST NOT issue a refresh token.
 		} else {
-			query.Add("code", authSessionForm)
+			query.Add(oauth2Parameters.Code, authSessionForm)
+		}
+
+		if authSession.State != "" {
+			query.Add(oauth2Parameters.State, authSession.State)
 		}
 
 		redirectURL.RawQuery = query.Encode()
 
-		w.Header().Set("Location", redirectURL.String())
+		w.Header().Set(httpHeader.Location, redirectURL.String())
 		w.WriteHeader(http.StatusFound)
 	} else {
 		MethodNotAllowedHandler(w, r)

@@ -1,12 +1,17 @@
 package handler
 
-import "net/http"
+import (
+	"net/http"
+	"stopnik/log"
+)
 
 type HomeHandler struct{}
 
 func (handler *HomeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	_, err := w.Write([]byte("Hello world!"))
+	log.AccessLogRequest(r)
+	_, err := w.Write([]byte("Hello STOPnik!"))
 	if err != nil {
+		InternalServerErrorHandler(w, r)
 		return
 	}
 }

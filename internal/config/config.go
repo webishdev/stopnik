@@ -3,10 +3,9 @@ package config
 import (
 	"fmt"
 	"gopkg.in/yaml.v3"
-	"log"
 	"math/rand"
 	"os"
-	"stopnik/internal/oauth2"
+	"stopnik/log"
 	"time"
 )
 
@@ -17,10 +16,12 @@ type TLS struct {
 }
 
 type Server struct {
-	Port           int    `yaml:"port"`
-	AuthCookieName string `yaml:"authCookieName"`
-	Secret         string `yaml:"secret"`
-	TLS            TLS    `yaml:"tls"`
+	Port            int    `yaml:"port"`
+	AuthCookieName  string `yaml:"authCookieName"`
+	Secret          string `yaml:"secret"`
+	TLS             TLS    `yaml:"tls"`
+	LogoutRedirect  string `yaml:"logoutRedirect"`
+	IntrospectScope string `yaml:"introspectScope"`
 }
 
 type User struct {
@@ -29,11 +30,12 @@ type User struct {
 }
 
 type Client struct {
-	Id         string            `yaml:"id"`
-	Secret     string            `yaml:"secret"`
-	ClientType oauth2.ClientType `yaml:"type"`
-	AccessTTL  int               `yaml:"accessTTL"`
-	RefreshTTL int               `yaml:"refreshTTL"`
+	Id         string `yaml:"id"`
+	Secret     string `yaml:"secret"`
+	ClientType string `yaml:"type"`
+	AccessTTL  int    `yaml:"accessTTL"`
+	RefreshTTL int    `yaml:"refreshTTL"`
+	Introspect bool   `yaml:"introspect"`
 }
 
 type Config struct {
@@ -48,14 +50,16 @@ type Config struct {
 func LoadConfig(name string) Config {
 	data, readError := os.ReadFile(name)
 	if readError != nil {
-		log.Fatalf("unable to read file: %v", readError)
+		log.Error("Could not read config file: %v", readError)
+		os.Exit(1)
 	}
 
 	config := Config{}
 
 	parseError := yaml.Unmarshal(data, &config)
 	if parseError != nil {
-		log.Fatalf("error: %v", parseError)
+		log.Error("Could not parse config file: %v", parseError)
+		os.Exit(1)
 	}
 
 	config.userMap = setup[User](&config.Users, func(user User) string {
@@ -71,6 +75,21 @@ func LoadConfig(name string) Config {
 	config.generatedSecret = generatedSecret
 
 	return config
+}
+
+func setup[T any](values *[]T, accessor func(T) string) map[string]*T {
+	valueMap := make(map[string]*T)
+
+	for index := 0; index < len(*values); index += 1 {
+		value := (*values)[index]
+		key := accessor(value)
+		if key != "" {
+			valueMap[key] = &value
+		}
+
+	}
+
+	return valueMap
 }
 
 func GetOrDefaultString(value string, defaultValue string) string {
@@ -89,21 +108,6 @@ func GetOrDefaultInt(value int, defaultValue int) int {
 	}
 }
 
-func setup[T any](values *[]T, accessor func(T) string) map[string]*T {
-	valueMap := make(map[string]*T)
-
-	for index := 0; index < len(*values); index += 1 {
-		value := (*values)[index]
-		key := accessor(value)
-		if key != "" {
-			valueMap[key] = &value
-		}
-
-	}
-
-	return valueMap
-}
-
 func (config *Config) GetUser(name string) (*User, bool) {
 	value, exists := config.userMap[name]
 	return value, exists
@@ -118,10 +122,18 @@ func (config *Config) GetAuthCookieName() string {
 	return GetOrDefaultString(config.Server.AuthCookieName, "stopnik_auth")
 }
 
+func (config *Config) GetIntrospectScope() string {
+	return GetOrDefaultString(config.Server.IntrospectScope, "stopnik:introspect")
+}
+
 func (config *Config) GetServerSecret() string {
 	return GetOrDefaultString(config.Server.Secret, config.generatedSecret)
 }
 
 func (client *Client) GetAccessTTL() int {
 	return GetOrDefaultInt(client.AccessTTL, 5)
+}
+
+func (client *Client) GetRefreshTTL() int {
+	return GetOrDefaultInt(client.RefreshTTL, 0)
 }

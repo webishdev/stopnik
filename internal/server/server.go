@@ -2,28 +2,35 @@ package server
 
 import (
 	"fmt"
-	"log"
 	"net"
 	"net/http"
+	"os"
 	"stopnik/internal/config"
 	"stopnik/internal/oauth2"
 	"stopnik/internal/server/handler"
 	"stopnik/internal/store"
+	"stopnik/log"
 )
 
 func StartServer(config *config.Config) {
 	authSessionStore := store.NewCache[store.AuthSession]()
 	accessTokenStore := store.NewCache[oauth2.AccessToken]()
+	refreshTokenStore := store.NewCache[oauth2.RefreshToken]()
+
+	tokens := &store.TokenStores[oauth2.AccessToken, oauth2.RefreshToken]{
+		AccessTokenStore:  accessTokenStore,
+		RefreshTokenStore: refreshTokenStore,
+	}
 
 	mux := http.NewServeMux()
 
 	// Own
-	loginHandler := handler.CreateLoginHandler(config, authSessionStore, accessTokenStore)
-	logoutHandler := handler.CreateLogoutHandler()
+	loginHandler := handler.CreateLoginHandler(config, authSessionStore, tokens)
+	logoutHandler := handler.CreateLogoutHandler(config)
 
 	// OAuth2
-	authorizeHandler := handler.CreateAuthorizeHandler(config, authSessionStore, accessTokenStore)
-	tokenHandler := handler.CreateTokenHandler(config, authSessionStore, accessTokenStore)
+	authorizeHandler := handler.CreateAuthorizeHandler(config, authSessionStore, tokens)
+	tokenHandler := handler.CreateTokenHandler(config, authSessionStore, tokens)
 
 	// OAuth2 extensions
 	introspectHandler := handler.CreateIntrospectHandler(config, accessTokenStore)
@@ -42,13 +49,15 @@ func StartServer(config *config.Config) {
 
 	listener, listenError := net.Listen("tcp", fmt.Sprintf(":%d", config.Server.Port))
 	if listenError != nil {
-		panic(listenError)
+		log.Error("Failed to setup listener: %v", listenError)
+		os.Exit(1)
 	}
 
-	log.Printf("Will accept connections at %s", listener.Addr().String())
+	log.Info("Will accept connections at %s", listener.Addr().String())
 
 	errorServer := http.Serve(listener, mux)
 	if errorServer != nil {
-		panic(errorServer)
+		log.Error("Failed to start server: %v", errorServer)
+		os.Exit(1)
 	}
 }

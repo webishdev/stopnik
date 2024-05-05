@@ -3,13 +3,13 @@
 <form method="POST" action="login">
     <label>
         Username
-        <input type="text" name="username" />
+        <input type="text" name="stopnik_username" />
     </label>
     <label>
         Password
-        <input type="password" name="password" />
+        <input type="password" name="stopnik_password" />
     </label>
-    <input type="hidden" name="auth_session" value="{{.Token}}" />
+    <input type="hidden" name="stopnik_auth_session" value="{{.Token}}" />
     <button type="submit">Login</button>
 </form>
 {{ template "footer" }}

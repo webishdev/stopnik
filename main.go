@@ -1,22 +1,21 @@
 package main
 
 import (
-	"log"
-	"os"
 	"stopnik/internal/config"
 	"stopnik/internal/server"
+	"stopnik/log"
 )
 
 var Version = "development"
 var GitHash = "none"
 
 func main() {
-	logger := log.New(os.Stdout, "", log.Ldate|log.Ltime|log.Lshortfile)
+	log.Info("STOPnik %s - %s", Version, GitHash)
 
-	logger.Printf("STOPnik %s - %s", Version, GitHash)
+	configFile := "config.yml"
 
-	currentConfig := config.LoadConfig("config.yml")
-	logger.Printf("%d", currentConfig.Server.Port)
+	currentConfig := config.LoadConfig(configFile)
+	log.Info("Config loaded from %s", configFile)
 
 	server.StartServer(&currentConfig)
 }

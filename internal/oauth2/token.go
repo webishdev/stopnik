@@ -3,16 +3,24 @@ package oauth2
 import (
 	"encoding/base64"
 	"github.com/google/uuid"
+	"stopnik/internal/config"
 	"stopnik/internal/store"
+	"stopnik/log"
 	"time"
 )
 
 type AccessToken struct {
+	Key       string
+	TokenType TokenType
+	Username  string
+	ClientId  string
+	Scopes    []string
+}
+type RefreshToken struct {
 	Key      string
 	ClientId string
 	Scopes   []string
 }
-type RefreshToken string
 
 // AccessTokenResponse as described in https://datatracker.ietf.org/doc/html/rfc6749#section-4.1.4
 type AccessTokenResponse struct {
@@ -22,20 +30,41 @@ type AccessTokenResponse struct {
 	RefreshTokenKey string    `json:"refresh_token,omitempty"`
 }
 
-func CreateAccessTokenResponse(accessTokenStore *store.Store[AccessToken], clientId string, scopes []string, accessTTL int) AccessTokenResponse {
-	id := uuid.New()
-	accessTokenKey := base64.RawURLEncoding.EncodeToString([]byte(id.String()))
-	accessToken := AccessToken{
-		Key:      accessTokenKey,
-		ClientId: clientId,
-		Scopes:   scopes,
-	}
-	tokenDuration := time.Minute * time.Duration(accessTTL)
-	accessTokenStore.SetWithDuration(accessTokenKey, accessToken, tokenDuration)
+func CreateAccessTokenResponse(accessTokenStore *store.Store[AccessToken], refreshTokenStore *store.Store[RefreshToken], username string, client *config.Client, scopes []string) AccessTokenResponse {
+	log.Debug("Creating new access token for %s, access TTL %d, refresh TTL %d", client.Id, client.GetAccessTTL(), client.GetRefreshTTL())
 
-	return AccessTokenResponse{
+	accessTokenId := uuid.New()
+	accessTokenKey := base64.RawURLEncoding.EncodeToString([]byte(accessTokenId.String()))
+	accessToken := &AccessToken{
+		Key:       accessTokenKey,
+		TokenType: TtBearer,
+		Username:  username,
+		ClientId:  client.Id,
+		Scopes:    scopes,
+	}
+	accessTokenDuration := time.Minute * time.Duration(client.GetRefreshTTL())
+	accessTokenStore.SetWithDuration(accessTokenKey, accessToken, accessTokenDuration)
+
+	accessTokenResponse := AccessTokenResponse{
 		AccessTokenKey: accessTokenKey,
 		TokenType:      TtBearer,
-		ExpiresIn:      int(tokenDuration / time.Second),
+		ExpiresIn:      int(accessTokenDuration / time.Second),
 	}
+
+	if client.GetRefreshTTL() > 0 {
+		refreshTokenId := uuid.New()
+		refreshTokenKey := base64.RawURLEncoding.EncodeToString([]byte(refreshTokenId.String()))
+		refreshToken := &RefreshToken{
+			Key:      refreshTokenKey,
+			ClientId: client.Id,
+			Scopes:   scopes,
+		}
+
+		refreshTokenDuration := time.Minute * time.Duration(client.GetRefreshTTL())
+		refreshTokenStore.SetWithDuration(refreshTokenKey, refreshToken, refreshTokenDuration)
+
+		accessTokenResponse.RefreshTokenKey = refreshTokenKey
+	}
+
+	return accessTokenResponse
 }
