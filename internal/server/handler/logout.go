@@ -5,6 +5,7 @@ import (
 	"stopnik/internal/config"
 	httpHeader "stopnik/internal/http"
 	"stopnik/internal/template"
+	"stopnik/log"
 )
 
 type LogoutHandler struct {
@@ -18,7 +19,7 @@ func CreateLogoutHandler(config *config.Config) *LogoutHandler {
 }
 
 func (handler *LogoutHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-
+	log.AccessLogRequest(r)
 	if r.Method == http.MethodPost {
 		cookie := DeleteCookie(handler.config)
 

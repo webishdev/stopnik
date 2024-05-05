@@ -3,7 +3,6 @@ package handler
 import (
 	"fmt"
 	"github.com/google/uuid"
-	"log"
 	"net/http"
 	"net/url"
 	"stopnik/internal/config"
@@ -13,6 +12,7 @@ import (
 	pkceParameters "stopnik/internal/pkce/parameters"
 	"stopnik/internal/store"
 	"stopnik/internal/template"
+	"stopnik/log"
 	"strings"
 )
 
@@ -31,7 +31,7 @@ func CreateAuthorizeHandler(config *config.Config, authSessionStore *store.Store
 }
 
 func (handler *AuthorizeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	log.Printf("%s %s %s\n", r.RemoteAddr, r.Method, r.URL)
+	log.AccessLogRequest(r)
 	if r.Method == http.MethodGet {
 		clientId := r.URL.Query().Get(oauth2Parameters.ClientId)
 		client, exists := handler.config.GetClient(clientId)
@@ -46,13 +46,13 @@ func (handler *AuthorizeHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 			ForbiddenHandler(w, r)
 			return
 		}
-		log.Printf("Response type: %s", responseType)
+		log.Debug("Response type: %s", responseType)
 
 		redirect := r.URL.Query().Get(oauth2Parameters.RedirectUri)
-		log.Printf("Redirect URI: %s", redirect)
+		log.Debug("Redirect URI: %s", redirect)
 
 		scope := r.URL.Query().Get(oauth2Parameters.Scope)
-		log.Printf("Scope: %s", scope)
+		log.Debug("Scope: %s", scope)
 		scopes := strings.Split(scope, " ")
 
 		codeChallenge := r.URL.Query().Get(pkceParameters.CodeChallenge)

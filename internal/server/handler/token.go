@@ -4,7 +4,6 @@ import (
 	"crypto/sha512"
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
 	"stopnik/internal/config"
 	httpHeader "stopnik/internal/http"
@@ -14,6 +13,7 @@ import (
 	pkceParameters "stopnik/internal/pkce/parameters"
 	"stopnik/internal/server/auth"
 	"stopnik/internal/store"
+	"stopnik/log"
 )
 
 type TokenHandler struct {
@@ -31,12 +31,8 @@ func CreateTokenHandler(config *config.Config, authSessionStore *store.Store[sto
 }
 
 func (handler *TokenHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	log.Printf("%s %s %s\n", r.RemoteAddr, r.Method, r.URL)
+	log.AccessLogRequest(r)
 	if r.Method == http.MethodPost {
-		for k, v := range r.Header {
-			log.Printf("%v: %v\n", k, v)
-		}
-
 		client, validClientCredentials := auth.ClientCredentials(handler.config, r)
 		// https://datatracker.ietf.org/doc/html/rfc6749#section-2.3.1
 		if !validClientCredentials {

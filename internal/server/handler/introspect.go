@@ -10,6 +10,7 @@ import (
 	oauth2Parameters "stopnik/internal/oauth2/parameters"
 	"stopnik/internal/server/auth"
 	"stopnik/internal/store"
+	"stopnik/log"
 	"strings"
 )
 
@@ -35,6 +36,7 @@ func CreateIntrospectHandler(config *config.Config, accessTokenStore *store.Stor
 }
 
 func (handler *IntrospectHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	log.AccessLogRequest(r)
 	if r.Method == http.MethodPost {
 
 		// Check client credentials

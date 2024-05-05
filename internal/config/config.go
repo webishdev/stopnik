@@ -3,10 +3,10 @@ package config
 import (
 	"fmt"
 	"gopkg.in/yaml.v3"
-	"log"
 	"math/rand"
 	"os"
 	"stopnik/internal/oauth2"
+	"stopnik/log"
 	"time"
 )
 
@@ -50,14 +50,16 @@ type Config struct {
 func LoadConfig(name string) Config {
 	data, readError := os.ReadFile(name)
 	if readError != nil {
-		log.Fatalf("unable to read file: %v", readError)
+		log.Error("Could not read config file: %v", readError)
+		os.Exit(1)
 	}
 
 	config := Config{}
 
 	parseError := yaml.Unmarshal(data, &config)
 	if parseError != nil {
-		log.Fatalf("error: %v", parseError)
+		log.Error("Could not parse config file: %v", parseError)
+		os.Exit(1)
 	}
 
 	config.userMap = setup[User](&config.Users, func(user User) string {

@@ -10,6 +10,7 @@ import (
 	"io"
 	"net/http"
 	"stopnik/internal/config"
+	"stopnik/log"
 )
 
 func DeleteCookie(config *config.Config) http.Cookie {
@@ -26,6 +27,7 @@ func DeleteCookie(config *config.Config) http.Cookie {
 
 func CreateCookie(config *config.Config, username string) (http.Cookie, error) {
 	authCookieName := config.GetAuthCookieName()
+	log.Debug("Creating %s cookie", authCookieName)
 	value, err := encryptString(username, config.GetServerSecret())
 	if err != nil {
 		return http.Cookie{}, err
@@ -42,6 +44,7 @@ func CreateCookie(config *config.Config, username string) (http.Cookie, error) {
 
 func ValidateCookie(currentConfig *config.Config, r *http.Request) (*config.User, bool) {
 	authCookieName := currentConfig.GetAuthCookieName()
+	log.Debug("Validating %s cookie", authCookieName)
 	cookie, cookieError := r.Cookie(authCookieName)
 	if cookieError != nil {
 		return &config.User{}, false

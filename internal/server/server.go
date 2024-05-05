@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"os"
 	"stopnik/internal/config"
 	"stopnik/internal/oauth2"
 	"stopnik/internal/server/handler"
@@ -42,13 +43,15 @@ func StartServer(config *config.Config) {
 
 	listener, listenError := net.Listen("tcp", fmt.Sprintf(":%d", config.Server.Port))
 	if listenError != nil {
-		panic(listenError)
+		log.Error("Failed to setup listener: %v", listenError)
+		os.Exit(1)
 	}
 
 	log.Info("Will accept connections at %s", listener.Addr().String())
 
 	errorServer := http.Serve(listener, mux)
 	if errorServer != nil {
-		panic(errorServer)
+		log.Error("Failed to start server: %v", errorServer)
+		os.Exit(1)
 	}
 }

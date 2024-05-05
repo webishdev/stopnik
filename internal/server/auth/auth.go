@@ -9,10 +9,12 @@ import (
 	"stopnik/internal/oauth2"
 	oauth2parameters "stopnik/internal/oauth2/parameters"
 	"stopnik/internal/store"
+	"stopnik/log"
 	"strings"
 )
 
 func ClientCredentials(config *config.Config, r *http.Request) (*config.Client, bool) {
+	log.Debug("Validating client credentials")
 	// https://datatracker.ietf.org/doc/html/rfc6749#section-2.3.1
 	clientId, clientSecret, ok := r.BasicAuth()
 	if !ok {
@@ -40,6 +42,7 @@ func ClientCredentials(config *config.Config, r *http.Request) (*config.Client, 
 }
 
 func AccessToken(config *config.Config, accessTokenStore *store.Store[oauth2.AccessToken], r *http.Request) (*config.User, []string, bool) {
+	log.Debug("Validating access token")
 	authorization := r.Header.Get(httpHeader.Authorization)
 	if authorization == "" || !strings.Contains(authorization, httpHeader.AuthBearer) {
 		return nil, []string{}, false

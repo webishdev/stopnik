@@ -3,7 +3,6 @@ package handler
 import (
 	"crypto/sha512"
 	"fmt"
-	"log"
 	"net/http"
 	"net/url"
 	"stopnik/internal/config"
@@ -11,6 +10,7 @@ import (
 	"stopnik/internal/oauth2"
 	oauth2parameters "stopnik/internal/oauth2/parameters"
 	"stopnik/internal/store"
+	"stopnik/log"
 )
 
 type LoginHandler struct {
@@ -28,7 +28,7 @@ func CreateLoginHandler(config *config.Config, authSessionStore *store.Store[sto
 }
 
 func (handler *LoginHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	log.Printf("%s %s %s\n", r.RemoteAddr, r.Method, r.URL)
+	log.AccessLogRequest(r)
 	if r.Method == http.MethodPost {
 		parseError := r.ParseForm()
 		if parseError != nil {

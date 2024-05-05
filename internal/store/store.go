@@ -1,7 +1,7 @@
 package store
 
 import (
-	"log"
+	"stopnik/log"
 	"sync"
 	"time"
 )
@@ -55,7 +55,7 @@ func (currentCache *Store[T]) startCleanUp() {
 }
 
 func (currentCache *Store[T]) cleanUp() {
-	log.Printf("%s", "Cleaning up")
+	log.Debug("%s", "Cleaning up")
 	if !currentCache.empty() {
 		now := time.Now()
 		currentCache.mux.RLock()
@@ -87,7 +87,7 @@ func (currentCache *Store[T]) empty() bool {
 func (currentCache *Store[T]) delete(key string) {
 	currentCache.mux.Lock()
 	defer currentCache.mux.Unlock()
-	log.Printf("Removing %s", key)
+	log.Debug("Removing %s", key)
 	delete(currentCache.storeMap, key)
 }
 
