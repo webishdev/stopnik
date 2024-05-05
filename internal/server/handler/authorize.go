@@ -8,8 +8,7 @@ import (
 	"stopnik/internal/config"
 	httpHeader "stopnik/internal/http"
 	"stopnik/internal/oauth2"
-	oauth2Parameters "stopnik/internal/oauth2/parameters"
-	pkceParameters "stopnik/internal/pkce/parameters"
+	pkceParameters "stopnik/internal/pkce"
 	"stopnik/internal/store"
 	"stopnik/internal/template"
 	"stopnik/log"
@@ -35,25 +34,25 @@ func CreateAuthorizeHandler(config *config.Config, authSessionStore *store.Store
 func (handler *AuthorizeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	log.AccessLogRequest(r)
 	if r.Method == http.MethodGet {
-		clientId := r.URL.Query().Get(oauth2Parameters.ClientId)
+		clientId := r.URL.Query().Get(oauth2.ParameterClientId)
 		client, exists := handler.config.GetClient(clientId)
 		if !exists {
 			ForbiddenHandler(w, r)
 			return
 		}
 
-		responseTypeQueryParameter := r.URL.Query().Get(oauth2Parameters.ResponseType)
+		responseTypeQueryParameter := r.URL.Query().Get(oauth2.ParameterResponseType)
 		responseType, valid := oauth2.ResponseTypeFromString(responseTypeQueryParameter)
 		if !valid {
 			ForbiddenHandler(w, r)
 			return
 		}
 
-		redirect := r.URL.Query().Get(oauth2Parameters.RedirectUri)
-		state := r.URL.Query().Get(oauth2Parameters.State)
-		scope := r.URL.Query().Get(oauth2Parameters.Scope)
-		codeChallenge := r.URL.Query().Get(pkceParameters.CodeChallenge)
-		codeChallengeMethod := r.URL.Query().Get(pkceParameters.CodeChallengeMethod)
+		redirect := r.URL.Query().Get(oauth2.ParameterRedirectUri)
+		state := r.URL.Query().Get(oauth2.ParameterState)
+		scope := r.URL.Query().Get(oauth2.ParameterScope)
+		codeChallenge := r.URL.Query().Get(pkceParameters.ParameterCodeChallenge)
+		codeChallengeMethod := r.URL.Query().Get(pkceParameters.ParameterCodeChallengeMethod)
 
 		log.Debug("Response type: %s", responseType)
 		log.Debug("Redirect URI: %s", redirect)
@@ -90,15 +89,15 @@ func (handler *AuthorizeHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 
 			if responseType == oauth2.RtToken {
 				accessTokenResponse := oauth2.CreateAccessTokenResponse(handler.accessTokenStore, handler.refreshTokenStore, user.Username, client, scopes)
-				query.Add(oauth2Parameters.AccessToken, accessTokenResponse.AccessTokenKey)
-				query.Add(oauth2Parameters.TokenType, string(accessTokenResponse.TokenType))
-				query.Add(oauth2Parameters.ExpiresIn, fmt.Sprintf("%d", accessTokenResponse.ExpiresIn))
+				query.Add(oauth2.ParameterAccessToken, accessTokenResponse.AccessTokenKey)
+				query.Add(oauth2.ParameterTokenType, string(accessTokenResponse.TokenType))
+				query.Add(oauth2.ParameterExpiresIn, fmt.Sprintf("%d", accessTokenResponse.ExpiresIn))
 			} else {
-				query.Add(oauth2Parameters.Code, id.String())
+				query.Add(oauth2.ParameterCode, id.String())
 			}
 
 			if state != "" {
-				query.Add(oauth2Parameters.State, state)
+				query.Add(oauth2.ParameterState, state)
 			}
 
 			redirectURL.RawQuery = query.Encode()

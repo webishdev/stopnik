@@ -7,7 +7,6 @@ import (
 	"stopnik/internal/config"
 	httpHeader "stopnik/internal/http"
 	"stopnik/internal/oauth2"
-	oauth2parameters "stopnik/internal/oauth2/parameters"
 	"stopnik/internal/store"
 	"stopnik/log"
 	"strings"
@@ -19,8 +18,8 @@ func ClientCredentials(config *config.Config, r *http.Request) (*config.Client, 
 	clientId, clientSecret, ok := r.BasicAuth()
 	if !ok {
 		// Check fallback
-		clientId = r.PostFormValue(oauth2parameters.ClientId)
-		clientSecret = r.PostFormValue(oauth2parameters.ClientSecret)
+		clientId = r.PostFormValue(oauth2.ParameterClientId)
+		clientSecret = r.PostFormValue(oauth2.ParameterClientSecret)
 	}
 
 	if clientId == "" || clientSecret == "" {

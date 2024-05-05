@@ -8,7 +8,6 @@ import (
 	"stopnik/internal/config"
 	httpHeader "stopnik/internal/http"
 	"stopnik/internal/oauth2"
-	oauth2Parameters "stopnik/internal/oauth2/parameters"
 	"stopnik/internal/store"
 	"stopnik/log"
 )
@@ -82,17 +81,17 @@ func (handler *LoginHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 			accessTokenResponse := oauth2.CreateAccessTokenResponse(handler.accessTokenStore, handler.refreshTokenStore, user.Username, client, authSession.Scopes)
-			query.Add(oauth2Parameters.AccessToken, accessTokenResponse.AccessTokenKey)
-			query.Add(oauth2Parameters.TokenType, string(accessTokenResponse.TokenType))
-			query.Add(oauth2Parameters.ExpiresIn, fmt.Sprintf("%d", accessTokenResponse.ExpiresIn))
+			query.Add(oauth2.ParameterAccessToken, accessTokenResponse.AccessTokenKey)
+			query.Add(oauth2.ParameterTokenType, string(accessTokenResponse.TokenType))
+			query.Add(oauth2.ParameterExpiresIn, fmt.Sprintf("%d", accessTokenResponse.ExpiresIn))
 			// https://datatracker.ietf.org/doc/html/rfc6749#section-4.2.2
 			// The authorization server MUST NOT issue a refresh token.
 		} else {
-			query.Add(oauth2Parameters.Code, authSessionForm)
+			query.Add(oauth2.ParameterCode, authSessionForm)
 		}
 
 		if authSession.State != "" {
-			query.Add(oauth2Parameters.State, authSession.State)
+			query.Add(oauth2.ParameterState, authSession.State)
 		}
 
 		redirectURL.RawQuery = query.Encode()

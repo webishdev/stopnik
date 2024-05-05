@@ -7,7 +7,6 @@ import (
 	"stopnik/internal/config"
 	httpHeader "stopnik/internal/http"
 	"stopnik/internal/oauth2"
-	oauth2Parameters "stopnik/internal/oauth2/parameters"
 	"stopnik/internal/server/auth"
 	"stopnik/internal/store"
 	"stopnik/log"
@@ -63,7 +62,7 @@ func (handler *IntrospectHandler) ServeHTTP(w http.ResponseWriter, r *http.Reque
 			}
 		}
 
-		token := r.PostFormValue(oauth2Parameters.Token)
+		token := r.PostFormValue(oauth2.ParameterToken)
 		accessToken, tokenExists := handler.accessTokenStore.Get(token)
 
 		introspectResponse := introspectResponse{
