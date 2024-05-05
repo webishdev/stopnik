@@ -15,6 +15,7 @@ type AuthSession struct {
 	Username            string
 	ClientId            string
 	Scopes              []string
+	State               string
 }
 
 type expiringType[T any] struct {

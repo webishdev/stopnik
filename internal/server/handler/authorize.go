@@ -48,15 +48,17 @@ func (handler *AuthorizeHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 		}
 
 		redirect := r.URL.Query().Get(oauth2Parameters.RedirectUri)
+		state := r.URL.Query().Get(oauth2Parameters.State)
 		scope := r.URL.Query().Get(oauth2Parameters.Scope)
-		scopes := strings.Split(scope, " ")
-
 		codeChallenge := r.URL.Query().Get(pkceParameters.CodeChallenge)
 		codeChallengeMethod := r.URL.Query().Get(pkceParameters.CodeChallengeMethod)
 
 		log.Debug("Response type: %s", responseType)
 		log.Debug("Redirect URI: %s", redirect)
+		log.Debug("State: %s", state)
 		log.Debug("Scope: %s", scope)
+
+		scopes := strings.Split(scope, " ")
 
 		id := uuid.New()
 		authSession := &store.AuthSession{
@@ -67,6 +69,7 @@ func (handler *AuthorizeHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 			ClientId:            clientId,
 			ResponseType:        string(responseType),
 			Scopes:              scopes,
+			State:               state,
 		}
 
 		handler.authSessionStore.Set(id.String(), authSession)
@@ -90,6 +93,10 @@ func (handler *AuthorizeHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 				query.Add(oauth2Parameters.ExpiresIn, fmt.Sprintf("%d", accessTokenResponse.ExpiresIn))
 			} else {
 				query.Add(oauth2Parameters.Code, id.String())
+			}
+
+			if state != "" {
+				query.Add(oauth2Parameters.State, state)
 			}
 
 			redirectURL.RawQuery = query.Encode()

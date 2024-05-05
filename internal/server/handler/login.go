@@ -8,7 +8,7 @@ import (
 	"stopnik/internal/config"
 	httpHeader "stopnik/internal/http"
 	"stopnik/internal/oauth2"
-	oauth2parameters "stopnik/internal/oauth2/parameters"
+	oauth2Parameters "stopnik/internal/oauth2/parameters"
 	"stopnik/internal/store"
 	"stopnik/log"
 )
@@ -80,11 +80,15 @@ func (handler *LoginHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 			accessTokenResponse := oauth2.CreateAccessTokenResponse(handler.accessTokenStore, user.Username, client.Id, authSession.Scopes, client.GetAccessTTL())
-			query.Add(oauth2parameters.AccessToken, accessTokenResponse.AccessTokenKey)
-			query.Add(oauth2parameters.TokenType, string(accessTokenResponse.TokenType))
-			query.Add(oauth2parameters.ExpiresIn, fmt.Sprintf("%d", accessTokenResponse.ExpiresIn))
+			query.Add(oauth2Parameters.AccessToken, accessTokenResponse.AccessTokenKey)
+			query.Add(oauth2Parameters.TokenType, string(accessTokenResponse.TokenType))
+			query.Add(oauth2Parameters.ExpiresIn, fmt.Sprintf("%d", accessTokenResponse.ExpiresIn))
 		} else {
-			query.Add(oauth2parameters.Code, authSessionForm)
+			query.Add(oauth2Parameters.Code, authSessionForm)
+		}
+
+		if authSession.State != "" {
+			query.Add(oauth2Parameters.State, authSession.State)
 		}
 
 		redirectURL.RawQuery = query.Encode()

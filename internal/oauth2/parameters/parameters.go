@@ -3,6 +3,7 @@ package parameters
 const (
 	ResponseType string = "response_type"
 	RedirectUri  string = "redirect_uri"
+	State        string = "state"
 	Scope        string = "scope"
 	ClientId     string = "client_id"
 	ClientSecret string = "client_secret"
