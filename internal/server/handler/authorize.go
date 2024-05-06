@@ -5,6 +5,7 @@ import (
 	"github.com/google/uuid"
 	"net/http"
 	"net/url"
+	"regexp"
 	"stopnik/internal/config"
 	internalHttp "stopnik/internal/http"
 	"stopnik/internal/oauth2"
@@ -61,6 +62,34 @@ func (handler *AuthorizeHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 		log.Debug("Scope: %s", scope)
 
 		scopes := strings.Split(scope, " ")
+
+		redirectCount := len(client.Redirects)
+
+		if redirectCount > 0 {
+			matchesRedirect := false
+			for i := 0; i < redirectCount; i++ {
+				clientRedirect := client.Redirects[i]
+				wildcards := strings.Count(clientRedirect, "*")
+				if wildcards == 1 {
+					clientRedirect = strings.Replace(clientRedirect, "*", ".*", -1)
+				} else if wildcards > 1 {
+					continue
+				}
+				clientRedirect = fmt.Sprintf("^%s$", clientRedirect)
+				matched, regexError := regexp.MatchString(clientRedirect, redirect)
+				if regexError != nil {
+					InternalServerErrorHandler(w, r)
+					return
+				}
+
+				matchesRedirect = matchesRedirect || matched
+			}
+
+			if !matchesRedirect {
+				ForbiddenHandler(w, r)
+				return
+			}
+		}
 
 		id := uuid.New()
 		authSession := &store.AuthSession{
