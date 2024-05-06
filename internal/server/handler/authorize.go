@@ -9,6 +9,7 @@ import (
 	internalHttp "stopnik/internal/http"
 	"stopnik/internal/oauth2"
 	"stopnik/internal/pkce"
+	"stopnik/internal/server/auth"
 	"stopnik/internal/store"
 	"stopnik/internal/template"
 	"stopnik/log"
@@ -107,7 +108,10 @@ func (handler *AuthorizeHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 		} else {
 			// http.ServeFile(w, r, "foo.html")
 			// bytes := []byte(loginHtml)
-			loginTemplate := template.LoginTemplate(id.String())
+			query := r.URL.Query()
+			encodedQuery := query.Encode()
+			formAction := fmt.Sprintf("authorize?%s", encodedQuery)
+			loginTemplate := template.LoginTemplate(id.String(), formAction)
 
 			_, err := w.Write(loginTemplate.Bytes())
 			if err != nil {
@@ -115,6 +119,63 @@ func (handler *AuthorizeHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 				return
 			}
 		}
+	} else if r.Method == http.MethodPost {
+		// Handle Post from Login
+		user, userExists := auth.UserBasicAuth(handler.config, r)
+		if !userExists {
+			w.Header().Set(internalHttp.Location, r.RequestURI)
+			w.WriteHeader(http.StatusSeeOther)
+			return
+		}
+
+		cookie, err := internalHttp.CreateCookie(handler.config, user.Username)
+		if err != nil {
+			InternalServerErrorHandler(w, r)
+			return
+		}
+
+		http.SetCookie(w, &cookie)
+
+		authSessionForm := r.PostFormValue("stopnik_auth_session")
+		authSession, exists := handler.authSessionStore.Get(authSessionForm)
+		if !exists {
+			w.Header().Set(internalHttp.Location, r.RequestURI)
+			w.WriteHeader(http.StatusSeeOther)
+			return
+		}
+
+		authSession.Username = user.Username
+		redirectURL, urlParseError := url.Parse(authSession.Redirect)
+		if urlParseError != nil {
+			InternalServerErrorHandler(w, r)
+			return
+		}
+
+		query := redirectURL.Query()
+		if authSession.ResponseType == string(oauth2.RtToken) {
+			client, exists := handler.config.GetClient(authSession.ClientId)
+			if !exists {
+				InternalServerErrorHandler(w, r)
+				return
+			}
+			accessTokenResponse := oauth2.CreateAccessTokenResponse(handler.accessTokenStore, handler.refreshTokenStore, user.Username, client, authSession.Scopes)
+			query.Add(oauth2.ParameterAccessToken, accessTokenResponse.AccessTokenKey)
+			query.Add(oauth2.ParameterTokenType, string(accessTokenResponse.TokenType))
+			query.Add(oauth2.ParameterExpiresIn, fmt.Sprintf("%d", accessTokenResponse.ExpiresIn))
+			// https://datatracker.ietf.org/doc/html/rfc6749#section-4.2.2
+			// The authorization server MUST NOT issue a refresh token.
+		} else {
+			query.Add(oauth2.ParameterCode, authSessionForm)
+		}
+
+		if authSession.State != "" {
+			query.Add(oauth2.ParameterState, authSession.State)
+		}
+
+		redirectURL.RawQuery = query.Encode()
+
+		w.Header().Set(internalHttp.Location, redirectURL.String())
+		w.WriteHeader(http.StatusFound)
 	} else {
 		MethodNotAllowedHandler(w, r)
 		return

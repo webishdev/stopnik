@@ -1,16 +1,41 @@
 package auth
 
 import (
-	"crypto/sha512"
 	"fmt"
 	"net/http"
 	"stopnik/internal/config"
+	"stopnik/internal/crypto"
 	internalHttp "stopnik/internal/http"
 	"stopnik/internal/oauth2"
 	"stopnik/internal/store"
 	"stopnik/log"
 	"strings"
 )
+
+func UserBasicAuth(config *config.Config, r *http.Request) (*config.User, bool) {
+	if r.Method == http.MethodPost {
+
+		username := r.PostFormValue("stopnik_username")
+		password := r.PostFormValue("stopnik_password")
+
+		// When login invalid
+		// https://en.wikipedia.org/wiki/Post/Redirect/Get
+		// redirect with Status 303
+		// When login valid
+		user, exists := config.GetUser(username)
+		if !exists {
+			return nil, false
+		}
+
+		passwordHash := crypto.Sha512Hash(password)
+		if passwordHash != user.Password {
+			return nil, false
+		}
+
+		return user, true
+	}
+	return nil, false
+}
 
 func ClientCredentials(config *config.Config, r *http.Request) (*config.Client, bool) {
 	log.Debug("Validating client credentials")
@@ -31,7 +56,7 @@ func ClientCredentials(config *config.Config, r *http.Request) (*config.Client, 
 		return nil, false
 	}
 
-	secretHash := fmt.Sprintf("%x", sha512.Sum512([]byte(clientSecret)))
+	secretHash := crypto.Sha512Hash(clientSecret)
 
 	if secretHash != client.Secret {
 		return nil, false

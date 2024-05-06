@@ -25,7 +25,7 @@ func StartServer(config *config.Config) {
 	mux := http.NewServeMux()
 
 	// Own
-	loginHandler := handler.CreateLoginHandler(config, authSessionStore, tokens)
+	accountHandler := handler.CreateAccountHandler(config)
 	logoutHandler := handler.CreateLogoutHandler(config)
 
 	// OAuth2
@@ -37,7 +37,7 @@ func StartServer(config *config.Config) {
 
 	// Server
 	mux.Handle("/", &handler.HomeHandler{})
-	mux.Handle("/login", loginHandler)
+	mux.Handle("/account", accountHandler)
 	mux.Handle("/logout", logoutHandler)
 
 	// OAuth2

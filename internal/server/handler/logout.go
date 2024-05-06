@@ -4,7 +4,6 @@ import (
 	"net/http"
 	"stopnik/internal/config"
 	httpHeader "stopnik/internal/http"
-	"stopnik/internal/template"
 	"stopnik/log"
 )
 
@@ -21,6 +20,11 @@ func CreateLogoutHandler(config *config.Config) *LogoutHandler {
 func (handler *LogoutHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	log.AccessLogRequest(r)
 	if r.Method == http.MethodPost {
+		_, validCookie := httpHeader.ValidateCookie(handler.config, r)
+		if !validCookie {
+			ForbiddenHandler(w, r)
+			return
+		}
 		cookie := httpHeader.DeleteCookie(handler.config)
 
 		http.SetCookie(w, &cookie)
@@ -32,21 +36,6 @@ func (handler *LogoutHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 		}
 
 		w.WriteHeader(http.StatusSeeOther)
-	} else if r.Method == http.MethodGet {
-		_, validCookie := httpHeader.ValidateCookie(handler.config, r)
-		if validCookie {
-			logoutTemplate := template.LogoutTemplate()
-
-			_, err := w.Write(logoutTemplate.Bytes())
-			if err != nil {
-				InternalServerErrorHandler(w, r)
-				return
-			}
-		} else {
-			ForbiddenHandler(w, r)
-			return
-		}
-
 	} else {
 		MethodNotAllowedHandler(w, r)
 		return

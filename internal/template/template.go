@@ -34,7 +34,7 @@ func addTemplates(main *template.Template) bytes.Buffer {
 	return tpl
 }
 
-func LoginTemplate(id string) bytes.Buffer {
+func LoginTemplate(id string, action string) bytes.Buffer {
 	var tpl bytes.Buffer
 
 	loginTemplate, loginParseError := template.New("login").Parse(string(loginHtml))
@@ -45,9 +45,11 @@ func LoginTemplate(id string) bytes.Buffer {
 	addTemplates(loginTemplate)
 
 	data := struct {
-		Token string
+		Action string
+		Token  string
 	}{
-		Token: id,
+		Action: action,
+		Token:  id,
 	}
 
 	templateExecuteError := loginTemplate.Execute(&tpl, data)
