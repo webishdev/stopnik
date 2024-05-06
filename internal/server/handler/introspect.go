@@ -5,9 +5,8 @@ import (
 	"net/http"
 	"slices"
 	"stopnik/internal/config"
-	httpHeader "stopnik/internal/http"
+	internalHttp "stopnik/internal/http"
 	"stopnik/internal/oauth2"
-	oauth2Parameters "stopnik/internal/oauth2/parameters"
 	"stopnik/internal/server/auth"
 	"stopnik/internal/store"
 	"stopnik/log"
@@ -24,17 +23,20 @@ type introspectResponse struct {
 }
 
 type IntrospectHandler struct {
-	config           *config.Config
-	accessTokenStore *store.Store[oauth2.AccessToken]
+	config            *config.Config
+	accessTokenStore  *store.Store[oauth2.AccessToken]
+	refreshTokenStore *store.Store[oauth2.RefreshToken]
 }
 
-func CreateIntrospectHandler(config *config.Config, accessTokenStore *store.Store[oauth2.AccessToken]) *IntrospectHandler {
+func CreateIntrospectHandler(config *config.Config, tokenStores *store.TokenStores[oauth2.AccessToken, oauth2.RefreshToken]) *IntrospectHandler {
 	return &IntrospectHandler{
-		config:           config,
-		accessTokenStore: accessTokenStore,
+		config:            config,
+		accessTokenStore:  tokenStores.AccessTokenStore,
+		refreshTokenStore: tokenStores.RefreshTokenStore,
 	}
 }
 
+// Implements https://datatracker.ietf.org/doc/html/rfc7662
 func (handler *IntrospectHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	log.AccessLogRequest(r)
 	if r.Method == http.MethodPost {
@@ -63,18 +65,32 @@ func (handler *IntrospectHandler) ServeHTTP(w http.ResponseWriter, r *http.Reque
 			}
 		}
 
-		token := r.PostFormValue(oauth2Parameters.Token)
-		accessToken, tokenExists := handler.accessTokenStore.Get(token)
+		token := r.PostFormValue(oauth2.ParameterToken)
+		tokenTypeHint := r.PostFormValue(oauth2.ParameterTokenTypeHint)
 
-		introspectResponse := introspectResponse{
-			Active: tokenExists,
-		}
+		introspectResponse := introspectResponse{}
 
-		if tokenExists {
-			introspectResponse.Username = accessToken.Username
-			introspectResponse.ClientId = accessToken.ClientId
-			introspectResponse.Scope = strings.Join(accessToken.Scopes, " ")
-			introspectResponse.TokenType = accessToken.TokenType
+		if tokenTypeHint == "refresh_token" {
+			refreshToken, tokenExists := handler.refreshTokenStore.Get(token)
+
+			introspectResponse.Active = tokenExists
+
+			if tokenExists {
+				introspectResponse.Username = refreshToken.Username
+				introspectResponse.ClientId = refreshToken.ClientId
+				introspectResponse.Scope = strings.Join(refreshToken.Scopes, " ")
+			}
+		} else {
+			accessToken, tokenExists := handler.accessTokenStore.Get(token)
+
+			introspectResponse.Active = tokenExists
+
+			if tokenExists {
+				introspectResponse.Username = accessToken.Username
+				introspectResponse.ClientId = accessToken.ClientId
+				introspectResponse.Scope = strings.Join(accessToken.Scopes, " ")
+				introspectResponse.TokenType = accessToken.TokenType
+			}
 		}
 
 		bytes, introspectMarshalError := json.Marshal(introspectResponse)
@@ -83,7 +99,7 @@ func (handler *IntrospectHandler) ServeHTTP(w http.ResponseWriter, r *http.Reque
 			return
 		}
 
-		w.Header().Set(httpHeader.ContentType, httpHeader.ContentTypeJSON)
+		w.Header().Set(internalHttp.ContentType, internalHttp.ContentTypeJSON)
 		_, writeError := w.Write(bytes)
 		if writeError != nil {
 			InternalServerErrorHandler(w, r)

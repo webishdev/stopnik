@@ -30,12 +30,14 @@ type User struct {
 }
 
 type Client struct {
-	Id         string `yaml:"id"`
-	Secret     string `yaml:"secret"`
-	ClientType string `yaml:"type"`
-	AccessTTL  int    `yaml:"accessTTL"`
-	RefreshTTL int    `yaml:"refreshTTL"`
-	Introspect bool   `yaml:"introspect"`
+	Id         string   `yaml:"id"`
+	Secret     string   `yaml:"secret"`
+	ClientType string   `yaml:"type"`
+	AccessTTL  int      `yaml:"accessTTL"`
+	RefreshTTL int      `yaml:"refreshTTL"`
+	Introspect bool     `yaml:"introspect"`
+	Revoke     bool     `yaml:"revoke"`
+	Redirects  []string `yaml:"redirects"`
 }
 
 type Config struct {
@@ -124,6 +126,10 @@ func (config *Config) GetAuthCookieName() string {
 
 func (config *Config) GetIntrospectScope() string {
 	return GetOrDefaultString(config.Server.IntrospectScope, "stopnik:introspect")
+}
+
+func (config *Config) GetRevokeScope() string {
+	return GetOrDefaultString(config.Server.IntrospectScope, "stopnik:revoke")
 }
 
 func (config *Config) GetServerSecret() string {

@@ -1,17 +1,41 @@
 package auth
 
 import (
-	"crypto/sha512"
 	"fmt"
 	"net/http"
 	"stopnik/internal/config"
-	httpHeader "stopnik/internal/http"
+	"stopnik/internal/crypto"
+	internalHttp "stopnik/internal/http"
 	"stopnik/internal/oauth2"
-	oauth2parameters "stopnik/internal/oauth2/parameters"
 	"stopnik/internal/store"
 	"stopnik/log"
 	"strings"
 )
+
+func UserBasicAuth(config *config.Config, r *http.Request) (*config.User, bool) {
+	if r.Method == http.MethodPost {
+
+		username := r.PostFormValue("stopnik_username")
+		password := r.PostFormValue("stopnik_password")
+
+		// When login invalid
+		// https://en.wikipedia.org/wiki/Post/Redirect/Get
+		// redirect with Status 303
+		// When login valid
+		user, exists := config.GetUser(username)
+		if !exists {
+			return nil, false
+		}
+
+		passwordHash := crypto.Sha512Hash(password)
+		if passwordHash != user.Password {
+			return nil, false
+		}
+
+		return user, true
+	}
+	return nil, false
+}
 
 func ClientCredentials(config *config.Config, r *http.Request) (*config.Client, bool) {
 	log.Debug("Validating client credentials")
@@ -19,8 +43,8 @@ func ClientCredentials(config *config.Config, r *http.Request) (*config.Client, 
 	clientId, clientSecret, ok := r.BasicAuth()
 	if !ok {
 		// Check fallback
-		clientId = r.PostFormValue(oauth2parameters.ClientId)
-		clientSecret = r.PostFormValue(oauth2parameters.ClientSecret)
+		clientId = r.PostFormValue(oauth2.ParameterClientId)
+		clientSecret = r.PostFormValue(oauth2.ParameterClientSecret)
 	}
 
 	if clientId == "" || clientSecret == "" {
@@ -32,7 +56,7 @@ func ClientCredentials(config *config.Config, r *http.Request) (*config.Client, 
 		return nil, false
 	}
 
-	secretHash := fmt.Sprintf("%x", sha512.Sum512([]byte(clientSecret)))
+	secretHash := crypto.Sha512Hash(clientSecret)
 
 	if secretHash != client.Secret {
 		return nil, false
@@ -43,12 +67,12 @@ func ClientCredentials(config *config.Config, r *http.Request) (*config.Client, 
 
 func AccessToken(config *config.Config, accessTokenStore *store.Store[oauth2.AccessToken], r *http.Request) (*config.User, []string, bool) {
 	log.Debug("Validating access token")
-	authorization := r.Header.Get(httpHeader.Authorization)
-	if authorization == "" || !strings.Contains(authorization, httpHeader.AuthBearer) {
+	authorization := r.Header.Get(internalHttp.Authorization)
+	if authorization == "" || !strings.Contains(authorization, internalHttp.AuthBearer) {
 		return nil, []string{}, false
 	}
 
-	replaceBearer := fmt.Sprintf("%s ", httpHeader.AuthBearer)
+	replaceBearer := fmt.Sprintf("%s ", internalHttp.AuthBearer)
 	authorizationHeader := strings.Replace(authorization, replaceBearer, "", 1)
 	accessToken, authorizationHeaderExists := accessTokenStore.Get(authorizationHeader)
 	if !authorizationHeaderExists {

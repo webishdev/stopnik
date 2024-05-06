@@ -6,11 +6,9 @@ import (
 	"fmt"
 	"net/http"
 	"stopnik/internal/config"
-	httpHeader "stopnik/internal/http"
+	internalHttp "stopnik/internal/http"
 	"stopnik/internal/oauth2"
-	oauth2parameters "stopnik/internal/oauth2/parameters"
 	"stopnik/internal/pkce"
-	pkceParameters "stopnik/internal/pkce/parameters"
 	"stopnik/internal/server/auth"
 	"stopnik/internal/store"
 	"stopnik/log"
@@ -42,7 +40,7 @@ func (handler *TokenHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		grantTypeValue := r.PostFormValue(oauth2parameters.GrantType)
+		grantTypeValue := r.PostFormValue(oauth2.ParameterGrantType)
 		grantType, grantTypeExists := oauth2.GrantTypeFromString(grantTypeValue)
 		if !grantTypeExists {
 			ForbiddenHandler(w, r)
@@ -54,9 +52,9 @@ func (handler *TokenHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 		if grantType == oauth2.GtAuthorizationCode {
 
-			codeVerifier := r.PostFormValue(pkceParameters.CodeVerifier) // https://datatracker.ietf.org/doc/html/rfc7636#section-4.1
+			codeVerifier := r.PostFormValue(pkce.ParameterCodeVerifier) // https://datatracker.ietf.org/doc/html/rfc7636#section-4.1
 			if codeVerifier != "" {
-				code := r.PostFormValue(oauth2parameters.Code)
+				code := r.PostFormValue(oauth2.ParameterCode)
 				authSession, authSessionExists := handler.authSessionStore.Get(code)
 				if !authSessionExists {
 					ForbiddenHandler(w, r)
@@ -79,8 +77,8 @@ func (handler *TokenHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if grantType == oauth2.GtPassword {
-			usernameFrom := r.PostFormValue(oauth2parameters.Username)
-			passwordForm := r.PostFormValue(oauth2parameters.Password)
+			usernameFrom := r.PostFormValue(oauth2.ParameterUsername)
+			passwordForm := r.PostFormValue(oauth2.ParameterPassword)
 
 			user, exists := handler.config.GetUser(usernameFrom)
 			if !exists {
@@ -99,7 +97,7 @@ func (handler *TokenHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			ForbiddenHandler(w, r)
 			return
 		} else if grantType == oauth2.GtRefreshToken && client.GetRefreshTTL() > 0 {
-			refreshTokenForm := r.PostFormValue(oauth2parameters.RefreshToken)
+			refreshTokenForm := r.PostFormValue(oauth2.ParameterRefreshToken)
 			refreshToken, refreshTokenExists := handler.refreshTokenStore.Get(refreshTokenForm)
 			if !refreshTokenExists {
 				ForbiddenHandler(w, r)
@@ -120,7 +118,7 @@ func (handler *TokenHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		w.Header().Set(httpHeader.ContentType, httpHeader.ContentTypeJSON)
+		w.Header().Set(internalHttp.ContentType, internalHttp.ContentTypeJSON)
 		_, writeError := w.Write(bytes)
 		if writeError != nil {
 			InternalServerErrorHandler(w, r)

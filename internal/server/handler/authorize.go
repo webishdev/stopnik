@@ -5,11 +5,12 @@ import (
 	"github.com/google/uuid"
 	"net/http"
 	"net/url"
+	"regexp"
 	"stopnik/internal/config"
-	httpHeader "stopnik/internal/http"
+	internalHttp "stopnik/internal/http"
 	"stopnik/internal/oauth2"
-	oauth2Parameters "stopnik/internal/oauth2/parameters"
-	pkceParameters "stopnik/internal/pkce/parameters"
+	"stopnik/internal/pkce"
+	"stopnik/internal/server/auth"
 	"stopnik/internal/store"
 	"stopnik/internal/template"
 	"stopnik/log"
@@ -35,25 +36,25 @@ func CreateAuthorizeHandler(config *config.Config, authSessionStore *store.Store
 func (handler *AuthorizeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	log.AccessLogRequest(r)
 	if r.Method == http.MethodGet {
-		clientId := r.URL.Query().Get(oauth2Parameters.ClientId)
+		clientId := r.URL.Query().Get(oauth2.ParameterClientId)
 		client, exists := handler.config.GetClient(clientId)
 		if !exists {
 			ForbiddenHandler(w, r)
 			return
 		}
 
-		responseTypeQueryParameter := r.URL.Query().Get(oauth2Parameters.ResponseType)
+		responseTypeQueryParameter := r.URL.Query().Get(oauth2.ParameterResponseType)
 		responseType, valid := oauth2.ResponseTypeFromString(responseTypeQueryParameter)
 		if !valid {
 			ForbiddenHandler(w, r)
 			return
 		}
 
-		redirect := r.URL.Query().Get(oauth2Parameters.RedirectUri)
-		state := r.URL.Query().Get(oauth2Parameters.State)
-		scope := r.URL.Query().Get(oauth2Parameters.Scope)
-		codeChallenge := r.URL.Query().Get(pkceParameters.CodeChallenge)
-		codeChallengeMethod := r.URL.Query().Get(pkceParameters.CodeChallengeMethod)
+		redirect := r.URL.Query().Get(oauth2.ParameterRedirectUri)
+		state := r.URL.Query().Get(oauth2.ParameterState)
+		scope := r.URL.Query().Get(oauth2.ParameterScope)
+		codeChallenge := r.URL.Query().Get(pkce.ParameterCodeChallenge)
+		codeChallengeMethod := r.URL.Query().Get(pkce.ParameterCodeChallengeMethod)
 
 		log.Debug("Response type: %s", responseType)
 		log.Debug("Redirect URI: %s", redirect)
@@ -61,6 +62,34 @@ func (handler *AuthorizeHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 		log.Debug("Scope: %s", scope)
 
 		scopes := strings.Split(scope, " ")
+
+		redirectCount := len(client.Redirects)
+
+		if redirectCount > 0 {
+			matchesRedirect := false
+			for i := 0; i < redirectCount; i++ {
+				clientRedirect := client.Redirects[i]
+				wildcards := strings.Count(clientRedirect, "*")
+				if wildcards == 1 {
+					clientRedirect = strings.Replace(clientRedirect, "*", ".*", -1)
+				} else if wildcards > 1 {
+					continue
+				}
+				clientRedirect = fmt.Sprintf("^%s$", clientRedirect)
+				matched, regexError := regexp.MatchString(clientRedirect, redirect)
+				if regexError != nil {
+					InternalServerErrorHandler(w, r)
+					return
+				}
+
+				matchesRedirect = matchesRedirect || matched
+			}
+
+			if !matchesRedirect {
+				ForbiddenHandler(w, r)
+				return
+			}
+		}
 
 		id := uuid.New()
 		authSession := &store.AuthSession{
@@ -76,7 +105,7 @@ func (handler *AuthorizeHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 
 		handler.authSessionStore.Set(id.String(), authSession)
 
-		user, validCookie := ValidateCookie(handler.config, r)
+		user, validCookie := internalHttp.ValidateCookie(handler.config, r)
 
 		if validCookie {
 			authSession.Username = user.Username
@@ -90,25 +119,28 @@ func (handler *AuthorizeHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 
 			if responseType == oauth2.RtToken {
 				accessTokenResponse := oauth2.CreateAccessTokenResponse(handler.accessTokenStore, handler.refreshTokenStore, user.Username, client, scopes)
-				query.Add(oauth2Parameters.AccessToken, accessTokenResponse.AccessTokenKey)
-				query.Add(oauth2Parameters.TokenType, string(accessTokenResponse.TokenType))
-				query.Add(oauth2Parameters.ExpiresIn, fmt.Sprintf("%d", accessTokenResponse.ExpiresIn))
+				query.Add(oauth2.ParameterAccessToken, accessTokenResponse.AccessTokenKey)
+				query.Add(oauth2.ParameterTokenType, string(accessTokenResponse.TokenType))
+				query.Add(oauth2.ParameterExpiresIn, fmt.Sprintf("%d", accessTokenResponse.ExpiresIn))
 			} else {
-				query.Add(oauth2Parameters.Code, id.String())
+				query.Add(oauth2.ParameterCode, id.String())
 			}
 
 			if state != "" {
-				query.Add(oauth2Parameters.State, state)
+				query.Add(oauth2.ParameterState, state)
 			}
 
 			redirectURL.RawQuery = query.Encode()
 
-			w.Header().Set(httpHeader.Location, redirectURL.String())
+			w.Header().Set(internalHttp.Location, redirectURL.String())
 			w.WriteHeader(http.StatusFound)
 		} else {
 			// http.ServeFile(w, r, "foo.html")
 			// bytes := []byte(loginHtml)
-			loginTemplate := template.LoginTemplate(id.String())
+			query := r.URL.Query()
+			encodedQuery := query.Encode()
+			formAction := fmt.Sprintf("authorize?%s", encodedQuery)
+			loginTemplate := template.LoginTemplate(id.String(), formAction)
 
 			_, err := w.Write(loginTemplate.Bytes())
 			if err != nil {
@@ -116,6 +148,63 @@ func (handler *AuthorizeHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 				return
 			}
 		}
+	} else if r.Method == http.MethodPost {
+		// Handle Post from Login
+		user, userExists := auth.UserBasicAuth(handler.config, r)
+		if !userExists {
+			w.Header().Set(internalHttp.Location, r.RequestURI)
+			w.WriteHeader(http.StatusSeeOther)
+			return
+		}
+
+		cookie, err := internalHttp.CreateCookie(handler.config, user.Username)
+		if err != nil {
+			InternalServerErrorHandler(w, r)
+			return
+		}
+
+		http.SetCookie(w, &cookie)
+
+		authSessionForm := r.PostFormValue("stopnik_auth_session")
+		authSession, exists := handler.authSessionStore.Get(authSessionForm)
+		if !exists {
+			w.Header().Set(internalHttp.Location, r.RequestURI)
+			w.WriteHeader(http.StatusSeeOther)
+			return
+		}
+
+		authSession.Username = user.Username
+		redirectURL, urlParseError := url.Parse(authSession.Redirect)
+		if urlParseError != nil {
+			InternalServerErrorHandler(w, r)
+			return
+		}
+
+		query := redirectURL.Query()
+		if authSession.ResponseType == string(oauth2.RtToken) {
+			client, exists := handler.config.GetClient(authSession.ClientId)
+			if !exists {
+				InternalServerErrorHandler(w, r)
+				return
+			}
+			accessTokenResponse := oauth2.CreateAccessTokenResponse(handler.accessTokenStore, handler.refreshTokenStore, user.Username, client, authSession.Scopes)
+			query.Add(oauth2.ParameterAccessToken, accessTokenResponse.AccessTokenKey)
+			query.Add(oauth2.ParameterTokenType, string(accessTokenResponse.TokenType))
+			query.Add(oauth2.ParameterExpiresIn, fmt.Sprintf("%d", accessTokenResponse.ExpiresIn))
+			// https://datatracker.ietf.org/doc/html/rfc6749#section-4.2.2
+			// The authorization server MUST NOT issue a refresh token.
+		} else {
+			query.Add(oauth2.ParameterCode, authSessionForm)
+		}
+
+		if authSession.State != "" {
+			query.Add(oauth2.ParameterState, authSession.State)
+		}
+
+		redirectURL.RawQuery = query.Encode()
+
+		w.Header().Set(internalHttp.Location, redirectURL.String())
+		w.WriteHeader(http.StatusFound)
 	} else {
 		MethodNotAllowedHandler(w, r)
 		return

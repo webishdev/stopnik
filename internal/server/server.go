@@ -12,6 +12,19 @@ import (
 	"stopnik/log"
 )
 
+type mainHandler struct {
+	next   http.Handler
+	assets *handler.AssetHandler
+}
+
+func (mh mainHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if mh.assets.Matches(r) {
+		mh.assets.ServeHTTP(w, r)
+	} else {
+		mh.next.ServeHTTP(w, r)
+	}
+}
+
 func StartServer(config *config.Config) {
 	authSessionStore := store.NewCache[store.AuthSession]()
 	accessTokenStore := store.NewCache[oauth2.AccessToken]()
@@ -22,10 +35,8 @@ func StartServer(config *config.Config) {
 		RefreshTokenStore: refreshTokenStore,
 	}
 
-	mux := http.NewServeMux()
-
 	// Own
-	loginHandler := handler.CreateLoginHandler(config, authSessionStore, tokens)
+	accountHandler := handler.CreateAccountHandler(config)
 	logoutHandler := handler.CreateLogoutHandler(config)
 
 	// OAuth2
@@ -33,11 +44,19 @@ func StartServer(config *config.Config) {
 	tokenHandler := handler.CreateTokenHandler(config, authSessionStore, tokens)
 
 	// OAuth2 extensions
-	introspectHandler := handler.CreateIntrospectHandler(config, accessTokenStore)
+	introspectHandler := handler.CreateIntrospectHandler(config, tokens)
+	revokeHandler := handler.CreateRevokeHandler(config, tokens)
+
+	mux := http.NewServeMux()
+
+	main := &mainHandler{
+		next:   mux,
+		assets: &handler.AssetHandler{},
+	}
 
 	// Server
 	mux.Handle("/", &handler.HomeHandler{})
-	mux.Handle("/login", loginHandler)
+	mux.Handle("/account", accountHandler)
 	mux.Handle("/logout", logoutHandler)
 
 	// OAuth2
@@ -46,6 +65,7 @@ func StartServer(config *config.Config) {
 
 	// OAuth2 extensions
 	mux.Handle("/introspect", introspectHandler)
+	mux.Handle("/revoke", revokeHandler)
 
 	listener, listenError := net.Listen("tcp", fmt.Sprintf(":%d", config.Server.Port))
 	if listenError != nil {
@@ -55,7 +75,7 @@ func StartServer(config *config.Config) {
 
 	log.Info("Will accept connections at %s", listener.Addr().String())
 
-	errorServer := http.Serve(listener, mux)
+	errorServer := http.Serve(listener, main)
 	if errorServer != nil {
 		log.Error("Failed to start server: %v", errorServer)
 		os.Exit(1)
