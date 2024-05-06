@@ -68,7 +68,7 @@ func (currentCache *Store[T]) cleanUp() {
 		for key, value := range currentCache.storeMap {
 			if currentCache.expired(now, value) {
 				currentCache.mux.RUnlock()
-				currentCache.delete(key)
+				currentCache.Delete(key)
 				currentCache.mux.RLock()
 			}
 		}
@@ -90,7 +90,7 @@ func (currentCache *Store[T]) empty() bool {
 	return len(currentCache.storeMap) == 0
 }
 
-func (currentCache *Store[T]) delete(key string) {
+func (currentCache *Store[T]) Delete(key string) {
 	currentCache.mux.Lock()
 	defer currentCache.mux.Unlock()
 	log.Debug("Removing %s", key)

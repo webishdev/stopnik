@@ -33,7 +33,8 @@ func StartServer(config *config.Config) {
 	tokenHandler := handler.CreateTokenHandler(config, authSessionStore, tokens)
 
 	// OAuth2 extensions
-	introspectHandler := handler.CreateIntrospectHandler(config, accessTokenStore)
+	introspectHandler := handler.CreateIntrospectHandler(config, tokens)
+	revokeHandler := handler.CreateRevokeHandler(config, tokens)
 
 	// Server
 	mux.Handle("/", &handler.HomeHandler{})
@@ -46,6 +47,7 @@ func StartServer(config *config.Config) {
 
 	// OAuth2 extensions
 	mux.Handle("/introspect", introspectHandler)
+	mux.Handle("/revoke", revokeHandler)
 
 	listener, listenError := net.Listen("tcp", fmt.Sprintf(":%d", config.Server.Port))
 	if listenError != nil {

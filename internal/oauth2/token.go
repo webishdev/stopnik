@@ -18,6 +18,7 @@ type AccessToken struct {
 }
 type RefreshToken struct {
 	Key      string
+	Username string
 	ClientId string
 	Scopes   []string
 }
@@ -56,6 +57,7 @@ func CreateAccessTokenResponse(accessTokenStore *store.Store[AccessToken], refre
 		refreshTokenKey := base64.RawURLEncoding.EncodeToString([]byte(refreshTokenId.String()))
 		refreshToken := &RefreshToken{
 			Key:      refreshTokenKey,
+			Username: username,
 			ClientId: client.Id,
 			Scopes:   scopes,
 		}

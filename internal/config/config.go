@@ -36,6 +36,7 @@ type Client struct {
 	AccessTTL  int    `yaml:"accessTTL"`
 	RefreshTTL int    `yaml:"refreshTTL"`
 	Introspect bool   `yaml:"introspect"`
+	Revoke     bool   `yaml:"revoke"`
 }
 
 type Config struct {
@@ -124,6 +125,10 @@ func (config *Config) GetAuthCookieName() string {
 
 func (config *Config) GetIntrospectScope() string {
 	return GetOrDefaultString(config.Server.IntrospectScope, "stopnik:introspect")
+}
+
+func (config *Config) GetRevokeScope() string {
+	return GetOrDefaultString(config.Server.IntrospectScope, "stopnik:revoke")
 }
 
 func (config *Config) GetServerSecret() string {
