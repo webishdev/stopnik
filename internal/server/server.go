@@ -10,6 +10,7 @@ import (
 	"stopnik/internal/server/handler"
 	"stopnik/internal/store"
 	"stopnik/log"
+	"time"
 )
 
 type mainHandler struct {
@@ -73,9 +74,18 @@ func StartServer(config *config.Config) {
 		os.Exit(1)
 	}
 
-	log.Info("Will accept connections at %s", listener.Addr().String())
+	httpServer := &http.Server{
+		Addr:              listener.Addr().String(),
+		ReadHeaderTimeout: 15 * time.Second,
+		ReadTimeout:       15 * time.Second,
+		WriteTimeout:      10 * time.Second,
+		IdleTimeout:       30 * time.Second,
+		Handler:           main,
+	}
 
-	errorServer := http.Serve(listener, main)
+	log.Info("Will accept connections at %s", httpServer.Addr)
+
+	errorServer := httpServer.Serve(listener)
 	if errorServer != nil {
 		log.Error("Failed to start server: %v", errorServer)
 		os.Exit(1)
