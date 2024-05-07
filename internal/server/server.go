@@ -65,26 +65,58 @@ func StartServer(config *config.Config) {
 	mux.Handle("/introspect", introspectHandler)
 	mux.Handle("/revoke", revokeHandler)
 
-	listener, listenError := net.Listen("tcp", fmt.Sprintf(":%d", config.Server.Port))
-	if listenError != nil {
-		log.Error("Failed to setup listener: %v", listenError)
-		os.Exit(1)
+	go func() {
+		listener, listenError := net.Listen("tcp", fmt.Sprintf(":%d", config.Server.Port))
+		if listenError != nil {
+			log.Error("Failed to setup listener: %v", listenError)
+			os.Exit(1)
+		}
+
+		httpServer := &http.Server{
+			Addr:              listener.Addr().String(),
+			ReadHeaderTimeout: 15 * time.Second,
+			ReadTimeout:       15 * time.Second,
+			WriteTimeout:      10 * time.Second,
+			IdleTimeout:       30 * time.Second,
+			Handler:           main,
+		}
+
+		log.Info("Will accept connections at %s", httpServer.Addr)
+
+		errorServer := httpServer.Serve(listener)
+		if errorServer != nil {
+			log.Error("Failed to start server: %v", errorServer)
+			os.Exit(1)
+		}
+	}()
+
+	if config.Server.TLS.Port > -1 {
+		go func() {
+			tlsListener, tlsListenError := net.Listen("tcp", fmt.Sprintf(":%d", config.Server.TLS.Port))
+			if tlsListenError != nil {
+				log.Error("Failed to setup listener: %v", tlsListenError)
+				os.Exit(1)
+			}
+
+			httpsServer := &http.Server{
+				Addr:              tlsListener.Addr().String(),
+				ReadHeaderTimeout: 15 * time.Second,
+				ReadTimeout:       15 * time.Second,
+				WriteTimeout:      10 * time.Second,
+				IdleTimeout:       30 * time.Second,
+				Handler:           main,
+			}
+
+			log.Info("Will accept connections at %s", httpsServer.Addr)
+
+			tlsServerError := httpsServer.ServeTLS(tlsListener, config.Server.TLS.Cert, config.Server.TLS.Key)
+			if tlsServerError != nil {
+				log.Error("Failed to start TLS server: %v", tlsServerError)
+				os.Exit(1)
+			}
+		}()
 	}
 
-	httpServer := &http.Server{
-		Addr:              listener.Addr().String(),
-		ReadHeaderTimeout: 15 * time.Second,
-		ReadTimeout:       15 * time.Second,
-		WriteTimeout:      10 * time.Second,
-		IdleTimeout:       30 * time.Second,
-		Handler:           main,
-	}
+	select {}
 
-	log.Info("Will accept connections at %s", httpServer.Addr)
-
-	errorServer := httpServer.Serve(listener)
-	if errorServer != nil {
-		log.Error("Failed to start server: %v", errorServer)
-		os.Exit(1)
-	}
 }

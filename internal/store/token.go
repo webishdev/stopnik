@@ -1,6 +1,8 @@
 package store
 
 import (
+	"crypto/rsa"
+	"crypto/tls"
 	"encoding/base64"
 	"fmt"
 	"github.com/golang-jwt/jwt/v5"
@@ -120,15 +122,32 @@ func (tokenManager *TokenManager) generateOpaqueToken() string {
 
 // switch to github.com/golang-jwt/jwt/v5
 func (tokenManager *TokenManager) generateJWTToken() string {
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256,
-		jwt.MapClaims{
-			"exp": time.Now().Add(time.Hour * 24).Unix(),
-		})
+	claims := jwt.MapClaims{
+		"exp": time.Now().Add(time.Hour * 24).Unix(),
+	}
+	if tokenManager.config.Server.TokenCert == "" && tokenManager.config.Server.TokenKey == "" {
+		token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 
-	tokenString, err := token.SignedString([]byte(tokenManager.config.GetServerSecret()))
-	if err != nil {
-		panic(err)
+		tokenString, err := token.SignedString([]byte(tokenManager.config.GetServerSecret()))
+		if err != nil {
+			panic(err)
+		}
+
+		return tokenString
+	} else {
+		keyPair, pairError := tls.LoadX509KeyPair(tokenManager.config.Server.TokenCert, tokenManager.config.Server.TokenKey)
+		if pairError != nil {
+			panic(pairError)
+		}
+		key := keyPair.PrivateKey.(*rsa.PrivateKey)
+		token := jwt.NewWithClaims(jwt.SigningMethodRS256, claims)
+
+		tokenString, tokenError := token.SignedString(key)
+		if tokenError != nil {
+			panic(tokenError)
+		}
+
+		return tokenString
 	}
 
-	return tokenString
 }
