@@ -28,8 +28,7 @@ func (mh mainHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func StartServer(config *config.Config) {
-	authSessionStore := store.NewCache[store.AuthSession]()
-
+	sessionManager := store.NewSessionManager(config)
 	tokenManager := store.NewTokenManager(config)
 	cookieManager := internalHttp.NewCookieManager(config)
 	requestValidator := validation.NewRequestValidator(config)
@@ -39,8 +38,8 @@ func StartServer(config *config.Config) {
 	logoutHandler := handler.CreateLogoutHandler(cookieManager)
 
 	// OAuth2
-	authorizeHandler := handler.CreateAuthorizeHandler(requestValidator, cookieManager, authSessionStore, tokenManager)
-	tokenHandler := handler.CreateTokenHandler(requestValidator, authSessionStore, tokenManager)
+	authorizeHandler := handler.CreateAuthorizeHandler(requestValidator, cookieManager, sessionManager, tokenManager)
+	tokenHandler := handler.CreateTokenHandler(requestValidator, sessionManager, tokenManager)
 
 	// OAuth2 extensions
 	introspectHandler := handler.CreateIntrospectHandler(config, requestValidator, tokenManager)

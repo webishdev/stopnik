@@ -7,6 +7,7 @@ import (
 )
 
 type AuthSession struct {
+	Id                  string
 	Redirect            string
 	AuthURI             string
 	CodeChallenge       string

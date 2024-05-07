@@ -17,18 +17,18 @@ import (
 )
 
 type AuthorizeHandler struct {
-	validator        *validation.RequestValidator
-	cookieManager    *internalHttp.CookieManager
-	authSessionStore *store.Store[store.AuthSession]
-	tokenManager     *store.TokenManager
+	validator      *validation.RequestValidator
+	cookieManager  *internalHttp.CookieManager
+	sessionManager *store.SessionManager
+	tokenManager   *store.TokenManager
 }
 
-func CreateAuthorizeHandler(validator *validation.RequestValidator, cookieManager *internalHttp.CookieManager, authSessionStore *store.Store[store.AuthSession], tokenManager *store.TokenManager) *AuthorizeHandler {
+func CreateAuthorizeHandler(validator *validation.RequestValidator, cookieManager *internalHttp.CookieManager, sessionManager *store.SessionManager, tokenManager *store.TokenManager) *AuthorizeHandler {
 	return &AuthorizeHandler{
-		validator:        validator,
-		cookieManager:    cookieManager,
-		authSessionStore: authSessionStore,
-		tokenManager:     tokenManager,
+		validator:      validator,
+		cookieManager:  cookieManager,
+		sessionManager: sessionManager,
+		tokenManager:   tokenManager,
 	}
 }
 
@@ -92,6 +92,7 @@ func (handler *AuthorizeHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 
 		id := uuid.New()
 		authSession := &store.AuthSession{
+			Id:                  id.String(),
 			Redirect:            redirect,
 			AuthURI:             r.URL.RequestURI(),
 			CodeChallenge:       codeChallenge,
@@ -102,7 +103,7 @@ func (handler *AuthorizeHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 			State:               state,
 		}
 
-		handler.authSessionStore.Set(id.String(), authSession)
+		handler.sessionManager.StartSession(authSession)
 
 		user, validCookie := handler.cookieManager.ValidateCookie(r)
 
@@ -139,7 +140,7 @@ func (handler *AuthorizeHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 			query := r.URL.Query()
 			encodedQuery := query.Encode()
 			formAction := fmt.Sprintf("authorize?%s", encodedQuery)
-			loginTemplate := template.LoginTemplate(id.String(), formAction)
+			loginTemplate := template.LoginTemplate(authSession.Id, formAction)
 
 			_, err := w.Write(loginTemplate.Bytes())
 			if err != nil {
@@ -165,7 +166,7 @@ func (handler *AuthorizeHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 		http.SetCookie(w, &cookie)
 
 		authSessionForm := r.PostFormValue("stopnik_auth_session")
-		authSession, exists := handler.authSessionStore.Get(authSessionForm)
+		authSession, exists := handler.sessionManager.GetSession(authSessionForm)
 		if !exists {
 			w.Header().Set(internalHttp.Location, r.RequestURI)
 			w.WriteHeader(http.StatusSeeOther)

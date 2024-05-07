@@ -27,14 +27,6 @@ func NewTokenManager(config *config.Config) *TokenManager {
 	}
 }
 
-func (tokenManager *TokenManager) GetAccessTokenStore() *Store[oauth2.AccessToken] {
-	return tokenManager.accessTokenStore
-}
-
-func (tokenManager *TokenManager) GetRefreshTokenStore() *Store[oauth2.RefreshToken] {
-	return tokenManager.refreshTokenStore
-}
-
 func (tokenManager *TokenManager) GetAccessToken(token string) (*oauth2.AccessToken, bool) {
 	return tokenManager.accessTokenStore.Get(token)
 }

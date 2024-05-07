@@ -11,16 +11,16 @@ import (
 )
 
 type TokenHandler struct {
-	validator        *validation.RequestValidator
-	authSessionStore *store.Store[store.AuthSession]
-	tokenManager     *store.TokenManager
+	validator      *validation.RequestValidator
+	sessionManager *store.SessionManager
+	tokenManager   *store.TokenManager
 }
 
-func CreateTokenHandler(validator *validation.RequestValidator, authSessionStore *store.Store[store.AuthSession], tokenManager *store.TokenManager) *TokenHandler {
+func CreateTokenHandler(validator *validation.RequestValidator, sessionManager *store.SessionManager, tokenManager *store.TokenManager) *TokenHandler {
 	return &TokenHandler{
-		validator:        validator,
-		authSessionStore: authSessionStore,
-		tokenManager:     tokenManager,
+		validator:      validator,
+		sessionManager: sessionManager,
+		tokenManager:   tokenManager,
 	}
 }
 
@@ -49,7 +49,7 @@ func (handler *TokenHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			codeVerifier := r.PostFormValue(pkce.ParameterCodeVerifier) // https://datatracker.ietf.org/doc/html/rfc7636#section-4.1
 			if codeVerifier != "" {
 				code := r.PostFormValue(oauth2.ParameterCode)
-				authSession, authSessionExists := handler.authSessionStore.Get(code)
+				authSession, authSessionExists := handler.sessionManager.GetSession(code)
 				if !authSessionExists {
 					ForbiddenHandler(w, r)
 					return
