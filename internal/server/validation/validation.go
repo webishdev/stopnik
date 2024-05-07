@@ -1,8 +1,6 @@
 package validation
 
 import (
-	"crypto/sha512"
-	"fmt"
 	"net/http"
 	"stopnik/internal/config"
 	"stopnik/internal/crypto"
@@ -80,7 +78,7 @@ func (validator *RequestValidator) ValidateUserPassword(username string, passwor
 	if !exists {
 		return nil, false
 	}
-	passwordHash := fmt.Sprintf("%x", sha512.Sum512([]byte(password)))
+	passwordHash := crypto.Sha512Hash(password)
 	if passwordHash != user.Password {
 		return nil, false
 	}
