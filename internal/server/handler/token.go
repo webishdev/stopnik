@@ -2,9 +2,9 @@ package handler
 
 import (
 	"net/http"
+	internalHttp "stopnik/internal/http"
 	"stopnik/internal/oauth2"
 	"stopnik/internal/pkce"
-	"stopnik/internal/server/json"
 	"stopnik/internal/server/validation"
 	"stopnik/internal/store"
 	"stopnik/log"
@@ -103,7 +103,7 @@ func (handler *TokenHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 		accessTokenResponse := oauth2.CreateAccessTokenResponse(handler.accessTokenStore, handler.refreshTokenStore, username, client, scopes)
 
-		jsonError := json.SendJson(accessTokenResponse, w)
+		jsonError := internalHttp.SendJson(accessTokenResponse, w)
 		if jsonError != nil {
 			InternalServerErrorHandler(w, r)
 			return

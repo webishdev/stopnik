@@ -1,9 +1,8 @@
-package json
+package http
 
 import (
 	"encoding/json"
 	"net/http"
-	internalHttp "stopnik/internal/http"
 )
 
 func SendJson(value any, w http.ResponseWriter) error {
@@ -12,7 +11,7 @@ func SendJson(value any, w http.ResponseWriter) error {
 		return tokenMarshalError
 	}
 
-	w.Header().Set(internalHttp.ContentType, internalHttp.ContentTypeJSON)
+	w.Header().Set(ContentType, ContentTypeJSON)
 	_, writeError := w.Write(bytes)
 	if writeError != nil {
 		return writeError

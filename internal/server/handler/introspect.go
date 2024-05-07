@@ -4,9 +4,9 @@ import (
 	"net/http"
 	"slices"
 	"stopnik/internal/config"
+	internalHttp "stopnik/internal/http"
 	"stopnik/internal/oauth2"
 	"stopnik/internal/server/auth"
-	"stopnik/internal/server/json"
 	"stopnik/internal/server/validation"
 	"stopnik/internal/store"
 	"stopnik/log"
@@ -95,7 +95,7 @@ func (handler *IntrospectHandler) ServeHTTP(w http.ResponseWriter, r *http.Reque
 			}
 		}
 
-		jsonError := json.SendJson(introspectResponse, w)
+		jsonError := internalHttp.SendJson(introspectResponse, w)
 		if jsonError != nil {
 			InternalServerErrorHandler(w, r)
 			return
