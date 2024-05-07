@@ -56,7 +56,7 @@ func StartServer(config *config.Config) {
 	}
 
 	// Server
-	mux.Handle("/", &handler.HomeHandler{})
+	mux.Handle("/health", &handler.HealthHandler{})
 	mux.Handle("/account", accountHandler)
 	mux.Handle("/logout", logoutHandler)
 

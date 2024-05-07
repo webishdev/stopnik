@@ -2,14 +2,13 @@ package handler
 
 import (
 	"crypto/sha512"
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"stopnik/internal/config"
-	internalHttp "stopnik/internal/http"
 	"stopnik/internal/oauth2"
 	"stopnik/internal/pkce"
 	"stopnik/internal/server/auth"
+	"stopnik/internal/server/json"
 	"stopnik/internal/store"
 	"stopnik/log"
 )
@@ -112,18 +111,12 @@ func (handler *TokenHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 		accessTokenResponse := oauth2.CreateAccessTokenResponse(handler.accessTokenStore, handler.refreshTokenStore, username, client, scopes)
 
-		bytes, tokenMarshalError := json.Marshal(accessTokenResponse)
-		if tokenMarshalError != nil {
+		jsonError := json.SendJson(accessTokenResponse, w)
+		if jsonError != nil {
 			InternalServerErrorHandler(w, r)
 			return
 		}
 
-		w.Header().Set(internalHttp.ContentType, internalHttp.ContentTypeJSON)
-		_, writeError := w.Write(bytes)
-		if writeError != nil {
-			InternalServerErrorHandler(w, r)
-			return
-		}
 	} else {
 		MethodNotAllowedHandler(w, r)
 		return

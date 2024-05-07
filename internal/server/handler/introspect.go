@@ -1,13 +1,12 @@
 package handler
 
 import (
-	"encoding/json"
 	"net/http"
 	"slices"
 	"stopnik/internal/config"
-	internalHttp "stopnik/internal/http"
 	"stopnik/internal/oauth2"
 	"stopnik/internal/server/auth"
+	"stopnik/internal/server/json"
 	"stopnik/internal/store"
 	"stopnik/log"
 	"strings"
@@ -93,15 +92,8 @@ func (handler *IntrospectHandler) ServeHTTP(w http.ResponseWriter, r *http.Reque
 			}
 		}
 
-		bytes, introspectMarshalError := json.Marshal(introspectResponse)
-		if introspectMarshalError != nil {
-			InternalServerErrorHandler(w, r)
-			return
-		}
-
-		w.Header().Set(internalHttp.ContentType, internalHttp.ContentTypeJSON)
-		_, writeError := w.Write(bytes)
-		if writeError != nil {
+		jsonError := json.SendJson(introspectResponse, w)
+		if jsonError != nil {
 			InternalServerErrorHandler(w, r)
 			return
 		}
