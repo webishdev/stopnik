@@ -1,7 +1,6 @@
 package server
 
 import (
-	"fmt"
 	"net"
 	"net/http"
 	"os"
@@ -65,8 +64,13 @@ func StartServer(config *config.Config) {
 	mux.Handle("/introspect", introspectHandler)
 	mux.Handle("/revoke", revokeHandler)
 
+	var readHeaderTimeout = 15 * time.Second
+	var readTimeout = 15 * time.Second
+	var writeTimeout = 10 * time.Second
+	var idleTimeout = 30 * time.Second
+
 	go func() {
-		listener, listenError := net.Listen("tcp", fmt.Sprintf(":%d", config.Server.Port))
+		listener, listenError := net.Listen("tcp", config.Server.Addr)
 		if listenError != nil {
 			log.Error("Failed to setup listener: %v", listenError)
 			os.Exit(1)
@@ -74,10 +78,10 @@ func StartServer(config *config.Config) {
 
 		httpServer := &http.Server{
 			Addr:              listener.Addr().String(),
-			ReadHeaderTimeout: 15 * time.Second,
-			ReadTimeout:       15 * time.Second,
-			WriteTimeout:      10 * time.Second,
-			IdleTimeout:       30 * time.Second,
+			ReadHeaderTimeout: readHeaderTimeout,
+			ReadTimeout:       readTimeout,
+			WriteTimeout:      writeTimeout,
+			IdleTimeout:       idleTimeout,
 			Handler:           main,
 		}
 
@@ -90,9 +94,9 @@ func StartServer(config *config.Config) {
 		}
 	}()
 
-	if config.Server.TLS.Port > -1 {
+	if config.Server.TLS.Addr != "" {
 		go func() {
-			tlsListener, tlsListenError := net.Listen("tcp", fmt.Sprintf(":%d", config.Server.TLS.Port))
+			tlsListener, tlsListenError := net.Listen("tcp", config.Server.TLS.Addr)
 			if tlsListenError != nil {
 				log.Error("Failed to setup listener: %v", tlsListenError)
 				os.Exit(1)
@@ -100,10 +104,10 @@ func StartServer(config *config.Config) {
 
 			httpsServer := &http.Server{
 				Addr:              tlsListener.Addr().String(),
-				ReadHeaderTimeout: 15 * time.Second,
-				ReadTimeout:       15 * time.Second,
-				WriteTimeout:      10 * time.Second,
-				IdleTimeout:       30 * time.Second,
+				ReadHeaderTimeout: readHeaderTimeout,
+				ReadTimeout:       readTimeout,
+				WriteTimeout:      writeTimeout,
+				IdleTimeout:       idleTimeout,
 				Handler:           main,
 			}
 

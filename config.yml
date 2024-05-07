@@ -5,9 +5,9 @@ server:
   secret: WRYldij9ebtDZ5VJSsxNAfCZ
   tokenCert: server.crt
   tokenKey: server.key
-  port: 8080
+  addr: :8080
   tls:
-    port: 8081
+    addr: :8081
     cert: server.crt
     key: server.key
 clients:

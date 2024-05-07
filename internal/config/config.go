@@ -9,14 +9,14 @@ import (
 )
 
 type TLS struct {
-	Port int    `yaml:"port" default:"-1"`
+	Addr string `yaml:"addr"`
 	Cert string `yaml:"cert"`
 	Key  string `yaml:"key"`
 }
 
 type Server struct {
 	LogLevel        string `yaml:"logLevel"`
-	Port            int    `yaml:"port"`
+	Addr            string `yaml:"addr"`
 	AuthCookieName  string `yaml:"authCookieName"`
 	Secret          string `yaml:"secret"`
 	TokenCert       string `yaml:"tokenCert"`
