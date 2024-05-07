@@ -54,7 +54,7 @@ function build() {
   FILE_NAME="$NAME$VERSION-$GO_ARCH"
   DIR="$OS_NAME-$GO_ARCH"
   echo "Build $NICE_NAME version $VERSION ($GIT_HASH) for $GO_OS $GO_ARCH"
-  GOOS=$GO_OS GOARCH=$GO_ARCH go build -ldflags="-s -w -X 'main.Version=$VERSION' -X 'main.GitHash=$GIT_HASH'" -o bin/$DIR/$FILE_NAME$FILE_EXTENSION
+  GOOS=$GO_OS GOARCH=$GO_ARCH go build -ldflags="-s -w -X 'main.Version=$VERSION' -X 'main.GitHash=$GIT_HASH'" -o bin/$DIR/$FILE_NAME$FILE_EXTENSION main.go
   echo "Create SHA256 sum for $GO_OS $GO_ARCH"
   sha256sum bin/$DIR/$FILE_NAME$FILE_EXTENSION >> bin/$DIR/sha256sum.txt
   CURRENT_DIR=$(pwd)
