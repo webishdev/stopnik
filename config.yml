@@ -1,4 +1,5 @@
 server:
+  #logLevel: error
   authCookieName: stopnik_auth
   logoutRedirect: http://localhost:8080
   secret: WRYldij9ebtDZ5VJSsxNAfCZ

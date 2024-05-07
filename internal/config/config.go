@@ -15,6 +15,7 @@ type TLS struct {
 }
 
 type Server struct {
+	LogLevel        string `yaml:"logLevel"`
 	Port            int    `yaml:"port"`
 	AuthCookieName  string `yaml:"authCookieName"`
 	Secret          string `yaml:"secret"`
