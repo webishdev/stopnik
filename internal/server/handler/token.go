@@ -11,18 +11,16 @@ import (
 )
 
 type TokenHandler struct {
-	validator         *validation.RequestValidator
-	authSessionStore  *store.Store[store.AuthSession]
-	accessTokenStore  *store.Store[oauth2.AccessToken]
-	refreshTokenStore *store.Store[oauth2.RefreshToken]
+	validator        *validation.RequestValidator
+	authSessionStore *store.Store[store.AuthSession]
+	tokenManager     *store.TokenManager
 }
 
-func CreateTokenHandler(validator *validation.RequestValidator, authSessionStore *store.Store[store.AuthSession], tokenStores *store.TokenStores[oauth2.AccessToken, oauth2.RefreshToken]) *TokenHandler {
+func CreateTokenHandler(validator *validation.RequestValidator, authSessionStore *store.Store[store.AuthSession], tokenManager *store.TokenManager) *TokenHandler {
 	return &TokenHandler{
-		validator:         validator,
-		authSessionStore:  authSessionStore,
-		accessTokenStore:  tokenStores.AccessTokenStore,
-		refreshTokenStore: tokenStores.RefreshTokenStore,
+		validator:        validator,
+		authSessionStore: authSessionStore,
+		tokenManager:     tokenManager,
 	}
 }
 
@@ -89,7 +87,7 @@ func (handler *TokenHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		} else if grantType == oauth2.GtRefreshToken && client.GetRefreshTTL() > 0 {
 			refreshTokenForm := r.PostFormValue(oauth2.ParameterRefreshToken)
-			refreshToken, refreshTokenExists := handler.refreshTokenStore.Get(refreshTokenForm)
+			refreshToken, refreshTokenExists := handler.tokenManager.GetRefreshToken(refreshTokenForm)
 			if !refreshTokenExists {
 				ForbiddenHandler(w, r)
 				return
@@ -101,7 +99,7 @@ func (handler *TokenHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 
-		accessTokenResponse := oauth2.CreateAccessTokenResponse(handler.accessTokenStore, handler.refreshTokenStore, username, client, scopes)
+		accessTokenResponse := handler.tokenManager.CreateAccessTokenResponse(username, client, scopes)
 
 		jsonError := internalHttp.SendJson(accessTokenResponse, w)
 		if jsonError != nil {

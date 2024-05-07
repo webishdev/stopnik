@@ -17,20 +17,18 @@ import (
 )
 
 type AuthorizeHandler struct {
-	validator         *validation.RequestValidator
-	cookieManager     *internalHttp.CookieManager
-	authSessionStore  *store.Store[store.AuthSession]
-	accessTokenStore  *store.Store[oauth2.AccessToken]
-	refreshTokenStore *store.Store[oauth2.RefreshToken]
+	validator        *validation.RequestValidator
+	cookieManager    *internalHttp.CookieManager
+	authSessionStore *store.Store[store.AuthSession]
+	tokenManager     *store.TokenManager
 }
 
-func CreateAuthorizeHandler(validator *validation.RequestValidator, cookieManager *internalHttp.CookieManager, authSessionStore *store.Store[store.AuthSession], tokenStores *store.TokenStores[oauth2.AccessToken, oauth2.RefreshToken]) *AuthorizeHandler {
+func CreateAuthorizeHandler(validator *validation.RequestValidator, cookieManager *internalHttp.CookieManager, authSessionStore *store.Store[store.AuthSession], tokenManager *store.TokenManager) *AuthorizeHandler {
 	return &AuthorizeHandler{
-		validator:         validator,
-		cookieManager:     cookieManager,
-		authSessionStore:  authSessionStore,
-		accessTokenStore:  tokenStores.AccessTokenStore,
-		refreshTokenStore: tokenStores.RefreshTokenStore,
+		validator:        validator,
+		cookieManager:    cookieManager,
+		authSessionStore: authSessionStore,
+		tokenManager:     tokenManager,
 	}
 }
 
@@ -119,7 +117,7 @@ func (handler *AuthorizeHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 			query := redirectURL.Query()
 
 			if responseType == oauth2.RtToken {
-				accessTokenResponse := oauth2.CreateAccessTokenResponse(handler.accessTokenStore, handler.refreshTokenStore, user.Username, client, scopes)
+				accessTokenResponse := handler.tokenManager.CreateAccessTokenResponse(user.Username, client, scopes)
 				query.Add(oauth2.ParameterAccessToken, accessTokenResponse.AccessTokenKey)
 				query.Add(oauth2.ParameterTokenType, string(accessTokenResponse.TokenType))
 				query.Add(oauth2.ParameterExpiresIn, fmt.Sprintf("%d", accessTokenResponse.ExpiresIn))
@@ -188,7 +186,7 @@ func (handler *AuthorizeHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 				InternalServerErrorHandler(w, r)
 				return
 			}
-			accessTokenResponse := oauth2.CreateAccessTokenResponse(handler.accessTokenStore, handler.refreshTokenStore, user.Username, client, authSession.Scopes)
+			accessTokenResponse := handler.tokenManager.CreateAccessTokenResponse(user.Username, client, authSession.Scopes)
 			query.Add(oauth2.ParameterAccessToken, accessTokenResponse.AccessTokenKey)
 			query.Add(oauth2.ParameterTokenType, string(accessTokenResponse.TokenType))
 			query.Add(oauth2.ParameterExpiresIn, fmt.Sprintf("%d", accessTokenResponse.ExpiresIn))

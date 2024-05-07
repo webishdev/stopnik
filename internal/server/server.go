@@ -7,7 +7,6 @@ import (
 	"os"
 	"stopnik/internal/config"
 	internalHttp "stopnik/internal/http"
-	"stopnik/internal/oauth2"
 	"stopnik/internal/server/handler"
 	"stopnik/internal/server/validation"
 	"stopnik/internal/store"
@@ -30,14 +29,8 @@ func (mh mainHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 func StartServer(config *config.Config) {
 	authSessionStore := store.NewCache[store.AuthSession]()
-	accessTokenStore := store.NewCache[oauth2.AccessToken]()
-	refreshTokenStore := store.NewCache[oauth2.RefreshToken]()
 
-	tokens := &store.TokenStores[oauth2.AccessToken, oauth2.RefreshToken]{
-		AccessTokenStore:  accessTokenStore,
-		RefreshTokenStore: refreshTokenStore,
-	}
-
+	tokenManager := store.NewTokenManager(config)
 	cookieManager := internalHttp.NewCookieManager(config)
 	requestValidator := validation.NewRequestValidator(config)
 
@@ -46,12 +39,12 @@ func StartServer(config *config.Config) {
 	logoutHandler := handler.CreateLogoutHandler(cookieManager)
 
 	// OAuth2
-	authorizeHandler := handler.CreateAuthorizeHandler(requestValidator, cookieManager, authSessionStore, tokens)
-	tokenHandler := handler.CreateTokenHandler(requestValidator, authSessionStore, tokens)
+	authorizeHandler := handler.CreateAuthorizeHandler(requestValidator, cookieManager, authSessionStore, tokenManager)
+	tokenHandler := handler.CreateTokenHandler(requestValidator, authSessionStore, tokenManager)
 
 	// OAuth2 extensions
-	introspectHandler := handler.CreateIntrospectHandler(config, requestValidator, tokens)
-	revokeHandler := handler.CreateRevokeHandler(config, requestValidator, tokens)
+	introspectHandler := handler.CreateIntrospectHandler(config, requestValidator, tokenManager)
+	revokeHandler := handler.CreateRevokeHandler(config, requestValidator, tokenManager)
 
 	mux := http.NewServeMux()
 

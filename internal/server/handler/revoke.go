@@ -5,25 +5,22 @@ import (
 	"slices"
 	"stopnik/internal/config"
 	"stopnik/internal/oauth2"
-	"stopnik/internal/server/auth"
 	"stopnik/internal/server/validation"
 	"stopnik/internal/store"
 	"stopnik/log"
 )
 
 type RevokeHandler struct {
-	config            *config.Config
-	validator         *validation.RequestValidator
-	accessTokenStore  *store.Store[oauth2.AccessToken]
-	refreshTokenStore *store.Store[oauth2.RefreshToken]
+	config       *config.Config
+	validator    *validation.RequestValidator
+	tokenManager *store.TokenManager
 }
 
-func CreateRevokeHandler(config *config.Config, validator *validation.RequestValidator, tokenStores *store.TokenStores[oauth2.AccessToken, oauth2.RefreshToken]) *RevokeHandler {
+func CreateRevokeHandler(config *config.Config, validator *validation.RequestValidator, tokenManager *store.TokenManager) *RevokeHandler {
 	return &RevokeHandler{
-		config:            config,
-		validator:         validator,
-		accessTokenStore:  tokenStores.AccessTokenStore,
-		refreshTokenStore: tokenStores.RefreshTokenStore,
+		config:       config,
+		validator:    validator,
+		tokenManager: tokenManager,
 	}
 }
 
@@ -37,7 +34,7 @@ func (handler *RevokeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 		if !validClientCredentials {
 
 			// Fall back to access token with scopes
-			_, scopes, userExists := auth.AccessToken(handler.config, handler.accessTokenStore, r)
+			_, scopes, userExists := handler.tokenManager.ValidateAccessToken(r)
 			if !userExists {
 				ForbiddenHandler(w, r)
 				return
@@ -60,16 +57,16 @@ func (handler *RevokeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 		tokenTypeHint := r.PostFormValue(oauth2.ParameterTokenTypeHint)
 
 		if tokenTypeHint == "refresh_token" {
-			_, tokenExists := handler.refreshTokenStore.Get(token)
+			_, tokenExists := handler.tokenManager.GetRefreshToken(token)
 
 			if tokenExists {
-				handler.refreshTokenStore.Delete(token)
+				handler.tokenManager.RevokeRefreshToken(token)
 			}
 		} else {
-			_, tokenExists := handler.accessTokenStore.Get(token)
+			_, tokenExists := handler.tokenManager.GetAccessToken(token)
 
 			if tokenExists {
-				handler.accessTokenStore.Delete(token)
+				handler.tokenManager.RevokeAccessToken(token)
 			}
 		}
 

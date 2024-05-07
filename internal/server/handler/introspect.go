@@ -6,7 +6,6 @@ import (
 	"stopnik/internal/config"
 	internalHttp "stopnik/internal/http"
 	"stopnik/internal/oauth2"
-	"stopnik/internal/server/auth"
 	"stopnik/internal/server/validation"
 	"stopnik/internal/store"
 	"stopnik/log"
@@ -23,18 +22,16 @@ type introspectResponse struct {
 }
 
 type IntrospectHandler struct {
-	config            *config.Config
-	validator         *validation.RequestValidator
-	accessTokenStore  *store.Store[oauth2.AccessToken]
-	refreshTokenStore *store.Store[oauth2.RefreshToken]
+	config       *config.Config
+	validator    *validation.RequestValidator
+	tokenManager *store.TokenManager
 }
 
-func CreateIntrospectHandler(config *config.Config, validator *validation.RequestValidator, tokenStores *store.TokenStores[oauth2.AccessToken, oauth2.RefreshToken]) *IntrospectHandler {
+func CreateIntrospectHandler(config *config.Config, validator *validation.RequestValidator, tokenManager *store.TokenManager) *IntrospectHandler {
 	return &IntrospectHandler{
-		config:            config,
-		validator:         validator,
-		accessTokenStore:  tokenStores.AccessTokenStore,
-		refreshTokenStore: tokenStores.RefreshTokenStore,
+		config:       config,
+		validator:    validator,
+		tokenManager: tokenManager,
 	}
 }
 
@@ -48,7 +45,7 @@ func (handler *IntrospectHandler) ServeHTTP(w http.ResponseWriter, r *http.Reque
 		if !validClientCredentials {
 
 			// Fall back to access token with scopes
-			_, scopes, userExists := auth.AccessToken(handler.config, handler.accessTokenStore, r)
+			_, scopes, userExists := handler.tokenManager.ValidateAccessToken(r)
 			if !userExists {
 				ForbiddenHandler(w, r)
 				return
@@ -73,7 +70,7 @@ func (handler *IntrospectHandler) ServeHTTP(w http.ResponseWriter, r *http.Reque
 		introspectResponse := introspectResponse{}
 
 		if tokenTypeHint == "refresh_token" {
-			refreshToken, tokenExists := handler.refreshTokenStore.Get(token)
+			refreshToken, tokenExists := handler.tokenManager.GetRefreshToken(token)
 
 			introspectResponse.Active = tokenExists
 
@@ -83,7 +80,7 @@ func (handler *IntrospectHandler) ServeHTTP(w http.ResponseWriter, r *http.Reque
 				introspectResponse.Scope = strings.Join(refreshToken.Scopes, " ")
 			}
 		} else {
-			accessToken, tokenExists := handler.accessTokenStore.Get(token)
+			accessToken, tokenExists := handler.tokenManager.GetAccessToken(token)
 
 			introspectResponse.Active = tokenExists
 
