@@ -7,6 +7,7 @@ import (
 	"stopnik/internal/oauth2"
 	"stopnik/internal/server/auth"
 	"stopnik/internal/server/json"
+	"stopnik/internal/server/validation"
 	"stopnik/internal/store"
 	"stopnik/log"
 	"strings"
@@ -23,13 +24,15 @@ type introspectResponse struct {
 
 type IntrospectHandler struct {
 	config            *config.Config
+	validator         *validation.RequestValidator
 	accessTokenStore  *store.Store[oauth2.AccessToken]
 	refreshTokenStore *store.Store[oauth2.RefreshToken]
 }
 
-func CreateIntrospectHandler(config *config.Config, tokenStores *store.TokenStores[oauth2.AccessToken, oauth2.RefreshToken]) *IntrospectHandler {
+func CreateIntrospectHandler(config *config.Config, validator *validation.RequestValidator, tokenStores *store.TokenStores[oauth2.AccessToken, oauth2.RefreshToken]) *IntrospectHandler {
 	return &IntrospectHandler{
 		config:            config,
+		validator:         validator,
 		accessTokenStore:  tokenStores.AccessTokenStore,
 		refreshTokenStore: tokenStores.RefreshTokenStore,
 	}
@@ -41,7 +44,7 @@ func (handler *IntrospectHandler) ServeHTTP(w http.ResponseWriter, r *http.Reque
 	if r.Method == http.MethodPost {
 
 		// Check client credentials
-		client, validClientCredentials := auth.ClientCredentials(handler.config, r)
+		client, validClientCredentials := handler.validator.ValidateClientCredentials(r)
 		if !validClientCredentials {
 
 			// Fall back to access token with scopes

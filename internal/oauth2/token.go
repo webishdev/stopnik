@@ -31,6 +31,12 @@ type AccessTokenResponse struct {
 	RefreshTokenKey string    `json:"refresh_token,omitempty"`
 }
 
+type TokenGenerator struct {
+	config            *config.Config
+	accessTokenStore  *store.Store[AccessToken]
+	refreshTokenStore *store.Store[RefreshToken]
+}
+
 func CreateAccessTokenResponse(accessTokenStore *store.Store[AccessToken], refreshTokenStore *store.Store[RefreshToken], username string, client *config.Client, scopes []string) AccessTokenResponse {
 	log.Debug("Creating new access token for %s, access TTL %d, refresh TTL %d", client.Id, client.GetAccessTTL(), client.GetRefreshTTL())
 
@@ -69,4 +75,29 @@ func CreateAccessTokenResponse(accessTokenStore *store.Store[AccessToken], refre
 	}
 
 	return accessTokenResponse
+}
+
+type TokenGeneratorX interface {
+	GenerateAccessToken() string
+	GenerateRefreshToken() string
+}
+
+type OpaqueTokenGenerator struct {
+}
+
+func (otk OpaqueTokenGenerator) GenerateAccessToken(username string, client *config.Client, scopes []string) *AccessToken {
+	accessTokenId := uuid.New()
+	accessTokenKey := base64.RawURLEncoding.EncodeToString([]byte(accessTokenId.String()))
+	return &AccessToken{
+		Key:       accessTokenKey,
+		TokenType: TtBearer,
+		Username:  username,
+		ClientId:  client.Id,
+		Scopes:    scopes,
+	}
+}
+
+func (otk OpaqueTokenGenerator) GenerateOpaqueToken() string {
+	id := uuid.New()
+	return base64.RawURLEncoding.EncodeToString([]byte(id.String()))
 }

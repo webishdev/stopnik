@@ -1,28 +1,25 @@
 package handler
 
 import (
-	"crypto/sha512"
-	"fmt"
 	"net/http"
-	"stopnik/internal/config"
 	"stopnik/internal/oauth2"
 	"stopnik/internal/pkce"
-	"stopnik/internal/server/auth"
 	"stopnik/internal/server/json"
+	"stopnik/internal/server/validation"
 	"stopnik/internal/store"
 	"stopnik/log"
 )
 
 type TokenHandler struct {
-	config            *config.Config
+	validator         *validation.RequestValidator
 	authSessionStore  *store.Store[store.AuthSession]
 	accessTokenStore  *store.Store[oauth2.AccessToken]
 	refreshTokenStore *store.Store[oauth2.RefreshToken]
 }
 
-func CreateTokenHandler(config *config.Config, authSessionStore *store.Store[store.AuthSession], tokenStores *store.TokenStores[oauth2.AccessToken, oauth2.RefreshToken]) *TokenHandler {
+func CreateTokenHandler(validator *validation.RequestValidator, authSessionStore *store.Store[store.AuthSession], tokenStores *store.TokenStores[oauth2.AccessToken, oauth2.RefreshToken]) *TokenHandler {
 	return &TokenHandler{
-		config:            config,
+		validator:         validator,
 		authSessionStore:  authSessionStore,
 		accessTokenStore:  tokenStores.AccessTokenStore,
 		refreshTokenStore: tokenStores.RefreshTokenStore,
@@ -32,7 +29,7 @@ func CreateTokenHandler(config *config.Config, authSessionStore *store.Store[sto
 func (handler *TokenHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	log.AccessLogRequest(r)
 	if r.Method == http.MethodPost {
-		client, validClientCredentials := auth.ClientCredentials(handler.config, r)
+		client, validClientCredentials := handler.validator.ValidateClientCredentials(r)
 		// https://datatracker.ietf.org/doc/html/rfc6749#section-2.3.1
 		if !validClientCredentials {
 			ForbiddenHandler(w, r)
@@ -79,17 +76,12 @@ func (handler *TokenHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			usernameFrom := r.PostFormValue(oauth2.ParameterUsername)
 			passwordForm := r.PostFormValue(oauth2.ParameterPassword)
 
-			user, exists := handler.config.GetUser(usernameFrom)
+			user, exists := handler.validator.ValidateUserPassword(usernameFrom, passwordForm)
 			if !exists {
-				InternalServerErrorHandler(w, r)
-				return
-			}
-			passwordHash := fmt.Sprintf("%x", sha512.Sum512([]byte(passwordForm)))
-			if passwordHash != user.Password {
 				ForbiddenHandler(w, r)
 				return
 			}
-			username = usernameFrom
+			username = user.Username
 		}
 
 		if grantType == oauth2.GtRefreshToken && client.GetRefreshTTL() <= 0 {

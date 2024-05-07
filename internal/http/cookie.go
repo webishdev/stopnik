@@ -7,8 +7,16 @@ import (
 	"stopnik/log"
 )
 
-func DeleteCookie(config *config.Config) http.Cookie {
-	authCookieName := config.GetAuthCookieName()
+type CookieManager struct {
+	config *config.Config
+}
+
+func NewCookieManager(config *config.Config) *CookieManager {
+	return &CookieManager{config: config}
+}
+
+func (cookieManager *CookieManager) DeleteCookie() http.Cookie {
+	authCookieName := cookieManager.config.GetAuthCookieName()
 	return http.Cookie{
 		Name:     authCookieName,
 		Value:    "",
@@ -19,10 +27,10 @@ func DeleteCookie(config *config.Config) http.Cookie {
 	}
 }
 
-func CreateCookie(config *config.Config, username string) (http.Cookie, error) {
-	authCookieName := config.GetAuthCookieName()
+func (cookieManager *CookieManager) CreateCookie(username string) (http.Cookie, error) {
+	authCookieName := cookieManager.config.GetAuthCookieName()
 	log.Debug("Creating %s cookie", authCookieName)
-	value, err := crypto.EncryptString(username, config.GetServerSecret())
+	value, err := crypto.EncryptString(username, cookieManager.config.GetServerSecret())
 	if err != nil {
 		return http.Cookie{}, err
 	}
@@ -36,18 +44,18 @@ func CreateCookie(config *config.Config, username string) (http.Cookie, error) {
 	}, nil
 }
 
-func ValidateCookie(currentConfig *config.Config, r *http.Request) (*config.User, bool) {
-	authCookieName := currentConfig.GetAuthCookieName()
+func (cookieManager *CookieManager) ValidateCookie(r *http.Request) (*config.User, bool) {
+	authCookieName := cookieManager.config.GetAuthCookieName()
 	log.Debug("Validating %s cookie", authCookieName)
 	cookie, cookieError := r.Cookie(authCookieName)
 	if cookieError != nil {
 		return &config.User{}, false
 	} else {
-		username, err := crypto.DecryptString(cookie.Value, currentConfig.GetServerSecret())
+		username, err := crypto.DecryptString(cookie.Value, cookieManager.config.GetServerSecret())
 		if err != nil {
 			return &config.User{}, false
 		}
-		user, userExists := currentConfig.GetUser(username)
+		user, userExists := cookieManager.config.GetUser(username)
 		return user, userExists
 	}
 }

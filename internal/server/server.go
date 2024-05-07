@@ -6,8 +6,10 @@ import (
 	"net/http"
 	"os"
 	"stopnik/internal/config"
+	internalHttp "stopnik/internal/http"
 	"stopnik/internal/oauth2"
 	"stopnik/internal/server/handler"
+	"stopnik/internal/server/validation"
 	"stopnik/internal/store"
 	"stopnik/log"
 	"time"
@@ -36,17 +38,20 @@ func StartServer(config *config.Config) {
 		RefreshTokenStore: refreshTokenStore,
 	}
 
+	cookieManager := internalHttp.NewCookieManager(config)
+	requestValidator := validation.NewRequestValidator(config)
+
 	// Own
-	accountHandler := handler.CreateAccountHandler(config)
-	logoutHandler := handler.CreateLogoutHandler(config)
+	accountHandler := handler.CreateAccountHandler(requestValidator, cookieManager)
+	logoutHandler := handler.CreateLogoutHandler(cookieManager)
 
 	// OAuth2
-	authorizeHandler := handler.CreateAuthorizeHandler(config, authSessionStore, tokens)
-	tokenHandler := handler.CreateTokenHandler(config, authSessionStore, tokens)
+	authorizeHandler := handler.CreateAuthorizeHandler(requestValidator, cookieManager, authSessionStore, tokens)
+	tokenHandler := handler.CreateTokenHandler(requestValidator, authSessionStore, tokens)
 
 	// OAuth2 extensions
-	introspectHandler := handler.CreateIntrospectHandler(config, tokens)
-	revokeHandler := handler.CreateRevokeHandler(config, tokens)
+	introspectHandler := handler.CreateIntrospectHandler(config, requestValidator, tokens)
+	revokeHandler := handler.CreateRevokeHandler(config, requestValidator, tokens)
 
 	mux := http.NewServeMux()
 

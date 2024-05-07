@@ -6,11 +6,10 @@ import (
 	"net/http"
 	"net/url"
 	"regexp"
-	"stopnik/internal/config"
 	internalHttp "stopnik/internal/http"
 	"stopnik/internal/oauth2"
 	"stopnik/internal/pkce"
-	"stopnik/internal/server/auth"
+	"stopnik/internal/server/validation"
 	"stopnik/internal/store"
 	"stopnik/internal/template"
 	"stopnik/log"
@@ -18,15 +17,17 @@ import (
 )
 
 type AuthorizeHandler struct {
-	config            *config.Config
+	validator         *validation.RequestValidator
+	cookieManager     *internalHttp.CookieManager
 	authSessionStore  *store.Store[store.AuthSession]
 	accessTokenStore  *store.Store[oauth2.AccessToken]
 	refreshTokenStore *store.Store[oauth2.RefreshToken]
 }
 
-func CreateAuthorizeHandler(config *config.Config, authSessionStore *store.Store[store.AuthSession], tokenStores *store.TokenStores[oauth2.AccessToken, oauth2.RefreshToken]) *AuthorizeHandler {
+func CreateAuthorizeHandler(validator *validation.RequestValidator, cookieManager *internalHttp.CookieManager, authSessionStore *store.Store[store.AuthSession], tokenStores *store.TokenStores[oauth2.AccessToken, oauth2.RefreshToken]) *AuthorizeHandler {
 	return &AuthorizeHandler{
-		config:            config,
+		validator:         validator,
+		cookieManager:     cookieManager,
 		authSessionStore:  authSessionStore,
 		accessTokenStore:  tokenStores.AccessTokenStore,
 		refreshTokenStore: tokenStores.RefreshTokenStore,
@@ -37,7 +38,7 @@ func (handler *AuthorizeHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 	log.AccessLogRequest(r)
 	if r.Method == http.MethodGet {
 		clientId := r.URL.Query().Get(oauth2.ParameterClientId)
-		client, exists := handler.config.GetClient(clientId)
+		client, exists := handler.validator.ValidateClientId(clientId)
 		if !exists {
 			ForbiddenHandler(w, r)
 			return
@@ -105,7 +106,7 @@ func (handler *AuthorizeHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 
 		handler.authSessionStore.Set(id.String(), authSession)
 
-		user, validCookie := internalHttp.ValidateCookie(handler.config, r)
+		user, validCookie := handler.cookieManager.ValidateCookie(r)
 
 		if validCookie {
 			authSession.Username = user.Username
@@ -150,14 +151,14 @@ func (handler *AuthorizeHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 		}
 	} else if r.Method == http.MethodPost {
 		// Handle Post from Login
-		user, userExists := auth.UserBasicAuth(handler.config, r)
+		user, userExists := handler.validator.ValidateBasicAuth(r)
 		if !userExists {
 			w.Header().Set(internalHttp.Location, r.RequestURI)
 			w.WriteHeader(http.StatusSeeOther)
 			return
 		}
 
-		cookie, err := internalHttp.CreateCookie(handler.config, user.Username)
+		cookie, err := handler.cookieManager.CreateCookie(user.Username)
 		if err != nil {
 			InternalServerErrorHandler(w, r)
 			return
@@ -182,7 +183,7 @@ func (handler *AuthorizeHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 
 		query := redirectURL.Query()
 		if authSession.ResponseType == string(oauth2.RtToken) {
-			client, exists := handler.config.GetClient(authSession.ClientId)
+			client, exists := handler.validator.ValidateClientId(authSession.ClientId)
 			if !exists {
 				InternalServerErrorHandler(w, r)
 				return

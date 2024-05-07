@@ -6,19 +6,22 @@ import (
 	"stopnik/internal/config"
 	"stopnik/internal/oauth2"
 	"stopnik/internal/server/auth"
+	"stopnik/internal/server/validation"
 	"stopnik/internal/store"
 	"stopnik/log"
 )
 
 type RevokeHandler struct {
 	config            *config.Config
+	validator         *validation.RequestValidator
 	accessTokenStore  *store.Store[oauth2.AccessToken]
 	refreshTokenStore *store.Store[oauth2.RefreshToken]
 }
 
-func CreateRevokeHandler(config *config.Config, tokenStores *store.TokenStores[oauth2.AccessToken, oauth2.RefreshToken]) *RevokeHandler {
+func CreateRevokeHandler(config *config.Config, validator *validation.RequestValidator, tokenStores *store.TokenStores[oauth2.AccessToken, oauth2.RefreshToken]) *RevokeHandler {
 	return &RevokeHandler{
 		config:            config,
+		validator:         validator,
 		accessTokenStore:  tokenStores.AccessTokenStore,
 		refreshTokenStore: tokenStores.RefreshTokenStore,
 	}
@@ -30,7 +33,7 @@ func (handler *RevokeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 	if r.Method == http.MethodPost {
 
 		// Check client credentials
-		client, validClientCredentials := auth.ClientCredentials(handler.config, r)
+		client, validClientCredentials := handler.validator.ValidateClientCredentials(r)
 		if !validClientCredentials {
 
 			// Fall back to access token with scopes
