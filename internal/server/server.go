@@ -98,7 +98,7 @@ func StartServer(config *config.Config) {
 		go func() {
 			tlsListener, tlsListenError := net.Listen("tcp", config.Server.TLS.Addr)
 			if tlsListenError != nil {
-				log.Error("Failed to setup listener: %v", tlsListenError)
+				log.Error("Failed to setup TLS listener: %v", tlsListenError)
 				os.Exit(1)
 			}
 
@@ -111,7 +111,7 @@ func StartServer(config *config.Config) {
 				Handler:           main,
 			}
 
-			log.Info("Will accept connections at %s", httpsServer.Addr)
+			log.Info("Will accept TLS connections at %s", httpsServer.Addr)
 
 			tlsServerError := httpsServer.ServeTLS(tlsListener, config.Server.TLS.Cert, config.Server.TLS.Key)
 			if tlsServerError != nil {
