@@ -30,14 +30,15 @@ type User struct {
 }
 
 type Client struct {
-	Id         string   `yaml:"id"`
-	Secret     string   `yaml:"secret"`
-	ClientType string   `yaml:"type"`
-	AccessTTL  int      `yaml:"accessTTL"`
-	RefreshTTL int      `yaml:"refreshTTL"`
-	Introspect bool     `yaml:"introspect"`
-	Revoke     bool     `yaml:"revoke"`
-	Redirects  []string `yaml:"redirects"`
+	Id          string   `yaml:"id"`
+	Secret      string   `yaml:"secret"`
+	ClientType  string   `yaml:"type"`
+	AccessTTL   int      `yaml:"accessTTL"`
+	RefreshTTL  int      `yaml:"refreshTTL"`
+	Introspect  bool     `yaml:"introspect"`
+	Revoke      bool     `yaml:"revoke"`
+	Redirects   []string `yaml:"redirects"`
+	OpaqueToken bool     `yaml:"opaqueToken"`
 }
 
 type Config struct {

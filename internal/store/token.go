@@ -3,6 +3,7 @@ package store
 import (
 	"encoding/base64"
 	"fmt"
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 	"net/http"
 	"stopnik/internal/config"
@@ -46,8 +47,7 @@ func (tokenManager *TokenManager) RevokeRefreshToken(token string) {
 func (tokenManager *TokenManager) CreateAccessTokenResponse(username string, client *config.Client, scopes []string) oauth2.AccessTokenResponse {
 	log.Debug("Creating new access token for %s, access TTL %d, refresh TTL %d", client.Id, client.GetAccessTTL(), client.GetRefreshTTL())
 
-	accessTokenId := uuid.New()
-	accessTokenKey := base64.RawURLEncoding.EncodeToString([]byte(accessTokenId.String()))
+	accessTokenKey := tokenManager.generateToken(client)
 	accessToken := &oauth2.AccessToken{
 		Key:       accessTokenKey,
 		TokenType: oauth2.TtBearer,
@@ -65,8 +65,7 @@ func (tokenManager *TokenManager) CreateAccessTokenResponse(username string, cli
 	}
 
 	if client.GetRefreshTTL() > 0 {
-		refreshTokenId := uuid.New()
-		refreshTokenKey := base64.RawURLEncoding.EncodeToString([]byte(refreshTokenId.String()))
+		refreshTokenKey := tokenManager.generateToken(client)
 		refreshToken := &oauth2.RefreshToken{
 			Key:      refreshTokenKey,
 			Username: username,
@@ -105,4 +104,31 @@ func (tokenManager *TokenManager) ValidateAccessToken(r *http.Request) (*config.
 	}
 
 	return user, accessToken.Scopes, true
+}
+
+func (tokenManager *TokenManager) generateToken(client *config.Client) string {
+	if client.OpaqueToken {
+		return tokenManager.generateOpaqueToken()
+	}
+	return tokenManager.generateJWTToken()
+}
+
+func (tokenManager *TokenManager) generateOpaqueToken() string {
+	tokenId := uuid.New()
+	return base64.RawURLEncoding.EncodeToString([]byte(tokenId.String()))
+}
+
+// switch to github.com/golang-jwt/jwt/v5
+func (tokenManager *TokenManager) generateJWTToken() string {
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256,
+		jwt.MapClaims{
+			"exp": time.Now().Add(time.Hour * 24).Unix(),
+		})
+
+	tokenString, err := token.SignedString([]byte(tokenManager.config.GetServerSecret()))
+	if err != nil {
+		panic(err)
+	}
+
+	return tokenString
 }

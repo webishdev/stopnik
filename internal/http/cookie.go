@@ -1,9 +1,9 @@
 package http
 
 import (
+	"github.com/golang-jwt/jwt/v5"
 	"net/http"
 	"stopnik/internal/config"
-	"stopnik/internal/crypto"
 	"stopnik/log"
 )
 
@@ -30,7 +30,7 @@ func (cookieManager *CookieManager) DeleteCookie() http.Cookie {
 func (cookieManager *CookieManager) CreateCookie(username string) (http.Cookie, error) {
 	authCookieName := cookieManager.config.GetAuthCookieName()
 	log.Debug("Creating %s cookie", authCookieName)
-	value, err := crypto.EncryptString(username, cookieManager.config.GetServerSecret())
+	value, err := cookieManager.generateCookieValue(username)
 	if err != nil {
 		return http.Cookie{}, err
 	}
@@ -51,11 +51,36 @@ func (cookieManager *CookieManager) ValidateCookie(r *http.Request) (*config.Use
 	if cookieError != nil {
 		return &config.User{}, false
 	} else {
-		username, err := crypto.DecryptString(cookie.Value, cookieManager.config.GetServerSecret())
+		token, err := jwt.Parse(cookie.Value, func(token *jwt.Token) (interface{}, error) {
+			return []byte(cookieManager.config.GetServerSecret()), nil
+		})
+
 		if err != nil {
 			return &config.User{}, false
 		}
+
+		if !token.Valid {
+			return &config.User{}, false
+		}
+
+		// https://stackoverflow.com/a/61284284/4094586
+		claims := token.Claims.(jwt.MapClaims)
+		username := claims["username"].(string)
 		user, userExists := cookieManager.config.GetUser(username)
 		return user, userExists
 	}
+}
+
+func (cookieManager *CookieManager) generateCookieValue(username string) (string, error) {
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256,
+		jwt.MapClaims{
+			"username": username,
+		})
+
+	tokenString, err := token.SignedString([]byte(cookieManager.config.GetServerSecret()))
+	if err != nil {
+		return "", err
+	}
+
+	return tokenString, nil
 }
