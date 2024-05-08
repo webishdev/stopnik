@@ -5,8 +5,9 @@ import (
 	"crypto/tls"
 	"encoding/base64"
 	"fmt"
-	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
+	"github.com/lestrrat-go/jwx/v2/jwa"
+	"github.com/lestrrat-go/jwx/v2/jwt"
 	"net/http"
 	"stopnik/internal/config"
 	internalHttp "stopnik/internal/http"
@@ -136,32 +137,34 @@ func (tokenManager *TokenManager) generateOpaqueToken() string {
 }
 */
 func (tokenManager *TokenManager) generateJWTToken() string {
-	claims := jwt.MapClaims{
-		"exp": time.Now().Add(time.Hour * 24).Unix(),
+	token, builderError := jwt.NewBuilder().
+		Claim("foo", "bar").
+		Expiration(time.Now().Add(time.Hour * 24)).
+		Build()
+
+	if builderError != nil {
+		panic(builderError)
 	}
 	if tokenManager.config.Server.TokenCert == "" && tokenManager.config.Server.TokenKey == "" {
-		token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-
-		tokenString, err := token.SignedString([]byte(tokenManager.config.GetServerSecret()))
-		if err != nil {
-			panic(err)
+		tokenString, tokenError := jwt.Sign(token, jwt.WithKey(jwa.HS256, []byte(tokenManager.config.GetServerSecret())))
+		if tokenError != nil {
+			panic(tokenError)
 		}
 
-		return tokenString
+		return string(tokenString)
 	} else {
 		keyPair, pairError := tls.LoadX509KeyPair(tokenManager.config.Server.TokenCert, tokenManager.config.Server.TokenKey)
 		if pairError != nil {
 			panic(pairError)
 		}
 		key := keyPair.PrivateKey.(*rsa.PrivateKey)
-		token := jwt.NewWithClaims(jwt.SigningMethodRS256, claims)
 
-		tokenString, tokenError := token.SignedString(key)
+		tokenString, tokenError := jwt.Sign(token, jwt.WithKey(jwa.RS256, key))
 		if tokenError != nil {
 			panic(tokenError)
 		}
 
-		return tokenString
+		return string(tokenString)
 	}
 
 }
