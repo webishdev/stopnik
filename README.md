@@ -1,6 +1,6 @@
 <p align="center">
     <picture>
-      <img alt="STOPnik" title="STOPnik" src="docs/content/assets/stopnik_400.png">
+      <img alt="STOPnik" title="STOPnik" src="docs/content/assets/stopnik_250.png">
     </picture>
 </p>
 
