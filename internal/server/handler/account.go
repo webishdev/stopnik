@@ -24,9 +24,9 @@ func CreateAccountHandler(validator *validation.RequestValidator, cookieManager 
 func (handler *AccountHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	log.AccessLogRequest(r)
 	if r.Method == http.MethodGet {
-		_, validCookie := handler.cookieManager.ValidateCookie(r)
+		user, validCookie := handler.cookieManager.ValidateCookie(r)
 		if validCookie {
-			logoutTemplate := template.LogoutTemplate()
+			logoutTemplate := template.LogoutTemplate(user.Username, r.RequestURI)
 
 			_, err := w.Write(logoutTemplate.Bytes())
 			if err != nil {

@@ -121,6 +121,20 @@ func (tokenManager *TokenManager) generateOpaqueToken() string {
 }
 
 // switch to github.com/golang-jwt/jwt/v5
+// https://datatracker.ietf.org/doc/html/rfc9068
+// https://www.iana.org/assignments/jwt/jwt.xhtml
+/*
+{
+  "iss": "https://authorization-server.com/",
+  "exp": 1637344572,
+  "aud": "api://default",
+  "sub": "1000",
+  "client_id": "https://example-app.com",
+  "iat": 1637337372,
+  "jti": "1637337372.2051.620f5a3dc0ebaa097312",
+  "scope": "read write"
+}
+*/
 func (tokenManager *TokenManager) generateJWTToken() string {
 	claims := jwt.MapClaims{
 		"exp": time.Now().Add(time.Hour * 24).Unix(),

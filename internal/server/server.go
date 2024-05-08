@@ -34,7 +34,7 @@ func StartServer(config *config.Config) {
 
 	// Own
 	accountHandler := handler.CreateAccountHandler(requestValidator, cookieManager)
-	logoutHandler := handler.CreateLogoutHandler(cookieManager)
+	logoutHandler := handler.CreateLogoutHandler(cookieManager, config.Server.LogoutRedirect)
 
 	// OAuth2
 	authorizeHandler := handler.CreateAuthorizeHandler(requestValidator, cookieManager, sessionManager, tokenManager)

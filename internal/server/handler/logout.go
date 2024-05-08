@@ -7,12 +7,14 @@ import (
 )
 
 type LogoutHandler struct {
-	cookieManager *internalHttp.CookieManager
+	logoutRedirect string
+	cookieManager  *internalHttp.CookieManager
 }
 
-func CreateLogoutHandler(cookieManager *internalHttp.CookieManager) *LogoutHandler {
+func CreateLogoutHandler(cookieManager *internalHttp.CookieManager, logoutRedirect string) *LogoutHandler {
 	return &LogoutHandler{
-		cookieManager: cookieManager,
+		cookieManager:  cookieManager,
+		logoutRedirect: logoutRedirect,
 	}
 }
 
@@ -28,11 +30,13 @@ func (handler *LogoutHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 
 		http.SetCookie(w, &cookie)
 
-		//if handler.config.Server.LogoutRedirect == "" {
-		//	w.Header().Set(internalHttp.Location, r.URL.RequestURI())
-		//} else {
-		//	w.Header().Set(internalHttp.Location, handler.config.Server.LogoutRedirect)
-		//}
+		logoutRedirectFrom := r.PostFormValue("stopnik_logout_redirect")
+
+		if handler.logoutRedirect == "" {
+			w.Header().Set(internalHttp.Location, logoutRedirectFrom)
+		} else {
+			w.Header().Set(internalHttp.Location, handler.logoutRedirect)
+		}
 
 		w.WriteHeader(http.StatusSeeOther)
 	} else {
