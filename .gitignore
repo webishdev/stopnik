@@ -5,3 +5,5 @@
 # Project related
 build/
 bin/
+*.crt
+*.key

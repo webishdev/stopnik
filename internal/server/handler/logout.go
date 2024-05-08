@@ -2,38 +2,37 @@ package handler
 
 import (
 	"net/http"
-	"stopnik/internal/config"
-	httpHeader "stopnik/internal/http"
+	internalHttp "stopnik/internal/http"
 	"stopnik/log"
 )
 
 type LogoutHandler struct {
-	config *config.Config
+	cookieManager *internalHttp.CookieManager
 }
 
-func CreateLogoutHandler(config *config.Config) *LogoutHandler {
+func CreateLogoutHandler(cookieManager *internalHttp.CookieManager) *LogoutHandler {
 	return &LogoutHandler{
-		config: config,
+		cookieManager: cookieManager,
 	}
 }
 
 func (handler *LogoutHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	log.AccessLogRequest(r)
 	if r.Method == http.MethodPost {
-		_, validCookie := httpHeader.ValidateCookie(handler.config, r)
+		_, validCookie := handler.cookieManager.ValidateCookie(r)
 		if !validCookie {
 			ForbiddenHandler(w, r)
 			return
 		}
-		cookie := httpHeader.DeleteCookie(handler.config)
+		cookie := handler.cookieManager.DeleteCookie()
 
 		http.SetCookie(w, &cookie)
 
-		if handler.config.Server.LogoutRedirect == "" {
-			w.Header().Set(httpHeader.Location, r.URL.RequestURI())
-		} else {
-			w.Header().Set(httpHeader.Location, handler.config.Server.LogoutRedirect)
-		}
+		//if handler.config.Server.LogoutRedirect == "" {
+		//	w.Header().Set(internalHttp.Location, r.URL.RequestURI())
+		//} else {
+		//	w.Header().Set(internalHttp.Location, handler.config.Server.LogoutRedirect)
+		//}
 
 		w.WriteHeader(http.StatusSeeOther)
 	} else {

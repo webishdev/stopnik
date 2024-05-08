@@ -3,27 +3,28 @@ package handler
 import (
 	"github.com/google/uuid"
 	"net/http"
-	"stopnik/internal/config"
 	internalHttp "stopnik/internal/http"
-	"stopnik/internal/server/auth"
+	"stopnik/internal/server/validation"
 	"stopnik/internal/template"
 	"stopnik/log"
 )
 
 type AccountHandler struct {
-	config *config.Config
+	validator     *validation.RequestValidator
+	cookieManager *internalHttp.CookieManager
 }
 
-func CreateAccountHandler(config *config.Config) *AccountHandler {
+func CreateAccountHandler(validator *validation.RequestValidator, cookieManager *internalHttp.CookieManager) *AccountHandler {
 	return &AccountHandler{
-		config: config,
+		validator:     validator,
+		cookieManager: cookieManager,
 	}
 }
 
 func (handler *AccountHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	log.AccessLogRequest(r)
 	if r.Method == http.MethodGet {
-		_, validCookie := internalHttp.ValidateCookie(handler.config, r)
+		_, validCookie := handler.cookieManager.ValidateCookie(r)
 		if validCookie {
 			logoutTemplate := template.LogoutTemplate()
 
@@ -44,14 +45,14 @@ func (handler *AccountHandler) ServeHTTP(w http.ResponseWriter, r *http.Request)
 		}
 	} else if r.Method == http.MethodPost {
 		// Handle POST from login
-		user, userExists := auth.UserBasicAuth(handler.config, r)
+		user, userExists := handler.validator.ValidateBasicAuth(r)
 		if !userExists {
 			w.Header().Set(internalHttp.Location, r.RequestURI)
 			w.WriteHeader(http.StatusSeeOther)
 			return
 		}
 
-		cookie, err := internalHttp.CreateCookie(handler.config, user.Username)
+		cookie, err := handler.cookieManager.CreateCookie(user.Username)
 		if err != nil {
 			InternalServerErrorHandler(w, r)
 			return

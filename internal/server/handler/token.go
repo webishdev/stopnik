@@ -1,39 +1,33 @@
 package handler
 
 import (
-	"crypto/sha512"
-	"encoding/json"
-	"fmt"
 	"net/http"
-	"stopnik/internal/config"
 	internalHttp "stopnik/internal/http"
 	"stopnik/internal/oauth2"
 	"stopnik/internal/pkce"
-	"stopnik/internal/server/auth"
+	"stopnik/internal/server/validation"
 	"stopnik/internal/store"
 	"stopnik/log"
 )
 
 type TokenHandler struct {
-	config            *config.Config
-	authSessionStore  *store.Store[store.AuthSession]
-	accessTokenStore  *store.Store[oauth2.AccessToken]
-	refreshTokenStore *store.Store[oauth2.RefreshToken]
+	validator      *validation.RequestValidator
+	sessionManager *store.SessionManager
+	tokenManager   *store.TokenManager
 }
 
-func CreateTokenHandler(config *config.Config, authSessionStore *store.Store[store.AuthSession], tokenStores *store.TokenStores[oauth2.AccessToken, oauth2.RefreshToken]) *TokenHandler {
+func CreateTokenHandler(validator *validation.RequestValidator, sessionManager *store.SessionManager, tokenManager *store.TokenManager) *TokenHandler {
 	return &TokenHandler{
-		config:            config,
-		authSessionStore:  authSessionStore,
-		accessTokenStore:  tokenStores.AccessTokenStore,
-		refreshTokenStore: tokenStores.RefreshTokenStore,
+		validator:      validator,
+		sessionManager: sessionManager,
+		tokenManager:   tokenManager,
 	}
 }
 
 func (handler *TokenHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	log.AccessLogRequest(r)
 	if r.Method == http.MethodPost {
-		client, validClientCredentials := auth.ClientCredentials(handler.config, r)
+		client, validClientCredentials := handler.validator.ValidateClientCredentials(r)
 		// https://datatracker.ietf.org/doc/html/rfc6749#section-2.3.1
 		if !validClientCredentials {
 			ForbiddenHandler(w, r)
@@ -55,7 +49,7 @@ func (handler *TokenHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			codeVerifier := r.PostFormValue(pkce.ParameterCodeVerifier) // https://datatracker.ietf.org/doc/html/rfc7636#section-4.1
 			if codeVerifier != "" {
 				code := r.PostFormValue(oauth2.ParameterCode)
-				authSession, authSessionExists := handler.authSessionStore.Get(code)
+				authSession, authSessionExists := handler.sessionManager.GetSession(code)
 				if !authSessionExists {
 					ForbiddenHandler(w, r)
 					return
@@ -80,17 +74,12 @@ func (handler *TokenHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			usernameFrom := r.PostFormValue(oauth2.ParameterUsername)
 			passwordForm := r.PostFormValue(oauth2.ParameterPassword)
 
-			user, exists := handler.config.GetUser(usernameFrom)
+			user, exists := handler.validator.ValidateUserPassword(usernameFrom, passwordForm)
 			if !exists {
-				InternalServerErrorHandler(w, r)
-				return
-			}
-			passwordHash := fmt.Sprintf("%x", sha512.Sum512([]byte(passwordForm)))
-			if passwordHash != user.Password {
 				ForbiddenHandler(w, r)
 				return
 			}
-			username = usernameFrom
+			username = user.Username
 		}
 
 		if grantType == oauth2.GtRefreshToken && client.GetRefreshTTL() <= 0 {
@@ -98,7 +87,7 @@ func (handler *TokenHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		} else if grantType == oauth2.GtRefreshToken && client.GetRefreshTTL() > 0 {
 			refreshTokenForm := r.PostFormValue(oauth2.ParameterRefreshToken)
-			refreshToken, refreshTokenExists := handler.refreshTokenStore.Get(refreshTokenForm)
+			refreshToken, refreshTokenExists := handler.tokenManager.GetRefreshToken(refreshTokenForm)
 			if !refreshTokenExists {
 				ForbiddenHandler(w, r)
 				return
@@ -110,20 +99,14 @@ func (handler *TokenHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 
-		accessTokenResponse := oauth2.CreateAccessTokenResponse(handler.accessTokenStore, handler.refreshTokenStore, username, client, scopes)
+		accessTokenResponse := handler.tokenManager.CreateAccessTokenResponse(username, client, scopes)
 
-		bytes, tokenMarshalError := json.Marshal(accessTokenResponse)
-		if tokenMarshalError != nil {
+		jsonError := internalHttp.SendJson(accessTokenResponse, w)
+		if jsonError != nil {
 			InternalServerErrorHandler(w, r)
 			return
 		}
 
-		w.Header().Set(internalHttp.ContentType, internalHttp.ContentTypeJSON)
-		_, writeError := w.Write(bytes)
-		if writeError != nil {
-			InternalServerErrorHandler(w, r)
-			return
-		}
 	} else {
 		MethodNotAllowedHandler(w, r)
 		return

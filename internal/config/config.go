@@ -1,24 +1,26 @@
 package config
 
 import (
-	"fmt"
+	"crypto/rand"
 	"gopkg.in/yaml.v3"
-	"math/rand"
+	"math/big"
 	"os"
 	"stopnik/log"
-	"time"
 )
 
 type TLS struct {
-	Port int    `yaml:"port"`
+	Addr string `yaml:"addr"`
 	Cert string `yaml:"cert"`
 	Key  string `yaml:"key"`
 }
 
 type Server struct {
-	Port            int    `yaml:"port"`
+	LogLevel        string `yaml:"logLevel"`
+	Addr            string `yaml:"addr"`
 	AuthCookieName  string `yaml:"authCookieName"`
 	Secret          string `yaml:"secret"`
+	TokenCert       string `yaml:"tokenCert"`
+	TokenKey        string `yaml:"tokenKey"`
 	TLS             TLS    `yaml:"tls"`
 	LogoutRedirect  string `yaml:"logoutRedirect"`
 	IntrospectScope string `yaml:"introspectScope"`
@@ -30,14 +32,15 @@ type User struct {
 }
 
 type Client struct {
-	Id         string   `yaml:"id"`
-	Secret     string   `yaml:"secret"`
-	ClientType string   `yaml:"type"`
-	AccessTTL  int      `yaml:"accessTTL"`
-	RefreshTTL int      `yaml:"refreshTTL"`
-	Introspect bool     `yaml:"introspect"`
-	Revoke     bool     `yaml:"revoke"`
-	Redirects  []string `yaml:"redirects"`
+	Id          string   `yaml:"id"`
+	Secret      string   `yaml:"secret"`
+	ClientType  string   `yaml:"type"`
+	AccessTTL   int      `yaml:"accessTTL"`
+	RefreshTTL  int      `yaml:"refreshTTL"`
+	Introspect  bool     `yaml:"introspect"`
+	Revoke      bool     `yaml:"revoke"`
+	Redirects   []string `yaml:"redirects"`
+	OpaqueToken bool     `yaml:"opaqueToken"`
 }
 
 type Config struct {
@@ -72,11 +75,29 @@ func LoadConfig(name string) Config {
 		return client.Id
 	})
 
-	rand.NewSource(time.Now().UnixNano())
-	generatedSecret := fmt.Sprintf("default_%d", rand.Int())
+	randomString, randomError := generateRandomString(16)
+	if randomError != nil {
+		log.Error("Could not generate random secret: %v", randomError)
+		os.Exit(1)
+	}
+	generatedSecret := randomString
 	config.generatedSecret = generatedSecret
 
 	return config
+}
+
+func generateRandomString(n int) (string, error) {
+	const letters = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz-"
+	ret := make([]byte, n)
+	for i := 0; i < n; i++ {
+		num, err := rand.Int(rand.Reader, big.NewInt(int64(len(letters))))
+		if err != nil {
+			return "", err
+		}
+		ret[i] = letters[num.Int64()]
+	}
+
+	return string(ret), nil
 }
 
 func setup[T any](values *[]T, accessor func(T) string) map[string]*T {

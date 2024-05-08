@@ -6,11 +6,10 @@ import (
 	"net/http"
 	"net/url"
 	"regexp"
-	"stopnik/internal/config"
 	internalHttp "stopnik/internal/http"
 	"stopnik/internal/oauth2"
 	"stopnik/internal/pkce"
-	"stopnik/internal/server/auth"
+	"stopnik/internal/server/validation"
 	"stopnik/internal/store"
 	"stopnik/internal/template"
 	"stopnik/log"
@@ -18,18 +17,18 @@ import (
 )
 
 type AuthorizeHandler struct {
-	config            *config.Config
-	authSessionStore  *store.Store[store.AuthSession]
-	accessTokenStore  *store.Store[oauth2.AccessToken]
-	refreshTokenStore *store.Store[oauth2.RefreshToken]
+	validator      *validation.RequestValidator
+	cookieManager  *internalHttp.CookieManager
+	sessionManager *store.SessionManager
+	tokenManager   *store.TokenManager
 }
 
-func CreateAuthorizeHandler(config *config.Config, authSessionStore *store.Store[store.AuthSession], tokenStores *store.TokenStores[oauth2.AccessToken, oauth2.RefreshToken]) *AuthorizeHandler {
+func CreateAuthorizeHandler(validator *validation.RequestValidator, cookieManager *internalHttp.CookieManager, sessionManager *store.SessionManager, tokenManager *store.TokenManager) *AuthorizeHandler {
 	return &AuthorizeHandler{
-		config:            config,
-		authSessionStore:  authSessionStore,
-		accessTokenStore:  tokenStores.AccessTokenStore,
-		refreshTokenStore: tokenStores.RefreshTokenStore,
+		validator:      validator,
+		cookieManager:  cookieManager,
+		sessionManager: sessionManager,
+		tokenManager:   tokenManager,
 	}
 }
 
@@ -37,7 +36,7 @@ func (handler *AuthorizeHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 	log.AccessLogRequest(r)
 	if r.Method == http.MethodGet {
 		clientId := r.URL.Query().Get(oauth2.ParameterClientId)
-		client, exists := handler.config.GetClient(clientId)
+		client, exists := handler.validator.ValidateClientId(clientId)
 		if !exists {
 			ForbiddenHandler(w, r)
 			return
@@ -93,6 +92,7 @@ func (handler *AuthorizeHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 
 		id := uuid.New()
 		authSession := &store.AuthSession{
+			Id:                  id.String(),
 			Redirect:            redirect,
 			AuthURI:             r.URL.RequestURI(),
 			CodeChallenge:       codeChallenge,
@@ -103,9 +103,9 @@ func (handler *AuthorizeHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 			State:               state,
 		}
 
-		handler.authSessionStore.Set(id.String(), authSession)
+		handler.sessionManager.StartSession(authSession)
 
-		user, validCookie := internalHttp.ValidateCookie(handler.config, r)
+		user, validCookie := handler.cookieManager.ValidateCookie(r)
 
 		if validCookie {
 			authSession.Username = user.Username
@@ -118,7 +118,7 @@ func (handler *AuthorizeHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 			query := redirectURL.Query()
 
 			if responseType == oauth2.RtToken {
-				accessTokenResponse := oauth2.CreateAccessTokenResponse(handler.accessTokenStore, handler.refreshTokenStore, user.Username, client, scopes)
+				accessTokenResponse := handler.tokenManager.CreateAccessTokenResponse(user.Username, client, scopes)
 				query.Add(oauth2.ParameterAccessToken, accessTokenResponse.AccessTokenKey)
 				query.Add(oauth2.ParameterTokenType, string(accessTokenResponse.TokenType))
 				query.Add(oauth2.ParameterExpiresIn, fmt.Sprintf("%d", accessTokenResponse.ExpiresIn))
@@ -140,7 +140,7 @@ func (handler *AuthorizeHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 			query := r.URL.Query()
 			encodedQuery := query.Encode()
 			formAction := fmt.Sprintf("authorize?%s", encodedQuery)
-			loginTemplate := template.LoginTemplate(id.String(), formAction)
+			loginTemplate := template.LoginTemplate(authSession.Id, formAction)
 
 			_, err := w.Write(loginTemplate.Bytes())
 			if err != nil {
@@ -150,14 +150,14 @@ func (handler *AuthorizeHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 		}
 	} else if r.Method == http.MethodPost {
 		// Handle Post from Login
-		user, userExists := auth.UserBasicAuth(handler.config, r)
+		user, userExists := handler.validator.ValidateBasicAuth(r)
 		if !userExists {
 			w.Header().Set(internalHttp.Location, r.RequestURI)
 			w.WriteHeader(http.StatusSeeOther)
 			return
 		}
 
-		cookie, err := internalHttp.CreateCookie(handler.config, user.Username)
+		cookie, err := handler.cookieManager.CreateCookie(user.Username)
 		if err != nil {
 			InternalServerErrorHandler(w, r)
 			return
@@ -166,7 +166,7 @@ func (handler *AuthorizeHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 		http.SetCookie(w, &cookie)
 
 		authSessionForm := r.PostFormValue("stopnik_auth_session")
-		authSession, exists := handler.authSessionStore.Get(authSessionForm)
+		authSession, exists := handler.sessionManager.GetSession(authSessionForm)
 		if !exists {
 			w.Header().Set(internalHttp.Location, r.RequestURI)
 			w.WriteHeader(http.StatusSeeOther)
@@ -182,12 +182,12 @@ func (handler *AuthorizeHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 
 		query := redirectURL.Query()
 		if authSession.ResponseType == string(oauth2.RtToken) {
-			client, exists := handler.config.GetClient(authSession.ClientId)
+			client, exists := handler.validator.ValidateClientId(authSession.ClientId)
 			if !exists {
 				InternalServerErrorHandler(w, r)
 				return
 			}
-			accessTokenResponse := oauth2.CreateAccessTokenResponse(handler.accessTokenStore, handler.refreshTokenStore, user.Username, client, authSession.Scopes)
+			accessTokenResponse := handler.tokenManager.CreateAccessTokenResponse(user.Username, client, authSession.Scopes)
 			query.Add(oauth2.ParameterAccessToken, accessTokenResponse.AccessTokenKey)
 			query.Add(oauth2.ParameterTokenType, string(accessTokenResponse.TokenType))
 			query.Add(oauth2.ParameterExpiresIn, fmt.Sprintf("%d", accessTokenResponse.ExpiresIn))

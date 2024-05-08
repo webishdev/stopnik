@@ -1,15 +1,16 @@
 package server
 
 import (
-	"fmt"
 	"net"
 	"net/http"
 	"os"
 	"stopnik/internal/config"
-	"stopnik/internal/oauth2"
+	internalHttp "stopnik/internal/http"
 	"stopnik/internal/server/handler"
+	"stopnik/internal/server/validation"
 	"stopnik/internal/store"
 	"stopnik/log"
+	"time"
 )
 
 type mainHandler struct {
@@ -26,26 +27,22 @@ func (mh mainHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func StartServer(config *config.Config) {
-	authSessionStore := store.NewCache[store.AuthSession]()
-	accessTokenStore := store.NewCache[oauth2.AccessToken]()
-	refreshTokenStore := store.NewCache[oauth2.RefreshToken]()
-
-	tokens := &store.TokenStores[oauth2.AccessToken, oauth2.RefreshToken]{
-		AccessTokenStore:  accessTokenStore,
-		RefreshTokenStore: refreshTokenStore,
-	}
+	sessionManager := store.NewSessionManager(config)
+	tokenManager := store.NewTokenManager(config)
+	cookieManager := internalHttp.NewCookieManager(config)
+	requestValidator := validation.NewRequestValidator(config)
 
 	// Own
-	accountHandler := handler.CreateAccountHandler(config)
-	logoutHandler := handler.CreateLogoutHandler(config)
+	accountHandler := handler.CreateAccountHandler(requestValidator, cookieManager)
+	logoutHandler := handler.CreateLogoutHandler(cookieManager)
 
 	// OAuth2
-	authorizeHandler := handler.CreateAuthorizeHandler(config, authSessionStore, tokens)
-	tokenHandler := handler.CreateTokenHandler(config, authSessionStore, tokens)
+	authorizeHandler := handler.CreateAuthorizeHandler(requestValidator, cookieManager, sessionManager, tokenManager)
+	tokenHandler := handler.CreateTokenHandler(requestValidator, sessionManager, tokenManager)
 
 	// OAuth2 extensions
-	introspectHandler := handler.CreateIntrospectHandler(config, tokens)
-	revokeHandler := handler.CreateRevokeHandler(config, tokens)
+	introspectHandler := handler.CreateIntrospectHandler(config, requestValidator, tokenManager)
+	revokeHandler := handler.CreateRevokeHandler(config, requestValidator, tokenManager)
 
 	mux := http.NewServeMux()
 
@@ -55,7 +52,7 @@ func StartServer(config *config.Config) {
 	}
 
 	// Server
-	mux.Handle("/", &handler.HomeHandler{})
+	mux.Handle("/health", &handler.HealthHandler{})
 	mux.Handle("/account", accountHandler)
 	mux.Handle("/logout", logoutHandler)
 
@@ -67,17 +64,63 @@ func StartServer(config *config.Config) {
 	mux.Handle("/introspect", introspectHandler)
 	mux.Handle("/revoke", revokeHandler)
 
-	listener, listenError := net.Listen("tcp", fmt.Sprintf(":%d", config.Server.Port))
-	if listenError != nil {
-		log.Error("Failed to setup listener: %v", listenError)
-		os.Exit(1)
+	var readHeaderTimeout = 15 * time.Second
+	var readTimeout = 15 * time.Second
+	var writeTimeout = 10 * time.Second
+	var idleTimeout = 30 * time.Second
+
+	go func() {
+		listener, listenError := net.Listen("tcp", config.Server.Addr)
+		if listenError != nil {
+			log.Error("Failed to setup listener: %v", listenError)
+			os.Exit(1)
+		}
+
+		httpServer := &http.Server{
+			Addr:              listener.Addr().String(),
+			ReadHeaderTimeout: readHeaderTimeout,
+			ReadTimeout:       readTimeout,
+			WriteTimeout:      writeTimeout,
+			IdleTimeout:       idleTimeout,
+			Handler:           main,
+		}
+
+		log.Info("Will accept connections at %s", httpServer.Addr)
+
+		errorServer := httpServer.Serve(listener)
+		if errorServer != nil {
+			log.Error("Failed to start server: %v", errorServer)
+			os.Exit(1)
+		}
+	}()
+
+	if config.Server.TLS.Addr != "" {
+		go func() {
+			tlsListener, tlsListenError := net.Listen("tcp", config.Server.TLS.Addr)
+			if tlsListenError != nil {
+				log.Error("Failed to setup TLS listener: %v", tlsListenError)
+				os.Exit(1)
+			}
+
+			httpsServer := &http.Server{
+				Addr:              tlsListener.Addr().String(),
+				ReadHeaderTimeout: readHeaderTimeout,
+				ReadTimeout:       readTimeout,
+				WriteTimeout:      writeTimeout,
+				IdleTimeout:       idleTimeout,
+				Handler:           main,
+			}
+
+			log.Info("Will accept TLS connections at %s", httpsServer.Addr)
+
+			tlsServerError := httpsServer.ServeTLS(tlsListener, config.Server.TLS.Cert, config.Server.TLS.Key)
+			if tlsServerError != nil {
+				log.Error("Failed to start TLS server: %v", tlsServerError)
+				os.Exit(1)
+			}
+		}()
 	}
 
-	log.Info("Will accept connections at %s", listener.Addr().String())
+	select {}
 
-	errorServer := http.Serve(listener, main)
-	if errorServer != nil {
-		log.Error("Failed to start server: %v", errorServer)
-		os.Exit(1)
-	}
 }
