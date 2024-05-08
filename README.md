@@ -1,8 +1,8 @@
-<div style="text-align: center">
+<p align="center">
     <picture>
       <img alt="STOPnik" title="STOPnik" src="docs/content/assets/stopnik_400.png">
     </picture>
-</div>
+</p>
 
 # STOPnik
 
