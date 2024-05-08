@@ -1,15 +1,19 @@
 {{ template "header" }}
-<h1>foo & bar</h1>
-<form method="POST" action="{{.Action}}">
-    <label>
-        Username
-        <input type="text" name="stopnik_username" />
-    </label>
-    <label>
-        Password
-        <input type="password" name="stopnik_password" />
-    </label>
-    <input type="hidden" name="stopnik_auth_session" value="{{.Token}}" />
-    <button type="submit">Login</button>
-</form>
+<main>
+    <form method="POST" action="{{.Action}}">
+        <input type="hidden" name="stopnik_auth_session" value="{{.Token}}" />
+        <div class="logo"><img src="assets/stopnik_250.png" title="STOPnik mascot" alt="STOPnik mascot" /></div>
+        <div class="input">
+            <label for="stopnik_username">Username</label>
+            <input id="stopnik_username" type="text" name="stopnik_username" />
+        </div>
+        <div class="input">
+            <label for="stopnik_password">Password</label>
+            <input id="stopnik_password" type="password" name="stopnik_password" />
+        </div>
+        <div class="input">
+            <button type="submit">Login</button>
+        </div>
+    </form>
+</main>
 {{ template "footer" }}

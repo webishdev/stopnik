@@ -60,7 +60,7 @@ func LoginTemplate(id string, action string) bytes.Buffer {
 	return tpl
 }
 
-func LogoutTemplate() bytes.Buffer {
+func LogoutTemplate(username string, requestURI string) bytes.Buffer {
 	var tpl bytes.Buffer
 
 	logoutTemplate, loginParseError := template.New("logout").Parse(string(logoutHtml))
@@ -70,7 +70,15 @@ func LogoutTemplate() bytes.Buffer {
 
 	addTemplates(logoutTemplate)
 
-	templateExecuteError := logoutTemplate.Execute(&tpl, nil)
+	data := struct {
+		Username   string
+		RequestURI string
+	}{
+		Username:   username,
+		RequestURI: requestURI,
+	}
+
+	templateExecuteError := logoutTemplate.Execute(&tpl, data)
 	if templateExecuteError != nil {
 		panic(templateExecuteError)
 	}
