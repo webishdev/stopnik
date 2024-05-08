@@ -137,12 +137,15 @@ func (tokenManager *TokenManager) generateOpaqueToken() string {
 }
 */
 func (tokenManager *TokenManager) generateJWTToken() string {
-	if tokenManager.config.Server.TokenCert == "" && tokenManager.config.Server.TokenKey == "" {
-		token, builderError := jwt.NewBuilder().Claim("foo", "bar").Expiration(time.Now().Add(time.Hour * 24)).Build()
-		if builderError != nil {
-			panic(builderError)
-		}
+	token, builderError := jwt.NewBuilder().
+		Claim("foo", "bar").
+		Expiration(time.Now().Add(time.Hour * 24)).
+		Build()
 
+	if builderError != nil {
+		panic(builderError)
+	}
+	if tokenManager.config.Server.TokenCert == "" && tokenManager.config.Server.TokenKey == "" {
 		tokenString, tokenError := jwt.Sign(token, jwt.WithKey(jwa.HS256, []byte(tokenManager.config.GetServerSecret())))
 		if tokenError != nil {
 			panic(tokenError)
@@ -155,11 +158,6 @@ func (tokenManager *TokenManager) generateJWTToken() string {
 			panic(pairError)
 		}
 		key := keyPair.PrivateKey.(*rsa.PrivateKey)
-
-		token, builderError := jwt.NewBuilder().Claim("foo", "bar").Expiration(time.Now().Add(time.Hour * 24)).Build()
-		if builderError != nil {
-			panic(builderError)
-		}
 
 		tokenString, tokenError := jwt.Sign(token, jwt.WithKey(jwa.RS256, key))
 		if tokenError != nil {
