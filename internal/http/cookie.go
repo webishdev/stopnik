@@ -1,7 +1,9 @@
 package http
 
 import (
-	"github.com/golang-jwt/jwt/v5"
+	"fmt"
+	"github.com/lestrrat-go/jwx/v2/jwa"
+	"github.com/lestrrat-go/jwx/v2/jwt"
 	"net/http"
 	"stopnik/internal/config"
 	"stopnik/log"
@@ -51,36 +53,32 @@ func (cookieManager *CookieManager) ValidateCookie(r *http.Request) (*config.Use
 	if cookieError != nil {
 		return &config.User{}, false
 	} else {
-		token, err := jwt.Parse(cookie.Value, func(token *jwt.Token) (interface{}, error) {
-			return []byte(cookieManager.config.GetServerSecret()), nil
-		})
-
+		token, err := jwt.Parse([]byte(cookie.Value), jwt.WithKey(jwa.HS256, []byte(cookieManager.config.GetServerSecret())))
 		if err != nil {
 			return &config.User{}, false
 		}
 
-		if !token.Valid {
+		// https://stackoverflow.com/a/61284284/4094586
+		username, exists := token.PrivateClaims()["username"]
+		log.Debug("foo %s", username)
+		if !exists {
 			return &config.User{}, false
 		}
-
-		// https://stackoverflow.com/a/61284284/4094586
-		claims := token.Claims.(jwt.MapClaims)
-		username := claims["username"].(string)
-		user, userExists := cookieManager.config.GetUser(username)
+		user, userExists := cookieManager.config.GetUser(fmt.Sprintf("%v", username))
 		return user, userExists
 	}
 }
 
 func (cookieManager *CookieManager) generateCookieValue(username string) (string, error) {
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256,
-		jwt.MapClaims{
-			"username": username,
-		})
-
-	tokenString, err := token.SignedString([]byte(cookieManager.config.GetServerSecret()))
-	if err != nil {
-		return "", err
+	token, builderError := jwt.NewBuilder().Claim("username", "username").Build()
+	if builderError != nil {
+		return "", builderError
 	}
 
-	return tokenString, nil
+	tokenString, tokenError := jwt.Sign(token, jwt.WithKey(jwa.HS256, []byte(cookieManager.config.GetServerSecret())))
+	if tokenError != nil {
+		return "", tokenError
+	}
+
+	return string(tokenString), nil
 }
