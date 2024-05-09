@@ -70,7 +70,7 @@ func (cookieManager *CookieManager) ValidateCookie(r *http.Request) (*config.Use
 }
 
 func (cookieManager *CookieManager) generateCookieValue(username string) (string, error) {
-	token, builderError := jwt.NewBuilder().Claim("username", "username").Build()
+	token, builderError := jwt.NewBuilder().Claim("username", username).Build()
 	if builderError != nil {
 		return "", builderError
 	}
