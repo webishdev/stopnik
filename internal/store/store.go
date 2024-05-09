@@ -6,19 +6,6 @@ import (
 	"time"
 )
 
-type AuthSession struct {
-	Id                  string
-	Redirect            string
-	AuthURI             string
-	CodeChallenge       string
-	CodeChallengeMethod string
-	ResponseType        string
-	Username            string
-	ClientId            string
-	Scopes              []string
-	State               string
-}
-
 type expiringType[T any] struct {
 	value      T
 	expireDate time.Time
@@ -29,11 +16,6 @@ type Store[T any] struct {
 	mux      sync.RWMutex
 	ticker   *time.Ticker
 	duration time.Duration
-}
-
-type TokenStores[A any, R any] struct {
-	AccessTokenStore  *Store[A]
-	RefreshTokenStore *Store[R]
 }
 
 func NewCache[T any]() *Store[T] {

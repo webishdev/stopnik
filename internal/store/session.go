@@ -4,6 +4,19 @@ import (
 	"stopnik/internal/config"
 )
 
+type AuthSession struct {
+	Id                  string
+	Redirect            string
+	AuthURI             string
+	CodeChallenge       string
+	CodeChallengeMethod string
+	ResponseType        string
+	Username            string
+	ClientId            string
+	Scopes              []string
+	State               string
+}
+
 type SessionManager struct {
 	config           *config.Config
 	authSessionStore *Store[AuthSession]
