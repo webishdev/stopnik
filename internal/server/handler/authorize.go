@@ -66,13 +66,11 @@ func (handler *AuthorizeHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 
 		if redirectCount > 0 {
 			matchesRedirect := false
-			for i := 0; i < redirectCount; i++ {
-				clientRedirect := client.Redirects[i]
-				wildcards := strings.Count(clientRedirect, "*")
-				if wildcards == 1 {
-					clientRedirect = strings.Replace(clientRedirect, "*", ".*", -1)
-				} else if wildcards > 1 {
-					continue
+			for redirectIndex := range redirectCount {
+				clientRedirect := client.Redirects[redirectIndex]
+				endsWithWildcard := strings.HasSuffix(clientRedirect, "*")
+				if endsWithWildcard {
+					clientRedirect = strings.Replace(clientRedirect, "*", ".*", 1)
 				}
 				clientRedirect = fmt.Sprintf("^%s$", clientRedirect)
 				matched, regexError := regexp.MatchString(clientRedirect, redirect)
