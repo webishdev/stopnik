@@ -31,6 +31,11 @@ type User struct {
 	Password string `yaml:"password"`
 }
 
+type Claim struct {
+	Name  string `yaml:"name"`
+	Value string `yaml:"value"`
+}
+
 type Client struct {
 	Id          string   `yaml:"id"`
 	Secret      string   `yaml:"secret"`
@@ -41,6 +46,9 @@ type Client struct {
 	Revoke      bool     `yaml:"revoke"`
 	Redirects   []string `yaml:"redirects"`
 	OpaqueToken bool     `yaml:"opaqueToken"`
+	Claims      []Claim  `yaml:"claims"`
+	Issuer      string   `yaml:"issuer"`
+	Audience    []string `yaml:"audience"`
 }
 
 type Config struct {
@@ -123,6 +131,14 @@ func GetOrDefaultString(value string, defaultValue string) string {
 	}
 }
 
+func GetOrDefaultStringSlice(value []string, defaultValue []string) []string {
+	if len(value) == 0 {
+		return defaultValue
+	} else {
+		return value
+	}
+}
+
 func GetOrDefaultInt(value int, defaultValue int) int {
 	if value == 0 {
 		return defaultValue
@@ -163,4 +179,12 @@ func (client *Client) GetAccessTTL() int {
 
 func (client *Client) GetRefreshTTL() int {
 	return GetOrDefaultInt(client.RefreshTTL, 0)
+}
+
+func (client *Client) GetIssuer() string {
+	return GetOrDefaultString(client.Issuer, "STOPnik")
+}
+
+func (client *Client) GetAudience() []string {
+	return GetOrDefaultStringSlice(client.Audience, []string{"all"})
 }

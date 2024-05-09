@@ -50,7 +50,8 @@ func (tokenManager *TokenManager) RevokeRefreshToken(token string) {
 func (tokenManager *TokenManager) CreateAccessTokenResponse(username string, client *config.Client, scopes []string) oauth2.AccessTokenResponse {
 	log.Debug("Creating new access token for %s, access TTL %d, refresh TTL %d", client.Id, client.GetAccessTTL(), client.GetRefreshTTL())
 
-	accessTokenKey := tokenManager.generateToken(client)
+	accessTokenDuration := time.Minute * time.Duration(client.GetRefreshTTL())
+	accessTokenKey := tokenManager.generateToken(username, client, accessTokenDuration)
 	accessToken := &oauth2.AccessToken{
 		Key:       accessTokenKey,
 		TokenType: oauth2.TtBearer,
@@ -58,7 +59,7 @@ func (tokenManager *TokenManager) CreateAccessTokenResponse(username string, cli
 		ClientId:  client.Id,
 		Scopes:    scopes,
 	}
-	accessTokenDuration := time.Minute * time.Duration(client.GetRefreshTTL())
+
 	tokenManager.accessTokenStore.SetWithDuration(accessTokenKey, accessToken, accessTokenDuration)
 
 	accessTokenResponse := oauth2.AccessTokenResponse{
@@ -68,7 +69,8 @@ func (tokenManager *TokenManager) CreateAccessTokenResponse(username string, cli
 	}
 
 	if client.GetRefreshTTL() > 0 {
-		refreshTokenKey := tokenManager.generateToken(client)
+		refreshTokenDuration := time.Minute * time.Duration(client.GetRefreshTTL())
+		refreshTokenKey := tokenManager.generateToken(username, client, refreshTokenDuration)
 		refreshToken := &oauth2.RefreshToken{
 			Key:      refreshTokenKey,
 			Username: username,
@@ -76,7 +78,6 @@ func (tokenManager *TokenManager) CreateAccessTokenResponse(username string, cli
 			Scopes:   scopes,
 		}
 
-		refreshTokenDuration := time.Minute * time.Duration(client.GetRefreshTTL())
 		tokenManager.refreshTokenStore.SetWithDuration(refreshTokenKey, refreshToken, refreshTokenDuration)
 
 		accessTokenResponse.RefreshTokenKey = refreshTokenKey
@@ -109,16 +110,16 @@ func (tokenManager *TokenManager) ValidateAccessToken(r *http.Request) (*config.
 	return user, accessToken.Scopes, true
 }
 
-func (tokenManager *TokenManager) generateToken(client *config.Client) string {
+func (tokenManager *TokenManager) generateToken(username string, client *config.Client, duration time.Duration) string {
+	tokenId := uuid.New()
 	if client.OpaqueToken {
-		return tokenManager.generateOpaqueToken()
+		return tokenManager.generateOpaqueToken(tokenId.String())
 	}
-	return tokenManager.generateJWTToken()
+	return tokenManager.generateJWTToken(tokenId.String(), duration, username, client)
 }
 
-func (tokenManager *TokenManager) generateOpaqueToken() string {
-	tokenId := uuid.New()
-	return base64.RawURLEncoding.EncodeToString([]byte(tokenId.String()))
+func (tokenManager *TokenManager) generateOpaqueToken(tokenId string) string {
+	return base64.RawURLEncoding.EncodeToString([]byte(tokenId))
 }
 
 // switch to github.com/golang-jwt/jwt/v5
@@ -136,11 +137,29 @@ func (tokenManager *TokenManager) generateOpaqueToken() string {
   "scope": "read write"
 }
 */
-func (tokenManager *TokenManager) generateJWTToken() string {
-	token, builderError := jwt.NewBuilder().
-		Claim("foo", "bar").
-		Expiration(time.Now().Add(time.Hour * 24)).
-		Build()
+func (tokenManager *TokenManager) generateJWTToken(tokenId string, duration time.Duration, username string, client *config.Client) string {
+	builder := jwt.NewBuilder().
+		Expiration(time.Now().Add(duration)). // https://www.rfc-editor.org/rfc/rfc7519.html#section-4.1.4
+		IssuedAt(time.Now())                  // https://www.rfc-editor.org/rfc/rfc7519.html#section-4.1.6
+
+	for claimIndex := range client.Claims {
+		claim := client.Claims[claimIndex]
+		builder.Claim(claim.Name, claim.Value)
+	}
+
+	// https://www.rfc-editor.org/rfc/rfc7519.html#section-4.1.7
+	builder.JwtID(tokenId)
+
+	// https://www.rfc-editor.org/rfc/rfc7519.html#section-4.1.1
+	builder.Issuer(client.GetIssuer())
+
+	// https://www.rfc-editor.org/rfc/rfc7519.html#section-4.1.2
+	builder.Subject(username)
+
+	// https://www.rfc-editor.org/rfc/rfc7519.html#section-4.1.3
+	builder.Audience(client.GetAudience())
+
+	token, builderError := builder.Build()
 
 	if builderError != nil {
 		panic(builderError)
