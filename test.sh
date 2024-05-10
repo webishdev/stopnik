@@ -1,5 +1,6 @@
 #!/bin/bash
 
+set -euo pipefail
 
 COVERAGE_DIR=test_coverage
 
