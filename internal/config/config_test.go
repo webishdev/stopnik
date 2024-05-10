@@ -169,7 +169,7 @@ func TestUserHandling(t *testing.T) {
 	}
 
 	if len(config.Users) != 3 {
-		t.Error("expected 3 users, got", len(config.Users))
+		t.Errorf("expected 3 users, got %d", len(config.Users))
 	}
 
 	assertUserExistsWithName(t, "foo", config)
@@ -240,7 +240,7 @@ func TestClientHandling(t *testing.T) {
 	}
 
 	if len(config.Clients) != 3 {
-		t.Error("expected 3 clients, got", len(config.Clients))
+		t.Errorf("expected 3 clients, got %d", len(config.Clients))
 	}
 
 	assertClientExistsWithId(t, "foo", config)
@@ -314,26 +314,26 @@ func assertClientExistsWithId(t *testing.T, id string, config *Config) {
 func assertClientValues(t *testing.T, config *Config, id string, expectedAccessTTL int, expectedRefreshTTL int, expectedIssuer string, expectedAudience []string) {
 	client, exits := config.GetClient(id)
 	if !exits {
-		t.Error("expected client with id", id, "to exist")
+		t.Errorf("expected client with id '%s' to exist", id)
 	}
 
 	accessTTL := client.GetAccessTTL()
 	if accessTTL != expectedAccessTTL {
-		t.Error("expected access TTL to be", expectedAccessTTL, "got", accessTTL)
+		t.Errorf("expected access TTL to be %d, got %d", expectedAccessTTL, accessTTL)
 	}
 
 	refreshTTL := client.GetRefreshTTL()
 	if refreshTTL != expectedRefreshTTL {
-		t.Error("expected access TTL to be", expectedRefreshTTL, "got", refreshTTL)
+		t.Errorf("expected refresh TTL to be %d, got %d", expectedRefreshTTL, refreshTTL)
 	}
 
 	issuer := client.GetIssuer()
 	if issuer != expectedIssuer {
-		t.Error("expected issuer to be", expectedIssuer, "got", issuer)
+		t.Errorf("expected issuer to be '%s', got '%s'", expectedIssuer, issuer)
 	}
 
 	audience := client.GetAudience()
 	if !reflect.DeepEqual(audience, expectedAudience) {
-		t.Error("expected audience to be", expectedAudience, "got", audience)
+		t.Errorf("expected audience to be '%s', got '%s'", expectedAudience, audience)
 	}
 }
