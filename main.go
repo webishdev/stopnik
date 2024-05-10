@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"gopkg.in/yaml.v3"
 	"os"
 	"stopnik/internal/config"
 	"stopnik/internal/server"
@@ -26,9 +27,15 @@ func main() {
 		os.Exit(0)
 	}
 
-	currentConfig := config.LoadConfig(*configurationFile)
+	configLoader := config.NewConfigLoader(os.ReadFile, yaml.Unmarshal)
+
+	currentConfig, configError := configLoader.LoadConfig(*configurationFile)
+	if configError != nil {
+		fmt.Printf("%v", configError)
+		os.Exit(1)
+	}
 	logger.SetLogLevel(currentConfig.Server.LogLevel)
 	logger.Info("Config loaded from %s", *configurationFile)
 
-	server.StartServer(&currentConfig)
+	server.StartServer(currentConfig)
 }

@@ -2,9 +2,9 @@ package config
 
 import (
 	"crypto/rand"
-	"gopkg.in/yaml.v3"
+	"errors"
+	"fmt"
 	"math/big"
-	"os"
 	"stopnik/log"
 )
 
@@ -24,11 +24,17 @@ type Server struct {
 	TLS             TLS    `yaml:"tls"`
 	LogoutRedirect  string `yaml:"logoutRedirect"`
 	IntrospectScope string `yaml:"introspectScope"`
+	RevokeScope     string `yaml:"revokeScopeScope"`
 }
 
 type User struct {
 	Username string `yaml:"username"`
 	Password string `yaml:"password"`
+}
+
+type Claim struct {
+	Name  string `yaml:"name"`
+	Value string `yaml:"value"`
 }
 
 type Client struct {
@@ -41,6 +47,9 @@ type Client struct {
 	Revoke      bool     `yaml:"revoke"`
 	Redirects   []string `yaml:"redirects"`
 	OpaqueToken bool     `yaml:"opaqueToken"`
+	Claims      []Claim  `yaml:"claims"`
+	Issuer      string   `yaml:"issuer"`
+	Audience    []string `yaml:"audience"`
 }
 
 type Config struct {
@@ -52,19 +61,51 @@ type Config struct {
 	clientMap       map[string]*Client
 }
 
-func LoadConfig(name string) Config {
-	data, readError := os.ReadFile(name)
+type ReadFile func(filename string) ([]byte, error)
+type Unmarshal func(in []byte, out interface{}) (err error)
+
+type Loader struct {
+	fileReader  ReadFile
+	unmarshaler Unmarshal
+}
+
+func NewConfigLoader(fileReader ReadFile, unmarshaler Unmarshal) *Loader {
+	return &Loader{
+		fileReader:  fileReader,
+		unmarshaler: unmarshaler,
+	}
+}
+
+func (loader *Loader) LoadConfig(name string) (*Config, error) {
+	config := &Config{}
+
+	data, readError := loader.fileReader(name)
 	if readError != nil {
-		log.Error("Could not read config file: %v", readError)
-		os.Exit(1)
+		return config, readError
 	}
 
-	config := Config{}
-
-	parseError := yaml.Unmarshal(data, &config)
+	parseError := loader.unmarshaler(data, config)
 	if parseError != nil {
-		log.Error("Could not parse config file: %v", parseError)
-		os.Exit(1)
+		return config, parseError
+	}
+
+	for userIndex, user := range config.Users {
+		if user.Username == "" || len(user.Password) != 128 {
+			invalidUser := fmt.Sprintf("User configuration invalid. User %d %v", userIndex, user)
+			return config, errors.New(invalidUser)
+		}
+	}
+
+	for clientIndex, client := range config.Clients {
+		if client.Id == "" || len(client.Secret) != 128 {
+			invalidClient := fmt.Sprintf("Client configuration invalid. Client %d %v", clientIndex, client)
+			return config, errors.New(invalidClient)
+		}
+
+		if len(client.Redirects) == 0 {
+			invalidClient := fmt.Sprintf("Client is missing redirects. Client %d %v", clientIndex, client)
+			return config, errors.New(invalidClient)
+		}
 	}
 
 	config.userMap = setup[User](&config.Users, func(user User) string {
@@ -78,12 +119,12 @@ func LoadConfig(name string) Config {
 	randomString, randomError := generateRandomString(16)
 	if randomError != nil {
 		log.Error("Could not generate random secret: %v", randomError)
-		os.Exit(1)
+		return config, readError
 	}
 	generatedSecret := randomString
 	config.generatedSecret = generatedSecret
 
-	return config
+	return config, nil
 }
 
 func generateRandomString(n int) (string, error) {
@@ -123,6 +164,14 @@ func GetOrDefaultString(value string, defaultValue string) string {
 	}
 }
 
+func GetOrDefaultStringSlice(value []string, defaultValue []string) []string {
+	if len(value) == 0 {
+		return defaultValue
+	} else {
+		return value
+	}
+}
+
 func GetOrDefaultInt(value int, defaultValue int) int {
 	if value == 0 {
 		return defaultValue
@@ -150,7 +199,7 @@ func (config *Config) GetIntrospectScope() string {
 }
 
 func (config *Config) GetRevokeScope() string {
-	return GetOrDefaultString(config.Server.IntrospectScope, "stopnik:revoke")
+	return GetOrDefaultString(config.Server.RevokeScope, "stopnik:revoke")
 }
 
 func (config *Config) GetServerSecret() string {
@@ -163,4 +212,12 @@ func (client *Client) GetAccessTTL() int {
 
 func (client *Client) GetRefreshTTL() int {
 	return GetOrDefaultInt(client.RefreshTTL, 0)
+}
+
+func (client *Client) GetIssuer() string {
+	return GetOrDefaultString(client.Issuer, "STOPnik")
+}
+
+func (client *Client) GetAudience() []string {
+	return GetOrDefaultStringSlice(client.Audience, []string{"all"})
 }
