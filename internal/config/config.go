@@ -2,7 +2,6 @@ package config
 
 import (
 	"crypto/rand"
-	"gopkg.in/yaml.v3"
 	"math/big"
 	"os"
 	"stopnik/log"
@@ -60,8 +59,23 @@ type Config struct {
 	clientMap       map[string]*Client
 }
 
-func LoadConfig(name string) Config {
-	data, readError := os.ReadFile(name)
+type ReadFile func(filename string) ([]byte, error)
+type Unmarshal func(in []byte, out interface{}) (err error)
+
+type Loader struct {
+	fileReader  ReadFile
+	unmarshaler Unmarshal
+}
+
+func NewConfigLoader(fileReader ReadFile, unmarshaler Unmarshal) *Loader {
+	return &Loader{
+		fileReader:  fileReader,
+		unmarshaler: unmarshaler,
+	}
+}
+
+func (loader *Loader) LoadConfig(name string) Config {
+	data, readError := loader.fileReader(name)
 	if readError != nil {
 		log.Error("Could not read config file: %v", readError)
 		os.Exit(1)
@@ -69,7 +83,7 @@ func LoadConfig(name string) Config {
 
 	config := Config{}
 
-	parseError := yaml.Unmarshal(data, &config)
+	parseError := loader.unmarshaler(data, &config)
 	if parseError != nil {
 		log.Error("Could not parse config file: %v", parseError)
 		os.Exit(1)
