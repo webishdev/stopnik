@@ -3,7 +3,7 @@ package config
 import (
 	"crypto/rand"
 	"math/big"
-	"os"
+	"slices"
 	"stopnik/log"
 )
 
@@ -23,6 +23,7 @@ type Server struct {
 	TLS             TLS    `yaml:"tls"`
 	LogoutRedirect  string `yaml:"logoutRedirect"`
 	IntrospectScope string `yaml:"introspectScope"`
+	RevokeScope     string `yaml:"revokeScopeScope"`
 }
 
 type User struct {
@@ -74,23 +75,39 @@ func NewConfigLoader(fileReader ReadFile, unmarshaler Unmarshal) *Loader {
 	}
 }
 
-func (loader *Loader) LoadConfig(name string) Config {
+func (loader *Loader) LoadConfig(name string) (*Config, error) {
+	config := &Config{}
+
 	data, readError := loader.fileReader(name)
 	if readError != nil {
 		log.Error("Could not read config file: %v", readError)
-		os.Exit(1)
+		return config, readError
 	}
 
-	config := Config{}
-
-	parseError := loader.unmarshaler(data, &config)
+	parseError := loader.unmarshaler(data, config)
 	if parseError != nil {
 		log.Error("Could not parse config file: %v", parseError)
-		os.Exit(1)
+		return config, parseError
 	}
+
+	config.Users = slices.DeleteFunc(config.Users, func(user User) bool {
+		invalid := user.Username == "" || len(user.Password) != 128
+		if invalid {
+			log.Warn("Invalid username or password, %v", user)
+		}
+		return invalid
+	})
 
 	config.userMap = setup[User](&config.Users, func(user User) string {
 		return user.Username
+	})
+
+	config.Clients = slices.DeleteFunc(config.Clients, func(client Client) bool {
+		invalid := client.Id == "" || len(client.Secret) != 128
+		if invalid {
+			log.Warn("Invalid id or secret, %v", client)
+		}
+		return invalid
 	})
 
 	config.clientMap = setup[Client](&config.Clients, func(client Client) string {
@@ -100,12 +117,12 @@ func (loader *Loader) LoadConfig(name string) Config {
 	randomString, randomError := generateRandomString(16)
 	if randomError != nil {
 		log.Error("Could not generate random secret: %v", randomError)
-		os.Exit(1)
+		return config, readError
 	}
 	generatedSecret := randomString
 	config.generatedSecret = generatedSecret
 
-	return config
+	return config, nil
 }
 
 func generateRandomString(n int) (string, error) {
@@ -180,7 +197,7 @@ func (config *Config) GetIntrospectScope() string {
 }
 
 func (config *Config) GetRevokeScope() string {
-	return GetOrDefaultString(config.Server.IntrospectScope, "stopnik:revoke")
+	return GetOrDefaultString(config.Server.RevokeScope, "stopnik:revoke")
 }
 
 func (config *Config) GetServerSecret() string {

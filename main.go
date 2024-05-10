@@ -29,9 +29,12 @@ func main() {
 
 	configLoader := config.NewConfigLoader(os.ReadFile, yaml.Unmarshal)
 
-	currentConfig := configLoader.LoadConfig(*configurationFile)
+	currentConfig, configError := configLoader.LoadConfig(*configurationFile)
+	if configError != nil {
+		os.Exit(1)
+	}
 	logger.SetLogLevel(currentConfig.Server.LogLevel)
 	logger.Info("Config loaded from %s", *configurationFile)
 
-	server.StartServer(&currentConfig)
+	server.StartServer(currentConfig)
 }
