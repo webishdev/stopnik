@@ -31,6 +31,7 @@ func main() {
 
 	currentConfig, configError := configLoader.LoadConfig(*configurationFile)
 	if configError != nil {
+		fmt.Printf("%v", configError)
 		os.Exit(1)
 	}
 	logger.SetLogLevel(currentConfig.Server.LogLevel)

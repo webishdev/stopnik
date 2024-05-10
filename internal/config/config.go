@@ -2,8 +2,9 @@ package config
 
 import (
 	"crypto/rand"
+	"errors"
+	"fmt"
 	"math/big"
-	"slices"
 	"stopnik/log"
 )
 
@@ -80,34 +81,35 @@ func (loader *Loader) LoadConfig(name string) (*Config, error) {
 
 	data, readError := loader.fileReader(name)
 	if readError != nil {
-		log.Error("Could not read config file: %v", readError)
 		return config, readError
 	}
 
 	parseError := loader.unmarshaler(data, config)
 	if parseError != nil {
-		log.Error("Could not parse config file: %v", parseError)
 		return config, parseError
 	}
 
-	config.Users = slices.DeleteFunc(config.Users, func(user User) bool {
-		invalid := user.Username == "" || len(user.Password) != 128
-		if invalid {
-			log.Warn("Invalid username or password, %v", user)
+	for userIndex, user := range config.Users {
+		if user.Username == "" || len(user.Password) != 128 {
+			invalidUser := fmt.Sprintf("User configuration invalid. User %d %v", userIndex, user)
+			return config, errors.New(invalidUser)
 		}
-		return invalid
-	})
+	}
+
+	for clientIndex, client := range config.Clients {
+		if client.Id == "" || len(client.Secret) != 128 {
+			invalidClient := fmt.Sprintf("Client configuration invalid. Client %d %v", clientIndex, client)
+			return config, errors.New(invalidClient)
+		}
+
+		if len(client.Redirects) == 0 {
+			invalidClient := fmt.Sprintf("Client is missing redirects. Client %d %v", clientIndex, client)
+			return config, errors.New(invalidClient)
+		}
+	}
 
 	config.userMap = setup[User](&config.Users, func(user User) string {
 		return user.Username
-	})
-
-	config.Clients = slices.DeleteFunc(config.Clients, func(client Client) bool {
-		invalid := client.Id == "" || len(client.Secret) != 128
-		if invalid {
-			log.Warn("Invalid id or secret, %v", client)
-		}
-		return invalid
 	})
 
 	config.clientMap = setup[Client](&config.Clients, func(client Client) string {
