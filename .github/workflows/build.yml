@@ -28,5 +28,5 @@ jobs:
       run: ./build.sh build_all ci
 
     - name: Tests
-      run: go test -v ./...
+      run: ./test.sh coverage
 
