@@ -86,6 +86,10 @@ func (handler *AuthorizeHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 				ForbiddenHandler(w, r)
 				return
 			}
+		} else {
+			log.Error("Client %s has no redirect URI(s) configured!", client.Id)
+			ForbiddenHandler(w, r)
+			return
 		}
 
 		id := uuid.New()
