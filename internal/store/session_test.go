@@ -7,8 +7,13 @@ import (
 )
 
 func Test_Session(t *testing.T) {
-	t.Run("valid", func(t *testing.T) {
-		testConfig := &config.Config{}
+	testConfig := &config.Config{}
+	setupError := testConfig.Setup()
+	if setupError != nil {
+		t.Fatal(setupError)
+	}
+
+	t.Run("found", func(t *testing.T) {
 		sessionManager := NewSessionManager(testConfig)
 
 		authSession := &AuthSession{
@@ -34,8 +39,7 @@ func Test_Session(t *testing.T) {
 		assert.Equal(t, session, authSession)
 	})
 
-	t.Run("invalid", func(t *testing.T) {
-		testConfig := &config.Config{}
+	t.Run("not_found", func(t *testing.T) {
 		sessionManager := NewSessionManager(testConfig)
 
 		authSession := &AuthSession{

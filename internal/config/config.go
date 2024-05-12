@@ -8,10 +8,14 @@ import (
 	"stopnik/log"
 )
 
-type TLS struct {
-	Addr string `yaml:"addr"`
+type Keys struct {
 	Cert string `yaml:"cert"`
 	Key  string `yaml:"key"`
+}
+
+type TLS struct {
+	Addr string `yaml:"addr"`
+	Keys Keys   `yaml:"keys"`
 }
 
 type Server struct {
@@ -19,8 +23,7 @@ type Server struct {
 	Addr            string `yaml:"addr"`
 	AuthCookieName  string `yaml:"authCookieName"`
 	Secret          string `yaml:"secret"`
-	TokenCert       string `yaml:"tokenCert"`
-	TokenKey        string `yaml:"tokenKey"`
+	TokenKeys       Keys   `yaml:"tokenKeys"`
 	TLS             TLS    `yaml:"tls"`
 	LogoutRedirect  string `yaml:"logoutRedirect"`
 	IntrospectScope string `yaml:"introspectScope"`
@@ -89,42 +92,7 @@ func (loader *Loader) LoadConfig(name string) (*Config, error) {
 		return config, parseError
 	}
 
-	for userIndex, user := range config.Users {
-		if user.Username == "" || len(user.Password) != 128 {
-			invalidUser := fmt.Sprintf("User configuration invalid. User %d %v", userIndex, user)
-			return config, errors.New(invalidUser)
-		}
-	}
-
-	for clientIndex, client := range config.Clients {
-		if client.Id == "" || len(client.Secret) != 128 {
-			invalidClient := fmt.Sprintf("Client configuration invalid. Client %d %v", clientIndex, client)
-			return config, errors.New(invalidClient)
-		}
-
-		if len(client.Redirects) == 0 {
-			invalidClient := fmt.Sprintf("Client is missing redirects. Client %d %v", clientIndex, client)
-			return config, errors.New(invalidClient)
-		}
-	}
-
-	config.userMap = setup[User](&config.Users, func(user User) string {
-		return user.Username
-	})
-
-	config.clientMap = setup[Client](&config.Clients, func(client Client) string {
-		return client.Id
-	})
-
-	randomString, randomError := generateRandomString(16)
-	if randomError != nil {
-		log.Error("Could not generate random secret: %v", randomError)
-		return config, readError
-	}
-	generatedSecret := randomString
-	config.generatedSecret = generatedSecret
-
-	return config, nil
+	return config, config.Setup()
 }
 
 func generateRandomString(n int) (string, error) {
@@ -178,6 +146,45 @@ func GetOrDefaultInt(value int, defaultValue int) int {
 	} else {
 		return value
 	}
+}
+
+func (config *Config) Setup() error {
+	for userIndex, user := range config.Users {
+		if user.Username == "" || len(user.Password) != 128 {
+			invalidUser := fmt.Sprintf("User configuration invalid. User %d %v", userIndex, user)
+			return errors.New(invalidUser)
+		}
+	}
+
+	for clientIndex, client := range config.Clients {
+		if client.Id == "" || len(client.Secret) != 128 {
+			invalidClient := fmt.Sprintf("Client configuration invalid. Client %d %v", clientIndex, client)
+			return errors.New(invalidClient)
+		}
+
+		if len(client.Redirects) == 0 {
+			invalidClient := fmt.Sprintf("Client is missing redirects. Client %d %v", clientIndex, client)
+			return errors.New(invalidClient)
+		}
+	}
+
+	config.userMap = setup[User](&config.Users, func(user User) string {
+		return user.Username
+	})
+
+	config.clientMap = setup[Client](&config.Clients, func(client Client) string {
+		return client.Id
+	})
+
+	randomString, randomError := generateRandomString(16)
+	if randomError != nil {
+		log.Error("Could not generate random secret: %v", randomError)
+		return randomError
+	}
+	generatedSecret := randomString
+	config.generatedSecret = generatedSecret
+
+	return nil
 }
 
 func (config *Config) GetUser(name string) (*User, bool) {

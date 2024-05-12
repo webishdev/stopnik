@@ -28,7 +28,7 @@ func (mh mainHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 func StartServer(config *config.Config) {
 	sessionManager := store.NewSessionManager(config)
-	tokenManager := store.NewTokenManager(config)
+	tokenManager := store.NewTokenManager(config, store.NewDefaultKeyLoader(config))
 	cookieManager := internalHttp.NewCookieManager(config)
 	requestValidator := validation.NewRequestValidator(config)
 
@@ -113,7 +113,7 @@ func StartServer(config *config.Config) {
 
 			log.Info("Will accept TLS connections at %s", httpsServer.Addr)
 
-			tlsServerError := httpsServer.ServeTLS(tlsListener, config.Server.TLS.Cert, config.Server.TLS.Key)
+			tlsServerError := httpsServer.ServeTLS(tlsListener, config.Server.TLS.Keys.Cert, config.Server.TLS.Keys.Key)
 			if tlsServerError != nil {
 				log.Error("Failed to start TLS server: %v", tlsServerError)
 				os.Exit(1)
