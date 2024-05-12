@@ -27,6 +27,18 @@ var responseTypeParameters = []parameter{
 	{"foo", false, ""},
 }
 
+var clientTypeParameters = []parameter{
+	{string(CtConfidential), true, "confidential"},
+	{string(CtPublic), true, "public"},
+	{"foo", false, ""},
+}
+
+var tokenTypeParameters = []parameter{
+	{string(TtBearer), true, "Bearer"},
+	{string(TtMAC), true, "mac"},
+	{"foo", false, ""},
+}
+
 func Test_GrantTypeFromString(t *testing.T) {
 
 	for _, test := range grandTypeParameters {
@@ -49,5 +61,29 @@ func Test_ResponseTypeFromString(t *testing.T) {
 			}
 		})
 
+	}
+}
+
+func Test_ClientTypeFromString(t *testing.T) {
+
+	for _, test := range clientTypeParameters {
+		testMessage := fmt.Sprintf("%s_%v", test.value, test.exists)
+		t.Run(testMessage, func(t *testing.T) {
+			if grandType, exits := ClientTypeFromString(test.value); exits != test.exists && string(grandType) != test.expected {
+				t.Errorf("Client type %s not found,", test.value)
+			}
+		})
+	}
+}
+
+func Test_TokenTypeFromString(t *testing.T) {
+
+	for _, test := range tokenTypeParameters {
+		testMessage := fmt.Sprintf("%s_%v", test.value, test.exists)
+		t.Run(testMessage, func(t *testing.T) {
+			if grandType, exits := TokenTypeFromString(test.value); exits != test.exists && string(grandType) != test.expected {
+				t.Errorf("Token type %s not found,", test.value)
+			}
+		})
 	}
 }
