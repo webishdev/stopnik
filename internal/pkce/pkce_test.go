@@ -5,14 +5,14 @@ import (
 	"testing"
 )
 
-type parameter struct {
+type challengeMethodParameters struct {
 	method   CodeChallengeMethod
 	value    string
 	verifier string
 	expected bool
 }
 
-var parameters = []parameter{
+var parameters = []challengeMethodParameters{
 	{S256, "zzq3NtZoI3xStS6o35KHynY9X8XK5Cuqi9NaZfk1Q-8", "R79LG4zTGgB6WS7QGkf3x1BmPqe0RLHl1771POQjuTE", true},
 	{S256, "zzq3NtZoI3xStS6o35KHynY9X8XK5Cuqi9NaZfk1Q-7", "R79LG4zTGgB6WS7QGkf3x1BmPqe0RLHl1771POQjuTE", false},
 	{PLAIN, "foo", "foo", true},
