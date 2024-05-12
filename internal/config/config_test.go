@@ -6,7 +6,59 @@ import (
 	"testing"
 )
 
-func TestReadError(t *testing.T) {
+func Test_Load(t *testing.T) {
+	t.Run("readError", readError)
+	t.Run("unmarshalError", unmarshalError)
+}
+
+func Test_DefaultValues(t *testing.T) {
+	t.Run("string", func(t *testing.T) {
+		assertDefaultValues[string](t, "abc", "def", GetOrDefaultString, func(a string) bool {
+			return a == "abc"
+		})
+
+		assertDefaultValues[string](t, "", "def", GetOrDefaultString, func(a string) bool {
+			return a == "def"
+		})
+	})
+
+	t.Run("[]string", func(t *testing.T) {
+		assertDefaultValues[[]string](t, []string{"abc", "def"}, []string{"ghi", "jkl"}, GetOrDefaultStringSlice, func(a []string) bool {
+			return reflect.DeepEqual(a, []string{"abc", "def"})
+		})
+
+		assertDefaultValues[[]string](t, []string{}, []string{"ghi", "jkl"}, GetOrDefaultStringSlice, func(a []string) bool {
+			return reflect.DeepEqual(a, []string{"ghi", "jkl"})
+		})
+	})
+
+	t.Run("int", func(t *testing.T) {
+		assertDefaultValues[int](t, 22, 23, GetOrDefaultInt, func(a int) bool {
+			return a == 22
+		})
+
+		assertDefaultValues[int](t, 0, 23, GetOrDefaultInt, func(a int) bool {
+			return a == 23
+		})
+	})
+}
+
+func Test_Server(t *testing.T) {
+	t.Run("empty", emptyServerConfiguration)
+	t.Run("simple", simpleServerConfiguration)
+}
+
+func Test_Users(t *testing.T) {
+	t.Run("valid", validUsers)
+	t.Run("invalid", invalidUsers)
+}
+
+func Test_Clients(t *testing.T) {
+	t.Run("valid", validClients)
+	t.Run("invalid", invalidClients)
+}
+
+func readError(t *testing.T) {
 	configLoader := NewConfigLoader(func(filename string) ([]byte, error) {
 		return nil, errors.New("test error")
 	}, nil)
@@ -18,7 +70,7 @@ func TestReadError(t *testing.T) {
 	}
 }
 
-func TestUnmarshalError(t *testing.T) {
+func unmarshalError(t *testing.T) {
 	configLoader := NewConfigLoader(func(filename string) ([]byte, error) {
 		return make([]byte, 10), nil
 	}, func(in []byte, out interface{}) (err error) {
@@ -32,33 +84,7 @@ func TestUnmarshalError(t *testing.T) {
 	}
 }
 
-func TestDefaultValues(t *testing.T) {
-	assertDefaultValues[string](t, "abc", "def", GetOrDefaultString, func(a string) bool {
-		return a == "abc"
-	})
-
-	assertDefaultValues[string](t, "", "def", GetOrDefaultString, func(a string) bool {
-		return a == "def"
-	})
-
-	assertDefaultValues[[]string](t, []string{"abc", "def"}, []string{"ghi", "jkl"}, GetOrDefaultStringSlice, func(a []string) bool {
-		return reflect.DeepEqual(a, []string{"abc", "def"})
-	})
-
-	assertDefaultValues[[]string](t, []string{}, []string{"ghi", "jkl"}, GetOrDefaultStringSlice, func(a []string) bool {
-		return reflect.DeepEqual(a, []string{"ghi", "jkl"})
-	})
-
-	assertDefaultValues[int](t, 22, 23, GetOrDefaultInt, func(a int) bool {
-		return a == 22
-	})
-
-	assertDefaultValues[int](t, 0, 23, GetOrDefaultInt, func(a int) bool {
-		return a == 23
-	})
-}
-
-func TestEmptyServerHandling(t *testing.T) {
+func emptyServerConfiguration(t *testing.T) {
 	configLoader := NewConfigLoader(func(filename string) ([]byte, error) {
 		return make([]byte, 10), nil
 	}, func(in []byte, out interface{}) (err error) {
@@ -100,7 +126,7 @@ func TestEmptyServerHandling(t *testing.T) {
 	}
 }
 
-func TestServerHandling(t *testing.T) {
+func simpleServerConfiguration(t *testing.T) {
 	configLoader := NewConfigLoader(func(filename string) ([]byte, error) {
 		return make([]byte, 10), nil
 	}, func(in []byte, out interface{}) (err error) {
@@ -147,7 +173,7 @@ func TestServerHandling(t *testing.T) {
 	}
 }
 
-func TestUserHandling(t *testing.T) {
+func validUsers(t *testing.T) {
 	configLoader := NewConfigLoader(func(filename string) ([]byte, error) {
 		return make([]byte, 10), nil
 	}, func(in []byte, out interface{}) (err error) {
@@ -169,7 +195,7 @@ func TestUserHandling(t *testing.T) {
 	}
 
 	if len(config.Users) != 3 {
-		t.Error("expected 3 users, got", len(config.Users))
+		t.Errorf("expected 3 users, got %d", len(config.Users))
 	}
 
 	assertUserExistsWithName(t, "foo", config)
@@ -177,13 +203,13 @@ func TestUserHandling(t *testing.T) {
 	assertUserExistsWithName(t, "moo", config)
 }
 
-var invalidUsers = []User{
+var invalidUserParameters = []User{
 	{Username: "wrong", Password: "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"},
 	{Username: "empty", Password: ""},
 	{Username: "", Password: "d82c4eb5261cb9c8aa9855edd67d1bd10482f41529858d925094d173fa662aa91ff39bc5b188615273484021dfb16fd8284cf684ccf0fc795be3aa2fc1e6c181"}}
 
-func TestInvalidUserHandling(t *testing.T) {
-	for _, user := range invalidUsers {
+func invalidUsers(t *testing.T) {
+	for _, user := range invalidUserParameters {
 		configLoader := NewConfigLoader(func(filename string) ([]byte, error) {
 			return make([]byte, 10), nil
 		}, func(in []byte, out interface{}) (err error) {
@@ -202,7 +228,7 @@ func TestInvalidUserHandling(t *testing.T) {
 	}
 }
 
-func TestClientHandling(t *testing.T) {
+func validClients(t *testing.T) {
 	configLoader := NewConfigLoader(func(filename string) ([]byte, error) {
 		return make([]byte, 10), nil
 	}, func(in []byte, out interface{}) (err error) {
@@ -240,7 +266,7 @@ func TestClientHandling(t *testing.T) {
 	}
 
 	if len(config.Clients) != 3 {
-		t.Error("expected 3 clients, got", len(config.Clients))
+		t.Errorf("expected 3 clients, got %d", len(config.Clients))
 	}
 
 	assertClientExistsWithId(t, "foo", config)
@@ -251,15 +277,15 @@ func TestClientHandling(t *testing.T) {
 	assertClientValues(t, config, "bar", 20, 60, "other", []string{"one", "two"})
 }
 
-var invalidClients = []Client{
+var invalidClientParameters = []Client{
 	{Id: "wrong", Secret: "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"},
 	{Id: "empty", Secret: ""},
 	{Id: "", Secret: "d82c4eb5261cb9c8aa9855edd67d1bd10482f41529858d925094d173fa662aa91ff39bc5b188615273484021dfb16fd8284cf684ccf0fc795be3aa2fc1e6c181"},
 	{Id: "no_redirects", Secret: "3c9909afec25354d551dae21590bb26e38d53f2173b8d3dc3eee4c047e7ab1c1eb8b85103e3be7ba613b31bb5c9c36214dc9f14a42fd7a2fdb84856bca5c44c2"},
 }
 
-func TestInvalidClientHandling(t *testing.T) {
-	for _, client := range invalidClients {
+func invalidClients(t *testing.T) {
+	for _, client := range invalidClientParameters {
 		configLoader := NewConfigLoader(func(filename string) ([]byte, error) {
 			return make([]byte, 10), nil
 		}, func(in []byte, out interface{}) (err error) {
@@ -314,26 +340,26 @@ func assertClientExistsWithId(t *testing.T, id string, config *Config) {
 func assertClientValues(t *testing.T, config *Config, id string, expectedAccessTTL int, expectedRefreshTTL int, expectedIssuer string, expectedAudience []string) {
 	client, exits := config.GetClient(id)
 	if !exits {
-		t.Error("expected client with id", id, "to exist")
+		t.Errorf("expected client with id '%s' to exist", id)
 	}
 
 	accessTTL := client.GetAccessTTL()
 	if accessTTL != expectedAccessTTL {
-		t.Error("expected access TTL to be", expectedAccessTTL, "got", accessTTL)
+		t.Errorf("expected access TTL to be %d, got %d", expectedAccessTTL, accessTTL)
 	}
 
 	refreshTTL := client.GetRefreshTTL()
 	if refreshTTL != expectedRefreshTTL {
-		t.Error("expected access TTL to be", expectedRefreshTTL, "got", refreshTTL)
+		t.Errorf("expected refresh TTL to be %d, got %d", expectedRefreshTTL, refreshTTL)
 	}
 
 	issuer := client.GetIssuer()
 	if issuer != expectedIssuer {
-		t.Error("expected issuer to be", expectedIssuer, "got", issuer)
+		t.Errorf("expected issuer to be '%s', got '%s'", expectedIssuer, issuer)
 	}
 
 	audience := client.GetAudience()
 	if !reflect.DeepEqual(audience, expectedAudience) {
-		t.Error("expected audience to be", expectedAudience, "got", audience)
+		t.Errorf("expected audience to be '%s', got '%s'", expectedAudience, audience)
 	}
 }
