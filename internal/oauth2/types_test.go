@@ -1,6 +1,9 @@
 package oauth2
 
-import "testing"
+import (
+	"fmt"
+	"testing"
+)
 
 type parameter struct {
 	value    string
@@ -24,22 +27,27 @@ var responseTypeParameters = []parameter{
 	{"foo", false, ""},
 }
 
-func TestGrantTypeFromString(t *testing.T) {
+func Test_GrantTypeFromString(t *testing.T) {
 
 	for _, test := range grandTypeParameters {
-		t.Logf("Testing %s %v", test.value, test.exists)
-		if grandType, exits := GrantTypeFromString(test.value); exits != test.exists && string(grandType) != test.expected {
-			t.Errorf("Grand type %s not found,", test.value)
-		}
+		testMessage := fmt.Sprintf("%s_%v", test.value, test.exists)
+		t.Run(testMessage, func(t *testing.T) {
+			if grandType, exits := GrantTypeFromString(test.value); exits != test.exists && string(grandType) != test.expected {
+				t.Errorf("Grand type %s not found,", test.value)
+			}
+		})
 	}
 }
 
-func TestResponseTypeFromString(t *testing.T) {
+func Test_ResponseTypeFromString(t *testing.T) {
 
 	for _, test := range responseTypeParameters {
-		t.Logf("Testing %s %v", test.value, test.exists)
-		if grandType, exits := ResponseTypeFromString(test.value); exits != test.exists && string(grandType) != test.expected {
-			t.Errorf("Response type %s not found,", test.value)
-		}
+		testMessage := fmt.Sprintf("%s_%v", test.value, test.exists)
+		t.Run(testMessage, func(t *testing.T) {
+			if grandType, exits := ResponseTypeFromString(test.value); exits != test.exists && string(grandType) != test.expected {
+				t.Errorf("Response type %s not found,", test.value)
+			}
+		})
+
 	}
 }

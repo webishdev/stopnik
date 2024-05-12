@@ -1,6 +1,9 @@
 package crypto
 
-import "testing"
+import (
+	"fmt"
+	"testing"
+)
 
 type parameter struct {
 	value    string
@@ -13,12 +16,14 @@ var parameters = []parameter{
 	{"moo123", "c946fb5c9b11f7fbe62811cb62a84c94bbfc5663a0b99aaa353b2342805d6bceb70d12e65420806e55b0ba6d02609a95bb517c9cc215eb6925f196ba5d9674b0"},
 }
 
-func TestSha512Hash(t *testing.T) {
+func Test_Sha512Hash(t *testing.T) {
 
 	for _, test := range parameters {
-		t.Logf("Testing %s", test.value)
-		if output := Sha512Hash(test.value); output != test.expected {
-			t.Errorf("Output %s not equal to expected %s", output, test.expected)
-		}
+		testMessage := fmt.Sprintf("%s", test.value)
+		t.Run(testMessage, func(t *testing.T) {
+			if output := Sha512Hash(test.value); output != test.expected {
+				t.Errorf("Output %s not equal to expected %s", output, test.expected)
+			}
+		})
 	}
 }

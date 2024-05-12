@@ -1,6 +1,7 @@
 package pkce
 
 import (
+	"fmt"
 	"testing"
 )
 
@@ -18,12 +19,14 @@ var parameters = []parameter{
 	{PLAIN, "foo", "bar", false},
 }
 
-func TestValidatePKCE(t *testing.T) {
+func Test_ValidatePKCE(t *testing.T) {
 
 	for _, test := range parameters {
-		t.Logf("Testing %s %s %s", test.method, test.value, test.verifier)
-		if output := ValidatePKCE(test.method, test.value, test.verifier); output != test.expected {
-			t.Errorf("Output %t not equal to expected %t", output, test.expected)
-		}
+		testMessage := fmt.Sprintf("%s_%s_%s", test.method, test.value, test.verifier)
+		t.Run(testMessage, func(t *testing.T) {
+			if output := ValidatePKCE(test.method, test.value, test.verifier); output != test.expected {
+				t.Errorf("Output %t not equal to expected %t", output, test.expected)
+			}
+		})
 	}
 }
