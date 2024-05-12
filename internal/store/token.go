@@ -24,7 +24,7 @@ type TokenManager struct {
 }
 
 type KeyLoader interface {
-	LoadKeys() (*rsa.PrivateKey, error)
+	LoadKeys(client *config.Client) (*rsa.PrivateKey, bool, error)
 }
 
 type DefaultKeyLoader struct {
@@ -178,7 +178,11 @@ func (tokenManager *TokenManager) generateJWTToken(tokenId string, duration time
 	if builderError != nil {
 		panic(builderError)
 	}
-	if tokenManager.config.Server.TokenKeys.Cert == "" && tokenManager.config.Server.TokenKeys.Key == "" {
+
+	loader := tokenManager.keyLoader
+	key, keyExists, keyLoaderError := loader.LoadKeys(client)
+
+	if !keyExists {
 		tokenString, tokenError := jwt.Sign(token, jwt.WithKey(jwa.HS256, []byte(tokenManager.config.GetServerSecret())))
 		if tokenError != nil {
 			panic(tokenError)
@@ -186,8 +190,6 @@ func (tokenManager *TokenManager) generateJWTToken(tokenId string, duration time
 
 		return string(tokenString)
 	} else {
-		loader := tokenManager.keyLoader
-		key, keyLoaderError := loader.LoadKeys()
 		if keyLoaderError != nil {
 			panic(keyLoaderError)
 		}
@@ -202,13 +204,16 @@ func (tokenManager *TokenManager) generateJWTToken(tokenId string, duration time
 
 }
 
-func (defaultKeyLoader *DefaultKeyLoader) LoadKeys() (*rsa.PrivateKey, error) {
+func (defaultKeyLoader *DefaultKeyLoader) LoadKeys(client *config.Client) (*rsa.PrivateKey, bool, error) {
+	if defaultKeyLoader.Cert == "" || defaultKeyLoader.Key == "" {
+		return nil, false, nil
+	}
 	keyPair, pairError := tls.LoadX509KeyPair(defaultKeyLoader.Cert, defaultKeyLoader.Key)
 	if pairError != nil {
-		return nil, pairError
+		return nil, false, pairError
 	}
 	key := keyPair.PrivateKey.(*rsa.PrivateKey)
-	return key, nil
+	return key, true, nil
 }
 
 func getAuthorizationHeaderValue(authorizationHeader string) *string {
