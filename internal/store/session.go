@@ -25,7 +25,7 @@ type SessionManager struct {
 func NewSessionManager(config *config.Config) *SessionManager {
 	return &SessionManager{
 		config:           config,
-		authSessionStore: NewCache[AuthSession](),
+		authSessionStore: NewStore[AuthSession](),
 	}
 }
 

@@ -6,6 +6,8 @@ import (
 	"os"
 )
 
+var currentLogLevel slog.Level
+
 var textHandler = slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
 	//Level: slog.LevelError,
 })
@@ -22,8 +24,9 @@ var debugLogger = slog.NewLogLogger(textHandler, slog.LevelDebug)
 var accessLogger = slog.NewLogLogger(accessLogHandler, slog.LevelInfo)
 
 func SetLogLevel(level string) {
+	currentLogLevel = getLogLevelFromString(level)
 	textHandler = slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
-		Level: getLogLevelFromString(level),
+		Level: currentLogLevel,
 	})
 	infoLogger = slog.NewLogLogger(textHandler, slog.LevelInfo)
 	warnLogger = slog.NewLogLogger(textHandler, slog.LevelWarn)
@@ -45,6 +48,10 @@ func Error(format string, v ...any) {
 
 func Debug(format string, v ...any) {
 	debugLogger.Printf(format, v...)
+}
+
+func IsDebug() bool {
+	return currentLogLevel == slog.LevelDebug
 }
 
 func AccessLogRequest(r *http.Request) {

@@ -41,8 +41,8 @@ func NewTokenManager(config *config.Config, keyLoader KeyLoader) *TokenManager {
 	return &TokenManager{
 		config:            config,
 		keyLoader:         keyLoader,
-		accessTokenStore:  NewCache[oauth2.AccessToken](),
-		refreshTokenStore: NewCache[oauth2.RefreshToken](),
+		accessTokenStore:  NewStore[oauth2.AccessToken](),
+		refreshTokenStore: NewStore[oauth2.RefreshToken](),
 	}
 }
 
