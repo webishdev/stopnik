@@ -21,7 +21,7 @@ var headerParameters = []headerParameter{
 
 func Test_HTTPHeaders(t *testing.T) {
 	for _, test := range headerParameters {
-		testMessage := fmt.Sprintf("%s", test.value)
+		testMessage := fmt.Sprintf("HTTP Header %s", test.value)
 		t.Run(testMessage, func(t *testing.T) {
 			if test.value != test.expected {
 				t.Errorf("assertion error, %v != %v", test.value, test.expected)

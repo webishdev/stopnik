@@ -18,7 +18,7 @@ var pkceParameters = []pkceParameter{
 
 func Test_PKCEParameters(t *testing.T) {
 	for _, test := range pkceParameters {
-		testMessage := fmt.Sprintf("%s", test.value)
+		testMessage := fmt.Sprintf("PKCE parameter %s", test.value)
 		t.Run(testMessage, func(t *testing.T) {
 			if test.value != test.expected {
 				t.Errorf("assertion error, %v != %v", test.value, test.expected)

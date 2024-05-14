@@ -22,7 +22,7 @@ var parameters = []challengeMethodParameters{
 func Test_ValidatePKCE(t *testing.T) {
 
 	for _, test := range parameters {
-		testMessage := fmt.Sprintf("%s_%s_%s", test.method, test.value, test.verifier)
+		testMessage := fmt.Sprintf("Validate PKCE %s %s %s", test.method, test.value, test.verifier)
 		t.Run(testMessage, func(t *testing.T) {
 			if output := ValidatePKCE(test.method, test.value, test.verifier); output != test.expected {
 				t.Errorf("Output %t not equal to expected %t", output, test.expected)

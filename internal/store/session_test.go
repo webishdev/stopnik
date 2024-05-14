@@ -13,7 +13,7 @@ func Test_Session(t *testing.T) {
 		t.Fatal(setupError)
 	}
 
-	t.Run("found", func(t *testing.T) {
+	t.Run("Session found", func(t *testing.T) {
 		sessionManager := NewSessionManager(testConfig)
 
 		authSession := &AuthSession{
@@ -41,7 +41,7 @@ func Test_Session(t *testing.T) {
 		}
 	})
 
-	t.Run("not_found", func(t *testing.T) {
+	t.Run("Session not found", func(t *testing.T) {
 		sessionManager := NewSessionManager(testConfig)
 
 		authSession := &AuthSession{

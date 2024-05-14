@@ -31,7 +31,7 @@ var oauth2Parameters = []oauth2Parameter{
 
 func Test_OAuth2Parameters(t *testing.T) {
 	for _, test := range oauth2Parameters {
-		testMessage := fmt.Sprintf("%s", test.value)
+		testMessage := fmt.Sprintf("OAuth2 parameter %s", test.value)
 		t.Run(testMessage, func(t *testing.T) {
 			if test.value != test.expected {
 				t.Errorf("assertion error, %v != %v", test.value, test.expected)

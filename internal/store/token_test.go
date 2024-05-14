@@ -10,7 +10,7 @@ import (
 )
 
 func Test_Token(t *testing.T) {
-	t.Run("valid_opaque_token", func(t *testing.T) {
+	t.Run("Valid opaque token", func(t *testing.T) {
 		testConfig := createTestConfig(t, true)
 		tokenManager := NewTokenManager(testConfig, NewDefaultKeyLoader(testConfig))
 		client, clientExists := testConfig.GetClient("foo")
@@ -43,7 +43,7 @@ func Test_Token(t *testing.T) {
 			t.Errorf("assertion error, %v != %v", scopes, []string{"abc", "def"})
 		}
 	})
-	t.Run("valid_jwt_hs256_token", func(t *testing.T) {
+	t.Run("Valid JWT HS256 token", func(t *testing.T) {
 		testConfig := createTestConfig(t, false)
 		tokenManager := NewTokenManager(testConfig, NewDefaultKeyLoader(testConfig))
 		client, clientExists := testConfig.GetClient("foo")
