@@ -1,15 +1,31 @@
 package http
 
 import (
-	"stopnik/assert"
+	"fmt"
 	"testing"
 )
 
+type headerParameter struct {
+	value    string
+	expected string
+}
+
+var headerParameters = []headerParameter{
+	{Location, "Location"},
+	{ContentType, "Content-Type"},
+	{Authorization, "Authorization"},
+	{AuthBasic, "Basic"},
+	{AuthBearer, "Bearer"},
+	{ContentTypeJSON, "application/json"},
+}
+
 func Test_HTTPHeaders(t *testing.T) {
-	assert.Equal(t, Location, "Location")
-	assert.Equal(t, ContentType, "Content-Type")
-	assert.Equal(t, Authorization, "Authorization")
-	assert.Equal(t, AuthBasic, "Basic")
-	assert.Equal(t, AuthBearer, "Bearer")
-	assert.Equal(t, ContentTypeJSON, "application/json")
+	for _, test := range headerParameters {
+		testMessage := fmt.Sprintf("%s", test.value)
+		t.Run(testMessage, func(t *testing.T) {
+			if test.value != test.expected {
+				t.Errorf("assertion error, %v != %v", test.value, test.expected)
+			}
+		})
+	}
 }

@@ -1,7 +1,7 @@
 package store
 
 import (
-	"stopnik/assert"
+	"reflect"
 	"stopnik/internal/config"
 	"testing"
 )
@@ -36,7 +36,9 @@ func Test_Session(t *testing.T) {
 			t.Errorf("expected session to exists")
 		}
 
-		assert.Equal(t, session, authSession)
+		if !reflect.DeepEqual(session, authSession) {
+			t.Errorf("assertion error, %v != %v", session, authSession)
+		}
 	})
 
 	t.Run("not_found", func(t *testing.T) {

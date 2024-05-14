@@ -2,7 +2,7 @@ package store
 
 import (
 	"fmt"
-	"stopnik/assert"
+	"reflect"
 	"stopnik/internal/config"
 	internalHttp "stopnik/internal/http"
 	"stopnik/internal/oauth2"
@@ -39,7 +39,9 @@ func Test_Token(t *testing.T) {
 			t.Error("wrong username")
 		}
 
-		assert.Equal(t, scopes, []string{"abc", "def"})
+		if !reflect.DeepEqual(scopes, []string{"abc", "def"}) {
+			t.Errorf("assertion error, %v != %v", scopes, []string{"abc", "def"})
+		}
 	})
 	t.Run("valid_jwt_hs256_token", func(t *testing.T) {
 		testConfig := createTestConfig(t, false)
@@ -70,7 +72,9 @@ func Test_Token(t *testing.T) {
 			t.Error("wrong username")
 		}
 
-		assert.Equal(t, scopes, []string{"abc", "def"})
+		if !reflect.DeepEqual(scopes, []string{"abc", "def"}) {
+			t.Errorf("assertion error, %v != %v", scopes, []string{"abc", "def"})
+		}
 	})
 }
 

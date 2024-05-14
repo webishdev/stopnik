@@ -28,14 +28,12 @@ type KeyLoader interface {
 }
 
 type DefaultKeyLoader struct {
-	Cert string
-	Key  string
+	serverKeys config.Keys
 }
 
 func NewDefaultKeyLoader(config *config.Config) *DefaultKeyLoader {
 	return &DefaultKeyLoader{
-		Cert: config.Server.TokenKeys.Cert,
-		Key:  config.Server.TokenKeys.Key,
+		serverKeys: config.Server.TokenKeys,
 	}
 }
 
@@ -205,10 +203,10 @@ func (tokenManager *TokenManager) generateJWTToken(tokenId string, duration time
 }
 
 func (defaultKeyLoader *DefaultKeyLoader) LoadKeys(client *config.Client) (*rsa.PrivateKey, bool, error) {
-	if defaultKeyLoader.Cert == "" || defaultKeyLoader.Key == "" {
+	if defaultKeyLoader.serverKeys.Cert == "" || defaultKeyLoader.serverKeys.Key == "" {
 		return nil, false, nil
 	}
-	keyPair, pairError := tls.LoadX509KeyPair(defaultKeyLoader.Cert, defaultKeyLoader.Key)
+	keyPair, pairError := tls.LoadX509KeyPair(defaultKeyLoader.serverKeys.Cert, defaultKeyLoader.serverKeys.Key)
 	if pairError != nil {
 		return nil, false, pairError
 	}

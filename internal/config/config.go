@@ -53,6 +53,7 @@ type Client struct {
 	Claims      []Claim  `yaml:"claims"`
 	Issuer      string   `yaml:"issuer"`
 	Audience    []string `yaml:"audience"`
+	TokenKeys   Keys     `yaml:"tokenKeys"`
 }
 
 type Config struct {
