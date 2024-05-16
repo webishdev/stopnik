@@ -1,17 +1,12 @@
 package http
 
 import (
-	"fmt"
 	"github.com/lestrrat-go/jwx/v2/jwa"
 	"github.com/lestrrat-go/jwx/v2/jwt"
 	"net/http"
 	"stopnik/internal/config"
 	"stopnik/log"
 	"time"
-)
-
-const (
-	usernameClaim = "username"
 )
 
 type Now func() time.Time
@@ -76,19 +71,16 @@ func (cookieManager *CookieManager) validateCookieValue(cookie *http.Cookie) (*c
 	}
 
 	// https://stackoverflow.com/a/61284284/4094586
-	username, exists := token.PrivateClaims()[usernameClaim]
-	if !exists {
-		return &config.User{}, false
-	}
-	user, userExists := cookieManager.config.GetUser(fmt.Sprintf("%v", username))
+	username := token.Subject()
+	user, userExists := cookieManager.config.GetUser(username)
 	return user, userExists
 }
 
 func (cookieManager *CookieManager) generateCookieValue(username string) (string, error) {
 	sessionTimeout := cookieManager.config.GetSessionTimeoutSeconds()
 	token, builderError := jwt.NewBuilder().
-		Expiration(cookieManager.now().Add(time.Second*time.Duration(sessionTimeout))).
-		Claim(usernameClaim, username).
+		Subject(username).
+		Expiration(cookieManager.now().Add(time.Second * time.Duration(sessionTimeout))).
 		Build()
 	if builderError != nil {
 		return "", builderError
