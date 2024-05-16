@@ -125,7 +125,7 @@ func emptyServerConfiguration(t *testing.T) {
 		t.Error("expected revoke scope to be 'stopnik:revoke'")
 	}
 
-	sessionTimeout := config.GetSessionTimeout()
+	sessionTimeout := config.GetSessionTimeoutSeconds()
 	if sessionTimeout != 3600 {
 		t.Error("expected session timeout to be 3600")
 	}
@@ -138,11 +138,11 @@ func simpleServerConfiguration(t *testing.T) {
 		origin := out.(*Config)
 		*origin = Config{
 			Server: Server{
-				Secret:          "5XyLSgKpo5kWrJqm",
-				AuthCookieName:  "my_auth",
-				IntrospectScope: "i:a",
-				RevokeScope:     "r:b",
-				SessionTimeout:  4200,
+				Secret:                "5XyLSgKpo5kWrJqm",
+				AuthCookieName:        "my_auth",
+				IntrospectScope:       "i:a",
+				RevokeScope:           "r:b",
+				SessionTimeoutSeconds: 4200,
 			},
 		}
 		return nil
@@ -178,7 +178,7 @@ func simpleServerConfiguration(t *testing.T) {
 		t.Error("expected revoke scope to be 'r:b'")
 	}
 
-	sessionTimeout := config.GetSessionTimeout()
+	sessionTimeout := config.GetSessionTimeoutSeconds()
 	if sessionTimeout != 4200 {
 		t.Error("expected session timeout to be 4200")
 	}

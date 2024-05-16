@@ -19,16 +19,16 @@ type TLS struct {
 }
 
 type Server struct {
-	LogLevel        string `yaml:"logLevel"`
-	Addr            string `yaml:"addr"`
-	AuthCookieName  string `yaml:"authCookieName"`
-	Secret          string `yaml:"secret"`
-	TokenKeys       Keys   `yaml:"tokenKeys"`
-	TLS             TLS    `yaml:"tls"`
-	LogoutRedirect  string `yaml:"logoutRedirect"`
-	IntrospectScope string `yaml:"introspectScope"`
-	RevokeScope     string `yaml:"revokeScopeScope"`
-	SessionTimeout  int    `yaml:"sessionTimeout"`
+	LogLevel              string `yaml:"logLevel"`
+	Addr                  string `yaml:"addr"`
+	AuthCookieName        string `yaml:"authCookieName"`
+	Secret                string `yaml:"secret"`
+	TokenKeys             Keys   `yaml:"tokenKeys"`
+	TLS                   TLS    `yaml:"tls"`
+	LogoutRedirect        string `yaml:"logoutRedirect"`
+	IntrospectScope       string `yaml:"introspectScope"`
+	RevokeScope           string `yaml:"revokeScopeScope"`
+	SessionTimeoutSeconds int    `yaml:"sessionTimeoutSeconds"`
 }
 
 type User struct {
@@ -203,8 +203,8 @@ func (config *Config) GetAuthCookieName() string {
 	return GetOrDefaultString(config.Server.AuthCookieName, "stopnik_auth")
 }
 
-func (config *Config) GetSessionTimeout() int {
-	return GetOrDefaultInt(config.Server.SessionTimeout, 3600)
+func (config *Config) GetSessionTimeoutSeconds() int {
+	return GetOrDefaultInt(config.Server.SessionTimeoutSeconds, 3600)
 }
 
 func (config *Config) GetIntrospectScope() string {

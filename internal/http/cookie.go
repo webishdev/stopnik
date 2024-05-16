@@ -52,7 +52,7 @@ func (cookieManager *CookieManager) CreateCookie(username string) (http.Cookie, 
 		Name:     authCookieName,
 		Value:    value,
 		Path:     "/",
-		MaxAge:   cookieManager.config.GetSessionTimeout(),
+		MaxAge:   cookieManager.config.GetSessionTimeoutSeconds(),
 		HttpOnly: true,
 		SameSite: http.SameSiteLaxMode,
 	}, nil
@@ -86,7 +86,7 @@ func (cookieManager *CookieManager) validateCookieValue(cookie *http.Cookie) (*c
 }
 
 func (cookieManager *CookieManager) generateCookieValue(username string) (string, error) {
-	sessionTimeout := cookieManager.config.GetSessionTimeout()
+	sessionTimeout := cookieManager.config.GetSessionTimeoutSeconds()
 	token, builderError := jwt.NewBuilder().
 		Expiration(cookieManager.now().Add(time.Second*time.Duration(sessionTimeout))).
 		Claim(usernameClaim, username).
