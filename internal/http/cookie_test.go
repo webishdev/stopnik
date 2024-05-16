@@ -34,21 +34,7 @@ func Test_Cookie(t *testing.T) {
 			t.Error(cookieError)
 		}
 
-		if cookie.Name != "stopnik_auth" {
-			t.Error("Cookie name is wrong")
-		}
-
-		if !cookie.HttpOnly {
-			t.Error("Cookie httpOnly should be true")
-		}
-
-		if cookie.Path != "/" {
-			t.Error("Cookie path is wrong")
-		}
-
-		if cookie.MaxAge != 3600 {
-			t.Error("Cookie maxAge is wrong")
-		}
+		testCookieValues(t, cookie, 3600)
 
 		httpRequest := &http.Request{
 			Header: http.Header{
@@ -127,4 +113,30 @@ func Test_Cookie(t *testing.T) {
 		}
 	})
 
+	t.Run("Delete Cookie", func(t *testing.T) {
+		cookieManager := NewCookieManager(testConfig)
+
+		deleteCookie := cookieManager.DeleteCookie()
+
+		testCookieValues(t, deleteCookie, -1)
+	})
+
+}
+
+func testCookieValues(t *testing.T, cookie http.Cookie, maxAge int) {
+	if cookie.Name != "stopnik_auth" {
+		t.Error("Cookie name is wrong")
+	}
+
+	if !cookie.HttpOnly {
+		t.Error("Cookie httpOnly should be true")
+	}
+
+	if cookie.Path != "/" {
+		t.Error("Cookie path is wrong")
+	}
+
+	if cookie.MaxAge != maxAge {
+		t.Errorf("Cookie maxAge should be %d", maxAge)
+	}
 }
