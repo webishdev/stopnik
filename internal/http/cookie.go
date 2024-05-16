@@ -77,7 +77,6 @@ func (cookieManager *CookieManager) validateCookieValue(cookie *http.Cookie) (*c
 
 	// https://stackoverflow.com/a/61284284/4094586
 	username, exists := token.PrivateClaims()[usernameClaim]
-	log.Debug("foo %s", username)
 	if !exists {
 		return &config.User{}, false
 	}
