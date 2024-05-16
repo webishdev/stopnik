@@ -59,16 +59,16 @@ func (handler *RevokeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 		tokenTypeHint := r.PostFormValue(oauth2.ParameterTokenTypeHint)
 
 		if tokenTypeHint == "refresh_token" {
-			_, tokenExists := handler.tokenManager.GetRefreshToken(token)
+			refreshToken, tokenExists := handler.tokenManager.GetRefreshToken(token)
 
 			if tokenExists {
-				handler.tokenManager.RevokeRefreshToken(token)
+				handler.tokenManager.RevokeRefreshToken(refreshToken)
 			}
 		} else {
-			_, tokenExists := handler.tokenManager.GetAccessToken(token)
+			accessToken, tokenExists := handler.tokenManager.GetAccessToken(token)
 
 			if tokenExists {
-				handler.tokenManager.RevokeAccessToken(token)
+				handler.tokenManager.RevokeAccessToken(accessToken)
 			}
 		}
 

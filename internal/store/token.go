@@ -50,16 +50,16 @@ func (tokenManager *TokenManager) GetAccessToken(token string) (*oauth2.AccessTo
 	return tokenManager.accessTokenStore.Get(token)
 }
 
-func (tokenManager *TokenManager) RevokeAccessToken(token string) {
-	tokenManager.accessTokenStore.Delete(token)
+func (tokenManager *TokenManager) RevokeAccessToken(accessToken *oauth2.AccessToken) {
+	tokenManager.accessTokenStore.Delete(accessToken.Key)
 }
 
 func (tokenManager *TokenManager) GetRefreshToken(token string) (*oauth2.RefreshToken, bool) {
 	return tokenManager.refreshTokenStore.Get(token)
 }
 
-func (tokenManager *TokenManager) RevokeRefreshToken(token string) {
-	tokenManager.refreshTokenStore.Delete(token)
+func (tokenManager *TokenManager) RevokeRefreshToken(refreshToken *oauth2.RefreshToken) {
+	tokenManager.refreshTokenStore.Delete(refreshToken.Key)
 }
 
 func (tokenManager *TokenManager) CreateAccessTokenResponse(username string, client *config.Client, scopes []string) oauth2.AccessTokenResponse {
