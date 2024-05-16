@@ -16,7 +16,7 @@ func NewRequestValidator(config *config.Config) *RequestValidator {
 	return &RequestValidator{config: config}
 }
 
-func (validator *RequestValidator) ValidateBasicAuth(r *http.Request) (*config.User, bool) {
+func (validator *RequestValidator) ValidateFormLogin(r *http.Request) (*config.User, bool) {
 	if r.Method == http.MethodPost {
 
 		username := r.PostFormValue("stopnik_username")
