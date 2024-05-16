@@ -7,14 +7,26 @@ import (
 	"net/http"
 	"stopnik/internal/config"
 	"stopnik/log"
+	"time"
 )
+
+const (
+	usernameClaim = "username"
+)
+
+type Now func() time.Time
 
 type CookieManager struct {
 	config *config.Config
+	now    Now
 }
 
 func NewCookieManager(config *config.Config) *CookieManager {
-	return &CookieManager{config: config}
+	return &CookieManager{config: config, now: time.Now}
+}
+
+func NewCookieManagerWithTime(config *config.Config, now Now) *CookieManager {
+	return &CookieManager{config: config, now: now}
 }
 
 func (cookieManager *CookieManager) DeleteCookie() http.Cookie {
@@ -40,7 +52,7 @@ func (cookieManager *CookieManager) CreateCookie(username string) (http.Cookie, 
 		Name:     authCookieName,
 		Value:    value,
 		Path:     "/",
-		MaxAge:   3600,
+		MaxAge:   cookieManager.config.GetSessionTimeout(),
 		HttpOnly: true,
 		SameSite: http.SameSiteLaxMode,
 	}, nil
@@ -64,7 +76,7 @@ func (cookieManager *CookieManager) validateCookieValue(cookie *http.Cookie) (*c
 	}
 
 	// https://stackoverflow.com/a/61284284/4094586
-	username, exists := token.PrivateClaims()["username"]
+	username, exists := token.PrivateClaims()[usernameClaim]
 	log.Debug("foo %s", username)
 	if !exists {
 		return &config.User{}, false
@@ -74,7 +86,11 @@ func (cookieManager *CookieManager) validateCookieValue(cookie *http.Cookie) (*c
 }
 
 func (cookieManager *CookieManager) generateCookieValue(username string) (string, error) {
-	token, builderError := jwt.NewBuilder().Claim("username", username).Build()
+	sessionTimeout := cookieManager.config.GetSessionTimeout()
+	token, builderError := jwt.NewBuilder().
+		Expiration(cookieManager.now().Add(time.Second*time.Duration(sessionTimeout))).
+		Claim(usernameClaim, username).
+		Build()
 	if builderError != nil {
 		return "", builderError
 	}

@@ -11,7 +11,7 @@ import (
 
 func Test_Token(t *testing.T) {
 	t.Run("Valid opaque token", func(t *testing.T) {
-		testConfig := createTestConfig(t, true)
+		testConfig := createTestConfig(t, true, 0)
 		tokenManager := NewTokenManager(testConfig, NewDefaultKeyLoader(testConfig))
 		client, clientExists := testConfig.GetClient("foo")
 		if !clientExists {
@@ -44,7 +44,7 @@ func Test_Token(t *testing.T) {
 		}
 	})
 	t.Run("Valid JWT HS256 token", func(t *testing.T) {
-		testConfig := createTestConfig(t, false)
+		testConfig := createTestConfig(t, false, 0)
 		tokenManager := NewTokenManager(testConfig, NewDefaultKeyLoader(testConfig))
 		client, clientExists := testConfig.GetClient("foo")
 		if !clientExists {
@@ -78,7 +78,7 @@ func Test_Token(t *testing.T) {
 	})
 }
 
-func createTestConfig(t *testing.T, opaque bool) *config.Config {
+func createTestConfig(t *testing.T, opaque bool, refreshTokenTTL int) *config.Config {
 	testConfig := &config.Config{
 		Clients: []config.Client{
 			{
@@ -86,6 +86,7 @@ func createTestConfig(t *testing.T, opaque bool) *config.Config {
 				Secret:      "d82c4eb5261cb9c8aa9855edd67d1bd10482f41529858d925094d173fa662aa91ff39bc5b188615273484021dfb16fd8284cf684ccf0fc795be3aa2fc1e6c181",
 				Redirects:   []string{"https://example.com/callback"},
 				OpaqueToken: opaque,
+				RefreshTTL:  refreshTokenTTL,
 			},
 		},
 		Users: []config.User{

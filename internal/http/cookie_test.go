@@ -1,9 +1,18 @@
 package http
 
 import (
+	"fmt"
+	"net/http"
 	"stopnik/internal/config"
 	"testing"
+	"time"
 )
+
+var mockedTime = time.Date(1979, 1, 17, 15, 0, 0, 0, time.Local)
+
+func now() time.Time {
+	return mockedTime
+}
 
 func Test_Cookie(t *testing.T) {
 	testConfig := &config.Config{
@@ -41,10 +50,81 @@ func Test_Cookie(t *testing.T) {
 			t.Error("Cookie maxAge is wrong")
 		}
 
-		_, userExists := cookieManager.validateCookieValue(&cookie)
+		httpRequest := &http.Request{
+			Header: http.Header{
+				"Cookie": []string{cookie.String()},
+			},
+		}
+
+		_, userExists := cookieManager.ValidateCookie(httpRequest)
 
 		if !userExists {
 			t.Error("Token in cookie is invalid")
 		}
 	})
+
+	t.Run("Create and validate expired Cookie", func(t *testing.T) {
+		cookieManager := NewCookieManagerWithTime(testConfig, now)
+
+		cookie, cookieError := cookieManager.CreateCookie("foo")
+
+		if cookieError != nil {
+			t.Error(cookieError)
+		}
+
+		httpRequest := &http.Request{
+			Header: http.Header{
+				"Cookie": []string{cookie.String()},
+			},
+		}
+
+		mockedTime.Add(time.Hour * time.Duration(-6))
+
+		_, userExists := cookieManager.ValidateCookie(httpRequest)
+
+		if userExists {
+			t.Error("Expired token should not provide a user")
+		}
+	})
+
+	t.Run("Create and validate Cookie with wrong username", func(t *testing.T) {
+		cookieManager := NewCookieManager(testConfig)
+
+		cookie, cookieError := cookieManager.CreateCookie("bar")
+
+		if cookieError != nil {
+			t.Error(cookieError)
+		}
+
+		httpRequest := &http.Request{
+			Header: http.Header{
+				"Cookie": []string{cookie.String()},
+			},
+		}
+
+		_, userExists := cookieManager.ValidateCookie(httpRequest)
+
+		if userExists {
+			t.Error("User should not exists")
+		}
+	})
+
+	t.Run("Create and validate Cookie with invalid content", func(t *testing.T) {
+		cookieManager := NewCookieManager(testConfig)
+
+		cookie := fmt.Sprintf("%s=%s", testConfig.GetAuthCookieName(), "moo")
+
+		httpRequest := &http.Request{
+			Header: http.Header{
+				"Cookie": []string{cookie},
+			},
+		}
+
+		_, userExists := cookieManager.ValidateCookie(httpRequest)
+
+		if userExists {
+			t.Error("User should not exists")
+		}
+	})
+
 }

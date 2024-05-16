@@ -28,6 +28,7 @@ type Server struct {
 	LogoutRedirect  string `yaml:"logoutRedirect"`
 	IntrospectScope string `yaml:"introspectScope"`
 	RevokeScope     string `yaml:"revokeScopeScope"`
+	SessionTimeout  int    `yaml:"sessionTimeout"`
 }
 
 type User struct {
@@ -200,6 +201,10 @@ func (config *Config) GetClient(name string) (*Client, bool) {
 
 func (config *Config) GetAuthCookieName() string {
 	return GetOrDefaultString(config.Server.AuthCookieName, "stopnik_auth")
+}
+
+func (config *Config) GetSessionTimeout() int {
+	return GetOrDefaultInt(config.Server.SessionTimeout, 3600)
 }
 
 func (config *Config) GetIntrospectScope() string {
