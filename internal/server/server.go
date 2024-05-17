@@ -51,8 +51,11 @@ func NewStopnikServer(config *config.Config) *StopnikServer {
 	}
 	listenAndServeTLS := func(stopnikServer *StopnikServer, listener *net.Listener, server *http.Server) error {
 		stopnikServer.httpsServer = server
+		if stopnikServer.config.Server.TLS.Keys.Cert == "" || stopnikServer.config.Server.TLS.Keys.Key == "" {
+			return errors.New("TLS Keys not configured")
+		}
 		log.Info("Will accept TLS connections at %s", server.Addr)
-		return server.Serve(*listener)
+		return server.ServeTLS(*listener, stopnikServer.config.Server.TLS.Keys.Cert, stopnikServer.config.Server.TLS.Keys.Key)
 	}
 	return newStopnikServerWithServe(config, http.NewServeMux(), listenAndServe, listenAndServeTLS)
 }
@@ -132,7 +135,6 @@ func (stopnikServer *StopnikServer) listenAndServe(addr string, serve func(stopn
 		IdleTimeout:       stopnikServer.idleTimeout,
 		Handler:           stopnikServer.middleware,
 	}
-
 	errorServer := serve(stopnikServer, &listener, httpServer)
 	if errorServer != nil {
 		return errorServer
