@@ -52,10 +52,10 @@ func NewStopnikServer(config *config.Config) *StopnikServer {
 		stopnikServer.httpsServer = server
 		return server.Serve(*listener)
 	}
-	return NewStopnikServerWithServe(config, http.NewServeMux(), listenAndServe, listenAndServeTLS)
+	return newStopnikServerWithServe(config, http.NewServeMux(), listenAndServe, listenAndServeTLS)
 }
 
-func NewStopnikServerWithServe(config *config.Config, mux *http.ServeMux, serve ListenAndServe, serveTLS ListenAndServe) *StopnikServer {
+func newStopnikServerWithServe(config *config.Config, mux *http.ServeMux, serve ListenAndServe, serveTLS ListenAndServe) *StopnikServer {
 	registerHandlers(config, mux.Handle)
 
 	middleware := &middlewareHandler{

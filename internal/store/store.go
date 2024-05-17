@@ -42,10 +42,10 @@ func NewStore[T any]() *Store[T] {
 }
 
 func NewTimedStore[T any](duration time.Duration) *Store[T] {
-	return NewTimedStoreWithTimer[T](duration, NewTimer())
+	return newTimedStoreWithTimer[T](duration, NewTimer())
 }
 
-func NewTimedStoreWithTimer[T any](duration time.Duration, timer *Timer) *Store[T] {
+func newTimedStoreWithTimer[T any](duration time.Duration, timer *Timer) *Store[T] {
 	tickerChannel := timer.tickerChannel()
 	cache := &Store[T]{
 		storeMap:      make(map[string]expiringType[*T]),

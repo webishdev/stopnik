@@ -92,7 +92,7 @@ func Test_Server(t *testing.T) {
 				}
 				return nil
 			}
-			server := NewStopnikServerWithServe(test.config, http.NewServeMux(), r, r)
+			server := newStopnikServerWithServe(test.config, http.NewServeMux(), r, r)
 
 			server.Start()
 

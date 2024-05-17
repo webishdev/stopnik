@@ -34,7 +34,7 @@ func Test_Store(t *testing.T) {
 	}
 
 	t.Run("Set and get", func(t *testing.T) {
-		store := NewTimedStoreWithTimer[Tester](time.Hour*time.Duration(1), timer)
+		store := newTimedStoreWithTimer[Tester](time.Hour*time.Duration(1), timer)
 
 		store.Set("foo", tester)
 		store.SetWithDuration("bar", tester, time.Hour*time.Duration(10))
@@ -80,7 +80,7 @@ func Test_Store(t *testing.T) {
 	})
 
 	t.Run("Set, get and delete", func(t *testing.T) {
-		store := NewTimedStoreWithTimer[Tester](time.Hour*time.Duration(1), timer)
+		store := newTimedStoreWithTimer[Tester](time.Hour*time.Duration(1), timer)
 
 		store.Set("foo", tester)
 		store.SetWithDuration("bar", tester, time.Hour*time.Duration(10))

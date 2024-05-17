@@ -50,7 +50,7 @@ func Test_Cookie(t *testing.T) {
 	})
 
 	t.Run("Create and validate expired Cookie", func(t *testing.T) {
-		cookieManager := NewCookieManagerWithTime(testConfig, now)
+		cookieManager := newCookieManagerWithTime(testConfig, now)
 
 		cookie, cookieError := cookieManager.CreateCookie("foo")
 

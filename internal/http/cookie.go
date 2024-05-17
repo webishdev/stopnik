@@ -17,10 +17,10 @@ type CookieManager struct {
 }
 
 func NewCookieManager(config *config.Config) *CookieManager {
-	return &CookieManager{config: config, now: time.Now}
+	return newCookieManagerWithTime(config, time.Now)
 }
 
-func NewCookieManagerWithTime(config *config.Config, now Now) *CookieManager {
+func newCookieManagerWithTime(config *config.Config, now Now) *CookieManager {
 	return &CookieManager{config: config, now: now}
 }
 
