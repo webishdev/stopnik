@@ -46,10 +46,12 @@ type StopnikServer struct {
 func NewStopnikServer(config *config.Config) *StopnikServer {
 	listenAndServe := func(stopnikServer *StopnikServer, listener *net.Listener, server *http.Server) error {
 		stopnikServer.httpServer = server
+		log.Info("Will accept connections at %s", server.Addr)
 		return server.Serve(*listener)
 	}
 	listenAndServeTLS := func(stopnikServer *StopnikServer, listener *net.Listener, server *http.Server) error {
 		stopnikServer.httpsServer = server
+		log.Info("Will accept TLS connections at %s", server.Addr)
 		return server.Serve(*listener)
 	}
 	return newStopnikServerWithServe(config, http.NewServeMux(), listenAndServe, listenAndServeTLS)
@@ -130,8 +132,6 @@ func (stopnikServer *StopnikServer) listenAndServe(addr string, serve func(stopn
 		IdleTimeout:       stopnikServer.idleTimeout,
 		Handler:           stopnikServer.middleware,
 	}
-
-	log.Info("Will accept connections at %s", httpServer.Addr)
 
 	errorServer := serve(stopnikServer, &listener, httpServer)
 	if errorServer != nil {
