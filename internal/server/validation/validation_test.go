@@ -4,19 +4,21 @@ import (
 	"fmt"
 	"net/http"
 	"stopnik/internal/config"
+	"stopnik/internal/oauth2"
 	"testing"
 )
 
-type userPasswordParameter struct {
-	username string
+type passwordParameter struct {
+	name     string
 	password string
 	valid    bool
 }
 
-var userPasswordParameters = []userPasswordParameter{
-	{username: "foo", password: "bar", valid: true},
-	{username: "foo", password: "xxx", valid: false},
-	{username: "bar", password: "xxx", valid: false},
+var passwordParameters = []passwordParameter{
+	{name: "foo", password: "bar", valid: true},
+	{name: "foo", password: "xxx", valid: false},
+	{name: "bar", password: "xxx", valid: false},
+	{name: "", password: "", valid: false},
 }
 
 var httpMethods = []string{http.MethodGet, http.MethodPost, http.MethodPut, http.MethodPatch, http.MethodDelete}
@@ -42,13 +44,13 @@ func Test_Validation(t *testing.T) {
 		t.Fatal(setupError)
 	}
 
-	for _, test := range userPasswordParameters {
-		testMessage := fmt.Sprintf("Valid user password %s %t", test.username, test.valid)
+	for _, test := range passwordParameters {
+		testMessage := fmt.Sprintf("Valid user password %s %t", test.name, test.valid)
 		t.Run(testMessage, func(t *testing.T) {
 
 			requestValidator := NewRequestValidator(testConfig)
 
-			_, valid := requestValidator.ValidateUserPassword(test.username, test.password)
+			_, valid := requestValidator.ValidateUserPassword(test.name, test.password)
 
 			if test.valid != valid {
 				t.Errorf("result does not match %t != %t", test.valid, valid)
@@ -56,14 +58,14 @@ func Test_Validation(t *testing.T) {
 		})
 	}
 
-	for _, test := range userPasswordParameters {
+	for _, test := range passwordParameters {
 		for _, httpMethod := range httpMethods {
-			testMessage := fmt.Sprintf("Valid user password from request %s %t %s", test.username, test.valid, httpMethod)
+			testMessage := fmt.Sprintf("Valid user password from request %s %t %s", test.name, test.valid, httpMethod)
 			t.Run(testMessage, func(t *testing.T) {
 				httpRequest := &http.Request{
 					Method: httpMethod,
 					PostForm: map[string][]string{
-						"stopnik_username": {test.username},
+						"stopnik_username": {test.name},
 						"stopnik_password": {test.password},
 					},
 				}
@@ -71,6 +73,31 @@ func Test_Validation(t *testing.T) {
 				requestValidator := NewRequestValidator(testConfig)
 
 				_, valid := requestValidator.ValidateFormLogin(httpRequest)
+
+				if httpMethod == http.MethodPost && test.valid != valid {
+					t.Errorf("result does not match %t != %t", test.valid, valid)
+				} else if httpMethod != http.MethodPost && valid {
+					t.Error("should not be valid form login")
+				}
+			})
+		}
+	}
+
+	for _, test := range passwordParameters {
+		for _, httpMethod := range httpMethods {
+			testMessage := fmt.Sprintf("Valid client credentials from request %s %t %s", test.name, test.valid, httpMethod)
+			t.Run(testMessage, func(t *testing.T) {
+				httpRequest := &http.Request{
+					Method: httpMethod,
+					PostForm: map[string][]string{
+						oauth2.ParameterClientId:     {test.name},
+						oauth2.ParameterClientSecret: {test.password},
+					},
+				}
+
+				requestValidator := NewRequestValidator(testConfig)
+
+				_, valid := requestValidator.ValidateClientCredentials(httpRequest)
 
 				if httpMethod == http.MethodPost && test.valid != valid {
 					t.Errorf("result does not match %t != %t", test.valid, valid)

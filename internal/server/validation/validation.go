@@ -18,9 +18,14 @@ func NewRequestValidator(config *config.Config) *RequestValidator {
 
 func (validator *RequestValidator) ValidateFormLogin(r *http.Request) (*config.User, bool) {
 	if r.Method == http.MethodPost {
+		log.Debug("Validating user credentials")
 
 		username := r.PostFormValue("stopnik_username")
 		password := r.PostFormValue("stopnik_password")
+
+		if username == "" || password == "" {
+			return nil, false
+		}
 
 		// When login invalid
 		// https://en.wikipedia.org/wiki/Post/Redirect/Get
@@ -42,31 +47,34 @@ func (validator *RequestValidator) ValidateFormLogin(r *http.Request) (*config.U
 }
 
 func (validator *RequestValidator) ValidateClientCredentials(r *http.Request) (*config.Client, bool) {
-	log.Debug("Validating client credentials")
-	// https://datatracker.ietf.org/doc/html/rfc6749#section-2.3.1
-	clientId, clientSecret, ok := r.BasicAuth()
-	if !ok {
-		// Check fallback
-		clientId = r.PostFormValue(oauth2.ParameterClientId)
-		clientSecret = r.PostFormValue(oauth2.ParameterClientSecret)
+	if r.Method == http.MethodPost {
+		log.Debug("Validating client credentials")
+		// https://datatracker.ietf.org/doc/html/rfc6749#section-2.3.1
+		clientId, clientSecret, ok := r.BasicAuth()
+		if !ok {
+			// Check fallback
+			clientId = r.PostFormValue(oauth2.ParameterClientId)
+			clientSecret = r.PostFormValue(oauth2.ParameterClientSecret)
+		}
+
+		if clientId == "" || clientSecret == "" {
+			return nil, false
+		}
+
+		client, clientExists := validator.ValidateClientId(clientId)
+		if !clientExists {
+			return nil, false
+		}
+
+		secretHash := crypto.Sha512Hash(clientSecret)
+
+		if secretHash != client.Secret {
+			return nil, false
+		}
+
+		return client, true
 	}
-
-	if clientId == "" || clientSecret == "" {
-		return nil, false
-	}
-
-	client, clientExists := validator.config.GetClient(clientId)
-	if !clientExists {
-		return nil, false
-	}
-
-	secretHash := crypto.Sha512Hash(clientSecret)
-
-	if secretHash != client.Secret {
-		return nil, false
-	}
-
-	return client, true
+	return nil, false
 }
 
 func (validator *RequestValidator) ValidateClientId(clientId string) (*config.Client, bool) {

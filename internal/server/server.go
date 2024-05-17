@@ -1,24 +1,28 @@
 package server
 
 import (
+	"context"
+	"errors"
 	"net"
 	"net/http"
-	"os"
 	"stopnik/internal/config"
 	internalHttp "stopnik/internal/http"
 	"stopnik/internal/server/handler"
 	"stopnik/internal/server/validation"
 	"stopnik/internal/store"
 	"stopnik/log"
+	"sync"
 	"time"
 )
 
-type mainHandler struct {
+type ListenAndServe func(stopnikServer *StopnikServer, listener *net.Listener, server *http.Server) error
+
+type middlewareHandler struct {
 	next   http.Handler
 	assets *handler.AssetHandler
 }
 
-func (mh mainHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (mh middlewareHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if mh.assets.Matches(r) {
 		mh.assets.ServeHTTP(w, r)
 	} else {
@@ -26,7 +30,125 @@ func (mh mainHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func StartServer(config *config.Config) {
+type StopnikServer struct {
+	config            *config.Config
+	middleware        *middlewareHandler
+	readHeaderTimeout time.Duration
+	readTimeout       time.Duration
+	writeTimeout      time.Duration
+	idleTimeout       time.Duration
+	httpServer        *http.Server
+	httpsServer       *http.Server
+	serve             *ListenAndServe
+	serveTLS          *ListenAndServe
+}
+
+func NewStopnikServer(config *config.Config) *StopnikServer {
+	listenAndServe := func(stopnikServer *StopnikServer, listener *net.Listener, server *http.Server) error {
+		stopnikServer.httpServer = server
+		return server.Serve(*listener)
+	}
+	listenAndServeTLS := func(stopnikServer *StopnikServer, listener *net.Listener, server *http.Server) error {
+		stopnikServer.httpsServer = server
+		return server.Serve(*listener)
+	}
+	return NewStopnikServerWithServe(config, listenAndServe, listenAndServeTLS)
+}
+
+func NewStopnikServerWithServe(config *config.Config, serve ListenAndServe, serveTLS ListenAndServe) *StopnikServer {
+	mux := newMux(config)
+
+	middleware := &middlewareHandler{
+		next:   mux,
+		assets: &handler.AssetHandler{},
+	}
+	return &StopnikServer{
+		config:            config,
+		middleware:        middleware,
+		readHeaderTimeout: 15 * time.Second,
+		readTimeout:       15 * time.Second,
+		writeTimeout:      10 * time.Second,
+		idleTimeout:       30 * time.Second,
+		serve:             &serve,
+		serveTLS:          &serveTLS,
+	}
+}
+
+func (stopnikServer *StopnikServer) Start() {
+
+	wg := sync.WaitGroup{}
+
+	if stopnikServer.config.Server.Addr != "" {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			errorServer := stopnikServer.listenAndServe(stopnikServer.config.Server.Addr, *stopnikServer.serve)
+
+			if errorServer != nil && !errors.Is(errorServer, http.ErrServerClosed) {
+				log.Error("Error starting server: %v", errorServer)
+			}
+		}()
+	}
+
+	if stopnikServer.config.Server.TLS.Addr != "" {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			errorServer := stopnikServer.listenAndServe(stopnikServer.config.Server.TLS.Addr, *stopnikServer.serveTLS)
+
+			if errorServer != nil && !errors.Is(errorServer, http.ErrServerClosed) {
+				log.Error("Error starting server: %v", errorServer)
+			}
+		}()
+	}
+
+	wg.Wait()
+}
+
+func (stopnikServer *StopnikServer) Shutdown() {
+	log.Info("Shutting down STOPnik...")
+	if stopnikServer.httpServer != nil {
+		shutdownServer(stopnikServer.httpServer)
+	}
+
+	if stopnikServer.httpsServer != nil {
+		shutdownServer(stopnikServer.httpsServer)
+	}
+}
+
+func (stopnikServer *StopnikServer) listenAndServe(addr string, serve func(stopnikServer *StopnikServer, listener *net.Listener, server *http.Server) error) error {
+	listener, listenError := net.Listen("tcp", addr)
+	if listenError != nil {
+		return listenError
+	}
+
+	httpServer := &http.Server{
+		Addr:              listener.Addr().String(),
+		ReadHeaderTimeout: stopnikServer.readHeaderTimeout,
+		ReadTimeout:       stopnikServer.readTimeout,
+		WriteTimeout:      stopnikServer.writeTimeout,
+		IdleTimeout:       stopnikServer.idleTimeout,
+		Handler:           stopnikServer.middleware,
+	}
+
+	log.Info("Will accept connections at %s", httpServer.Addr)
+
+	errorServer := serve(stopnikServer, &listener, httpServer)
+	if errorServer != nil {
+		return errorServer
+	}
+
+	return nil
+}
+
+func shutdownServer(server *http.Server) {
+	errorServer := server.Shutdown(context.Background())
+	if errorServer != nil {
+		log.Error("Failed to shutdown server: %v", errorServer)
+	}
+}
+
+func newMux(config *config.Config) *http.ServeMux {
 	sessionManager := store.NewSessionManager(config)
 	tokenManager := store.NewTokenManager(config, store.NewDefaultKeyLoader(config))
 	cookieManager := internalHttp.NewCookieManager(config)
@@ -46,11 +168,6 @@ func StartServer(config *config.Config) {
 
 	mux := http.NewServeMux()
 
-	main := &mainHandler{
-		next:   mux,
-		assets: &handler.AssetHandler{},
-	}
-
 	// Server
 	mux.Handle("/health", &handler.HealthHandler{})
 	mux.Handle("/account", accountHandler)
@@ -64,63 +181,5 @@ func StartServer(config *config.Config) {
 	mux.Handle("/introspect", introspectHandler)
 	mux.Handle("/revoke", revokeHandler)
 
-	var readHeaderTimeout = 15 * time.Second
-	var readTimeout = 15 * time.Second
-	var writeTimeout = 10 * time.Second
-	var idleTimeout = 30 * time.Second
-
-	go func() {
-		listener, listenError := net.Listen("tcp", config.Server.Addr)
-		if listenError != nil {
-			log.Error("Failed to setup listener: %v", listenError)
-			os.Exit(1)
-		}
-
-		httpServer := &http.Server{
-			Addr:              listener.Addr().String(),
-			ReadHeaderTimeout: readHeaderTimeout,
-			ReadTimeout:       readTimeout,
-			WriteTimeout:      writeTimeout,
-			IdleTimeout:       idleTimeout,
-			Handler:           main,
-		}
-
-		log.Info("Will accept connections at %s", httpServer.Addr)
-
-		errorServer := httpServer.Serve(listener)
-		if errorServer != nil {
-			log.Error("Failed to start server: %v", errorServer)
-			os.Exit(1)
-		}
-	}()
-
-	if config.Server.TLS.Addr != "" {
-		go func() {
-			tlsListener, tlsListenError := net.Listen("tcp", config.Server.TLS.Addr)
-			if tlsListenError != nil {
-				log.Error("Failed to setup TLS listener: %v", tlsListenError)
-				os.Exit(1)
-			}
-
-			httpsServer := &http.Server{
-				Addr:              tlsListener.Addr().String(),
-				ReadHeaderTimeout: readHeaderTimeout,
-				ReadTimeout:       readTimeout,
-				WriteTimeout:      writeTimeout,
-				IdleTimeout:       idleTimeout,
-				Handler:           main,
-			}
-
-			log.Info("Will accept TLS connections at %s", httpsServer.Addr)
-
-			tlsServerError := httpsServer.ServeTLS(tlsListener, config.Server.TLS.Keys.Cert, config.Server.TLS.Keys.Key)
-			if tlsServerError != nil {
-				log.Error("Failed to start TLS server: %v", tlsServerError)
-				os.Exit(1)
-			}
-		}()
-	}
-
-	select {}
-
+	return mux
 }
