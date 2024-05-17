@@ -52,11 +52,11 @@ func NewStopnikServer(config *config.Config) *StopnikServer {
 		stopnikServer.httpsServer = server
 		return server.Serve(*listener)
 	}
-	return NewStopnikServerWithServe(config, listenAndServe, listenAndServeTLS)
+	return NewStopnikServerWithServe(config, http.NewServeMux(), listenAndServe, listenAndServeTLS)
 }
 
-func NewStopnikServerWithServe(config *config.Config, serve ListenAndServe, serveTLS ListenAndServe) *StopnikServer {
-	mux := newMux(config)
+func NewStopnikServerWithServe(config *config.Config, mux *http.ServeMux, serve ListenAndServe, serveTLS ListenAndServe) *StopnikServer {
+	registerHandlers(config, mux.Handle)
 
 	middleware := &middlewareHandler{
 		next:   mux,
@@ -148,7 +148,7 @@ func shutdownServer(server *http.Server) {
 	}
 }
 
-func newMux(config *config.Config) *http.ServeMux {
+func registerHandlers(config *config.Config, handle func(pattern string, handler http.Handler)) {
 	sessionManager := store.NewSessionManager(config)
 	tokenManager := store.NewTokenManager(config, store.NewDefaultKeyLoader(config))
 	cookieManager := internalHttp.NewCookieManager(config)
@@ -166,20 +166,16 @@ func newMux(config *config.Config) *http.ServeMux {
 	introspectHandler := handler.CreateIntrospectHandler(config, requestValidator, tokenManager)
 	revokeHandler := handler.CreateRevokeHandler(config, requestValidator, tokenManager)
 
-	mux := http.NewServeMux()
-
 	// Server
-	mux.Handle("/health", &handler.HealthHandler{})
-	mux.Handle("/account", accountHandler)
-	mux.Handle("/logout", logoutHandler)
+	handle("/health", &handler.HealthHandler{})
+	handle("/account", accountHandler)
+	handle("/logout", logoutHandler)
 
 	// OAuth2
-	mux.Handle("/authorize", authorizeHandler)
-	mux.Handle("/token", tokenHandler)
+	handle("/authorize", authorizeHandler)
+	handle("/token", tokenHandler)
 
 	// OAuth2 extensions
-	mux.Handle("/introspect", introspectHandler)
-	mux.Handle("/revoke", revokeHandler)
-
-	return mux
+	handle("/introspect", introspectHandler)
+	handle("/revoke", revokeHandler)
 }
