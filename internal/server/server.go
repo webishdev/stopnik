@@ -155,6 +155,7 @@ func registerHandlers(config *config.Config, handle func(pattern string, handler
 	requestValidator := validation.NewRequestValidator(config)
 
 	// Own
+	healthHandler := handler.NewHealthHandler(tokenManager)
 	accountHandler := handler.CreateAccountHandler(requestValidator, cookieManager)
 	logoutHandler := handler.CreateLogoutHandler(cookieManager, config.Server.LogoutRedirect)
 
@@ -167,7 +168,7 @@ func registerHandlers(config *config.Config, handle func(pattern string, handler
 	revokeHandler := handler.CreateRevokeHandler(config, requestValidator, tokenManager)
 
 	// Server
-	handle("/health", &handler.HealthHandler{})
+	handle("/health", healthHandler)
 	handle("/account", accountHandler)
 	handle("/logout", logoutHandler)
 
