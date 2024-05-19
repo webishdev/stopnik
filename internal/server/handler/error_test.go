@@ -22,6 +22,12 @@ var errorTestCases = []errorTestCase{
 	{"See other", http.StatusSeeOther, SeeOtherHandler},
 }
 
+var testStatusCodes = []int{
+	http.StatusOK,
+	http.StatusBadRequest,
+	http.StatusInternalServerError,
+}
+
 func Test_Errors(t *testing.T) {
 	for _, test := range errorTestCases {
 		testMessage := fmt.Sprintf("Error handler %s %v", test.name, test.status)
@@ -33,6 +39,20 @@ func Test_Errors(t *testing.T) {
 
 			if rr.Code != test.status {
 				t.Errorf("handler returned wrong status code: got %v want %v", rr.Code, test.status)
+			}
+		})
+	}
+
+	for _, testStatus := range testStatusCodes {
+		testMessage := fmt.Sprintf("Send status code %d", testStatus)
+		t.Run(testMessage, func(t *testing.T) {
+			httpRequest := &http.Request{}
+			rr := httptest.NewRecorder()
+
+			sendStatus(testStatus, "message", rr, httpRequest)
+
+			if rr.Code != testStatus {
+				t.Errorf("handler returned wrong status code: got %v want %v", rr.Code, testStatus)
 			}
 		})
 	}
