@@ -16,7 +16,7 @@ func Test_Template(t *testing.T) {
 		}
 
 		assertContains(t, result, "<form method=\"POST\" action=\"/some/post\">")
-		assertContains(t, result, "<input type=\"hidden\" name=\"stopnik_auth_session\" value=\"foo\"")
+		assertContains(t, result, "<input type=\"hidden\" name=\"stopnik_auth_session\" value=\"foo\" />")
 	})
 
 	t.Run("Logout", func(t *testing.T) {
@@ -29,12 +29,12 @@ func Test_Template(t *testing.T) {
 		}
 
 		assertContains(t, result, "<form method=\"POST\" action=\"logout\">")
-		assertContains(t, result, "<input type=\"hidden\" name=\"stopnik_auth_session\" value=\"/some/value\"")
+		assertContains(t, result, "<input type=\"hidden\" name=\"stopnik_logout_redirect\" value=\"/some/value\" />")
 	})
 }
 
 func assertContains(t *testing.T, value string, contains string) {
 	if !strings.Contains(value, contains) {
-		t.Errorf("result does not contain %s", contains)
+		t.Errorf("result %s does not contain %s", value, contains)
 	}
 }
