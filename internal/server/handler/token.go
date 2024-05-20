@@ -97,6 +97,9 @@ func (handler *TokenHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				ForbiddenHandler(w, r)
 				return
 			}
+
+			username = refreshToken.Username
+			scopes = refreshToken.Scopes
 		}
 
 		accessTokenResponse := handler.tokenManager.CreateAccessTokenResponse(username, client, scopes)

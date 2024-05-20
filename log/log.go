@@ -6,29 +6,28 @@ import (
 	"os"
 )
 
-var textHandler = slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
+var currentLogLevel slog.Level
+
+var textHandler = *slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
 	//Level: slog.LevelError,
 })
 
-var accessLogHandler = slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
+var accessLogHandler = *slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
 	//Level: slog.LevelError,
 })
 
-var infoLogger = slog.NewLogLogger(textHandler, slog.LevelInfo)
-var warnLogger = slog.NewLogLogger(textHandler, slog.LevelWarn)
-var errorLogger = slog.NewLogLogger(textHandler, slog.LevelError)
-var debugLogger = slog.NewLogLogger(textHandler, slog.LevelDebug)
+var infoLogger = slog.NewLogLogger(&textHandler, slog.LevelInfo)
+var warnLogger = slog.NewLogLogger(&textHandler, slog.LevelWarn)
+var errorLogger = slog.NewLogLogger(&textHandler, slog.LevelError)
+var debugLogger = slog.NewLogLogger(&textHandler, slog.LevelDebug)
 
-var accessLogger = slog.NewLogLogger(accessLogHandler, slog.LevelInfo)
+var accessLogger = slog.NewLogLogger(&accessLogHandler, slog.LevelInfo)
 
 func SetLogLevel(level string) {
-	textHandler = slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
-		Level: getLogLevelFromString(level),
+	currentLogLevel = getLogLevelFromString(level)
+	textHandler = *slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
+		Level: currentLogLevel,
 	})
-	infoLogger = slog.NewLogLogger(textHandler, slog.LevelInfo)
-	warnLogger = slog.NewLogLogger(textHandler, slog.LevelWarn)
-	errorLogger = slog.NewLogLogger(textHandler, slog.LevelError)
-	debugLogger = slog.NewLogLogger(textHandler, slog.LevelDebug)
 }
 
 func Info(format string, v ...any) {
@@ -45,6 +44,10 @@ func Error(format string, v ...any) {
 
 func Debug(format string, v ...any) {
 	debugLogger.Printf(format, v...)
+}
+
+func IsDebug() bool {
+	return currentLogLevel == slog.LevelDebug
 }
 
 func AccessLogRequest(r *http.Request) {

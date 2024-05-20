@@ -45,7 +45,7 @@ func (handler *AccountHandler) ServeHTTP(w http.ResponseWriter, r *http.Request)
 		}
 	} else if r.Method == http.MethodPost {
 		// Handle POST from login
-		user, userExists := handler.validator.ValidateBasicAuth(r)
+		user, userExists := handler.validator.ValidateFormLogin(r)
 		if !userExists {
 			w.Header().Set(internalHttp.Location, r.RequestURI)
 			w.WriteHeader(http.StatusSeeOther)

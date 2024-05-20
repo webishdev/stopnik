@@ -5,9 +5,11 @@ import (
 	"fmt"
 	"gopkg.in/yaml.v3"
 	"os"
+	"os/signal"
 	"stopnik/internal/config"
 	"stopnik/internal/server"
 	logger "stopnik/log"
+	"syscall"
 )
 
 var Version = "development"
@@ -37,5 +39,17 @@ func main() {
 	logger.SetLogLevel(currentConfig.Server.LogLevel)
 	logger.Info("Config loaded from %s", *configurationFile)
 
-	server.StartServer(currentConfig)
+	sigs := make(chan os.Signal, 1)
+	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
+
+	stopnikServer := server.NewStopnikServer(currentConfig)
+
+	go func() {
+		sig := <-sigs
+		logger.Debug("Received signal %s", sig)
+		stopnikServer.Shutdown()
+	}()
+
+	stopnikServer.Start()
+
 }

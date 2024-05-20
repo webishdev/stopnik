@@ -1,20 +1,27 @@
 package http
 
 import (
-	"fmt"
 	"github.com/lestrrat-go/jwx/v2/jwa"
 	"github.com/lestrrat-go/jwx/v2/jwt"
 	"net/http"
 	"stopnik/internal/config"
 	"stopnik/log"
+	"time"
 )
+
+type Now func() time.Time
 
 type CookieManager struct {
 	config *config.Config
+	now    Now
 }
 
 func NewCookieManager(config *config.Config) *CookieManager {
-	return &CookieManager{config: config}
+	return newCookieManagerWithTime(config, time.Now)
+}
+
+func newCookieManagerWithTime(config *config.Config, now Now) *CookieManager {
+	return &CookieManager{config: config, now: now}
 }
 
 func (cookieManager *CookieManager) DeleteCookie() http.Cookie {
@@ -40,7 +47,7 @@ func (cookieManager *CookieManager) CreateCookie(username string) (http.Cookie, 
 		Name:     authCookieName,
 		Value:    value,
 		Path:     "/",
-		MaxAge:   3600,
+		MaxAge:   cookieManager.config.GetSessionTimeoutSeconds(),
 		HttpOnly: true,
 		SameSite: http.SameSiteLaxMode,
 	}, nil
@@ -53,24 +60,28 @@ func (cookieManager *CookieManager) ValidateCookie(r *http.Request) (*config.Use
 	if cookieError != nil {
 		return &config.User{}, false
 	} else {
-		token, err := jwt.Parse([]byte(cookie.Value), jwt.WithKey(jwa.HS256, []byte(cookieManager.config.GetServerSecret())))
-		if err != nil {
-			return &config.User{}, false
-		}
-
-		// https://stackoverflow.com/a/61284284/4094586
-		username, exists := token.PrivateClaims()["username"]
-		log.Debug("foo %s", username)
-		if !exists {
-			return &config.User{}, false
-		}
-		user, userExists := cookieManager.config.GetUser(fmt.Sprintf("%v", username))
-		return user, userExists
+		return cookieManager.validateCookieValue(cookie)
 	}
 }
 
+func (cookieManager *CookieManager) validateCookieValue(cookie *http.Cookie) (*config.User, bool) {
+	token, err := jwt.Parse([]byte(cookie.Value), jwt.WithKey(jwa.HS256, []byte(cookieManager.config.GetServerSecret())))
+	if err != nil {
+		return &config.User{}, false
+	}
+
+	// https://stackoverflow.com/a/61284284/4094586
+	username := token.Subject()
+	user, userExists := cookieManager.config.GetUser(username)
+	return user, userExists
+}
+
 func (cookieManager *CookieManager) generateCookieValue(username string) (string, error) {
-	token, builderError := jwt.NewBuilder().Claim("username", username).Build()
+	sessionTimeout := cookieManager.config.GetSessionTimeoutSeconds()
+	token, builderError := jwt.NewBuilder().
+		Subject(username).
+		Expiration(cookieManager.now().Add(time.Second * time.Duration(sessionTimeout))).
+		Build()
 	if builderError != nil {
 		return "", builderError
 	}

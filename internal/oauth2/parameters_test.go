@@ -1,25 +1,41 @@
 package oauth2
 
 import (
-	"stopnik/assert"
+	"fmt"
 	"testing"
 )
 
+type oauth2Parameter struct {
+	value    string
+	expected string
+}
+
+var oauth2Parameters = []oauth2Parameter{
+	{ParameterResponseType, "response_type"},
+	{ParameterRedirectUri, "redirect_uri"},
+	{ParameterState, "state"},
+	{ParameterScope, "scope"},
+	{ParameterClientId, "client_id"},
+	{ParameterClientSecret, "client_secret"},
+	{ParameterGrantType, "grant_type"},
+	{ParameterTokenType, "token_type"},
+	{ParameterAccessToken, "access_token"},
+	{ParameterRefreshToken, "refresh_token"},
+	{ParameterExpiresIn, "expires_in"},
+	{ParameterCode, "code"},
+	{ParameterUsername, "username"},
+	{ParameterPassword, "password"},
+	{ParameterToken, "token"},
+	{ParameterTokenTypeHint, "token_type_hint"},
+}
+
 func Test_OAuth2Parameters(t *testing.T) {
-	assert.Equal(t, ParameterResponseType, "response_type")
-	assert.Equal(t, ParameterRedirectUri, "redirect_uri")
-	assert.Equal(t, ParameterState, "state")
-	assert.Equal(t, ParameterScope, "scope")
-	assert.Equal(t, ParameterClientId, "client_id")
-	assert.Equal(t, ParameterClientSecret, "client_secret")
-	assert.Equal(t, ParameterGrantType, "grant_type")
-	assert.Equal(t, ParameterTokenType, "token_type")
-	assert.Equal(t, ParameterAccessToken, "access_token")
-	assert.Equal(t, ParameterRefreshToken, "refresh_token")
-	assert.Equal(t, ParameterExpiresIn, "expires_in")
-	assert.Equal(t, ParameterCode, "code")
-	assert.Equal(t, ParameterUsername, "username")
-	assert.Equal(t, ParameterPassword, "password")
-	assert.Equal(t, ParameterToken, "token")
-	assert.Equal(t, ParameterTokenTypeHint, "token_type_hint")
+	for _, test := range oauth2Parameters {
+		testMessage := fmt.Sprintf("OAuth2 parameter %s", test.value)
+		t.Run(testMessage, func(t *testing.T) {
+			if test.value != test.expected {
+				t.Errorf("assertion error, %v != %v", test.value, test.expected)
+			}
+		})
+	}
 }

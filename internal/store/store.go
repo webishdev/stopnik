@@ -6,29 +6,53 @@ import (
 	"time"
 )
 
+type Now func() time.Time
+type TickerChannel func() <-chan time.Time
+
+type Timer struct {
+	now           Now
+	tickerChannel TickerChannel
+}
+
 type expiringType[T any] struct {
 	value      T
 	expireDate time.Time
 }
 
 type Store[T any] struct {
-	storeMap map[string]expiringType[*T]
-	mux      sync.RWMutex
-	ticker   *time.Ticker
-	duration time.Duration
+	storeMap      map[string]expiringType[*T]
+	mux           sync.RWMutex
+	tickerChannel <-chan time.Time
+	now           Now
+	duration      time.Duration
 }
 
-func NewCache[T any]() *Store[T] {
-	return NewTimedCache[T](time.Minute * time.Duration(5))
+func NewTimer() *Timer {
+	channel := time.NewTicker(time.Minute * time.Duration(1)).C
+	return &Timer{
+		now: time.Now,
+		tickerChannel: func() <-chan time.Time {
+			return channel
+		},
+	}
 }
 
-func NewTimedCache[T any](duration time.Duration) *Store[T] {
-	ticker := time.NewTicker(time.Minute * time.Duration(1))
+func NewStore[T any]() *Store[T] {
+	return NewTimedStore[T](time.Minute * time.Duration(5))
+}
+
+func NewTimedStore[T any](duration time.Duration) *Store[T] {
+	return newTimedStoreWithTimer[T](duration, NewTimer())
+}
+
+func newTimedStoreWithTimer[T any](duration time.Duration, timer *Timer) *Store[T] {
+	tickerChannel := timer.tickerChannel()
 	cache := &Store[T]{
-		storeMap: make(map[string]expiringType[*T]),
-		mux:      sync.RWMutex{},
-		ticker:   ticker,
-		duration: duration,
+		storeMap:      make(map[string]expiringType[*T]),
+		mux:           sync.RWMutex{},
+		tickerChannel: tickerChannel,
+		now:           timer.now,
+		duration:      duration,
 	}
 	go cache.startCleanUp()
 	return cache
@@ -37,16 +61,18 @@ func NewTimedCache[T any](duration time.Duration) *Store[T] {
 func (currentCache *Store[T]) startCleanUp() {
 	for {
 		select {
-		case <-currentCache.ticker.C:
+		case <-currentCache.tickerChannel:
 			currentCache.cleanUp()
 		}
 	}
 }
 
 func (currentCache *Store[T]) cleanUp() {
-	log.Debug("%s", "Cleaning up")
+	if log.IsDebug() {
+		log.Debug("%s - %T", "Cleaning up", *new(T))
+	}
 	if !currentCache.empty() {
-		now := time.Now()
+		now := currentCache.now()
 		currentCache.mux.RLock()
 		for key, value := range currentCache.storeMap {
 			if currentCache.expired(now, value) {
@@ -60,7 +86,7 @@ func (currentCache *Store[T]) cleanUp() {
 }
 
 func (currentCache *Store[T]) expiredNow(value expiringType[*T]) bool {
-	return currentCache.expired(time.Now(), value)
+	return currentCache.expired(currentCache.now(), value)
 }
 
 func (currentCache *Store[T]) expired(time time.Time, value expiringType[*T]) bool {
@@ -76,7 +102,9 @@ func (currentCache *Store[T]) empty() bool {
 func (currentCache *Store[T]) Delete(key string) {
 	currentCache.mux.Lock()
 	defer currentCache.mux.Unlock()
-	log.Debug("Removing %s", key)
+	if log.IsDebug() {
+		log.Debug("Removing %s", key)
+	}
 	delete(currentCache.storeMap, key)
 }
 
@@ -89,7 +117,7 @@ func (currentCache *Store[T]) SetWithDuration(key string, value *T, duration tim
 	defer currentCache.mux.Unlock()
 	currentCache.storeMap[key] = expiringType[*T]{
 		value:      value,
-		expireDate: time.Now().Add(duration),
+		expireDate: currentCache.now().Add(duration),
 	}
 }
 

@@ -45,7 +45,8 @@ func (handler *IntrospectHandler) ServeHTTP(w http.ResponseWriter, r *http.Reque
 		if !validClientCredentials {
 
 			// Fall back to access token with scopes
-			_, scopes, userExists := handler.tokenManager.ValidateAccessToken(r)
+			authorizationHeader := r.Header.Get(internalHttp.Authorization)
+			_, scopes, userExists := handler.tokenManager.ValidateAccessToken(authorizationHeader)
 			if !userExists {
 				ForbiddenHandler(w, r)
 				return

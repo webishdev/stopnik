@@ -8,23 +8,27 @@ import (
 	"stopnik/log"
 )
 
-type TLS struct {
-	Addr string `yaml:"addr"`
+type Keys struct {
 	Cert string `yaml:"cert"`
 	Key  string `yaml:"key"`
 }
 
+type TLS struct {
+	Addr string `yaml:"addr"`
+	Keys Keys   `yaml:"keys"`
+}
+
 type Server struct {
-	LogLevel        string `yaml:"logLevel"`
-	Addr            string `yaml:"addr"`
-	AuthCookieName  string `yaml:"authCookieName"`
-	Secret          string `yaml:"secret"`
-	TokenCert       string `yaml:"tokenCert"`
-	TokenKey        string `yaml:"tokenKey"`
-	TLS             TLS    `yaml:"tls"`
-	LogoutRedirect  string `yaml:"logoutRedirect"`
-	IntrospectScope string `yaml:"introspectScope"`
-	RevokeScope     string `yaml:"revokeScopeScope"`
+	LogLevel              string `yaml:"logLevel"`
+	Addr                  string `yaml:"addr"`
+	AuthCookieName        string `yaml:"authCookieName"`
+	Secret                string `yaml:"secret"`
+	TokenKeys             Keys   `yaml:"tokenKeys"`
+	TLS                   TLS    `yaml:"tls"`
+	LogoutRedirect        string `yaml:"logoutRedirect"`
+	IntrospectScope       string `yaml:"introspectScope"`
+	RevokeScope           string `yaml:"revokeScopeScope"`
+	SessionTimeoutSeconds int    `yaml:"sessionTimeoutSeconds"`
 }
 
 type User struct {
@@ -50,6 +54,7 @@ type Client struct {
 	Claims      []Claim  `yaml:"claims"`
 	Issuer      string   `yaml:"issuer"`
 	Audience    []string `yaml:"audience"`
+	TokenKeys   Keys     `yaml:"tokenKeys"`
 }
 
 type Config struct {
@@ -89,42 +94,7 @@ func (loader *Loader) LoadConfig(name string) (*Config, error) {
 		return config, parseError
 	}
 
-	for userIndex, user := range config.Users {
-		if user.Username == "" || len(user.Password) != 128 {
-			invalidUser := fmt.Sprintf("User configuration invalid. User %d %v", userIndex, user)
-			return config, errors.New(invalidUser)
-		}
-	}
-
-	for clientIndex, client := range config.Clients {
-		if client.Id == "" || len(client.Secret) != 128 {
-			invalidClient := fmt.Sprintf("Client configuration invalid. Client %d %v", clientIndex, client)
-			return config, errors.New(invalidClient)
-		}
-
-		if len(client.Redirects) == 0 {
-			invalidClient := fmt.Sprintf("Client is missing redirects. Client %d %v", clientIndex, client)
-			return config, errors.New(invalidClient)
-		}
-	}
-
-	config.userMap = setup[User](&config.Users, func(user User) string {
-		return user.Username
-	})
-
-	config.clientMap = setup[Client](&config.Clients, func(client Client) string {
-		return client.Id
-	})
-
-	randomString, randomError := generateRandomString(16)
-	if randomError != nil {
-		log.Error("Could not generate random secret: %v", randomError)
-		return config, readError
-	}
-	generatedSecret := randomString
-	config.generatedSecret = generatedSecret
-
-	return config, nil
+	return config, config.Setup()
 }
 
 func generateRandomString(n int) (string, error) {
@@ -180,6 +150,45 @@ func GetOrDefaultInt(value int, defaultValue int) int {
 	}
 }
 
+func (config *Config) Setup() error {
+	for userIndex, user := range config.Users {
+		if user.Username == "" || len(user.Password) != 128 {
+			invalidUser := fmt.Sprintf("User configuration invalid. User %d %v", userIndex, user)
+			return errors.New(invalidUser)
+		}
+	}
+
+	for clientIndex, client := range config.Clients {
+		if client.Id == "" || len(client.Secret) != 128 {
+			invalidClient := fmt.Sprintf("Client configuration invalid. Client %d %v", clientIndex, client)
+			return errors.New(invalidClient)
+		}
+
+		if len(client.Redirects) == 0 {
+			invalidClient := fmt.Sprintf("Client is missing redirects. Client %d %v", clientIndex, client)
+			return errors.New(invalidClient)
+		}
+	}
+
+	config.userMap = setup[User](&config.Users, func(user User) string {
+		return user.Username
+	})
+
+	config.clientMap = setup[Client](&config.Clients, func(client Client) string {
+		return client.Id
+	})
+
+	randomString, randomError := generateRandomString(16)
+	if randomError != nil {
+		log.Error("Could not generate random secret: %v", randomError)
+		return randomError
+	}
+	generatedSecret := randomString
+	config.generatedSecret = generatedSecret
+
+	return nil
+}
+
 func (config *Config) GetUser(name string) (*User, bool) {
 	value, exists := config.userMap[name]
 	return value, exists
@@ -192,6 +201,10 @@ func (config *Config) GetClient(name string) (*Client, bool) {
 
 func (config *Config) GetAuthCookieName() string {
 	return GetOrDefaultString(config.Server.AuthCookieName, "stopnik_auth")
+}
+
+func (config *Config) GetSessionTimeoutSeconds() int {
+	return GetOrDefaultInt(config.Server.SessionTimeoutSeconds, 3600)
 }
 
 func (config *Config) GetIntrospectScope() string {

@@ -42,7 +42,7 @@ var tokenTypeParameters = []parameter{
 func Test_GrantTypeFromString(t *testing.T) {
 
 	for _, test := range grandTypeParameters {
-		testMessage := fmt.Sprintf("%s_%v", test.value, test.exists)
+		testMessage := fmt.Sprintf("Grand type %s %v", test.value, test.exists)
 		t.Run(testMessage, func(t *testing.T) {
 			if grandType, exits := GrantTypeFromString(test.value); exits != test.exists && string(grandType) != test.expected {
 				t.Errorf("Grand type %s not found,", test.value)
@@ -54,7 +54,7 @@ func Test_GrantTypeFromString(t *testing.T) {
 func Test_ResponseTypeFromString(t *testing.T) {
 
 	for _, test := range responseTypeParameters {
-		testMessage := fmt.Sprintf("%s_%v", test.value, test.exists)
+		testMessage := fmt.Sprintf("Response type %s %v", test.value, test.exists)
 		t.Run(testMessage, func(t *testing.T) {
 			if grandType, exits := ResponseTypeFromString(test.value); exits != test.exists && string(grandType) != test.expected {
 				t.Errorf("Response type %s not found,", test.value)
@@ -67,7 +67,7 @@ func Test_ResponseTypeFromString(t *testing.T) {
 func Test_ClientTypeFromString(t *testing.T) {
 
 	for _, test := range clientTypeParameters {
-		testMessage := fmt.Sprintf("%s_%v", test.value, test.exists)
+		testMessage := fmt.Sprintf("Client type %s %v", test.value, test.exists)
 		t.Run(testMessage, func(t *testing.T) {
 			if grandType, exits := ClientTypeFromString(test.value); exits != test.exists && string(grandType) != test.expected {
 				t.Errorf("Client type %s not found,", test.value)
@@ -79,7 +79,7 @@ func Test_ClientTypeFromString(t *testing.T) {
 func Test_TokenTypeFromString(t *testing.T) {
 
 	for _, test := range tokenTypeParameters {
-		testMessage := fmt.Sprintf("%s_%v", test.value, test.exists)
+		testMessage := fmt.Sprintf("Token type %s %v", test.value, test.exists)
 		t.Run(testMessage, func(t *testing.T) {
 			if grandType, exits := TokenTypeFromString(test.value); exits != test.exists && string(grandType) != test.expected {
 				t.Errorf("Token type %s not found,", test.value)

@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"slices"
 	"stopnik/internal/config"
+	internalHttp "stopnik/internal/http"
 	"stopnik/internal/oauth2"
 	"stopnik/internal/server/validation"
 	"stopnik/internal/store"
@@ -34,7 +35,8 @@ func (handler *RevokeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 		if !validClientCredentials {
 
 			// Fall back to access token with scopes
-			_, scopes, userExists := handler.tokenManager.ValidateAccessToken(r)
+			authorizationHeader := r.Header.Get(internalHttp.Authorization)
+			_, scopes, userExists := handler.tokenManager.ValidateAccessToken(authorizationHeader)
 			if !userExists {
 				ForbiddenHandler(w, r)
 				return
@@ -57,16 +59,16 @@ func (handler *RevokeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 		tokenTypeHint := r.PostFormValue(oauth2.ParameterTokenTypeHint)
 
 		if tokenTypeHint == "refresh_token" {
-			_, tokenExists := handler.tokenManager.GetRefreshToken(token)
+			refreshToken, tokenExists := handler.tokenManager.GetRefreshToken(token)
 
 			if tokenExists {
-				handler.tokenManager.RevokeRefreshToken(token)
+				handler.tokenManager.RevokeRefreshToken(refreshToken)
 			}
 		} else {
-			_, tokenExists := handler.tokenManager.GetAccessToken(token)
+			accessToken, tokenExists := handler.tokenManager.GetAccessToken(token)
 
 			if tokenExists {
-				handler.tokenManager.RevokeAccessToken(token)
+				handler.tokenManager.RevokeAccessToken(accessToken)
 			}
 		}
 

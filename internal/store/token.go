@@ -8,7 +8,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/lestrrat-go/jwx/v2/jwa"
 	"github.com/lestrrat-go/jwx/v2/jwt"
-	"net/http"
 	"stopnik/internal/config"
 	internalHttp "stopnik/internal/http"
 	"stopnik/internal/oauth2"
@@ -19,15 +18,31 @@ import (
 
 type TokenManager struct {
 	config            *config.Config
+	keyLoader         KeyLoader
 	accessTokenStore  *Store[oauth2.AccessToken]
 	refreshTokenStore *Store[oauth2.RefreshToken]
 }
 
-func NewTokenManager(config *config.Config) *TokenManager {
+type KeyLoader interface {
+	LoadKeys(client *config.Client) (*rsa.PrivateKey, bool, error)
+}
+
+type DefaultKeyLoader struct {
+	serverKeys config.Keys
+}
+
+func NewDefaultKeyLoader(config *config.Config) *DefaultKeyLoader {
+	return &DefaultKeyLoader{
+		serverKeys: config.Server.TokenKeys,
+	}
+}
+
+func NewTokenManager(config *config.Config, keyLoader KeyLoader) *TokenManager {
 	return &TokenManager{
 		config:            config,
-		accessTokenStore:  NewCache[oauth2.AccessToken](),
-		refreshTokenStore: NewCache[oauth2.RefreshToken](),
+		keyLoader:         keyLoader,
+		accessTokenStore:  NewStore[oauth2.AccessToken](),
+		refreshTokenStore: NewStore[oauth2.RefreshToken](),
 	}
 }
 
@@ -35,22 +50,22 @@ func (tokenManager *TokenManager) GetAccessToken(token string) (*oauth2.AccessTo
 	return tokenManager.accessTokenStore.Get(token)
 }
 
-func (tokenManager *TokenManager) RevokeAccessToken(token string) {
-	tokenManager.accessTokenStore.Delete(token)
+func (tokenManager *TokenManager) RevokeAccessToken(accessToken *oauth2.AccessToken) {
+	tokenManager.accessTokenStore.Delete(accessToken.Key)
 }
 
 func (tokenManager *TokenManager) GetRefreshToken(token string) (*oauth2.RefreshToken, bool) {
 	return tokenManager.refreshTokenStore.Get(token)
 }
 
-func (tokenManager *TokenManager) RevokeRefreshToken(token string) {
-	tokenManager.refreshTokenStore.Delete(token)
+func (tokenManager *TokenManager) RevokeRefreshToken(refreshToken *oauth2.RefreshToken) {
+	tokenManager.refreshTokenStore.Delete(refreshToken.Key)
 }
 
 func (tokenManager *TokenManager) CreateAccessTokenResponse(username string, client *config.Client, scopes []string) oauth2.AccessTokenResponse {
 	log.Debug("Creating new access token for %s, access TTL %d, refresh TTL %d", client.Id, client.GetAccessTTL(), client.GetRefreshTTL())
 
-	accessTokenDuration := time.Minute * time.Duration(client.GetRefreshTTL())
+	accessTokenDuration := time.Minute * time.Duration(client.GetAccessTTL())
 	accessTokenKey := tokenManager.generateToken(username, client, accessTokenDuration)
 	accessToken := &oauth2.AccessToken{
 		Key:       accessTokenKey,
@@ -86,16 +101,13 @@ func (tokenManager *TokenManager) CreateAccessTokenResponse(username string, cli
 	return accessTokenResponse
 }
 
-func (tokenManager *TokenManager) ValidateAccessToken(r *http.Request) (*config.User, []string, bool) {
+func (tokenManager *TokenManager) ValidateAccessToken(authorizationHeader string) (*config.User, []string, bool) {
 	log.Debug("Validating access token")
-	authorization := r.Header.Get(internalHttp.Authorization)
-	if authorization == "" || !strings.Contains(authorization, internalHttp.AuthBearer) {
+	headerValue := getAuthorizationHeaderValue(authorizationHeader)
+	if headerValue == nil {
 		return nil, []string{}, false
 	}
-
-	replaceBearer := fmt.Sprintf("%s ", internalHttp.AuthBearer)
-	authorizationHeader := strings.Replace(authorization, replaceBearer, "", 1)
-	accessToken, authorizationHeaderExists := tokenManager.accessTokenStore.Get(authorizationHeader)
+	accessToken, authorizationHeaderExists := tokenManager.accessTokenStore.Get(*headerValue)
 	if !authorizationHeaderExists {
 		return nil, []string{}, false
 	}
@@ -164,7 +176,11 @@ func (tokenManager *TokenManager) generateJWTToken(tokenId string, duration time
 	if builderError != nil {
 		panic(builderError)
 	}
-	if tokenManager.config.Server.TokenCert == "" && tokenManager.config.Server.TokenKey == "" {
+
+	loader := tokenManager.keyLoader
+	key, keyExists, keyLoaderError := loader.LoadKeys(client)
+
+	if !keyExists {
 		tokenString, tokenError := jwt.Sign(token, jwt.WithKey(jwa.HS256, []byte(tokenManager.config.GetServerSecret())))
 		if tokenError != nil {
 			panic(tokenError)
@@ -172,11 +188,9 @@ func (tokenManager *TokenManager) generateJWTToken(tokenId string, duration time
 
 		return string(tokenString)
 	} else {
-		keyPair, pairError := tls.LoadX509KeyPair(tokenManager.config.Server.TokenCert, tokenManager.config.Server.TokenKey)
-		if pairError != nil {
-			panic(pairError)
+		if keyLoaderError != nil {
+			panic(keyLoaderError)
 		}
-		key := keyPair.PrivateKey.(*rsa.PrivateKey)
 
 		tokenString, tokenError := jwt.Sign(token, jwt.WithKey(jwa.RS256, key))
 		if tokenError != nil {
@@ -186,4 +200,26 @@ func (tokenManager *TokenManager) generateJWTToken(tokenId string, duration time
 		return string(tokenString)
 	}
 
+}
+
+func (defaultKeyLoader *DefaultKeyLoader) LoadKeys(client *config.Client) (*rsa.PrivateKey, bool, error) {
+	if defaultKeyLoader.serverKeys.Cert == "" || defaultKeyLoader.serverKeys.Key == "" {
+		return nil, false, nil
+	}
+	keyPair, pairError := tls.LoadX509KeyPair(defaultKeyLoader.serverKeys.Cert, defaultKeyLoader.serverKeys.Key)
+	if pairError != nil {
+		return nil, false, pairError
+	}
+	key := keyPair.PrivateKey.(*rsa.PrivateKey)
+	return key, true, nil
+}
+
+func getAuthorizationHeaderValue(authorizationHeader string) *string {
+	if authorizationHeader == "" || !strings.Contains(authorizationHeader, internalHttp.AuthBearer) {
+		return nil
+	}
+
+	replaceBearer := fmt.Sprintf("%s ", internalHttp.AuthBearer)
+	result := strings.Replace(authorizationHeader, replaceBearer, "", 1)
+	return &result
 }
