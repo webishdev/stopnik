@@ -7,6 +7,6 @@ import (
 //go:embed all:resources
 var staticAssets embed.FS
 
-func GetAssets() (embed.FS, error) {
-	return staticAssets, nil
+func GetAssets() embed.FS {
+	return staticAssets
 }

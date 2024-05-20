@@ -22,11 +22,7 @@ func (handler *AssetHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	log.AccessLogRequest(r)
 	if r.Method == http.MethodGet {
 
-		assetsFS, assetsFSError := assets.GetAssets()
-		if assetsFSError != nil {
-			InternalServerErrorHandler(w, r)
-			return
-		}
+		assetsFS := assets.GetAssets()
 
 		assetFSPath := assetFSPath(r.URL.Path)
 

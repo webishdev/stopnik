@@ -4,13 +4,12 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
-	"stopnik/internal/config"
 	internalHttp "stopnik/internal/http"
 	"stopnik/internal/store"
 	"testing"
 )
 
-var testHttpMethods = []string{
+var testHealthHttpMethods = []string{
 	http.MethodPost,
 	http.MethodPut,
 	http.MethodPatch,
@@ -82,8 +81,8 @@ func Test_Health(t *testing.T) {
 
 	})
 
-	for _, method := range testHttpMethods {
-		testMessage := fmt.Sprintf("Health with token unsupported method %s", method)
+	for _, method := range testHealthHttpMethods {
+		testMessage := fmt.Sprintf("Health with unsupported method %s", method)
 		t.Run(testMessage, func(t *testing.T) {
 			healthHandler := NewHealthHandler(&store.TokenManager{})
 
@@ -96,28 +95,4 @@ func Test_Health(t *testing.T) {
 			}
 		})
 	}
-}
-
-func createTestConfig(t *testing.T) *config.Config {
-	testConfig := &config.Config{
-		Clients: []config.Client{
-			{
-				Id:        "foo",
-				Secret:    "d82c4eb5261cb9c8aa9855edd67d1bd10482f41529858d925094d173fa662aa91ff39bc5b188615273484021dfb16fd8284cf684ccf0fc795be3aa2fc1e6c181",
-				Redirects: []string{"https://example.com/callback"},
-			},
-		},
-		Users: []config.User{
-			{
-				Username: "foo",
-				Password: "d82c4eb5261cb9c8aa9855edd67d1bd10482f41529858d925094d173fa662aa91ff39bc5b188615273484021dfb16fd8284cf684ccf0fc795be3aa2fc1e6c181",
-			},
-		},
-	}
-	setupError := testConfig.Setup()
-	if setupError != nil {
-		t.Fatal(setupError)
-	}
-
-	return testConfig
 }
