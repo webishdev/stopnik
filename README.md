@@ -15,9 +15,11 @@ This project was used to learn [OAuth 2.0](https://datatracker.ietf.org/doc/html
 
 ![build](https://github.com/giftkugel/stopnik/actions/workflows/build.yml/badge.svg)
 
-## STOPnik alternatives with persistence layer
+## STOPnik alternatives
 
 The awesome work of other servers is very appreciated, most of them were the inspiration for this small project! ♥️
+
+They add features like persistence and access to user directories like LDAP.  
 
 - [dex](https://github.com/dexidp/dex)
 - [Keycloak](https://github.com/keycloak/keycloak)
