@@ -17,7 +17,7 @@ This project was used to learn [OAuth 2.0](https://datatracker.ietf.org/doc/html
 
 ## STOPnik alternatives with persistence layer
 
-We appricate the awesome work of other servers, most of them were the inspiration for this small project! ♥️
+The awesome work of other servers is very appreciated, most of them were the inspiration for this small project! ♥️
 
 - [dex](https://github.com/dexidp/dex)
 - [Keycloak](https://github.com/keycloak/keycloak)
