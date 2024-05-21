@@ -19,6 +19,13 @@ jobs:
         run: echo "Will create version ${{ github.event.inputs.version }}"
 
       - uses: ./.github/workflows/build.yml
+        with:
+          stopnik_version: ${{ github.event.inputs.version }}
+
+      - name: Download build result
+        uses: actions/download-artifact@v4
+        with:
+          name: build_result
 
       - uses: ncipollo/release-action@v1
         with:
