@@ -35,13 +35,6 @@ function clean() {
 }
 
 function build() {
-  if [[ "$#" -ne 2 ]]; then
-    echo "Parameters for build are missing"
-    echo
-    exit 1
-  fi
-  GO_OS=$1
-  GO_ARCH=$2
   COGO_ENABLED=0
   FILE_EXTENSION=""
   if [[ "$GO_OS" == "windows" ]]; then
@@ -70,7 +63,9 @@ function build_all() {
   do
     for arch_value in "${ARCH_VALUES[@]}"
     do
-      build $os_value $arch_value
+      GO_OS=$os_value
+      GO_ARCH=$arch_value
+      build
     done
   done
   echo "Build done!"
