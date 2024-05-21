@@ -115,8 +115,8 @@ function task_build_ci() {
   echo "Building $NICE_NAME version $VERSION"
   clean
   prepare $VERSION
-  GO_OS=$(shell go env GOOS)
-  GO_ARCH=$(shell go env GOARCH)
+  GO_OS=$(go env GOOS)
+  GO_ARCH=$(go env GOARCH)
   build
 }
 
