@@ -8,6 +8,9 @@ NAME=stopnik
 OS_VALUES=(windows darwin linux)
 ARCH_VALUES=(amd64 arm64)
 
+LINUX_OS_VALUES=(windows linux)
+MAC_OS_VALUES=(darwin)
+
 function prepare() {
   if [[ "$#" -ne 1 ]]; then
     echo "Parameters for prepare are missing"
@@ -119,8 +122,19 @@ function task_build_ci() {
   clean
   prepare $VERSION
   GO_OS=$(go env GOOS)
-  GO_ARCH=$(go env GOARCH)
-  build
+  if [[ GO_OS -eq "linux"]]; then
+    CURRENT_OS_VALUES=$LINUX_OS_VALUES
+  elseif [[ GO_OS -eq "linux"]]; then
+      CURRENT_OS_VALUES=$MAC_OS_VALUES
+    fi
+  for os_value in "${CURRENT_OS_VALUES[@]}"
+  do
+    for arch_value in "${ARCH_VALUES[@]}"
+    do
+      GO_ARCH=$arch_value
+      build
+    done
+  done
 }
 
 function task_build_all() {
