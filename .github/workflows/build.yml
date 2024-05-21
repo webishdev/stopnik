@@ -32,7 +32,7 @@ jobs:
       run: go version
 
     - name: Build
-      run: ./build.sh build_all ci
+      run: ./build.sh build_ci ci
 
     - name: Tests
       run: ./test.sh coverage
