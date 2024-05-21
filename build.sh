@@ -96,13 +96,28 @@ function task_build() {
     echo
     exit 1
   fi
-  SELECTED_OS=$1
-  SELECTED_ARCH=$2
   VERSION=$3
   echo "Building $NICE_NAME version $VERSION"
   clean
   prepare $VERSION
-  build $SELECTED_OS $SELECTED_ARCH
+  GO_OS=$1
+  GO_ARCH=$2
+  build
+}
+
+function task_build_ci() {
+  if [[ "$#" -ne 1 ]]; then
+    echo "No version argument supplied"
+    echo
+    exit 1
+  fi
+  VERSION=$1
+  echo "Building $NICE_NAME version $VERSION"
+  clean
+  prepare $VERSION
+  GO_OS=$GOOS
+  GO_ARCH=$GOARCH
+  build
 }
 
 function task_build_all() {
@@ -133,6 +148,8 @@ Available commands:
 
     build os arch version
 
+    build_ci version
+
     build_all version
         Builds the current version of $NICE_NAME
 
@@ -145,6 +162,7 @@ shift || true
 case "$cmd" in
   clean) task_clean "$@";;
   build) task_build "$@";;
+  build_ci) task_build_ci "$@";;
   build_all) task_build_all "$@";;
   *) task_usage ;;
 esac
