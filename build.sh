@@ -122,9 +122,9 @@ function task_build_ci() {
   clean
   prepare $VERSION
   GO_OS=$(go env GOOS)
-  if [[ GO_OS -eq "linux"]]; then
+  if [[ "$GO_OS" -eq "linux"]]; then
     CURRENT_OS_VALUES=$LINUX_OS_VALUES
-  elseif [[ GO_OS -eq "linux"]]; then
+  elseif [[ "$GO_OS" -eq "linux"]]; then
       CURRENT_OS_VALUES=$MAC_OS_VALUES
     fi
   for os_value in "${CURRENT_OS_VALUES[@]}"
