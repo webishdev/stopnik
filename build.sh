@@ -115,8 +115,8 @@ function task_build_ci() {
   echo "Building $NICE_NAME version $VERSION"
   clean
   prepare $VERSION
-  GO_OS=$GOOS
-  GO_ARCH=$GOARCH
+  GO_OS=$GOHOSTOS
+  GO_ARCH=$GOHOSTARCH
   build
 }
 
