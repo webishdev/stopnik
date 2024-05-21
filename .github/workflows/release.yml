@@ -18,15 +18,7 @@ jobs:
       - name: Show tag
         run: echo "Will create version ${{ github.event.inputs.version }}"
 
-      - uses: actions/checkout@v4
-
-      - name: Set up Go
-        uses: actions/setup-go@v5
-        with:
-          go-version-file: 'go.mod'
-
-      - name: Build
-        run: ./build.sh build_all ${{ github.event.inputs.version }}
+      - uses: ./.github/workflows/build.yml
 
       - uses: ncipollo/release-action@v1
         with:
