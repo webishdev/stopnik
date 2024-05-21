@@ -37,7 +37,6 @@ jobs:
     - name: Build
       run: |
         VERSION_INPUT=${{ inputs.stopnik_version }}
-        # Use user input or fall back to "Octocat"
         CURRENT_VERSION=${VERSION_INPUT:-"ci"}
         ./build.sh build_ci $CURRENT_VERSION
 
