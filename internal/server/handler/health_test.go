@@ -9,14 +9,14 @@ import (
 	"testing"
 )
 
-var testHealthHttpMethods = []string{
-	http.MethodPost,
-	http.MethodPut,
-	http.MethodPatch,
-	http.MethodDelete,
-}
-
 func Test_Health(t *testing.T) {
+	var testHealthHttpMethods = []string{
+		http.MethodPost,
+		http.MethodPut,
+		http.MethodPatch,
+		http.MethodDelete,
+	}
+
 	t.Run("Health without token", func(t *testing.T) {
 		testConfig := createTestConfig(t)
 		tokenManager := store.NewTokenManager(testConfig, store.NewDefaultKeyLoader(testConfig))

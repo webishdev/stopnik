@@ -8,29 +8,29 @@ import (
 	"testing"
 )
 
-var testAssetsHttpMethods = []string{
-	http.MethodPost,
-	http.MethodPut,
-	http.MethodPatch,
-	http.MethodDelete,
-}
-
-type assetHttpParameter struct {
-	path         string
-	expectedCode int
-	matches      bool
-}
-
-var testAssetsHttpParameters = []assetHttpParameter{
-	{path: "/assets/styles.css", expectedCode: http.StatusOK, matches: true},
-	{path: "/assets/stopnik_250.png", expectedCode: http.StatusOK, matches: true},
-	{path: "/assets/foo.css", expectedCode: http.StatusNotFound, matches: true},
-	{path: "/assets/bar.png", expectedCode: http.StatusNotFound, matches: true},
-	{path: "/foo/bar.png", expectedCode: http.StatusNotFound, matches: false},
-	{path: "/abc/123.css", expectedCode: http.StatusNotFound, matches: false},
-}
-
 func Test_Assets(t *testing.T) {
+	var testAssetsHttpMethods = []string{
+		http.MethodPost,
+		http.MethodPut,
+		http.MethodPatch,
+		http.MethodDelete,
+	}
+
+	type assetHttpParameter struct {
+		path         string
+		expectedCode int
+		matches      bool
+	}
+
+	var testAssetsHttpParameters = []assetHttpParameter{
+		{path: "/assets/styles.css", expectedCode: http.StatusOK, matches: true},
+		{path: "/assets/stopnik_250.png", expectedCode: http.StatusOK, matches: true},
+		{path: "/assets/foo.css", expectedCode: http.StatusNotFound, matches: true},
+		{path: "/assets/bar.png", expectedCode: http.StatusNotFound, matches: true},
+		{path: "/foo/bar.png", expectedCode: http.StatusNotFound, matches: false},
+		{path: "/abc/123.css", expectedCode: http.StatusNotFound, matches: false},
+	}
+
 	assetsHandler := &AssetHandler{}
 
 	for _, test := range testAssetsHttpParameters {

@@ -9,19 +9,19 @@ import (
 	"testing"
 )
 
-type tokenTestParameter struct {
-	opaque          bool
-	refreshTokenTTL int
-}
-
-var opaqueTokenParameter = []tokenTestParameter{
-	{true, 0},
-	{false, 0},
-	{true, 100},
-	{false, 100},
-}
-
 func Test_Token(t *testing.T) {
+	type tokenTestParameter struct {
+		opaque          bool
+		refreshTokenTTL int
+	}
+
+	var opaqueTokenParameter = []tokenTestParameter{
+		{true, 0},
+		{false, 0},
+		{true, 100},
+		{false, 100},
+	}
+
 	for _, test := range opaqueTokenParameter {
 		testMessage := fmt.Sprintf("Valid token opaque %t refreshTTL %d", test.opaque, test.refreshTokenTTL)
 		t.Run(testMessage, func(t *testing.T) {

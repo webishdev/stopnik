@@ -5,21 +5,21 @@ import (
 	"testing"
 )
 
-type headerParameter struct {
-	value    string
-	expected string
-}
-
-var headerParameters = []headerParameter{
-	{Location, "Location"},
-	{ContentType, "Content-Type"},
-	{Authorization, "Authorization"},
-	{AuthBasic, "Basic"},
-	{AuthBearer, "Bearer"},
-	{ContentTypeJSON, "application/json"},
-}
-
 func Test_HTTPHeaders(t *testing.T) {
+	type headerParameter struct {
+		value    string
+		expected string
+	}
+
+	var headerParameters = []headerParameter{
+		{Location, "Location"},
+		{ContentType, "Content-Type"},
+		{Authorization, "Authorization"},
+		{AuthBasic, "Basic"},
+		{AuthBearer, "Bearer"},
+		{ContentTypeJSON, "application/json"},
+	}
+
 	for _, test := range headerParameters {
 		testMessage := fmt.Sprintf("HTTP Header %s", test.value)
 		t.Run(testMessage, func(t *testing.T) {

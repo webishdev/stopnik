@@ -7,34 +7,34 @@ import (
 	"testing"
 )
 
-type logLevelStringParameter struct {
-	value         string
-	expectedLevel slog.Level
-}
-
-var logLevels = []logLevelStringParameter{
-	{"info", slog.LevelInfo},
-	{"warn", slog.LevelWarn},
-	{"error", slog.LevelError},
-	{"debug", slog.LevelDebug},
-	{"foo", slog.LevelInfo},
-	{"bar", slog.LevelInfo},
-}
-
-type loggerTestParameter struct {
-	name   string
-	method func(format string, v ...any)
-	logger *log.Logger
-}
-
-var loggerTests = []loggerTestParameter{
-	{name: "Info", method: Info, logger: infoLogger},
-	{name: "Debug", method: Debug, logger: debugLogger},
-	{name: "Warn", method: Warn, logger: warnLogger},
-	{name: "Error", method: Error, logger: errorLogger},
-}
-
 func Test_Log(t *testing.T) {
+	type logLevelStringParameter struct {
+		value         string
+		expectedLevel slog.Level
+	}
+
+	var logLevels = []logLevelStringParameter{
+		{"info", slog.LevelInfo},
+		{"warn", slog.LevelWarn},
+		{"error", slog.LevelError},
+		{"debug", slog.LevelDebug},
+		{"foo", slog.LevelInfo},
+		{"bar", slog.LevelInfo},
+	}
+
+	type loggerTestParameter struct {
+		name   string
+		method func(format string, v ...any)
+		logger *log.Logger
+	}
+
+	var loggerTests = []loggerTestParameter{
+		{name: "Info", method: Info, logger: infoLogger},
+		{name: "Debug", method: Debug, logger: debugLogger},
+		{name: "Warn", method: Warn, logger: warnLogger},
+		{name: "Error", method: Error, logger: errorLogger},
+	}
+
 	t.Run("Get log level from string", func(t *testing.T) {
 		for _, test := range logLevels {
 			levelFromString := getLogLevelFromString(test.value)

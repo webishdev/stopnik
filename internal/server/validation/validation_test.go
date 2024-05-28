@@ -8,22 +8,22 @@ import (
 	"testing"
 )
 
-type passwordParameter struct {
-	name     string
-	password string
-	valid    bool
-}
-
-var passwordParameters = []passwordParameter{
-	{name: "foo", password: "bar", valid: true},
-	{name: "foo", password: "xxx", valid: false},
-	{name: "bar", password: "xxx", valid: false},
-	{name: "", password: "", valid: false},
-}
-
-var httpMethods = []string{http.MethodGet, http.MethodPost, http.MethodPut, http.MethodPatch, http.MethodDelete}
-
 func Test_Validation(t *testing.T) {
+	type passwordParameter struct {
+		name     string
+		password string
+		valid    bool
+	}
+
+	var passwordParameters = []passwordParameter{
+		{name: "foo", password: "bar", valid: true},
+		{name: "foo", password: "xxx", valid: false},
+		{name: "bar", password: "xxx", valid: false},
+		{name: "", password: "", valid: false},
+	}
+
+	var httpMethods = []string{http.MethodGet, http.MethodPost, http.MethodPut, http.MethodPatch, http.MethodDelete}
+
 	testConfig := &config.Config{
 		Clients: []config.Client{
 			{

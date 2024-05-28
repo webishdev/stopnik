@@ -5,19 +5,18 @@ import (
 	"testing"
 )
 
-type codeChallengeMethodParameter struct {
-	value    string
-	exists   bool
-	expected string
-}
-
-var codeChallengeMethodParameters = []codeChallengeMethodParameter{
-	{string(S256), true, "S256"},
-	{string(PLAIN), true, "plain"},
-	{"foo", false, ""},
-}
-
 func Test_CodeChallengeMethodFromString(t *testing.T) {
+	type codeChallengeMethodParameter struct {
+		value    string
+		exists   bool
+		expected string
+	}
+
+	var codeChallengeMethodParameters = []codeChallengeMethodParameter{
+		{string(S256), true, "S256"},
+		{string(PLAIN), true, "plain"},
+		{"foo", false, ""},
+	}
 
 	for _, test := range codeChallengeMethodParameters {
 		testMessage := fmt.Sprintf("%s_%v", test.value, test.exists)

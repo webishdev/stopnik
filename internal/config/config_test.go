@@ -154,7 +154,7 @@ func simpleServerConfiguration(t *testing.T) {
 		t.Error("did not expect error when loading config")
 	}
 
-	if config.generatedSecret == "" {
+	if config == nil || config.generatedSecret == "" {
 		t.Error("expected generated secret to not be empty")
 	}
 
@@ -214,12 +214,12 @@ func validUsers(t *testing.T) {
 	assertUserExistsWithName(t, "moo", config)
 }
 
-var invalidUserParameters = []User{
-	{Username: "wrong", Password: "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"},
-	{Username: "empty", Password: ""},
-	{Username: "", Password: "d82c4eb5261cb9c8aa9855edd67d1bd10482f41529858d925094d173fa662aa91ff39bc5b188615273484021dfb16fd8284cf684ccf0fc795be3aa2fc1e6c181"}}
-
 func invalidUsers(t *testing.T) {
+	var invalidUserParameters = []User{
+		{Username: "wrong", Password: "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"},
+		{Username: "empty", Password: ""},
+		{Username: "", Password: "d82c4eb5261cb9c8aa9855edd67d1bd10482f41529858d925094d173fa662aa91ff39bc5b188615273484021dfb16fd8284cf684ccf0fc795be3aa2fc1e6c181"}}
+
 	for _, user := range invalidUserParameters {
 		configLoader := NewConfigLoader(func(filename string) ([]byte, error) {
 			return make([]byte, 10), nil
@@ -288,14 +288,14 @@ func validClients(t *testing.T) {
 	assertClientValues(t, config, "bar", 20, 60, "other", []string{"one", "two"})
 }
 
-var invalidClientParameters = []Client{
-	{Id: "wrong", Secret: "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"},
-	{Id: "empty", Secret: ""},
-	{Id: "", Secret: "d82c4eb5261cb9c8aa9855edd67d1bd10482f41529858d925094d173fa662aa91ff39bc5b188615273484021dfb16fd8284cf684ccf0fc795be3aa2fc1e6c181"},
-	{Id: "no_redirects", Secret: "3c9909afec25354d551dae21590bb26e38d53f2173b8d3dc3eee4c047e7ab1c1eb8b85103e3be7ba613b31bb5c9c36214dc9f14a42fd7a2fdb84856bca5c44c2"},
-}
-
 func invalidClients(t *testing.T) {
+	var invalidClientParameters = []Client{
+		{Id: "wrong", Secret: "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"},
+		{Id: "empty", Secret: ""},
+		{Id: "", Secret: "d82c4eb5261cb9c8aa9855edd67d1bd10482f41529858d925094d173fa662aa91ff39bc5b188615273484021dfb16fd8284cf684ccf0fc795be3aa2fc1e6c181"},
+		{Id: "no_redirects", Secret: "3c9909afec25354d551dae21590bb26e38d53f2173b8d3dc3eee4c047e7ab1c1eb8b85103e3be7ba613b31bb5c9c36214dc9f14a42fd7a2fdb84856bca5c44c2"},
+	}
+
 	for _, client := range invalidClientParameters {
 		configLoader := NewConfigLoader(func(filename string) ([]byte, error) {
 			return make([]byte, 10), nil

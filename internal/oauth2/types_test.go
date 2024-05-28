@@ -11,35 +11,14 @@ type parameter struct {
 	expected string
 }
 
-var grandTypeParameters = []parameter{
-	{string(GtAuthorizationCode), true, "authorization_code"},
-	{string(GtClientCredentials), true, "client_credentials"},
-	{string(GtPassword), true, "password"},
-	{string(GtRefreshToken), true, "refresh_token"},
-	{"foo", false, ""},
-}
-
-var responseTypeParameters = []parameter{
-	{string(RtCode), true, "code"},
-	{string(RtToken), true, "token"},
-	{string(RtPassword), true, "password"},
-	{string(RtClientCredentials), true, "client_credentials"},
-	{"foo", false, ""},
-}
-
-var clientTypeParameters = []parameter{
-	{string(CtConfidential), true, "confidential"},
-	{string(CtPublic), true, "public"},
-	{"foo", false, ""},
-}
-
-var tokenTypeParameters = []parameter{
-	{string(TtBearer), true, "Bearer"},
-	{string(TtMAC), true, "mac"},
-	{"foo", false, ""},
-}
-
 func Test_GrantTypeFromString(t *testing.T) {
+	var grandTypeParameters = []parameter{
+		{string(GtAuthorizationCode), true, "authorization_code"},
+		{string(GtClientCredentials), true, "client_credentials"},
+		{string(GtPassword), true, "password"},
+		{string(GtRefreshToken), true, "refresh_token"},
+		{"foo", false, ""},
+	}
 
 	for _, test := range grandTypeParameters {
 		testMessage := fmt.Sprintf("Grand type %s %v", test.value, test.exists)
@@ -52,6 +31,13 @@ func Test_GrantTypeFromString(t *testing.T) {
 }
 
 func Test_ResponseTypeFromString(t *testing.T) {
+	var responseTypeParameters = []parameter{
+		{string(RtCode), true, "code"},
+		{string(RtToken), true, "token"},
+		{string(RtPassword), true, "password"},
+		{string(RtClientCredentials), true, "client_credentials"},
+		{"foo", false, ""},
+	}
 
 	for _, test := range responseTypeParameters {
 		testMessage := fmt.Sprintf("Response type %s %v", test.value, test.exists)
@@ -65,6 +51,11 @@ func Test_ResponseTypeFromString(t *testing.T) {
 }
 
 func Test_ClientTypeFromString(t *testing.T) {
+	var clientTypeParameters = []parameter{
+		{string(CtConfidential), true, "confidential"},
+		{string(CtPublic), true, "public"},
+		{"foo", false, ""},
+	}
 
 	for _, test := range clientTypeParameters {
 		testMessage := fmt.Sprintf("Client type %s %v", test.value, test.exists)
@@ -77,6 +68,11 @@ func Test_ClientTypeFromString(t *testing.T) {
 }
 
 func Test_TokenTypeFromString(t *testing.T) {
+	var tokenTypeParameters = []parameter{
+		{string(TtBearer), true, "Bearer"},
+		{string(TtMAC), true, "mac"},
+		{"foo", false, ""},
+	}
 
 	for _, test := range tokenTypeParameters {
 		testMessage := fmt.Sprintf("Token type %s %v", test.value, test.exists)

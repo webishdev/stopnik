@@ -6,28 +6,28 @@ import (
 	"time"
 )
 
-type Tester struct {
-	name string
-	nice bool
-}
-
-var mockedTime = time.Date(1979, 1, 17, 15, 0, 0, 0, time.Local)
-var mockedTickerChannel = make(chan time.Time, 1)
-
-func now() time.Time {
-	return mockedTime
-}
-
-func tickerChannel() <-chan time.Time {
-	return mockedTickerChannel
-}
-
-var timer = &Timer{
-	now:           now,
-	tickerChannel: tickerChannel,
-}
-
 func Test_Store(t *testing.T) {
+	type Tester struct {
+		name string
+		nice bool
+	}
+
+	var mockedTime = time.Date(1979, 1, 17, 15, 0, 0, 0, time.Local)
+	var mockedTickerChannel = make(chan time.Time, 1)
+
+	now := func() time.Time {
+		return mockedTime
+	}
+
+	tickerChannel := func() <-chan time.Time {
+		return mockedTickerChannel
+	}
+
+	var timer = &Timer{
+		now:           now,
+		tickerChannel: tickerChannel,
+	}
+
 	tester := &Tester{
 		name: "foo",
 		nice: true,
