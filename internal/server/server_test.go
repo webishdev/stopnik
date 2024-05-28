@@ -7,6 +7,8 @@ import (
 	"net/http"
 	"slices"
 	"stopnik/internal/config"
+	"sync"
+	"sync/atomic"
 	"testing"
 )
 
@@ -37,7 +39,7 @@ func Test_Server(t *testing.T) {
 	type testConfigParameter struct {
 		name          string
 		config        *config.Config
-		expectedCount int
+		expectedCount uint32
 		hasError      bool
 	}
 
@@ -78,25 +80,28 @@ func Test_Server(t *testing.T) {
 	for _, test := range testConfigParameters {
 		testMessage := fmt.Sprintf("Start server with %s should start %d listeners", test.name, test.expectedCount)
 		t.Run(testMessage, func(t *testing.T) {
-
-			count := new(int)
+			rwMutex := &sync.RWMutex{}
+			//count := new(int)
+			var c atomic.Uint32
 			r := func(stopnikServer *StopnikServer, listener *net.Listener, server *http.Server) error {
 				if test.hasError {
 					return errors.New("")
 				}
-				*count = *count + 1
-				if *count == 1 {
+				c.Add(1)
+				//*count = *count + 1
+
+				if c.Load() == 1 {
 					stopnikServer.httpServer = server
-				} else if *count == 2 {
+				} else if c.Load() == 2 {
 					stopnikServer.httpsServer = server
 				}
 				return nil
 			}
-			server := newStopnikServerWithServe(test.config, http.NewServeMux(), r, r)
+			server := newStopnikServerWithServe(rwMutex, test.config, http.NewServeMux(), r, r)
 
 			server.Start()
 
-			if *count != test.expectedCount {
+			if c.Load() != test.expectedCount {
 				t.Error("Incorrect number of servers registered")
 			}
 
