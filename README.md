@@ -13,7 +13,7 @@ When restarted, all issued tokens will become invalid/forgotten by **STOPnik**.
 
 This project was used to learn [OAuth 2.0](https://datatracker.ietf.org/doc/html/rfc6749), [OpenId Connect Core 1.0](https://openid.net/specs/openid-connect-core-1_0-final.html) and [Go](https://go.dev/).
 
-The logo mascot was mostly inspired by the nice work of [gopherize.me](https://github.com/matryer/gopherize.me) and redrawn by hand as a vector graphic by adding the rest of the body and a cool hat.
+The logo mascot was mostly inspired by the nice work of [gopherize.me](https://github.com/matryer/gopherize.me) and redrawn by hand as a vector graphic with additional body and a cool hat.
 
 ![build](https://github.com/giftkugel/stopnik/actions/workflows/build.yml/badge.svg)
 
