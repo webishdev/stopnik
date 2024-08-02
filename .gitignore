@@ -8,3 +8,6 @@ bin/
 test_coverage/
 *.crt
 *.key
+
+# Default file created by go build command
+stopnik
