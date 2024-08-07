@@ -114,11 +114,9 @@ func (handler *AuthorizeHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 
 			if responseType == oauth2.RtToken {
 				accessTokenResponse := handler.tokenManager.CreateAccessTokenResponse(user.Username, client, scopes)
-				query.Set(oauth2.ParameterAccessToken, accessTokenResponse.AccessTokenKey)
-				query.Set(oauth2.ParameterTokenType, string(accessTokenResponse.TokenType))
-				query.Set(oauth2.ParameterExpiresIn, fmt.Sprintf("%d", accessTokenResponse.ExpiresIn))
+				setImplicitGrantParameter(query, accessTokenResponse)
 			} else if responseType == oauth2.RtCode {
-				query.Set(oauth2.ParameterCode, id.String())
+				setAuthorizationGrantParameter(query, id.String())
 			} else {
 				log.Error("Invalid response type %s", responseType)
 				oauth2.ErrorResponseHandler(w, redirectURL, state, &oauth2.ErrorResponseParameter{Error: oauth2.EtUnsupportedResponseType})
@@ -181,21 +179,26 @@ func (handler *AuthorizeHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 			return
 		}
 
+		responseType, valid := oauth2.ResponseTypeFromString(authSession.ResponseType)
+		if !valid {
+			InternalServerErrorHandler(w, r)
+			return
+		}
+
 		query := redirectURL.Query()
-		if authSession.ResponseType == string(oauth2.RtToken) {
+		if responseType == oauth2.RtToken {
 			client, exists := handler.validator.ValidateClientId(authSession.ClientId)
 			if !exists {
 				InternalServerErrorHandler(w, r)
 				return
 			}
 			accessTokenResponse := handler.tokenManager.CreateAccessTokenResponse(user.Username, client, authSession.Scopes)
-			query.Set(oauth2.ParameterAccessToken, accessTokenResponse.AccessTokenKey)
-			query.Set(oauth2.ParameterTokenType, string(accessTokenResponse.TokenType))
-			query.Set(oauth2.ParameterExpiresIn, fmt.Sprintf("%d", accessTokenResponse.ExpiresIn))
-			// https://datatracker.ietf.org/doc/html/rfc6749#section-4.2.2
-			// The authorization server MUST NOT issue a refresh token.
+			setImplicitGrantParameter(query, accessTokenResponse)
+		} else if responseType == oauth2.RtCode {
+			setAuthorizationGrantParameter(query, authSessionForm)
 		} else {
-			query.Set(oauth2.ParameterCode, authSessionForm)
+			BadRequestHandler(w, r)
+			return
 		}
 
 		if authSession.State != "" {
@@ -247,4 +250,16 @@ func validateRedirect(client *config.Client, redirect string) func(w http.Respon
 	}
 
 	return nil
+}
+
+func setAuthorizationGrantParameter(query url.Values, code string) {
+	query.Set(oauth2.ParameterCode, code)
+}
+
+func setImplicitGrantParameter(query url.Values, accessTokenResponse oauth2.AccessTokenResponse) {
+	query.Set(oauth2.ParameterAccessToken, accessTokenResponse.AccessTokenKey)
+	query.Set(oauth2.ParameterTokenType, string(accessTokenResponse.TokenType))
+	query.Set(oauth2.ParameterExpiresIn, fmt.Sprintf("%d", accessTokenResponse.ExpiresIn))
+	// https://datatracker.ietf.org/doc/html/rfc6749#section-4.2.2
+	// The authorization server MUST NOT issue a refresh token.
 }
