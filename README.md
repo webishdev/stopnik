@@ -1,6 +1,8 @@
 <p align="center">
     <picture>
-      <img alt="STOPnik" title="STOPnik" src="docs/content/assets/stopnik_250.png">
+      <source media="(prefers-color-scheme: dark)" srcset="docs/content/assets/stopnik_250.png">
+      <source media="(prefers-color-scheme: light)" srcset="docs/content/assets/stopnik_250.png">
+      <img alt="STOPnik" title="Traefik" src="docs/content/assets/stopnik_250.png">
     </picture>
 </p>
 
