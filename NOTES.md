@@ -1,4 +1,4 @@
-# Tiny Gate Notes
+# Stopnik Notes
 
 Just a few notes taken during development
 
