@@ -46,14 +46,15 @@ func (handler *TokenHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 		if grantType == oauth2.GtAuthorizationCode {
 
+			code := r.PostFormValue(oauth2.ParameterCode)
+			authSession, authSessionExists := handler.sessionManager.GetSession(code)
+			if !authSessionExists {
+				ForbiddenHandler(w, r)
+				return
+			}
+
 			codeVerifier := r.PostFormValue(pkce.ParameterCodeVerifier) // https://datatracker.ietf.org/doc/html/rfc7636#section-4.1
 			if codeVerifier != "" {
-				code := r.PostFormValue(oauth2.ParameterCode)
-				authSession, authSessionExists := handler.sessionManager.GetSession(code)
-				if !authSessionExists {
-					ForbiddenHandler(w, r)
-					return
-				}
 				codeChallengeMethod, codeChallengeMethodExists := pkce.CodeChallengeMethodFromString(authSession.CodeChallengeMethod)
 				if !codeChallengeMethodExists {
 					ForbiddenHandler(w, r)
@@ -64,9 +65,10 @@ func (handler *TokenHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 					ForbiddenHandler(w, r)
 					return
 				}
-				scopes = authSession.Scopes
-				username = authSession.Username
 			}
+
+			scopes = authSession.Scopes
+			username = authSession.Username
 
 		}
 

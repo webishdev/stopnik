@@ -5,13 +5,13 @@ import (
 	"testing"
 )
 
-type parameter struct {
-	value    string
-	exists   bool
-	expected string
-}
-
 func Test_GrantTypeFromString(t *testing.T) {
+	type parameter struct {
+		value    string
+		exists   bool
+		expected string
+	}
+
 	var grandTypeParameters = []parameter{
 		{string(GtAuthorizationCode), true, "authorization_code"},
 		{string(GtClientCredentials), true, "client_credentials"},
@@ -31,6 +31,12 @@ func Test_GrantTypeFromString(t *testing.T) {
 }
 
 func Test_ResponseTypeFromString(t *testing.T) {
+	type parameter struct {
+		value    string
+		exists   bool
+		expected string
+	}
+
 	var responseTypeParameters = []parameter{
 		{string(RtCode), true, "code"},
 		{string(RtToken), true, "token"},
@@ -51,6 +57,12 @@ func Test_ResponseTypeFromString(t *testing.T) {
 }
 
 func Test_ClientTypeFromString(t *testing.T) {
+	type parameter struct {
+		value    string
+		exists   bool
+		expected string
+	}
+
 	var clientTypeParameters = []parameter{
 		{string(CtConfidential), true, "confidential"},
 		{string(CtPublic), true, "public"},
@@ -68,6 +80,12 @@ func Test_ClientTypeFromString(t *testing.T) {
 }
 
 func Test_TokenTypeFromString(t *testing.T) {
+	type parameter struct {
+		value    string
+		exists   bool
+		expected string
+	}
+
 	var tokenTypeParameters = []parameter{
 		{string(TtBearer), true, "Bearer"},
 		{string(TtMAC), true, "mac"},
