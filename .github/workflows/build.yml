@@ -52,4 +52,4 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: build_result_${{ matrix.os }}
-        path: bin/**
+        path: bin/${{ matrix.os }}**
