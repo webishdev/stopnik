@@ -8,6 +8,7 @@ import (
 	"stopnik/internal/server/validation"
 	"stopnik/internal/store"
 	"stopnik/log"
+	"strings"
 )
 
 type TokenHandler struct {
@@ -38,14 +39,14 @@ func (handler *TokenHandler) handlePostRequest(w http.ResponseWriter, r *http.Re
 	client, validClientCredentials := handler.validator.ValidateClientCredentials(r)
 	// https://datatracker.ietf.org/doc/html/rfc6749#section-2.3.1
 	if !validClientCredentials {
-		ForbiddenHandler(w, r)
+		oauth2.TokenErrorResponseHandler(w, &oauth2.TokenErrorResponseParameter{Error: oauth2.TokenEtInvalidClient})
 		return
 	}
 
 	grantTypeValue := r.PostFormValue(oauth2.ParameterGrantType)
 	grantType, grantTypeExists := oauth2.GrantTypeFromString(grantTypeValue)
 	if !grantTypeExists {
-		ForbiddenHandler(w, r)
+		oauth2.TokenErrorResponseHandler(w, &oauth2.TokenErrorResponseParameter{Error: oauth2.TokenEtInvalidGrant})
 		return
 	}
 
@@ -57,7 +58,7 @@ func (handler *TokenHandler) handlePostRequest(w http.ResponseWriter, r *http.Re
 		code := r.PostFormValue(oauth2.ParameterCode)
 		authSession, authSessionExists := handler.sessionManager.GetSession(code)
 		if !authSessionExists {
-			ForbiddenHandler(w, r)
+			oauth2.TokenErrorResponseHandler(w, &oauth2.TokenErrorResponseParameter{Error: oauth2.TokenEtInvalidRequest})
 			return
 		}
 
@@ -65,12 +66,12 @@ func (handler *TokenHandler) handlePostRequest(w http.ResponseWriter, r *http.Re
 		if codeVerifier != "" {
 			codeChallengeMethod, codeChallengeMethodExists := pkce.CodeChallengeMethodFromString(authSession.CodeChallengeMethod)
 			if !codeChallengeMethodExists {
-				ForbiddenHandler(w, r)
+				oauth2.TokenErrorResponseHandler(w, &oauth2.TokenErrorResponseParameter{Error: oauth2.TokenEtInvalidRequest})
 				return
 			}
 			validPKCE := pkce.ValidatePKCE(codeChallengeMethod, authSession.CodeChallenge, codeVerifier)
 			if !validPKCE {
-				ForbiddenHandler(w, r)
+				oauth2.TokenErrorResponseHandler(w, &oauth2.TokenErrorResponseParameter{Error: oauth2.TokenEtInvalidRequest})
 				return
 			}
 		}
@@ -78,38 +79,39 @@ func (handler *TokenHandler) handlePostRequest(w http.ResponseWriter, r *http.Re
 		scopes = authSession.Scopes
 		username = authSession.Username
 
-	}
-
-	if grantType == oauth2.GtPassword {
+	} else if grantType == oauth2.GtPassword {
 		usernameFrom := r.PostFormValue(oauth2.ParameterUsername)
 		passwordForm := r.PostFormValue(oauth2.ParameterPassword)
+		scopeForm := r.PostFormValue(oauth2.ParameterScope)
 
 		user, exists := handler.validator.ValidateUserPassword(usernameFrom, passwordForm)
 		if !exists {
-			ForbiddenHandler(w, r)
+			oauth2.TokenErrorResponseHandler(w, &oauth2.TokenErrorResponseParameter{Error: oauth2.TokenEtInvalidRequest})
 			return
 		}
+		scopes = strings.Split(scopeForm, " ")
 		username = user.Username
-	}
-
-	if grantType == oauth2.GtRefreshToken && client.GetRefreshTTL() <= 0 {
-		ForbiddenHandler(w, r)
+	} else if grantType == oauth2.GtRefreshToken && client.GetRefreshTTL() <= 0 {
+		oauth2.TokenErrorResponseHandler(w, &oauth2.TokenErrorResponseParameter{Error: oauth2.TokenEtInvalidRequest})
 		return
 	} else if grantType == oauth2.GtRefreshToken && client.GetRefreshTTL() > 0 {
 		refreshTokenForm := r.PostFormValue(oauth2.ParameterRefreshToken)
 		refreshToken, refreshTokenExists := handler.tokenManager.GetRefreshToken(refreshTokenForm)
 		if !refreshTokenExists {
-			ForbiddenHandler(w, r)
+			oauth2.TokenErrorResponseHandler(w, &oauth2.TokenErrorResponseParameter{Error: oauth2.TokenEtInvalidRequest})
 			return
 		}
 
 		if refreshToken.ClientId != client.Id {
-			ForbiddenHandler(w, r)
+			oauth2.TokenErrorResponseHandler(w, &oauth2.TokenErrorResponseParameter{Error: oauth2.TokenEtInvalidRequest})
 			return
 		}
 
 		username = refreshToken.Username
 		scopes = refreshToken.Scopes
+	} else if grantType != oauth2.GtClientCredentials {
+		oauth2.TokenErrorResponseHandler(w, &oauth2.TokenErrorResponseParameter{Error: oauth2.TokenEtUnsupportedGrandType})
+		return
 	}
 
 	accessTokenResponse := handler.tokenManager.CreateAccessTokenResponse(username, client, scopes)

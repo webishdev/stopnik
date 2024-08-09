@@ -43,9 +43,9 @@ type TokenErrorType string
 
 // TokenErrorResponseParameter related to https://datatracker.ietf.org/doc/html/rfc6749#section-5.2
 type TokenErrorResponseParameter struct {
-	Error       TokenErrorType
-	Description string
-	Uri         string
+	Error       TokenErrorType `json:"error"`
+	Description string         `json:"error_description,omitempty"`
+	Uri         string         `json:"error_uri,omitempty"`
 }
 
 const (
@@ -99,6 +99,13 @@ func AuthorizationErrorResponseHandler(w http.ResponseWriter, redirectURL *url.U
 	redirectURL.RawQuery = query.Encode()
 	w.Header().Set(internalHttp.Location, redirectURL.String())
 	w.WriteHeader(http.StatusFound)
+}
+
+func TokenErrorResponseHandler(w http.ResponseWriter, errorResponseParameter *TokenErrorResponseParameter) {
+	err := internalHttp.SendJsonWithStatus(errorResponseParameter, w, http.StatusBadRequest)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+	}
 }
 
 func sendStatus(w http.ResponseWriter, status int, message string) {
