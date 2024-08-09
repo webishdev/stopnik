@@ -11,6 +11,10 @@ import (
 
 func Test_Token(t *testing.T) {
 
+	testTokenNotAllowedHttpMethods(t)
+}
+
+func testTokenNotAllowedHttpMethods(t *testing.T) {
 	var testInvalidTokenHttpMethods = []string{
 		http.MethodGet,
 		http.MethodPut,

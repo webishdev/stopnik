@@ -42,35 +42,35 @@ func Test_Authorize(t *testing.T) {
 		t.Error(err)
 	}
 
-	testNoClientId(t, testConfig)
+	testAuthorizeNoClientId(t, testConfig)
 
-	testInvalidClientId(t, testConfig)
+	testAuthorizeInvalidClientId(t, testConfig)
 
-	testInvalidRedirect(t, testConfig)
+	testAuthorizeInvalidRedirect(t, testConfig)
 
-	testInvalidResponseType(t, testConfig)
+	testAuthorizeInvalidResponseType(t, testConfig)
 
-	testNoCookeExists(t, testConfig)
+	testAuthorizeNoCookeExists(t, testConfig)
 
-	testAuthorizationGrant(t, testConfig)
+	testAuthorizeAuthorizationGrant(t, testConfig)
 
-	testImplicitGrant(t, testConfig)
+	testAuthorizeImplicitGrant(t, testConfig)
 
-	testInvalidLogin(t, testConfig)
+	testAuthorizeInvalidLogin(t, testConfig)
 
-	testEmptyLogin(t, testConfig)
+	testAuthorizeEmptyLogin(t, testConfig)
 
-	testValidLoginNoSession(t, testConfig)
+	testAuthorizeValidLoginNoSession(t, testConfig)
 
-	testValidLoginAuthorizationGrant(t, testConfig)
+	testAuthorizeValidLoginAuthorizationGrant(t, testConfig)
 
-	testValidLoginImplicitGrant(t, testConfig)
+	testAuthorizeValidLoginImplicitGrant(t, testConfig)
 
-	testNotAllowedHttpMethods(t)
+	testAuthorizeNotAllowedHttpMethods(t)
 
 }
 
-func testInvalidLogin(t *testing.T, testConfig *config.Config) {
+func testAuthorizeInvalidLogin(t *testing.T, testConfig *config.Config) {
 	type invalidLoginParameter struct {
 		state string
 		scope string
@@ -152,7 +152,7 @@ func testInvalidLogin(t *testing.T, testConfig *config.Config) {
 	}
 }
 
-func testEmptyLogin(t *testing.T, testConfig *config.Config) {
+func testAuthorizeEmptyLogin(t *testing.T, testConfig *config.Config) {
 	type emptyLoginParameter struct {
 		state string
 		scope string
@@ -234,7 +234,7 @@ func testEmptyLogin(t *testing.T, testConfig *config.Config) {
 	}
 }
 
-func testValidLoginNoSession(t *testing.T, testConfig *config.Config) {
+func testAuthorizeValidLoginNoSession(t *testing.T, testConfig *config.Config) {
 	type validLoginParameter struct {
 		state string
 		scope string
@@ -319,7 +319,7 @@ func testValidLoginNoSession(t *testing.T, testConfig *config.Config) {
 	}
 }
 
-func testValidLoginAuthorizationGrant(t *testing.T, testConfig *config.Config) {
+func testAuthorizeValidLoginAuthorizationGrant(t *testing.T, testConfig *config.Config) {
 	type validLoginParameter struct {
 		state string
 		scope string
@@ -403,7 +403,7 @@ func testValidLoginAuthorizationGrant(t *testing.T, testConfig *config.Config) {
 	}
 }
 
-func testValidLoginImplicitGrant(t *testing.T, testConfig *config.Config) {
+func testAuthorizeValidLoginImplicitGrant(t *testing.T, testConfig *config.Config) {
 	type validLoginParameter struct {
 		state string
 		scope string
@@ -500,7 +500,7 @@ func testValidLoginImplicitGrant(t *testing.T, testConfig *config.Config) {
 	}
 }
 
-func testNotAllowedHttpMethods(t *testing.T) {
+func testAuthorizeNotAllowedHttpMethods(t *testing.T) {
 	var testInvalidAuthorizeHttpMethods = []string{
 		http.MethodPut,
 		http.MethodPatch,
@@ -523,7 +523,7 @@ func testNotAllowedHttpMethods(t *testing.T) {
 	}
 }
 
-func testImplicitGrant(t *testing.T, testConfig *config.Config) {
+func testAuthorizeImplicitGrant(t *testing.T, testConfig *config.Config) {
 	type implicitGrantParameter struct {
 		state string
 		scope string
@@ -605,7 +605,7 @@ func testImplicitGrant(t *testing.T, testConfig *config.Config) {
 	}
 }
 
-func testAuthorizationGrant(t *testing.T, testConfig *config.Config) {
+func testAuthorizeAuthorizationGrant(t *testing.T, testConfig *config.Config) {
 	type authorizationGrantParameter struct {
 		state                   string
 		scope                   string
@@ -700,7 +700,7 @@ func testAuthorizationGrant(t *testing.T, testConfig *config.Config) {
 	}
 }
 
-func testNoCookeExists(t *testing.T, testConfig *config.Config) bool {
+func testAuthorizeNoCookeExists(t *testing.T, testConfig *config.Config) bool {
 	return t.Run("No cookie exists", func(t *testing.T) {
 		parsedUri := createUri(t, "/authorize", func(query url.Values) {
 			query.Set(oauth2.ParameterClientId, "foo")
@@ -741,7 +741,7 @@ func testNoCookeExists(t *testing.T, testConfig *config.Config) bool {
 	})
 }
 
-func testInvalidResponseType(t *testing.T, testConfig *config.Config) bool {
+func testAuthorizeInvalidResponseType(t *testing.T, testConfig *config.Config) bool {
 	return t.Run("Invalid response type", func(t *testing.T) {
 		parsedUri := createUri(t, "/authorize", func(query url.Values) {
 			query.Set(oauth2.ParameterClientId, "foo")
@@ -780,7 +780,7 @@ func testInvalidResponseType(t *testing.T, testConfig *config.Config) bool {
 	})
 }
 
-func testInvalidRedirect(t *testing.T, testConfig *config.Config) {
+func testAuthorizeInvalidRedirect(t *testing.T, testConfig *config.Config) {
 	type redirectTest struct {
 		redirect string
 		status   int
@@ -816,7 +816,7 @@ func testInvalidRedirect(t *testing.T, testConfig *config.Config) {
 	}
 }
 
-func testInvalidClientId(t *testing.T, testConfig *config.Config) bool {
+func testAuthorizeInvalidClientId(t *testing.T, testConfig *config.Config) bool {
 	return t.Run("Invalid client id", func(t *testing.T) {
 		parsedUri := createUri(t, "/authorize", func(query url.Values) {
 			query.Set(oauth2.ParameterClientId, "bar")
@@ -836,7 +836,7 @@ func testInvalidClientId(t *testing.T, testConfig *config.Config) bool {
 	})
 }
 
-func testNoClientId(t *testing.T, testConfig *config.Config) bool {
+func testAuthorizeNoClientId(t *testing.T, testConfig *config.Config) bool {
 	return t.Run("No client id provided", func(t *testing.T) {
 		requestValidator := validation.NewRequestValidator(testConfig)
 
