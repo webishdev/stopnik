@@ -49,8 +49,8 @@ function build() {
       OS_NAME="macos"
   fi
   FILE_NAME="$NAME$VERSION-$GO_ARCH"
-  DIR="$OS_NAME-$GO_ARCH"
-  echo "Build $NICE_NAME version $VERSION ($GIT_HASH) for $GO_OS $GO_ARCH"
+  DIR="${CI_OS/:}$OS_NAME-$GO_ARCH"
+  echo "Build $NICE_NAME version $VERSION ($GIT_HASH) for $GO_OS $GO_ARCH into $DIR"
   GOOS=$GO_OS GOARCH=$GO_ARCH go build -ldflags="-s -w -X 'main.Version=$VERSION' -X 'main.GitHash=$GIT_HASH'" -o bin/$DIR/$FILE_NAME$FILE_EXTENSION main.go
 
   CURRENT_DIR=$(pwd)
