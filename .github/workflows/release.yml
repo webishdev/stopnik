@@ -8,24 +8,52 @@ on:
         description: Version for the tag
         required: true
 
+env:
+  CGO_ENABLED: 0
+
 jobs:
+
   release:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
     permissions:
       contents: write
+    strategy:
+      matrix:
+        os: [ ubuntu-latest, macos-latest ]
 
     steps:
       - name: Show tag
         run: echo "Will create version ${{ github.event.inputs.version }}"
 
-      - uses: ./.github/workflows/build.yml
-        with:
-          stopnik_version: ${{ github.event.inputs.version }}
+      - uses: actions/checkout@v4
 
-      - name: Download build result
-        uses: actions/download-artifact@v4
+      - name: Set up Go
+        uses: actions/setup-go@v5
         with:
-          name: build_result
+          go-version-file: 'go.mod'
+
+      - name: Display Go version
+        run: go version
+
+      - name: Build
+        run: |
+          VERSION_INPUT=${{ inputs.stopnik_version }}
+          CURRENT_VERSION=${VERSION_INPUT:-"ci"}
+          ./build.sh build_ci $CURRENT_VERSION ${{ matrix.os }}
+
+      - name: Tests
+        run: ./test.sh coverage
+
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v6
+        with:
+          version: v1.59
+
+      - name: Upload build result
+        uses: actions/upload-artifact@v4
+        with:
+          name: build_result_${{ matrix.os }}
+          path: bin/**
 
       - uses: ncipollo/release-action@v1
         with:
