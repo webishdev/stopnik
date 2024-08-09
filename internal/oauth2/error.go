@@ -8,27 +8,27 @@ import (
 	"strings"
 )
 
-// ErrorResponseParameter related to https://datatracker.ietf.org/doc/html/rfc6749#section-4.1.2.1
-type ErrorResponseParameter struct {
-	Error       ErrorType
+// AuthorizationErrorResponseParameter related to https://datatracker.ietf.org/doc/html/rfc6749#section-4.1.2.1
+type AuthorizationErrorResponseParameter struct {
+	Error       AuthorizationErrorType
 	Description string
 	Uri         string
 }
 
-// ErrorType as described in multiple places e.g. https://datatracker.ietf.org/doc/html/rfc6749#section-4.1.2.1
-type ErrorType string
+// AuthorizationErrorType as described in multiple places e.g. https://datatracker.ietf.org/doc/html/rfc6749#section-4.1.2.1
+type AuthorizationErrorType string
 
 const (
-	EtInvalidRequest          ErrorType = "invalid_request"
-	EtUnauthorizedClient      ErrorType = "unauthorized_client"
-	EtAccessDenied            ErrorType = "access_denied"
-	EtUnsupportedResponseType ErrorType = "unsupported_response_type"
-	EtInvalidScope            ErrorType = "invalid_scope"
-	EtServerError             ErrorType = "server_error"
-	EtTemporaryUnavailable    ErrorType = "temporarily_unavailable"
+	EtInvalidRequest          AuthorizationErrorType = "invalid_request"
+	EtUnauthorizedClient      AuthorizationErrorType = "unauthorized_client"
+	EtAccessDenied            AuthorizationErrorType = "access_denied"
+	EtUnsupportedResponseType AuthorizationErrorType = "unsupported_response_type"
+	EtInvalidScope            AuthorizationErrorType = "invalid_scope"
+	EtServerError             AuthorizationErrorType = "server_error"
+	EtTemporaryUnavailable    AuthorizationErrorType = "temporarily_unavailable"
 )
 
-var errorTypeMap = map[string]ErrorType{
+var errorTypeMap = map[string]AuthorizationErrorType{
 	"invalid_request":           EtInvalidRequest,
 	"unauthorized_client":       EtUnauthorizedClient,
 	"access_denied":             EtAccessDenied,
@@ -38,12 +38,12 @@ var errorTypeMap = map[string]ErrorType{
 	"temporarily_unavailable":   EtTemporaryUnavailable,
 }
 
-func ErrorTypeFromString(value string) (ErrorType, bool) {
+func ErrorTypeFromString(value string) (AuthorizationErrorType, bool) {
 	result, ok := errorTypeMap[strings.ToLower(value)]
 	return result, ok
 }
 
-func ErrorResponseHandler(w http.ResponseWriter, redirectURL *url.URL, state string, errorResponseParameter *ErrorResponseParameter) {
+func AuthorizationErrorResponseHandler(w http.ResponseWriter, redirectURL *url.URL, state string, errorResponseParameter *AuthorizationErrorResponseParameter) {
 	if redirectURL == nil {
 		sendStatus(w, http.StatusInternalServerError, "No redirect URL")
 		return

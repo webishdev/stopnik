@@ -13,25 +13,25 @@ func Test_Error(t *testing.T) {
 
 	type errorResponseHandlerParameter struct {
 		state                    string
-		expectedErrorParameter   ErrorType
+		expectedErrorParameter   AuthorizationErrorType
 		expectedErrorDescription string
 		expectedErrorUri         string
-		errorResponseParameter   *ErrorResponseParameter
+		errorResponseParameter   *AuthorizationErrorResponseParameter
 	}
 
 	var errorResponseHandlerParameters = []errorResponseHandlerParameter{
 		{"", EtServerError, "", "", nil},
 		{"xyz", EtServerError, "", "", nil},
-		{"abc", EtInvalidRequest, "", "", &ErrorResponseParameter{Error: EtInvalidRequest}},
-		{"abc", EtUnauthorizedClient, "", "", &ErrorResponseParameter{Error: EtUnauthorizedClient}},
-		{"abc", EtAccessDenied, "", "", &ErrorResponseParameter{Error: EtAccessDenied}},
-		{"abc", EtUnsupportedResponseType, "", "", &ErrorResponseParameter{Error: EtUnsupportedResponseType}},
-		{"abc", EtInvalidScope, "", "", &ErrorResponseParameter{Error: EtInvalidScope}},
-		{"abc", EtServerError, "", "", &ErrorResponseParameter{Error: EtServerError}},
-		{"abc", EtTemporaryUnavailable, "", "", &ErrorResponseParameter{Error: EtTemporaryUnavailable}},
-		{"abc", EtTemporaryUnavailable, "foobar", "", &ErrorResponseParameter{Error: EtTemporaryUnavailable, Description: "foobar"}},
-		{"abc", EtTemporaryUnavailable, "", "abcxyz", &ErrorResponseParameter{Error: EtTemporaryUnavailable, Uri: "abcxyz"}},
-		{"abc", EtTemporaryUnavailable, "foobar", "abcxyz", &ErrorResponseParameter{Error: EtTemporaryUnavailable, Description: "foobar", Uri: "abcxyz"}},
+		{"abc", EtInvalidRequest, "", "", &AuthorizationErrorResponseParameter{Error: EtInvalidRequest}},
+		{"abc", EtUnauthorizedClient, "", "", &AuthorizationErrorResponseParameter{Error: EtUnauthorizedClient}},
+		{"abc", EtAccessDenied, "", "", &AuthorizationErrorResponseParameter{Error: EtAccessDenied}},
+		{"abc", EtUnsupportedResponseType, "", "", &AuthorizationErrorResponseParameter{Error: EtUnsupportedResponseType}},
+		{"abc", EtInvalidScope, "", "", &AuthorizationErrorResponseParameter{Error: EtInvalidScope}},
+		{"abc", EtServerError, "", "", &AuthorizationErrorResponseParameter{Error: EtServerError}},
+		{"abc", EtTemporaryUnavailable, "", "", &AuthorizationErrorResponseParameter{Error: EtTemporaryUnavailable}},
+		{"abc", EtTemporaryUnavailable, "foobar", "", &AuthorizationErrorResponseParameter{Error: EtTemporaryUnavailable, Description: "foobar"}},
+		{"abc", EtTemporaryUnavailable, "", "abcxyz", &AuthorizationErrorResponseParameter{Error: EtTemporaryUnavailable, Uri: "abcxyz"}},
+		{"abc", EtTemporaryUnavailable, "foobar", "abcxyz", &AuthorizationErrorResponseParameter{Error: EtTemporaryUnavailable, Description: "foobar", Uri: "abcxyz"}},
 	}
 
 	for _, test := range errorResponseHandlerParameters {
@@ -44,7 +44,7 @@ func Test_Error(t *testing.T) {
 
 			rr := httptest.NewRecorder()
 
-			ErrorResponseHandler(rr, redirectURL, test.state, test.errorResponseParameter)
+			AuthorizationErrorResponseHandler(rr, redirectURL, test.state, test.errorResponseParameter)
 
 			if rr.Code != http.StatusFound {
 				t.Errorf("handler returned wrong status code: got %v want %v", rr.Code, http.StatusFound)
@@ -91,7 +91,7 @@ func Test_Error(t *testing.T) {
 	t.Run("No redirect uri provided", func(t *testing.T) {
 		rr := httptest.NewRecorder()
 
-		ErrorResponseHandler(rr, nil, "foo", nil)
+		AuthorizationErrorResponseHandler(rr, nil, "foo", nil)
 
 		if rr.Code != http.StatusInternalServerError {
 			t.Errorf("handler returned wrong status code: got %v want %v", rr.Code, http.StatusInternalServerError)

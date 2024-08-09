@@ -82,8 +82,8 @@ func (handler *AuthorizeHandler) handleGetRequest(w http.ResponseWriter, r *http
 		log.Error("Invalid %s parameter with value %s for client %s", oauth2.ParameterResponseType, responseTypeQueryParameter, client.Id)
 
 		errorMessage := fmt.Sprintf("Invalid %s parameter value", oauth2.ParameterResponseType)
-		authorizeError := &oauth2.ErrorResponseParameter{Error: oauth2.EtInvalidRequest, Description: errorMessage}
-		oauth2.ErrorResponseHandler(w, redirectURL, state, authorizeError)
+		authorizeError := &oauth2.AuthorizationErrorResponseParameter{Error: oauth2.EtInvalidRequest, Description: errorMessage}
+		oauth2.AuthorizationErrorResponseHandler(w, redirectURL, state, authorizeError)
 		return
 	}
 
@@ -134,7 +134,7 @@ func (handler *AuthorizeHandler) handleGetRequest(w http.ResponseWriter, r *http
 			setAuthorizationGrantParameter(query, id.String())
 		} else {
 			log.Error("Invalid response type %s", responseType)
-			oauth2.ErrorResponseHandler(w, redirectURL, state, &oauth2.ErrorResponseParameter{Error: oauth2.EtUnsupportedResponseType})
+			oauth2.AuthorizationErrorResponseHandler(w, redirectURL, state, &oauth2.AuthorizationErrorResponseParameter{Error: oauth2.EtUnsupportedResponseType})
 			return
 		}
 
@@ -189,8 +189,8 @@ func (handler *AuthorizeHandler) handlePostRequest(w http.ResponseWriter, r *htt
 		log.Error("Invalid %s parameter with value %s for client %s", oauth2.ParameterResponseType, authSession.ResponseType, authSession.ClientId)
 
 		errorMessage := fmt.Sprintf("Invalid %s parameter value", oauth2.ParameterResponseType)
-		authorizeError := &oauth2.ErrorResponseParameter{Error: oauth2.EtInvalidRequest, Description: errorMessage}
-		oauth2.ErrorResponseHandler(w, redirectURL, authSession.State, authorizeError)
+		authorizeError := &oauth2.AuthorizationErrorResponseParameter{Error: oauth2.EtInvalidRequest, Description: errorMessage}
+		oauth2.AuthorizationErrorResponseHandler(w, redirectURL, authSession.State, authorizeError)
 		return
 	}
 
@@ -206,7 +206,7 @@ func (handler *AuthorizeHandler) handlePostRequest(w http.ResponseWriter, r *htt
 	} else if responseType == oauth2.RtCode {
 		setAuthorizationGrantParameter(query, authSession.Id)
 	} else {
-		oauth2.ErrorResponseHandler(w, redirectURL, authSession.State, &oauth2.ErrorResponseParameter{Error: oauth2.EtUnsupportedResponseType})
+		oauth2.AuthorizationErrorResponseHandler(w, redirectURL, authSession.State, &oauth2.AuthorizationErrorResponseParameter{Error: oauth2.EtUnsupportedResponseType})
 		return
 	}
 
