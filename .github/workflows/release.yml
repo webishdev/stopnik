@@ -54,6 +54,7 @@ jobs:
         with:
           name: build_result_${{ matrix.os }}
           path: bin/**
+          retention-days: 1
 
   release:
     runs-on: ubuntu-latest
