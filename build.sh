@@ -125,12 +125,15 @@ function task_build_ci() {
   prepare $VERSION
   if [[ "$CI_OS" == "ubuntu-latest" ]]; then
     echo "Build for Linux"
+    GO_OS=linux
     CURRENT_OS_VALUES=$LINUX_OS_VALUES
   elif [[ "$GO_OS" == "macos-latest" ]]; then
     echo "Build for Mac"
+    GO_OS=darwin
     CURRENT_OS_VALUES=$MAC_OS_VALUES
   elif [[ "$GO_OS" == "windows-latest" ]]; then
     echo "Build for Windows"
+    GO_OS=windows
     CURRENT_OS_VALUES=$WINDOWS_OS_VALUES
   fi
   for os_value in "${CURRENT_OS_VALUES[@]}"
