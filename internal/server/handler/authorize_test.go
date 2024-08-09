@@ -768,13 +768,13 @@ func testAuthorizeInvalidResponseType(t *testing.T, testConfig *config.Config) b
 
 		errorQueryParameter := location.Query().Get(oauth2.ParameterError)
 
-		errorType, errorTypeExists := oauth2.ErrorTypeFromString(errorQueryParameter)
+		errorType, errorTypeExists := oauth2.AuthorizationErrorTypeFromString(errorQueryParameter)
 
 		if !errorTypeExists {
 			t.Errorf("error type could not be parsed: %v", errorQueryParameter)
 		}
 
-		if errorType != oauth2.EtInvalidRequest {
+		if errorType != oauth2.AuthorizationEtInvalidRequest {
 			t.Errorf("error type was not Invalid: %v", errorQueryParameter)
 		}
 	})

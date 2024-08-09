@@ -11,6 +11,53 @@ import (
 
 func Test_Error(t *testing.T) {
 
+	testAuthorizationErrorResponseHandler(t)
+
+	testAuthorizationErrorTypeFromString(t)
+
+	testTokenErrorTypeFromString(t)
+
+	t.Run("No redirect uri provided", func(t *testing.T) {
+		rr := httptest.NewRecorder()
+
+		AuthorizationErrorResponseHandler(rr, nil, "foo", nil)
+
+		if rr.Code != http.StatusInternalServerError {
+			t.Errorf("handler returned wrong status code: got %v want %v", rr.Code, http.StatusInternalServerError)
+		}
+
+	})
+}
+
+func testAuthorizationErrorTypeFromString(t *testing.T) {
+	type authorizationErrorTypeParameter struct {
+		value    string
+		exists   bool
+		expected string
+	}
+
+	var authorizationErrorTypeParameters = []authorizationErrorTypeParameter{
+		{string(AuthorizationEtInvalidRequest), true, "invalid_request"},
+		{string(AuthorizationEtUnauthorizedClient), true, "unauthorized_client"},
+		{string(AuthorizationEtAccessDenied), true, "access_denied"},
+		{string(AuthorizationEtUnsupportedResponseType), true, "unsupported_response_type"},
+		{string(AuthorizationEtInvalidScope), true, "invalid_scope"},
+		{string(AuthorizationEtServerError), true, "server_error"},
+		{string(AuthorizationEtTemporaryUnavailable), true, "temporarily_unavailable"},
+		{"foo", false, ""},
+	}
+
+	for _, test := range authorizationErrorTypeParameters {
+		testMessage := fmt.Sprintf("Error type %s %v", test.value, test.exists)
+		t.Run(testMessage, func(t *testing.T) {
+			if errorType, exits := AuthorizationErrorTypeFromString(test.value); exits != test.exists && string(errorType) != test.expected {
+				t.Errorf("Error type %s not found,", test.value)
+			}
+		})
+	}
+}
+
+func testAuthorizationErrorResponseHandler(t *testing.T) {
 	type errorResponseHandlerParameter struct {
 		state                    string
 		expectedErrorParameter   AuthorizationErrorType
@@ -20,22 +67,22 @@ func Test_Error(t *testing.T) {
 	}
 
 	var errorResponseHandlerParameters = []errorResponseHandlerParameter{
-		{"", EtServerError, "", "", nil},
-		{"xyz", EtServerError, "", "", nil},
-		{"abc", EtInvalidRequest, "", "", &AuthorizationErrorResponseParameter{Error: EtInvalidRequest}},
-		{"abc", EtUnauthorizedClient, "", "", &AuthorizationErrorResponseParameter{Error: EtUnauthorizedClient}},
-		{"abc", EtAccessDenied, "", "", &AuthorizationErrorResponseParameter{Error: EtAccessDenied}},
-		{"abc", EtUnsupportedResponseType, "", "", &AuthorizationErrorResponseParameter{Error: EtUnsupportedResponseType}},
-		{"abc", EtInvalidScope, "", "", &AuthorizationErrorResponseParameter{Error: EtInvalidScope}},
-		{"abc", EtServerError, "", "", &AuthorizationErrorResponseParameter{Error: EtServerError}},
-		{"abc", EtTemporaryUnavailable, "", "", &AuthorizationErrorResponseParameter{Error: EtTemporaryUnavailable}},
-		{"abc", EtTemporaryUnavailable, "foobar", "", &AuthorizationErrorResponseParameter{Error: EtTemporaryUnavailable, Description: "foobar"}},
-		{"abc", EtTemporaryUnavailable, "", "abcxyz", &AuthorizationErrorResponseParameter{Error: EtTemporaryUnavailable, Uri: "abcxyz"}},
-		{"abc", EtTemporaryUnavailable, "foobar", "abcxyz", &AuthorizationErrorResponseParameter{Error: EtTemporaryUnavailable, Description: "foobar", Uri: "abcxyz"}},
+		{"", AuthorizationEtServerError, "", "", nil},
+		{"xyz", AuthorizationEtServerError, "", "", nil},
+		{"abc", AuthorizationEtInvalidRequest, "", "", &AuthorizationErrorResponseParameter{Error: AuthorizationEtInvalidRequest}},
+		{"abc", AuthorizationEtUnauthorizedClient, "", "", &AuthorizationErrorResponseParameter{Error: AuthorizationEtUnauthorizedClient}},
+		{"abc", AuthorizationEtAccessDenied, "", "", &AuthorizationErrorResponseParameter{Error: AuthorizationEtAccessDenied}},
+		{"abc", AuthorizationEtUnsupportedResponseType, "", "", &AuthorizationErrorResponseParameter{Error: AuthorizationEtUnsupportedResponseType}},
+		{"abc", AuthorizationEtInvalidScope, "", "", &AuthorizationErrorResponseParameter{Error: AuthorizationEtInvalidScope}},
+		{"abc", AuthorizationEtServerError, "", "", &AuthorizationErrorResponseParameter{Error: AuthorizationEtServerError}},
+		{"abc", AuthorizationEtTemporaryUnavailable, "", "", &AuthorizationErrorResponseParameter{Error: AuthorizationEtTemporaryUnavailable}},
+		{"abc", AuthorizationEtTemporaryUnavailable, "foobar", "", &AuthorizationErrorResponseParameter{Error: AuthorizationEtTemporaryUnavailable, Description: "foobar"}},
+		{"abc", AuthorizationEtTemporaryUnavailable, "", "abcxyz", &AuthorizationErrorResponseParameter{Error: AuthorizationEtTemporaryUnavailable, Uri: "abcxyz"}},
+		{"abc", AuthorizationEtTemporaryUnavailable, "foobar", "abcxyz", &AuthorizationErrorResponseParameter{Error: AuthorizationEtTemporaryUnavailable, Description: "foobar", Uri: "abcxyz"}},
 	}
 
 	for _, test := range errorResponseHandlerParameters {
-		testMessage := fmt.Sprintf("Error handler type %s %v %v", test.state, test.expectedErrorParameter, test.errorResponseParameter)
+		testMessage := fmt.Sprintf("Authorization Error handler type %s %v %v", test.state, test.expectedErrorParameter, test.errorResponseParameter)
 		t.Run(testMessage, func(t *testing.T) {
 			redirectURL, parseError := url.Parse("https://example.com/foo")
 			if parseError != nil {
@@ -58,7 +105,7 @@ func Test_Error(t *testing.T) {
 
 			errorQueryParameter := location.Query().Get(ParameterError)
 
-			errorType, errorTypeExists := ErrorTypeFromString(errorQueryParameter)
+			errorType, errorTypeExists := AuthorizationErrorTypeFromString(errorQueryParameter)
 
 			if !errorTypeExists {
 				t.Errorf("error type could not be parsed: %v", errorQueryParameter)
@@ -87,39 +134,29 @@ func Test_Error(t *testing.T) {
 			}
 		})
 	}
+}
 
-	t.Run("No redirect uri provided", func(t *testing.T) {
-		rr := httptest.NewRecorder()
-
-		AuthorizationErrorResponseHandler(rr, nil, "foo", nil)
-
-		if rr.Code != http.StatusInternalServerError {
-			t.Errorf("handler returned wrong status code: got %v want %v", rr.Code, http.StatusInternalServerError)
-		}
-
-	})
-
-	type errorTypeParameter struct {
+func testTokenErrorTypeFromString(t *testing.T) {
+	type tokenErrorTypeParameter struct {
 		value    string
 		exists   bool
 		expected string
 	}
 
-	var errorTypeParameters = []errorTypeParameter{
-		{string(EtInvalidRequest), true, "invalid_request"},
-		{string(EtUnauthorizedClient), true, "unauthorized_client"},
-		{string(EtAccessDenied), true, "access_denied"},
-		{string(EtUnsupportedResponseType), true, "unsupported_response_type"},
-		{string(EtInvalidScope), true, "invalid_scope"},
-		{string(EtServerError), true, "server_error"},
-		{string(EtTemporaryUnavailable), true, "temporarily_unavailable"},
+	var tokenErrorTypeParameters = []tokenErrorTypeParameter{
+		{string(TokenEtInvalidRequest), true, "invalid_request"},
+		{string(TokenEtInvalidClient), true, "invalid_client"},
+		{string(TokenEtInvalidGrant), true, "invalid_grant"},
+		{string(TokenEtUnauthorizedClient), true, "unauthorized_client"},
+		{string(TokenEtUnsupportedGrandType), true, "unsupported_grant_type"},
+		{string(TokenEtInvalidScope), true, "invalid_scope"},
 		{"foo", false, ""},
 	}
 
-	for _, test := range errorTypeParameters {
+	for _, test := range tokenErrorTypeParameters {
 		testMessage := fmt.Sprintf("Error type %s %v", test.value, test.exists)
 		t.Run(testMessage, func(t *testing.T) {
-			if errorType, exits := ErrorTypeFromString(test.value); exits != test.exists && string(errorType) != test.expected {
+			if errorType, exits := TokenErrorTypeFromString(test.value); exits != test.exists && string(errorType) != test.expected {
 				t.Errorf("Error type %s not found,", test.value)
 			}
 		})
