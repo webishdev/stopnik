@@ -142,6 +142,7 @@ function task_build_ci() {
     do
       GO_OS=$os_value
       GO_ARCH=$arch_value
+      echo "CI build with $os_value $arch_value"
       build
     done
   done
