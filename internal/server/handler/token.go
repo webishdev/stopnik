@@ -121,5 +121,4 @@ func (handler *TokenHandler) handlePostRequest(w http.ResponseWriter, r *http.Re
 		InternalServerErrorHandler(w, r)
 		return
 	}
-	return
 }
