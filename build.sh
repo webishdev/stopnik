@@ -58,8 +58,9 @@ function build() {
 
   echo "Create SHA256 sum for $GO_OS $GO_ARCH"
   shasum -a 256  $FILE_NAME$FILE_EXTENSION >> sha256sum.txt
-  echo "Package into ZIP: ${NAME}${VERSION}-${OS_NAME}-${GO_ARCH}.zip"
-  zip -q -r ../"${CI_OS:-}${NAME}${VERSION}-${OS_NAME}-${GO_ARCH}.zip"" ./
+  ZIP_NAME="${CI_OS:-}${NAME}${VERSION}-${OS_NAME}-${GO_ARCH}.zip"
+  echo "Package into ZIP: ${ZIP_NAME}"
+  zip -q -r ../${ZIP_NAME} ./
 
   cd $CURRENT_DIR
 
