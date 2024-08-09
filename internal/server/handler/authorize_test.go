@@ -41,148 +41,130 @@ func Test_Authorize(t *testing.T) {
 		t.Error(err)
 	}
 
-	t.Run("No client id provided", func(t *testing.T) {
-		requestValidator := validation.NewRequestValidator(testConfig)
+	testNoClientId(t, testConfig)
 
-		authorizeHandler := CreateAuthorizeHandler(requestValidator, &internalHttp.CookieManager{}, &store.SessionManager{}, &store.TokenManager{})
+	testInvalidClientId(t, testConfig)
 
-		rr := httptest.NewRecorder()
+	testInvalidRedirect(t, testConfig)
 
-		authorizeHandler.ServeHTTP(rr, httptest.NewRequest(http.MethodGet, "/authorize", nil))
+	testInvalidResponseType(t, testConfig)
 
-		if rr.Code != http.StatusBadRequest {
-			t.Errorf("handler returned wrong status code: got %v want %v", rr.Code, http.StatusBadRequest)
-		}
-	})
+	testNoCookeExists(t, testConfig)
 
-	t.Run("Invalid client id", func(t *testing.T) {
-		parsedUri := createUri(t, "/authorize", func(query url.Values) {
-			query.Set(oauth2.ParameterClientId, "bar")
-		})
+	testAuthorizationGrant(t, testConfig)
 
-		requestValidator := validation.NewRequestValidator(testConfig)
+	testImplicitGrant(t, testConfig)
 
-		authorizeHandler := CreateAuthorizeHandler(requestValidator, &internalHttp.CookieManager{}, &store.SessionManager{}, &store.TokenManager{})
+	testNotAllowedHttpMethods(t)
 
-		rr := httptest.NewRecorder()
+}
 
-		authorizeHandler.ServeHTTP(rr, httptest.NewRequest(http.MethodGet, parsedUri.String(), nil))
-
-		if rr.Code != http.StatusBadRequest {
-			t.Errorf("handler returned wrong status code: got %v want %v", rr.Code, http.StatusBadRequest)
-		}
-	})
-
-	type redirectTest struct {
-		redirect string
-		status   int
+func testNotAllowedHttpMethods(t *testing.T) {
+	var testInvalidAuthorizeHttpMethods = []string{
+		http.MethodPut,
+		http.MethodPatch,
+		http.MethodDelete,
 	}
 
-	var redirectTestParameters = []redirectTest{
-		{"://hahaNoURI", http.StatusBadRequest},
-		{"", http.StatusBadRequest},
-		{"http://example.com/foo", http.StatusBadRequest},
-	}
-
-	for _, test := range redirectTestParameters {
-		testMessage := fmt.Sprintf("Invalid response with %s", test.redirect)
+	for _, method := range testInvalidAuthorizeHttpMethods {
+		testMessage := fmt.Sprintf("Authorize with unsupported method %s", method)
 		t.Run(testMessage, func(t *testing.T) {
-			parsedUri := createUri(t, "/authorize", func(query url.Values) {
-				query.Set(oauth2.ParameterClientId, "foo")
-				query.Set(oauth2.ParameterRedirectUri, test.redirect)
-			})
-
-			requestValidator := validation.NewRequestValidator(testConfig)
-
-			authorizeHandler := CreateAuthorizeHandler(requestValidator, &internalHttp.CookieManager{}, &store.SessionManager{}, &store.TokenManager{})
+			authorizeHandler := CreateAuthorizeHandler(&validation.RequestValidator{}, &internalHttp.CookieManager{}, &store.SessionManager{}, &store.TokenManager{})
 
 			rr := httptest.NewRecorder()
 
-			authorizeHandler.ServeHTTP(rr, httptest.NewRequest(http.MethodGet, parsedUri.String(), nil))
+			authorizeHandler.ServeHTTP(rr, httptest.NewRequest(method, "/authorize", nil))
 
-			if rr.Code != test.status {
-				t.Errorf("handler returned wrong status code: got %v want %v", rr.Code, test.status)
+			if rr.Code != http.StatusMethodNotAllowed {
+				t.Errorf("handler returned wrong status code: got %v want %v", rr.Code, http.StatusMethodNotAllowed)
 			}
 		})
+	}
+}
 
+func testImplicitGrant(t *testing.T, testConfig *config.Config) {
+	type implicitGrantParameter struct {
+		state string
+		scope string
 	}
 
-	t.Run("Invalid response type", func(t *testing.T) {
-		parsedUri := createUri(t, "/authorize", func(query url.Values) {
-			query.Set(oauth2.ParameterClientId, "foo")
-			query.Set(oauth2.ParameterRedirectUri, "https://example.com/callback")
-			query.Set(oauth2.ParameterResponseType, "abc")
+	var implicitGrantParameters = []implicitGrantParameter{
+		{"", ""},
+		{"abc", ""},
+		{"", "foo:moo"},
+		{"abc", "foo:moo"},
+	}
+
+	for _, test := range implicitGrantParameters {
+		testMessage := fmt.Sprintf("Cookie exists, implicit code grant with state %v scope %v", test.state, test.scope)
+		t.Run(testMessage, func(t *testing.T) {
+			parsedUri := createUri(t, "/authorize", func(query url.Values) {
+				query.Set(oauth2.ParameterClientId, "foo")
+				query.Set(oauth2.ParameterRedirectUri, "https://example.com/callback")
+				query.Set(oauth2.ParameterResponseType, oauth2.ParameterToken)
+				if test.state != "" {
+					query.Set(oauth2.ParameterState, test.state)
+				}
+				if test.scope != "" {
+					query.Set(oauth2.ParameterScope, test.scope)
+				}
+			})
+			requestValidator := validation.NewRequestValidator(testConfig)
+			sessionManager := store.NewSessionManager(testConfig)
+			cookieManager := internalHttp.NewCookieManager(testConfig)
+			tokenManger := store.NewTokenManager(testConfig, store.NewDefaultKeyLoader(testConfig))
+
+			client, _ := testConfig.GetClient("foo")
+			user, _ := testConfig.GetUser("foo")
+			cookie, _ := cookieManager.CreateCookie(user.Username)
+
+			authorizeHandler := CreateAuthorizeHandler(requestValidator, cookieManager, sessionManager, tokenManger)
+
+			rr := httptest.NewRecorder()
+			request := httptest.NewRequest(http.MethodGet, parsedUri.String(), nil)
+			request.AddCookie(&cookie)
+
+			authorizeHandler.ServeHTTP(rr, request)
+
+			if rr.Code != http.StatusFound {
+				t.Errorf("handler returned wrong status code: got %v want %v", rr.Code, http.StatusFound)
+			}
+
+			locationHeader := rr.Header().Get(internalHttp.Location)
+			location, parseError := url.Parse(locationHeader)
+			if parseError != nil {
+				t.Errorf("location header could not be parsed: %v", parseError)
+			}
+
+			accessTokenQueryParameter := location.Query().Get(oauth2.ParameterAccessToken)
+
+			if accessTokenQueryParameter == "" {
+				t.Errorf("access token query parameter was not set")
+			}
+
+			tokenTypeQueryParameter := location.Query().Get(oauth2.ParameterTokenType)
+
+			if tokenTypeQueryParameter != string(oauth2.TtBearer) {
+				t.Errorf("token type parameter %v did not match: %v", tokenTypeQueryParameter, oauth2.TtBearer)
+			}
+
+			expiresInTypeQueryParameter := location.Query().Get(oauth2.ParameterExpiresIn)
+			expiresIn, expiresParseError := strconv.Atoi(expiresInTypeQueryParameter)
+			if expiresParseError != nil {
+				t.Errorf("expires query parameter was not parsed: %v", expiresParseError)
+			}
+
+			accessTokenDuration := time.Minute * time.Duration(client.GetAccessTTL())
+			expectedExpiresIn := int(accessTokenDuration / time.Second)
+
+			if expiresIn != expectedExpiresIn {
+				t.Errorf("expires in parameter %v did not match %v", expiresIn, expectedExpiresIn)
+			}
 		})
-		requestValidator := validation.NewRequestValidator(testConfig)
+	}
+}
 
-		authorizeHandler := CreateAuthorizeHandler(requestValidator, &internalHttp.CookieManager{}, &store.SessionManager{}, &store.TokenManager{})
-
-		rr := httptest.NewRecorder()
-
-		authorizeHandler.ServeHTTP(rr, httptest.NewRequest(http.MethodGet, parsedUri.String(), nil))
-
-		if rr.Code != http.StatusFound {
-			t.Errorf("handler returned wrong status code: got %v want %v", rr.Code, http.StatusFound)
-		}
-
-		locationHeader := rr.Header().Get(internalHttp.Location)
-		location, parseError := url.Parse(locationHeader)
-		if parseError != nil {
-			t.Errorf("location header could not be parsed: %v", parseError)
-		}
-
-		errorQueryParameter := location.Query().Get(oauth2.ParameterError)
-
-		errorType, errorTypeExists := oauth2.ErrorTypeFromString(errorQueryParameter)
-
-		if !errorTypeExists {
-			t.Errorf("error type could not be parsed: %v", errorQueryParameter)
-		}
-
-		if errorType != oauth2.EtInvalidRequest {
-			t.Errorf("error type was not Invalid: %v", errorQueryParameter)
-		}
-	})
-
-	t.Run("No cookie exists", func(t *testing.T) {
-		parsedUri := createUri(t, "/authorize", func(query url.Values) {
-			query.Set(oauth2.ParameterClientId, "foo")
-			query.Set(oauth2.ParameterRedirectUri, "https://example.com/callback")
-			query.Set(oauth2.ParameterResponseType, oauth2.ParameterCode)
-		})
-		requestValidator := validation.NewRequestValidator(testConfig)
-		sessionManager := store.NewSessionManager(testConfig)
-		cookieManager := internalHttp.NewCookieManager(testConfig)
-
-		authorizeHandler := CreateAuthorizeHandler(requestValidator, cookieManager, sessionManager, &store.TokenManager{})
-
-		rr := httptest.NewRecorder()
-
-		authorizeHandler.ServeHTTP(rr, httptest.NewRequest(http.MethodGet, parsedUri.String(), nil))
-
-		if rr.Code != http.StatusOK {
-			t.Errorf("handler returned wrong status code: got %v want %v", rr.Code, http.StatusOK)
-		}
-
-		contentType := rr.Header().Get(internalHttp.ContentType)
-
-		if contentType != "text/html; charset=utf-8" {
-			t.Errorf("content type was not text/html: %v", contentType)
-		}
-
-		response := rr.Result()
-		body, bodyReadErr := io.ReadAll(response.Body)
-
-		if bodyReadErr != nil {
-			t.Errorf("could not read response body: %v", bodyReadErr)
-		}
-
-		if body == nil {
-			t.Errorf("response body was nil")
-		}
-
-	})
-
+func testAuthorizationGrant(t *testing.T, testConfig *config.Config) {
 	type authorizationGrantParameter struct {
 		state                   string
 		scope                   string
@@ -275,108 +257,158 @@ func Test_Authorize(t *testing.T) {
 			}
 		})
 	}
+}
 
-	type implicitGrantParameter struct {
-		state string
-		scope string
+func testNoCookeExists(t *testing.T, testConfig *config.Config) bool {
+	return t.Run("No cookie exists", func(t *testing.T) {
+		parsedUri := createUri(t, "/authorize", func(query url.Values) {
+			query.Set(oauth2.ParameterClientId, "foo")
+			query.Set(oauth2.ParameterRedirectUri, "https://example.com/callback")
+			query.Set(oauth2.ParameterResponseType, oauth2.ParameterCode)
+		})
+		requestValidator := validation.NewRequestValidator(testConfig)
+		sessionManager := store.NewSessionManager(testConfig)
+		cookieManager := internalHttp.NewCookieManager(testConfig)
+
+		authorizeHandler := CreateAuthorizeHandler(requestValidator, cookieManager, sessionManager, &store.TokenManager{})
+
+		rr := httptest.NewRecorder()
+
+		authorizeHandler.ServeHTTP(rr, httptest.NewRequest(http.MethodGet, parsedUri.String(), nil))
+
+		if rr.Code != http.StatusOK {
+			t.Errorf("handler returned wrong status code: got %v want %v", rr.Code, http.StatusOK)
+		}
+
+		contentType := rr.Header().Get(internalHttp.ContentType)
+
+		if contentType != "text/html; charset=utf-8" {
+			t.Errorf("content type was not text/html: %v", contentType)
+		}
+
+		response := rr.Result()
+		body, bodyReadErr := io.ReadAll(response.Body)
+
+		if bodyReadErr != nil {
+			t.Errorf("could not read response body: %v", bodyReadErr)
+		}
+
+		if body == nil {
+			t.Errorf("response body was nil")
+		}
+
+	})
+}
+
+func testInvalidResponseType(t *testing.T, testConfig *config.Config) bool {
+	return t.Run("Invalid response type", func(t *testing.T) {
+		parsedUri := createUri(t, "/authorize", func(query url.Values) {
+			query.Set(oauth2.ParameterClientId, "foo")
+			query.Set(oauth2.ParameterRedirectUri, "https://example.com/callback")
+			query.Set(oauth2.ParameterResponseType, "abc")
+		})
+		requestValidator := validation.NewRequestValidator(testConfig)
+
+		authorizeHandler := CreateAuthorizeHandler(requestValidator, &internalHttp.CookieManager{}, &store.SessionManager{}, &store.TokenManager{})
+
+		rr := httptest.NewRecorder()
+
+		authorizeHandler.ServeHTTP(rr, httptest.NewRequest(http.MethodGet, parsedUri.String(), nil))
+
+		if rr.Code != http.StatusFound {
+			t.Errorf("handler returned wrong status code: got %v want %v", rr.Code, http.StatusFound)
+		}
+
+		locationHeader := rr.Header().Get(internalHttp.Location)
+		location, parseError := url.Parse(locationHeader)
+		if parseError != nil {
+			t.Errorf("location header could not be parsed: %v", parseError)
+		}
+
+		errorQueryParameter := location.Query().Get(oauth2.ParameterError)
+
+		errorType, errorTypeExists := oauth2.ErrorTypeFromString(errorQueryParameter)
+
+		if !errorTypeExists {
+			t.Errorf("error type could not be parsed: %v", errorQueryParameter)
+		}
+
+		if errorType != oauth2.EtInvalidRequest {
+			t.Errorf("error type was not Invalid: %v", errorQueryParameter)
+		}
+	})
+}
+
+func testInvalidRedirect(t *testing.T, testConfig *config.Config) {
+	type redirectTest struct {
+		redirect string
+		status   int
 	}
 
-	var implicitGrantParameters = []implicitGrantParameter{
-		{"", ""},
-		{"abc", ""},
-		{"", "foo:moo"},
-		{"abc", "foo:moo"},
+	var redirectTestParameters = []redirectTest{
+		{"://hahaNoURI", http.StatusBadRequest},
+		{"", http.StatusBadRequest},
+		{"http://example.com/foo", http.StatusBadRequest},
 	}
 
-	for _, test := range implicitGrantParameters {
-		testMessage := fmt.Sprintf("Cookie exists, implicit code grant with state %v scope %v", test.state, test.scope)
+	for _, test := range redirectTestParameters {
+		testMessage := fmt.Sprintf("Invalid redirect with %s", test.redirect)
 		t.Run(testMessage, func(t *testing.T) {
 			parsedUri := createUri(t, "/authorize", func(query url.Values) {
 				query.Set(oauth2.ParameterClientId, "foo")
-				query.Set(oauth2.ParameterRedirectUri, "https://example.com/callback")
-				query.Set(oauth2.ParameterResponseType, oauth2.ParameterToken)
-				if test.state != "" {
-					query.Set(oauth2.ParameterState, test.state)
-				}
-				if test.scope != "" {
-					query.Set(oauth2.ParameterScope, test.scope)
-				}
+				query.Set(oauth2.ParameterRedirectUri, test.redirect)
 			})
+
 			requestValidator := validation.NewRequestValidator(testConfig)
-			sessionManager := store.NewSessionManager(testConfig)
-			cookieManager := internalHttp.NewCookieManager(testConfig)
-			tokenManger := store.NewTokenManager(testConfig, store.NewDefaultKeyLoader(testConfig))
 
-			client, _ := testConfig.GetClient("foo")
-			user, _ := testConfig.GetUser("foo")
-			cookie, _ := cookieManager.CreateCookie(user.Username)
-
-			authorizeHandler := CreateAuthorizeHandler(requestValidator, cookieManager, sessionManager, tokenManger)
-
-			rr := httptest.NewRecorder()
-			request := httptest.NewRequest(http.MethodGet, parsedUri.String(), nil)
-			request.AddCookie(&cookie)
-
-			authorizeHandler.ServeHTTP(rr, request)
-
-			if rr.Code != http.StatusFound {
-				t.Errorf("handler returned wrong status code: got %v want %v", rr.Code, http.StatusFound)
-			}
-
-			locationHeader := rr.Header().Get(internalHttp.Location)
-			location, parseError := url.Parse(locationHeader)
-			if parseError != nil {
-				t.Errorf("location header could not be parsed: %v", parseError)
-			}
-
-			accessTokenQueryParameter := location.Query().Get(oauth2.ParameterAccessToken)
-
-			if accessTokenQueryParameter == "" {
-				t.Errorf("access token query parameter was not set")
-			}
-
-			tokenTypeQueryParameter := location.Query().Get(oauth2.ParameterTokenType)
-
-			if tokenTypeQueryParameter != string(oauth2.TtBearer) {
-				t.Errorf("token type parameter %v did not match: %v", tokenTypeQueryParameter, oauth2.TtBearer)
-			}
-
-			expiresInTypeQueryParameter := location.Query().Get(oauth2.ParameterExpiresIn)
-			expiresIn, expiresParseError := strconv.Atoi(expiresInTypeQueryParameter)
-			if expiresParseError != nil {
-				t.Errorf("expires query parameter was not parsed: %v", expiresParseError)
-			}
-
-			accessTokenDuration := time.Minute * time.Duration(client.GetAccessTTL())
-			expectedExpiresIn := int(accessTokenDuration / time.Second)
-
-			if expiresIn != expectedExpiresIn {
-				t.Errorf("expires in parameter %v did not match %v", expiresIn, expectedExpiresIn)
-			}
-		})
-	}
-
-	var testInvalidAuthorizeHttpMethods = []string{
-		http.MethodPut,
-		http.MethodPatch,
-		http.MethodDelete,
-	}
-
-	for _, method := range testInvalidAuthorizeHttpMethods {
-		testMessage := fmt.Sprintf("Authorize with unsupported method %s", method)
-		t.Run(testMessage, func(t *testing.T) {
-			authorizeHandler := CreateAuthorizeHandler(&validation.RequestValidator{}, &internalHttp.CookieManager{}, &store.SessionManager{}, &store.TokenManager{})
+			authorizeHandler := CreateAuthorizeHandler(requestValidator, &internalHttp.CookieManager{}, &store.SessionManager{}, &store.TokenManager{})
 
 			rr := httptest.NewRecorder()
 
-			authorizeHandler.ServeHTTP(rr, httptest.NewRequest(method, "/authorize", nil))
+			authorizeHandler.ServeHTTP(rr, httptest.NewRequest(http.MethodGet, parsedUri.String(), nil))
 
-			if rr.Code != http.StatusMethodNotAllowed {
-				t.Errorf("handler returned wrong status code: got %v want %v", rr.Code, http.StatusMethodNotAllowed)
+			if rr.Code != test.status {
+				t.Errorf("handler returned wrong status code: got %v want %v", rr.Code, test.status)
 			}
 		})
-	}
 
+	}
+}
+
+func testInvalidClientId(t *testing.T, testConfig *config.Config) bool {
+	return t.Run("Invalid client id", func(t *testing.T) {
+		parsedUri := createUri(t, "/authorize", func(query url.Values) {
+			query.Set(oauth2.ParameterClientId, "bar")
+		})
+
+		requestValidator := validation.NewRequestValidator(testConfig)
+
+		authorizeHandler := CreateAuthorizeHandler(requestValidator, &internalHttp.CookieManager{}, &store.SessionManager{}, &store.TokenManager{})
+
+		rr := httptest.NewRecorder()
+
+		authorizeHandler.ServeHTTP(rr, httptest.NewRequest(http.MethodGet, parsedUri.String(), nil))
+
+		if rr.Code != http.StatusBadRequest {
+			t.Errorf("handler returned wrong status code: got %v want %v", rr.Code, http.StatusBadRequest)
+		}
+	})
+}
+
+func testNoClientId(t *testing.T, testConfig *config.Config) bool {
+	return t.Run("No client id provided", func(t *testing.T) {
+		requestValidator := validation.NewRequestValidator(testConfig)
+
+		authorizeHandler := CreateAuthorizeHandler(requestValidator, &internalHttp.CookieManager{}, &store.SessionManager{}, &store.TokenManager{})
+
+		rr := httptest.NewRecorder()
+
+		authorizeHandler.ServeHTTP(rr, httptest.NewRequest(http.MethodGet, "/authorize", nil))
+
+		if rr.Code != http.StatusBadRequest {
+			t.Errorf("handler returned wrong status code: got %v want %v", rr.Code, http.StatusBadRequest)
+		}
+	})
 }
 
 func createUri(t *testing.T, uri string, handler func(query url.Values)) *url.URL {
