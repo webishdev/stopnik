@@ -3,3 +3,8 @@ output:
     - format: html
       path: .lint_result/lint-report.html
     - format: colored-line-number
+linters:
+  enable:
+    - gofmt
+    - gocyclo
+    - misspell
