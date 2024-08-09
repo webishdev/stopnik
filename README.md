@@ -1,6 +1,9 @@
+
 <p align="center">
     <picture>
-      <img alt="STOPnik" title="STOPnik" src="docs/content/assets/stopnik_250.png">
+      <source media="(prefers-color-scheme: dark)" srcset="docs/content/assets/stopnik_250.png">
+      <source media="(prefers-color-scheme: light)" srcset="docs/content/assets/stopnik_250.png">
+      <img alt="STOPnik" title="Traefik" src="docs/content/assets/stopnik_250.png">
     </picture>
 </p>
 
@@ -15,6 +18,8 @@ When restarted, all issued tokens will become invalid/forgotten by **STOPnik**.
 This project was used to
 learn [OAuth 2.0](https://datatracker.ietf.org/doc/html/rfc6749), [OpenId Connect Core 1.0](https://openid.net/specs/openid-connect-core-1_0-final.html)
 and [Go](https://go.dev/).
+
+The logo mascot was mostly inspired by the nice work of [gopherize.me](https://github.com/matryer/gopherize.me) and redrawn by hand as a vector graphic with additional body and a cool hat.
 
 ![build](https://github.com/giftkugel/stopnik/actions/workflows/build.yml/badge.svg)
 
