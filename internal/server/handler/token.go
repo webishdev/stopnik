@@ -54,7 +54,7 @@ func (handler *TokenHandler) handlePostRequest(w http.ResponseWriter, r *http.Re
 	var username string
 
 	if grantType == oauth2.GtAuthorizationCode {
-
+		// https://datatracker.ietf.org/doc/html/rfc6749#section-4.1.3
 		code := r.PostFormValue(oauth2.ParameterCode)
 		authSession, authSessionExists := handler.sessionManager.GetSession(code)
 		if !authSessionExists {
@@ -78,8 +78,8 @@ func (handler *TokenHandler) handlePostRequest(w http.ResponseWriter, r *http.Re
 
 		scopes = authSession.Scopes
 		username = authSession.Username
-
 	} else if grantType == oauth2.GtPassword {
+		// https://datatracker.ietf.org/doc/html/rfc6749#section-4.3.2
 		usernameFrom := r.PostFormValue(oauth2.ParameterUsername)
 		passwordForm := r.PostFormValue(oauth2.ParameterPassword)
 		scopeForm := r.PostFormValue(oauth2.ParameterScope)
@@ -91,6 +91,11 @@ func (handler *TokenHandler) handlePostRequest(w http.ResponseWriter, r *http.Re
 		}
 		scopes = strings.Split(scopeForm, " ")
 		username = user.Username
+	} else if grantType == oauth2.GtClientCredentials {
+		// https://datatracker.ietf.org/doc/html/rfc6749#section-4.4.2
+		scopeForm := r.PostFormValue(oauth2.ParameterScope)
+
+		scopes = strings.Split(scopeForm, " ")
 	} else if grantType == oauth2.GtRefreshToken && client.GetRefreshTTL() <= 0 {
 		oauth2.TokenErrorResponseHandler(w, &oauth2.TokenErrorResponseParameter{Error: oauth2.TokenEtInvalidRequest})
 		return
@@ -109,7 +114,7 @@ func (handler *TokenHandler) handlePostRequest(w http.ResponseWriter, r *http.Re
 
 		username = refreshToken.Username
 		scopes = refreshToken.Scopes
-	} else if grantType != oauth2.GtClientCredentials {
+	} else {
 		oauth2.TokenErrorResponseHandler(w, &oauth2.TokenErrorResponseParameter{Error: oauth2.TokenEtUnsupportedGrandType})
 		return
 	}
