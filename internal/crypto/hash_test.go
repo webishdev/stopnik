@@ -1,7 +1,6 @@
 package crypto
 
 import (
-	"fmt"
 	"testing"
 )
 
@@ -18,7 +17,7 @@ func Test_Sha512Hash(t *testing.T) {
 	}
 
 	for _, test := range parameters {
-		testMessage := fmt.Sprintf("%s", test.value)
+		testMessage := test.value
 		t.Run(testMessage, func(t *testing.T) {
 			if output := Sha512Hash(test.value); output != test.expected {
 				t.Errorf("Output %s not equal to expected %s", output, test.expected)

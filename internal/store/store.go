@@ -60,10 +60,8 @@ func newTimedStoreWithTimer[T any](duration time.Duration, timer *Timer) *Store[
 
 func (currentCache *Store[T]) startCleanUp() {
 	for {
-		select {
-		case <-currentCache.tickerChannel:
-			currentCache.cleanUp()
-		}
+		<-currentCache.tickerChannel
+		currentCache.cleanUp()
 	}
 }
 

@@ -64,7 +64,7 @@ func Test_Cookie(t *testing.T) {
 			},
 		}
 
-		mockedTime.Add(time.Hour * time.Duration(-6))
+		mockedTime = mockedTime.Add(time.Hour * time.Duration(-6))
 
 		_, userExists := cookieManager.ValidateCookie(httpRequest)
 
