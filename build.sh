@@ -8,7 +8,7 @@ NAME=stopnik
 OS_VALUES=(windows darwin linux)
 ARCH_VALUES=(amd64 arm64)
 
-LINUX_OS_VALUES=(linux)
+LINUX_OS_VALUES=(linux, windows)
 MAC_OS_VALUES=(darwin)
 WINDOWS_OS_VALUES=(windows)
 
