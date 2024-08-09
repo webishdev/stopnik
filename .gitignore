@@ -5,10 +5,10 @@
 # Project related
 build/
 bin/
-test_coverage/
+.test_coverage/
+.lint_result/
 *.crt
 *.key
-report.xml
 
 # Default file created by go build command
 stopnik

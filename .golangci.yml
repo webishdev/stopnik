@@ -1,7 +1,5 @@
 output:
   formats:
-    - format: json
-      path: stderr
-    - format: github-actions
-      path: report.xml
+    - format: html
+      path: .lint_result/lint-report.html
     - format: colored-line-number
