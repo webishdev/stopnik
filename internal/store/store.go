@@ -21,7 +21,7 @@ type expiringType[T any] struct {
 
 type Store[T any] struct {
 	storeMap      map[string]expiringType[*T]
-	mux           sync.RWMutex
+	mux           *sync.RWMutex
 	tickerChannel <-chan time.Time
 	now           Now
 	duration      time.Duration
@@ -49,7 +49,7 @@ func newTimedStoreWithTimer[T any](duration time.Duration, timer *Timer) *Store[
 	tickerChannel := timer.tickerChannel()
 	cache := &Store[T]{
 		storeMap:      make(map[string]expiringType[*T]),
-		mux:           sync.RWMutex{},
+		mux:           &sync.RWMutex{},
 		tickerChannel: tickerChannel,
 		now:           timer.now,
 		duration:      duration,
@@ -60,10 +60,8 @@ func newTimedStoreWithTimer[T any](duration time.Duration, timer *Timer) *Store[
 
 func (currentCache *Store[T]) startCleanUp() {
 	for {
-		select {
-		case <-currentCache.tickerChannel:
-			currentCache.cleanUp()
-		}
+		<-currentCache.tickerChannel
+		currentCache.cleanUp()
 	}
 }
 

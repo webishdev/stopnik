@@ -41,26 +41,32 @@ type StopnikServer struct {
 	httpsServer       *http.Server
 	serve             *ListenAndServe
 	serveTLS          *ListenAndServe
+	rwMutex           *sync.RWMutex
 }
 
 func NewStopnikServer(config *config.Config) *StopnikServer {
+	rwMutex := &sync.RWMutex{}
 	listenAndServe := func(stopnikServer *StopnikServer, listener *net.Listener, server *http.Server) error {
+		rwMutex.Lock()
 		stopnikServer.httpServer = server
+		rwMutex.Unlock()
 		log.Info("Will accept connections at %s", server.Addr)
 		return server.Serve(*listener)
 	}
 	listenAndServeTLS := func(stopnikServer *StopnikServer, listener *net.Listener, server *http.Server) error {
+		rwMutex.Lock()
 		stopnikServer.httpsServer = server
+		rwMutex.Unlock()
 		if stopnikServer.config.Server.TLS.Keys.Cert == "" || stopnikServer.config.Server.TLS.Keys.Key == "" {
 			return errors.New("TLS Keys not configured")
 		}
 		log.Info("Will accept TLS connections at %s", server.Addr)
 		return server.ServeTLS(*listener, stopnikServer.config.Server.TLS.Keys.Cert, stopnikServer.config.Server.TLS.Keys.Key)
 	}
-	return newStopnikServerWithServe(config, http.NewServeMux(), listenAndServe, listenAndServeTLS)
+	return newStopnikServerWithServe(rwMutex, config, http.NewServeMux(), listenAndServe, listenAndServeTLS)
 }
 
-func newStopnikServerWithServe(config *config.Config, mux *http.ServeMux, serve ListenAndServe, serveTLS ListenAndServe) *StopnikServer {
+func newStopnikServerWithServe(rwMutex *sync.RWMutex, config *config.Config, mux *http.ServeMux, serve ListenAndServe, serveTLS ListenAndServe) *StopnikServer {
 	registerHandlers(config, mux.Handle)
 
 	middleware := &middlewareHandler{
@@ -76,6 +82,7 @@ func newStopnikServerWithServe(config *config.Config, mux *http.ServeMux, serve 
 		idleTimeout:       30 * time.Second,
 		serve:             &serve,
 		serveTLS:          &serveTLS,
+		rwMutex:           rwMutex,
 	}
 }
 
@@ -112,6 +119,9 @@ func (stopnikServer *StopnikServer) Start() {
 
 func (stopnikServer *StopnikServer) Shutdown() {
 	log.Info("Shutting down STOPnik...")
+	stopnikServer.rwMutex.RLock()
+	log.Info("Shutting down STOPnik...xxxx")
+	defer stopnikServer.rwMutex.RUnlock()
 	if stopnikServer.httpServer != nil {
 		shutdownServer(stopnikServer.httpServer)
 	}

@@ -8,6 +8,10 @@ NAME=stopnik
 OS_VALUES=(windows darwin linux)
 ARCH_VALUES=(amd64 arm64)
 
+LINUX_OS_VALUES=(linux)
+MAC_OS_VALUES=(darwin)
+WINDOWS_OS_VALUES=(windows)
+
 function prepare() {
   if [[ "$#" -ne 1 ]]; then
     echo "Parameters for prepare are missing"
@@ -35,13 +39,6 @@ function clean() {
 }
 
 function build() {
-  if [[ "$#" -ne 2 ]]; then
-    echo "Parameters for build are missing"
-    echo
-    exit 1
-  fi
-  GO_OS=$1
-  GO_ARCH=$2
   COGO_ENABLED=0
   FILE_EXTENSION=""
   if [[ "$GO_OS" == "windows" ]]; then
@@ -50,18 +47,24 @@ function build() {
   OS_NAME=$GO_OS
   if [[ "$GO_OS" == "darwin" ]]; then
       OS_NAME="macos"
-    fi
+  fi
   FILE_NAME="$NAME$VERSION-$GO_ARCH"
   DIR="$OS_NAME-$GO_ARCH"
-  echo "Build $NICE_NAME version $VERSION ($GIT_HASH) for $GO_OS $GO_ARCH"
+  echo "Build $NICE_NAME version $VERSION ($GIT_HASH) for $GO_OS $GO_ARCH into $DIR"
   GOOS=$GO_OS GOARCH=$GO_ARCH go build -ldflags="-s -w -X 'main.Version=$VERSION' -X 'main.GitHash=$GIT_HASH'" -o bin/$DIR/$FILE_NAME$FILE_EXTENSION main.go
-  echo "Create SHA256 sum for $GO_OS $GO_ARCH"
-  sha256sum bin/$DIR/$FILE_NAME$FILE_EXTENSION >> bin/$DIR/sha256sum.txt
+
   CURRENT_DIR=$(pwd)
-  echo "Package into Zip"
   cd bin/$DIR
-  zip -q -r ../${NAME}${VERSION}-${OS_NAME}-${GO_ARCH}.zip ./
+
+  echo "Create SHA256 sum for $GO_OS $GO_ARCH"
+  shasum -a 256  $FILE_NAME$FILE_EXTENSION >> sha256sum.txt
+  ZIP_NAME="${NAME}.${VERSION}-${OS_NAME}-${GO_ARCH}.zip"
+  echo "Package into ZIP: ${ZIP_NAME}"
+  zip -q -r ../${ZIP_NAME} ./
+
   cd $CURRENT_DIR
+
+  rm -rf bin/$DIR
   echo
 }
 
@@ -70,7 +73,9 @@ function build_all() {
   do
     for arch_value in "${ARCH_VALUES[@]}"
     do
-      build $os_value $arch_value
+      GO_OS=$os_value
+      GO_ARCH=$arch_value
+      build
     done
   done
   echo "Build done!"
@@ -101,13 +106,45 @@ function task_build() {
     echo
     exit 1
   fi
-  SELECTED_OS=$1
-  SELECTED_ARCH=$2
   VERSION=$3
   echo "Building $NICE_NAME version $VERSION"
   clean
   prepare $VERSION
-  build $SELECTED_OS $SELECTED_ARCH
+  GO_OS=$1
+  GO_ARCH=$2
+  build
+}
+
+function task_build_ci() {
+  if [[ "$#" -ne 2 ]]; then
+    echo "No version, or GitHub OS argument supplied"
+    echo
+    exit 1
+  fi
+  VERSION=$1
+  CI_OS=$2
+  echo "Building $NICE_NAME version $VERSION on $CI_OS"
+  clean
+  prepare $VERSION
+  if [[ "$CI_OS" == "ubuntu-latest" ]]; then
+    echo "Build for Linux"
+    CURRENT_OS_VALUES=$LINUX_OS_VALUES
+  elif [[ "$CI_OS" == "macos-latest" ]]; then
+    echo "Build for Mac"
+    CURRENT_OS_VALUES=$MAC_OS_VALUES
+  elif [[ "$CI_OS" == "windows-latest" ]]; then
+    echo "Build for Windows"
+    CURRENT_OS_VALUES=$WINDOWS_OS_VALUES
+  fi
+  for os_value in "${CURRENT_OS_VALUES[@]}"
+  do
+    for arch_value in "${ARCH_VALUES[@]}"
+    do
+      GO_OS=$os_value
+      GO_ARCH=$arch_value
+      build
+    done
+  done
 }
 
 function task_build_all() {
@@ -138,6 +175,8 @@ Available commands:
 
     build os arch version
 
+    build_ci version github_os
+
     build_all version
         Builds the current version of $NICE_NAME
 
@@ -150,6 +189,7 @@ shift || true
 case "$cmd" in
   clean) task_clean "$@";;
   build) task_build "$@";;
+  build_ci) task_build_ci "$@";;
   build_all) task_build_all "$@";;
   *) task_usage ;;
 esac

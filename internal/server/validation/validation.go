@@ -51,10 +51,13 @@ func (validator *RequestValidator) ValidateClientCredentials(r *http.Request) (*
 		log.Debug("Validating client credentials")
 		// https://datatracker.ietf.org/doc/html/rfc6749#section-2.3.1
 		clientId, clientSecret, ok := r.BasicAuth()
+		usingFallback := false
 		if !ok {
-			// Check fallback
+			// Check usingFallback
+			log.Warn("Invalid or missing HTTP Basic authentication, using NOT RECOMMENDED usingFallback")
 			clientId = r.PostFormValue(oauth2.ParameterClientId)
 			clientSecret = r.PostFormValue(oauth2.ParameterClientSecret)
+			usingFallback = true
 		}
 
 		if clientId == "" || clientSecret == "" {
@@ -63,6 +66,11 @@ func (validator *RequestValidator) ValidateClientCredentials(r *http.Request) (*
 
 		client, clientExists := validator.ValidateClientId(clientId)
 		if !clientExists {
+			return nil, false
+		}
+
+		if !client.PasswordFallbackAllowed && usingFallback {
+			log.Warn("Client password usingFallback denied in configuration for client with id %v", client.Id)
 			return nil, false
 		}
 

@@ -5,12 +5,12 @@ import (
 	"testing"
 )
 
-type TestData struct {
-	Name string `json:"name"`
-	Age  int    `json:"age"`
-}
-
 func Test_SendJson(t *testing.T) {
+	type TestData struct {
+		Name string `json:"name"`
+		Age  int    `json:"age"`
+	}
+
 	rr := httptest.NewRecorder()
 
 	data := TestData{

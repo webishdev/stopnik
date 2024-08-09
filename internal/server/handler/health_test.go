@@ -9,13 +9,6 @@ import (
 	"testing"
 )
 
-var testHealthHttpMethods = []string{
-	http.MethodPost,
-	http.MethodPut,
-	http.MethodPatch,
-	http.MethodDelete,
-}
-
 func Test_Health(t *testing.T) {
 	t.Run("Health without token", func(t *testing.T) {
 		testConfig := createTestConfig(t)
@@ -81,7 +74,14 @@ func Test_Health(t *testing.T) {
 
 	})
 
-	for _, method := range testHealthHttpMethods {
+	var testInvalidHealthHttpMethods = []string{
+		http.MethodPost,
+		http.MethodPut,
+		http.MethodPatch,
+		http.MethodDelete,
+	}
+
+	for _, method := range testInvalidHealthHttpMethods {
 		testMessage := fmt.Sprintf("Health with unsupported method %s", method)
 		t.Run(testMessage, func(t *testing.T) {
 			healthHandler := NewHealthHandler(&store.TokenManager{})

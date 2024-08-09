@@ -2,7 +2,7 @@
 
 set -euo pipefail
 
-COVERAGE_DIR=test_coverage
+COVERAGE_DIR=.test_coverage
 
 function clean() {
     echo "Clean up"

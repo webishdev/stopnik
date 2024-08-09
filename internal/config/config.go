@@ -42,19 +42,20 @@ type Claim struct {
 }
 
 type Client struct {
-	Id          string   `yaml:"id"`
-	Secret      string   `yaml:"secret"`
-	ClientType  string   `yaml:"type"`
-	AccessTTL   int      `yaml:"accessTTL"`
-	RefreshTTL  int      `yaml:"refreshTTL"`
-	Introspect  bool     `yaml:"introspect"`
-	Revoke      bool     `yaml:"revoke"`
-	Redirects   []string `yaml:"redirects"`
-	OpaqueToken bool     `yaml:"opaqueToken"`
-	Claims      []Claim  `yaml:"claims"`
-	Issuer      string   `yaml:"issuer"`
-	Audience    []string `yaml:"audience"`
-	TokenKeys   Keys     `yaml:"tokenKeys"`
+	Id                      string   `yaml:"id"`
+	Secret                  string   `yaml:"secret"`
+	ClientType              string   `yaml:"type"`
+	AccessTTL               int      `yaml:"accessTTL"`
+	RefreshTTL              int      `yaml:"refreshTTL"`
+	Introspect              bool     `yaml:"introspect"`
+	Revoke                  bool     `yaml:"revoke"`
+	Redirects               []string `yaml:"redirects"`
+	OpaqueToken             bool     `yaml:"opaqueToken"`
+	PasswordFallbackAllowed bool     `yaml:"passwordFallbackAllowed"`
+	Claims                  []Claim  `yaml:"claims"`
+	Issuer                  string   `yaml:"issuer"`
+	Audience                []string `yaml:"audience"`
+	TokenKeys               Keys     `yaml:"tokenKeys"`
 }
 
 type Config struct {

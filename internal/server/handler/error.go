@@ -9,6 +9,10 @@ func MethodNotAllowedHandler(w http.ResponseWriter, r *http.Request) {
 	sendStatus(http.StatusMethodNotAllowed, "405 Method not allowed", w, r)
 }
 
+func BadRequestHandler(w http.ResponseWriter, r *http.Request) {
+	sendStatus(http.StatusBadRequest, "400 Bad Request", w, r)
+}
+
 func ForbiddenHandler(w http.ResponseWriter, r *http.Request) {
 	sendStatus(http.StatusForbidden, "403 Forbidden", w, r)
 }

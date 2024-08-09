@@ -7,11 +7,11 @@ import (
 )
 
 func ValidatePKCE(method CodeChallengeMethod, value string, verifier string) bool {
-	calculatePKCE := calculatePKCE(method, verifier)
+	calculatePKCE := CalculatePKCE(method, verifier)
 	return calculatePKCE == value
 }
 
-func calculatePKCE(method CodeChallengeMethod, value string) string {
+func CalculatePKCE(method CodeChallengeMethod, value string) string {
 	log.Debug("Calculating PKCE: %s %s", method, value)
 	switch method {
 	case S256:

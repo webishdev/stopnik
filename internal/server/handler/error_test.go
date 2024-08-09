@@ -7,28 +7,28 @@ import (
 	"testing"
 )
 
-type errorTestCase struct {
-	name    string
-	status  int
-	handler func(http.ResponseWriter, *http.Request)
-}
-
-var errorTestCases = []errorTestCase{
-	{"Method not allowed", http.StatusMethodNotAllowed, MethodNotAllowedHandler},
-	{"Forbidden", http.StatusForbidden, ForbiddenHandler},
-	{"Internal server error", http.StatusInternalServerError, InternalServerErrorHandler},
-	{"Not found", http.StatusNotFound, NotFoundHandler},
-	{"No content", http.StatusNoContent, NoContentHandler},
-	{"See other", http.StatusSeeOther, SeeOtherHandler},
-}
-
-var testStatusCodes = []int{
-	http.StatusOK,
-	http.StatusBadRequest,
-	http.StatusInternalServerError,
-}
-
 func Test_Errors(t *testing.T) {
+	type errorTestCase struct {
+		name    string
+		status  int
+		handler func(http.ResponseWriter, *http.Request)
+	}
+
+	var errorTestCases = []errorTestCase{
+		{"Method not allowed", http.StatusMethodNotAllowed, MethodNotAllowedHandler},
+		{"Forbidden", http.StatusForbidden, ForbiddenHandler},
+		{"Internal server error", http.StatusInternalServerError, InternalServerErrorHandler},
+		{"Not found", http.StatusNotFound, NotFoundHandler},
+		{"No content", http.StatusNoContent, NoContentHandler},
+		{"See other", http.StatusSeeOther, SeeOtherHandler},
+	}
+
+	var testStatusCodes = []int{
+		http.StatusOK,
+		http.StatusBadRequest,
+		http.StatusInternalServerError,
+	}
+
 	for _, test := range errorTestCases {
 		testMessage := fmt.Sprintf("Error handler %s %v", test.name, test.status)
 		t.Run(testMessage, func(t *testing.T) {

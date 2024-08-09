@@ -8,26 +8,32 @@ import (
 	"testing"
 )
 
-type passwordParameter struct {
-	name     string
-	password string
-	valid    bool
-}
-
-var passwordParameters = []passwordParameter{
-	{name: "foo", password: "bar", valid: true},
-	{name: "foo", password: "xxx", valid: false},
-	{name: "bar", password: "xxx", valid: false},
-	{name: "", password: "", valid: false},
-}
-
-var httpMethods = []string{http.MethodGet, http.MethodPost, http.MethodPut, http.MethodPatch, http.MethodDelete}
-
 func Test_Validation(t *testing.T) {
+	type passwordParameter struct {
+		name     string
+		password string
+		valid    bool
+	}
+
+	var passwordParameters = []passwordParameter{
+		{name: "foo", password: "bar", valid: true},
+		{name: "foo", password: "xxx", valid: false},
+		{name: "bar", password: "xxx", valid: false},
+		{name: "", password: "", valid: false},
+	}
+
+	var httpMethods = []string{http.MethodGet, http.MethodPost, http.MethodPut, http.MethodPatch, http.MethodDelete}
+
 	testConfig := &config.Config{
 		Clients: []config.Client{
 			{
-				Id:        "foo",
+				Id:                      "foo",
+				Secret:                  "d82c4eb5261cb9c8aa9855edd67d1bd10482f41529858d925094d173fa662aa91ff39bc5b188615273484021dfb16fd8284cf684ccf0fc795be3aa2fc1e6c181",
+				Redirects:               []string{"https://example.com/callback"},
+				PasswordFallbackAllowed: true,
+			},
+			{
+				Id:        "bar",
 				Secret:    "d82c4eb5261cb9c8aa9855edd67d1bd10482f41529858d925094d173fa662aa91ff39bc5b188615273484021dfb16fd8284cf684ccf0fc795be3aa2fc1e6c181",
 				Redirects: []string{"https://example.com/callback"},
 			},
@@ -107,5 +113,23 @@ func Test_Validation(t *testing.T) {
 			})
 		}
 	}
+
+	t.Run("Client password fallback disabled", func(t *testing.T) {
+		httpRequest := &http.Request{
+			Method: http.MethodPost,
+			PostForm: map[string][]string{
+				oauth2.ParameterClientId:     {"bar"},
+				oauth2.ParameterClientSecret: {"bar"},
+			},
+		}
+
+		requestValidator := NewRequestValidator(testConfig)
+
+		_, valid := requestValidator.ValidateClientCredentials(httpRequest)
+
+		if valid {
+			t.Errorf("Client password fallback disabled, should not be able to login")
+		}
+	})
 
 }
