@@ -136,14 +136,12 @@ function task_build_ci() {
     echo "Build for Windows"
     CURRENT_OS_VALUES=( "${WINDOWS_OS_VALUES[@]}" )
   fi
-  echo "OS values $CURRENT_OS_VALUES"
   for os_value in "${CURRENT_OS_VALUES[@]}"
   do
     for arch_value in "${ARCH_VALUES[@]}"
     do
       GO_OS=$os_value
       GO_ARCH=$arch_value
-      echo "CI build with $os_value $arch_value"
       build
     done
   done
