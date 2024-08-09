@@ -8,8 +8,9 @@ NAME=stopnik
 OS_VALUES=(windows darwin linux)
 ARCH_VALUES=(amd64 arm64)
 
-LINUX_OS_VALUES=(windows linux)
+LINUX_OS_VALUES=(linux)
 MAC_OS_VALUES=(darwin)
+WINDOWS_OS_VALUES=(windows)
 
 function prepare() {
   if [[ "$#" -ne 1 ]]; then
@@ -112,25 +113,25 @@ function task_build() {
 }
 
 function task_build_ci() {
-  if [[ "$#" -ne 1 ]]; then
-    echo "No version argument supplied"
+  if [[ "$#" -ne 2 ]]; then
+    echo "No version, or GitHub OS argument supplied"
     echo
     exit 1
   fi
   VERSION=$1
-  echo "Building $NICE_NAME version $VERSION"
+  CI_OS=$2
+  echo "Building $NICE_NAME version $VERSION on $CI_OS"
   clean
   prepare $VERSION
-  GO_OS=$(go env GOOS)
-  OS_LINUX="linux"
-  OS_MAC="darwin"
-  echo $GO_OS used
-  if [[ "$GO_OS" == "$OS_LINUX" ]]; then
-    echo "Build for $OS_LINUX"
+  if [[ "$CI_OS" == "ubuntu-latest" ]]; then
+    echo "Build for Linux"
     CURRENT_OS_VALUES=$LINUX_OS_VALUES
-  elif [[ "$GO_OS" == "$OS_MAC" ]]; then
-    echo "Build for $OS_MAC"
+  elif [[ "$GO_OS" == "macos-latest" ]]; then
+    echo "Build for Mac"
     CURRENT_OS_VALUES=$MAC_OS_VALUES
+  elif [[ "$GO_OS" == "windows-latest" ]]; then
+    echo "Build for Windows"
+    CURRENT_OS_VALUES=$WINDOWS_OS_VALUES
   fi
   for os_value in "${CURRENT_OS_VALUES[@]}"
   do
@@ -170,7 +171,7 @@ Available commands:
 
     build os arch version
 
-    build_ci version
+    build_ci version github_os
 
     build_all version
         Builds the current version of $NICE_NAME

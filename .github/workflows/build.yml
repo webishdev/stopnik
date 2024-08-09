@@ -21,7 +21,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ ubuntu-latest, macos-latest ]
+        os: [ ubuntu-latest, macos-latest, windows-latest ]
 
     steps:
     - uses: actions/checkout@v4
@@ -38,10 +38,15 @@ jobs:
       run: |
         VERSION_INPUT=${{ inputs.stopnik_version }}
         CURRENT_VERSION=${VERSION_INPUT:-"ci"}
-        ./build.sh build_ci $CURRENT_VERSION
+        ./build.sh build_ci $CURRENT_VERSION ${{ matrix.os }}
 
     - name: Tests
       run: ./test.sh coverage
+
+    - name: golangci-lint
+      uses: golangci/golangci-lint-action@v6
+      with:
+        version: v1.59
 
     - name: Upload build result
       uses: actions/upload-artifact@v4
