@@ -14,6 +14,7 @@ import (
 	"stopnik/internal/server/validation"
 	"stopnik/internal/store"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 )
@@ -55,8 +56,448 @@ func Test_Authorize(t *testing.T) {
 
 	testImplicitGrant(t, testConfig)
 
+	testInvalidLogin(t, testConfig)
+
+	testEmptyLogin(t, testConfig)
+
+	testValidLoginNoSession(t, testConfig)
+
+	testValidLoginAuthorizationGrant(t, testConfig)
+
+	testValidLoginImplicitGrant(t, testConfig)
+
 	testNotAllowedHttpMethods(t)
 
+}
+
+func testInvalidLogin(t *testing.T, testConfig *config.Config) {
+	type invalidLoginParameter struct {
+		state string
+		scope string
+	}
+
+	var invalidLoginParameters = []invalidLoginParameter{
+		{"", ""},
+		{"abc", ""},
+		{"", "foo:moo"},
+		{"abc", "foo:moo"},
+	}
+	for _, test := range invalidLoginParameters {
+		testMessage := fmt.Sprintf("Invalid login credentials with with state %v scope %v", test.state, test.scope)
+		t.Run(testMessage, func(t *testing.T) {
+			parsedUri := createUri(t, "/authorize", func(query url.Values) {
+				query.Set(oauth2.ParameterClientId, "foo")
+				query.Set(oauth2.ParameterRedirectUri, "https://example.com/callback")
+				query.Set(oauth2.ParameterResponseType, oauth2.ParameterToken)
+				if test.state != "" {
+					query.Set(oauth2.ParameterState, test.state)
+				}
+				if test.scope != "" {
+					query.Set(oauth2.ParameterScope, test.scope)
+				}
+			})
+			requestValidator := validation.NewRequestValidator(testConfig)
+
+			authorizeHandler := CreateAuthorizeHandler(requestValidator, &internalHttp.CookieManager{}, &store.SessionManager{}, &store.TokenManager{})
+
+			rr := httptest.NewRecorder()
+
+			body := strings.NewReader(fmt.Sprintf("stopnik_auth_session=%s&stopnik_username=foo&stopnik_password=xxx", uuid.NewString()))
+
+			request := httptest.NewRequest(http.MethodPost, parsedUri.String(), body)
+			request.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+
+			authorizeHandler.ServeHTTP(rr, request)
+
+			if rr.Code != http.StatusSeeOther {
+				t.Errorf("handler returned wrong status code: got %v want %v", rr.Code, http.StatusSeeOther)
+			}
+
+			locationHeader := rr.Header().Get(internalHttp.Location)
+			location, parseError := url.Parse(locationHeader)
+			if parseError != nil {
+				t.Errorf("location header could not be parsed: %v", parseError)
+			}
+
+			clientIdQueryParameter := location.Query().Get(oauth2.ParameterClientId)
+
+			if clientIdQueryParameter != "foo" {
+				t.Errorf("client id query parameter %v did not match expected value: %v", clientIdQueryParameter, "foo")
+			}
+
+			redirectUriQueryParameter := location.Query().Get(oauth2.ParameterRedirectUri)
+
+			if redirectUriQueryParameter != "https://example.com/callback" {
+				t.Errorf("redirecut uri query parameter %v did not match: %v", redirectUriQueryParameter, "https://example.com/callback")
+			}
+
+			responseTypeQueryParameter := location.Query().Get(oauth2.ParameterResponseType)
+
+			if responseTypeQueryParameter != oauth2.ParameterToken {
+				t.Errorf("response type query parameter %v did not match: %v", responseTypeQueryParameter, oauth2.ParameterToken)
+			}
+
+			stateQueryParameter := location.Query().Get(oauth2.ParameterState)
+
+			if test.state != "" && stateQueryParameter != test.state {
+				t.Errorf("state query parameter %v did not match: %v", responseTypeQueryParameter, test.state)
+			}
+
+			scopeQueryParameter := location.Query().Get(oauth2.ParameterScope)
+
+			if test.scope != "" && scopeQueryParameter != test.scope {
+				t.Errorf("scope query parameter %v did not match: %v", scopeQueryParameter, test.scope)
+			}
+		})
+	}
+}
+
+func testEmptyLogin(t *testing.T, testConfig *config.Config) {
+	type emptyLoginParameter struct {
+		state string
+		scope string
+	}
+
+	var emptyLoginParameters = []emptyLoginParameter{
+		{"", ""},
+		{"abc", ""},
+		{"", "foo:moo"},
+		{"abc", "foo:moo"},
+	}
+	for _, test := range emptyLoginParameters {
+		testMessage := fmt.Sprintf("Empty login credentials with with state %v scope %v", test.state, test.scope)
+		t.Run(testMessage, func(t *testing.T) {
+			parsedUri := createUri(t, "/authorize", func(query url.Values) {
+				query.Set(oauth2.ParameterClientId, "foo")
+				query.Set(oauth2.ParameterRedirectUri, "https://example.com/callback")
+				query.Set(oauth2.ParameterResponseType, oauth2.ParameterToken)
+				if test.state != "" {
+					query.Set(oauth2.ParameterState, test.state)
+				}
+				if test.scope != "" {
+					query.Set(oauth2.ParameterScope, test.scope)
+				}
+			})
+			requestValidator := validation.NewRequestValidator(testConfig)
+
+			authorizeHandler := CreateAuthorizeHandler(requestValidator, &internalHttp.CookieManager{}, &store.SessionManager{}, &store.TokenManager{})
+
+			rr := httptest.NewRecorder()
+
+			body := strings.NewReader(fmt.Sprintf("stopnik_auth_session=%s", uuid.NewString()))
+
+			request := httptest.NewRequest(http.MethodPost, parsedUri.String(), body)
+			request.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+
+			authorizeHandler.ServeHTTP(rr, request)
+
+			if rr.Code != http.StatusSeeOther {
+				t.Errorf("handler returned wrong status code: got %v want %v", rr.Code, http.StatusSeeOther)
+			}
+
+			locationHeader := rr.Header().Get(internalHttp.Location)
+			location, parseError := url.Parse(locationHeader)
+			if parseError != nil {
+				t.Errorf("location header could not be parsed: %v", parseError)
+			}
+
+			clientIdQueryParameter := location.Query().Get(oauth2.ParameterClientId)
+
+			if clientIdQueryParameter != "foo" {
+				t.Errorf("client id query parameter %v did not match expected value: %v", clientIdQueryParameter, "foo")
+			}
+
+			redirectUriQueryParameter := location.Query().Get(oauth2.ParameterRedirectUri)
+
+			if redirectUriQueryParameter != "https://example.com/callback" {
+				t.Errorf("redirecut uri query parameter %v did not match: %v", redirectUriQueryParameter, "https://example.com/callback")
+			}
+
+			responseTypeQueryParameter := location.Query().Get(oauth2.ParameterResponseType)
+
+			if responseTypeQueryParameter != oauth2.ParameterToken {
+				t.Errorf("response type query parameter %v did not match: %v", responseTypeQueryParameter, oauth2.ParameterToken)
+			}
+
+			stateQueryParameter := location.Query().Get(oauth2.ParameterState)
+
+			if test.state != "" && stateQueryParameter != test.state {
+				t.Errorf("state query parameter %v did not match: %v", responseTypeQueryParameter, test.state)
+			}
+
+			scopeQueryParameter := location.Query().Get(oauth2.ParameterScope)
+
+			if test.scope != "" && scopeQueryParameter != test.scope {
+				t.Errorf("scope query parameter %v did not match: %v", scopeQueryParameter, test.scope)
+			}
+		})
+	}
+}
+
+func testValidLoginNoSession(t *testing.T, testConfig *config.Config) {
+	type validLoginParameter struct {
+		state string
+		scope string
+	}
+
+	var validLoginParameters = []validLoginParameter{
+		{"", ""},
+		{"abc", ""},
+		{"", "foo:moo"},
+		{"abc", "foo:moo"},
+	}
+	for _, test := range validLoginParameters {
+		testMessage := fmt.Sprintf("Valid login credentials, no session, with with state %v scope %v", test.state, test.scope)
+		t.Run(testMessage, func(t *testing.T) {
+			parsedUri := createUri(t, "/authorize", func(query url.Values) {
+				query.Set(oauth2.ParameterClientId, "foo")
+				query.Set(oauth2.ParameterRedirectUri, "https://example.com/callback")
+				query.Set(oauth2.ParameterResponseType, oauth2.ParameterToken)
+				if test.state != "" {
+					query.Set(oauth2.ParameterState, test.state)
+				}
+				if test.scope != "" {
+					query.Set(oauth2.ParameterScope, test.scope)
+				}
+			})
+			requestValidator := validation.NewRequestValidator(testConfig)
+			sessionManager := store.NewSessionManager(testConfig)
+			cookieManager := internalHttp.NewCookieManager(testConfig)
+			tokenManger := store.NewTokenManager(testConfig, store.NewDefaultKeyLoader(testConfig))
+
+			authorizeHandler := CreateAuthorizeHandler(requestValidator, cookieManager, sessionManager, tokenManger)
+
+			rr := httptest.NewRecorder()
+
+			body := strings.NewReader(fmt.Sprintf("stopnik_auth_session=%s&stopnik_username=foo&stopnik_password=bar", uuid.NewString()))
+
+			request := httptest.NewRequest(http.MethodPost, parsedUri.String(), body)
+			request.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+
+			authorizeHandler.ServeHTTP(rr, request)
+
+			if rr.Code != http.StatusSeeOther {
+				t.Errorf("handler returned wrong status code: got %v want %v", rr.Code, http.StatusSeeOther)
+			}
+
+			locationHeader := rr.Header().Get(internalHttp.Location)
+			location, parseError := url.Parse(locationHeader)
+			if parseError != nil {
+				t.Errorf("location header could not be parsed: %v", parseError)
+			}
+
+			clientIdQueryParameter := location.Query().Get(oauth2.ParameterClientId)
+
+			if clientIdQueryParameter != "foo" {
+				t.Errorf("client id query parameter %v did not match expected value: %v", clientIdQueryParameter, "foo")
+			}
+
+			redirectUriQueryParameter := location.Query().Get(oauth2.ParameterRedirectUri)
+
+			if redirectUriQueryParameter != "https://example.com/callback" {
+				t.Errorf("redirecut uri query parameter %v did not match: %v", redirectUriQueryParameter, "https://example.com/callback")
+			}
+
+			responseTypeQueryParameter := location.Query().Get(oauth2.ParameterResponseType)
+
+			if responseTypeQueryParameter != oauth2.ParameterToken {
+				t.Errorf("response type query parameter %v did not match: %v", responseTypeQueryParameter, oauth2.ParameterToken)
+			}
+
+			stateQueryParameter := location.Query().Get(oauth2.ParameterState)
+
+			if test.state != "" && stateQueryParameter != test.state {
+				t.Errorf("state query parameter %v did not match: %v", responseTypeQueryParameter, test.state)
+			}
+
+			scopeQueryParameter := location.Query().Get(oauth2.ParameterScope)
+
+			if test.scope != "" && scopeQueryParameter != test.scope {
+				t.Errorf("scope query parameter %v did not match: %v", scopeQueryParameter, test.scope)
+			}
+		})
+	}
+}
+
+func testValidLoginAuthorizationGrant(t *testing.T, testConfig *config.Config) {
+	type validLoginParameter struct {
+		state string
+		scope string
+	}
+
+	var validLoginParameters = []validLoginParameter{
+		{"", ""},
+		{"abc", ""},
+		{"", "foo:moo"},
+		{"abc", "foo:moo"},
+	}
+	for _, test := range validLoginParameters {
+		testMessage := fmt.Sprintf("Valid login credentials, authorization grant session, with with state %v scope %v", test.state, test.scope)
+		t.Run(testMessage, func(t *testing.T) {
+			parsedUri := createUri(t, "/authorize", func(query url.Values) {
+				query.Set(oauth2.ParameterClientId, "foo")
+				query.Set(oauth2.ParameterRedirectUri, "https://example.com/callback")
+				query.Set(oauth2.ParameterResponseType, oauth2.ParameterCode)
+				if test.state != "" {
+					query.Set(oauth2.ParameterState, test.state)
+				}
+				if test.scope != "" {
+					query.Set(oauth2.ParameterScope, test.scope)
+				}
+			})
+
+			client, _ := testConfig.GetClient("foo")
+
+			id := uuid.New()
+			authSession := &store.AuthSession{
+				Id:                  id.String(),
+				Redirect:            "https://example.com/callback",
+				AuthURI:             parsedUri.RequestURI(),
+				CodeChallenge:       "",
+				CodeChallengeMethod: "",
+				ClientId:            client.Id,
+				ResponseType:        string(oauth2.RtCode),
+				Scopes:              []string{test.scope},
+				State:               test.state,
+			}
+
+			requestValidator := validation.NewRequestValidator(testConfig)
+			sessionManager := store.NewSessionManager(testConfig)
+			cookieManager := internalHttp.NewCookieManager(testConfig)
+			tokenManger := store.NewTokenManager(testConfig, store.NewDefaultKeyLoader(testConfig))
+			sessionManager.StartSession(authSession)
+
+			authorizeHandler := CreateAuthorizeHandler(requestValidator, cookieManager, sessionManager, tokenManger)
+
+			rr := httptest.NewRecorder()
+
+			body := strings.NewReader(fmt.Sprintf("stopnik_auth_session=%s&stopnik_username=foo&stopnik_password=bar", id.String()))
+
+			request := httptest.NewRequest(http.MethodPost, parsedUri.String(), body)
+			request.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+
+			authorizeHandler.ServeHTTP(rr, request)
+
+			if rr.Code != http.StatusFound {
+				t.Errorf("handler returned wrong status code: got %v want %v", rr.Code, http.StatusFound)
+			}
+
+			locationHeader := rr.Header().Get(internalHttp.Location)
+			location, parseError := url.Parse(locationHeader)
+			if parseError != nil {
+				t.Errorf("location header could not be parsed: %v", parseError)
+			}
+
+			codeQueryParameter := location.Query().Get(oauth2.ParameterCode)
+
+			if codeQueryParameter == "" {
+				t.Errorf("code query parameter was not set")
+			}
+
+			stateQueryParameter := location.Query().Get(oauth2.ParameterState)
+
+			if stateQueryParameter != test.state {
+				t.Errorf("state parameter %v did not match: %v", stateQueryParameter, test.state)
+			}
+		})
+	}
+}
+
+func testValidLoginImplicitGrant(t *testing.T, testConfig *config.Config) {
+	type validLoginParameter struct {
+		state string
+		scope string
+	}
+
+	var validLoginParameters = []validLoginParameter{
+		{"", ""},
+		{"abc", ""},
+		{"", "foo:moo"},
+		{"abc", "foo:moo"},
+	}
+	for _, test := range validLoginParameters {
+		testMessage := fmt.Sprintf("Valid login credentials, implicit grant session with with state %v scope %v", test.state, test.scope)
+		t.Run(testMessage, func(t *testing.T) {
+			parsedUri := createUri(t, "/authorize", func(query url.Values) {
+				query.Set(oauth2.ParameterClientId, "foo")
+				query.Set(oauth2.ParameterRedirectUri, "https://example.com/callback")
+				query.Set(oauth2.ParameterResponseType, oauth2.ParameterToken)
+				if test.state != "" {
+					query.Set(oauth2.ParameterState, test.state)
+				}
+				if test.scope != "" {
+					query.Set(oauth2.ParameterScope, test.scope)
+				}
+			})
+
+			client, _ := testConfig.GetClient("foo")
+
+			id := uuid.New()
+			authSession := &store.AuthSession{
+				Id:                  id.String(),
+				Redirect:            "https://example.com/callback",
+				AuthURI:             parsedUri.RequestURI(),
+				CodeChallenge:       "",
+				CodeChallengeMethod: "",
+				ClientId:            client.Id,
+				ResponseType:        string(oauth2.RtToken),
+				Scopes:              []string{test.scope},
+				State:               test.state,
+			}
+
+			requestValidator := validation.NewRequestValidator(testConfig)
+			sessionManager := store.NewSessionManager(testConfig)
+			cookieManager := internalHttp.NewCookieManager(testConfig)
+			tokenManger := store.NewTokenManager(testConfig, store.NewDefaultKeyLoader(testConfig))
+			sessionManager.StartSession(authSession)
+
+			authorizeHandler := CreateAuthorizeHandler(requestValidator, cookieManager, sessionManager, tokenManger)
+
+			rr := httptest.NewRecorder()
+
+			body := strings.NewReader(fmt.Sprintf("stopnik_auth_session=%s&stopnik_username=foo&stopnik_password=bar", id.String()))
+
+			request := httptest.NewRequest(http.MethodPost, parsedUri.String(), body)
+			request.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+
+			authorizeHandler.ServeHTTP(rr, request)
+
+			if rr.Code != http.StatusFound {
+				t.Errorf("handler returned wrong status code: got %v want %v", rr.Code, http.StatusFound)
+			}
+
+			locationHeader := rr.Header().Get(internalHttp.Location)
+			location, parseError := url.Parse(locationHeader)
+			if parseError != nil {
+				t.Errorf("location header could not be parsed: %v", parseError)
+			}
+
+			accessTokenQueryParameter := location.Query().Get(oauth2.ParameterAccessToken)
+
+			if accessTokenQueryParameter == "" {
+				t.Errorf("access token query parameter was not set")
+			}
+
+			tokenTypeQueryParameter := location.Query().Get(oauth2.ParameterTokenType)
+
+			if tokenTypeQueryParameter != string(oauth2.TtBearer) {
+				t.Errorf("token type parameter %v did not match: %v", tokenTypeQueryParameter, oauth2.TtBearer)
+			}
+
+			expiresInTypeQueryParameter := location.Query().Get(oauth2.ParameterExpiresIn)
+			expiresIn, expiresParseError := strconv.Atoi(expiresInTypeQueryParameter)
+			if expiresParseError != nil {
+				t.Errorf("expires query parameter was not parsed: %v", expiresParseError)
+			}
+
+			accessTokenDuration := time.Minute * time.Duration(client.GetAccessTTL())
+			expectedExpiresIn := int(accessTokenDuration / time.Second)
+
+			if expiresIn != expectedExpiresIn {
+				t.Errorf("expires in parameter %v did not match %v", expiresIn, expectedExpiresIn)
+			}
+		})
+	}
 }
 
 func testNotAllowedHttpMethods(t *testing.T) {

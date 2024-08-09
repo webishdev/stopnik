@@ -36,31 +36,27 @@ func CreateAuthorizeHandler(validator *validation.RequestValidator, cookieManage
 func (handler *AuthorizeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	log.AccessLogRequest(r)
 	if r.Method == http.MethodGet {
-		if handler.handleGetRequest(w, r) {
-			return
-		}
+		handler.handleGetRequest(w, r)
 	} else if r.Method == http.MethodPost {
 		user, failed := handler.validateLogin(w, r)
 		if failed {
 			return
 		}
 
-		if handler.handlePostRequest(w, r, user) {
-			return
-		}
+		handler.handlePostRequest(w, r, user)
 	} else {
 		MethodNotAllowedHandler(w, r)
 		return
 	}
 }
 
-func (handler *AuthorizeHandler) handleGetRequest(w http.ResponseWriter, r *http.Request) bool {
+func (handler *AuthorizeHandler) handleGetRequest(w http.ResponseWriter, r *http.Request) {
 	clientId := r.URL.Query().Get(oauth2.ParameterClientId)
 	client, exists := handler.validator.ValidateClientId(clientId)
 	if !exists {
 		log.Error("Invalid client id %s", clientId)
 		BadRequestHandler(w, r)
-		return true
+		return
 	}
 
 	redirect := r.URL.Query().Get(oauth2.ParameterRedirectUri)
@@ -69,13 +65,13 @@ func (handler *AuthorizeHandler) handleGetRequest(w http.ResponseWriter, r *http
 	if urlParseError != nil {
 		log.Error("Could not parse redirect URI %s for client %s", redirect, client.Id)
 		BadRequestHandler(w, r)
-		return true
+		return
 	}
 
 	invalidRedirectErrorHandler := validateRedirect(client, redirect)
 	if invalidRedirectErrorHandler != nil {
 		invalidRedirectErrorHandler(w, r)
-		return true
+		return
 	}
 
 	state := r.URL.Query().Get(oauth2.ParameterState)
@@ -88,7 +84,7 @@ func (handler *AuthorizeHandler) handleGetRequest(w http.ResponseWriter, r *http
 		errorMessage := fmt.Sprintf("Invalid %s parameter value", oauth2.ParameterResponseType)
 		authorizeError := &oauth2.ErrorResponseParameter{Error: oauth2.EtInvalidRequest, Description: errorMessage}
 		oauth2.ErrorResponseHandler(w, redirectURL, state, authorizeError)
-		return true
+		return
 	}
 
 	scope := r.URL.Query().Get(oauth2.ParameterScope)
@@ -139,17 +135,14 @@ func (handler *AuthorizeHandler) handleGetRequest(w http.ResponseWriter, r *http
 		} else {
 			log.Error("Invalid response type %s", responseType)
 			oauth2.ErrorResponseHandler(w, redirectURL, state, &oauth2.ErrorResponseParameter{Error: oauth2.EtUnsupportedResponseType})
-			return true
+			return
 		}
 
 		if state != "" {
 			query.Set(oauth2.ParameterState, state)
 		}
 
-		redirectURL.RawQuery = query.Encode()
-
-		w.Header().Set(internalHttp.Location, redirectURL.String())
-		w.WriteHeader(http.StatusFound)
+		sendFound(w, redirectURL, query)
 	} else {
 		// http.ServeFile(w, r, "foo.html")
 		// bytes := []byte(loginHtml)
@@ -163,17 +156,16 @@ func (handler *AuthorizeHandler) handleGetRequest(w http.ResponseWriter, r *http
 		_, err := w.Write(loginTemplate.Bytes())
 		if err != nil {
 			InternalServerErrorHandler(w, r)
-			return true
+			return
 		}
 	}
-	return false
 }
 
-func (handler *AuthorizeHandler) handlePostRequest(w http.ResponseWriter, r *http.Request, user *config.User) bool {
+func (handler *AuthorizeHandler) handlePostRequest(w http.ResponseWriter, r *http.Request, user *config.User) {
 	cookie, err := handler.cookieManager.CreateCookie(user.Username)
 	if err != nil {
 		InternalServerErrorHandler(w, r)
-		return true
+		return
 	}
 
 	http.SetCookie(w, &cookie)
@@ -181,22 +173,25 @@ func (handler *AuthorizeHandler) handlePostRequest(w http.ResponseWriter, r *htt
 	authSessionForm := r.PostFormValue("stopnik_auth_session")
 	authSession, exists := handler.sessionManager.GetSession(authSessionForm)
 	if !exists {
-		w.Header().Set(internalHttp.Location, r.RequestURI)
-		w.WriteHeader(http.StatusSeeOther)
-		return true
+		sendRetryLocation(w, r)
+		return
 	}
 
 	authSession.Username = user.Username
 	redirectURL, urlParseError := url.Parse(authSession.Redirect)
 	if urlParseError != nil {
 		InternalServerErrorHandler(w, r)
-		return true
+		return
 	}
 
 	responseType, valid := oauth2.ResponseTypeFromString(authSession.ResponseType)
 	if !valid {
-		InternalServerErrorHandler(w, r)
-		return true
+		log.Error("Invalid %s parameter with value %s for client %s", oauth2.ParameterResponseType, authSession.ResponseType, authSession.ClientId)
+
+		errorMessage := fmt.Sprintf("Invalid %s parameter value", oauth2.ParameterResponseType)
+		authorizeError := &oauth2.ErrorResponseParameter{Error: oauth2.EtInvalidRequest, Description: errorMessage}
+		oauth2.ErrorResponseHandler(w, redirectURL, authSession.State, authorizeError)
+		return
 	}
 
 	query := redirectURL.Query()
@@ -204,34 +199,29 @@ func (handler *AuthorizeHandler) handlePostRequest(w http.ResponseWriter, r *htt
 		client, exists := handler.validator.ValidateClientId(authSession.ClientId)
 		if !exists {
 			InternalServerErrorHandler(w, r)
-			return true
+			return
 		}
 		accessTokenResponse := handler.tokenManager.CreateAccessTokenResponse(user.Username, client, authSession.Scopes)
 		setImplicitGrantParameter(query, accessTokenResponse)
 	} else if responseType == oauth2.RtCode {
-		setAuthorizationGrantParameter(query, authSessionForm)
+		setAuthorizationGrantParameter(query, authSession.Id)
 	} else {
-		BadRequestHandler(w, r)
-		return true
+		oauth2.ErrorResponseHandler(w, redirectURL, authSession.State, &oauth2.ErrorResponseParameter{Error: oauth2.EtUnsupportedResponseType})
+		return
 	}
 
 	if authSession.State != "" {
 		query.Set(oauth2.ParameterState, authSession.State)
 	}
 
-	redirectURL.RawQuery = query.Encode()
-
-	w.Header().Set(internalHttp.Location, redirectURL.String())
-	w.WriteHeader(http.StatusFound)
-	return false
+	sendFound(w, redirectURL, query)
 }
 
 func (handler *AuthorizeHandler) validateLogin(w http.ResponseWriter, r *http.Request) (*config.User, bool) {
 	// Handle Post from Login
 	user, userExists := handler.validator.ValidateFormLogin(r)
 	if !userExists {
-		w.Header().Set(internalHttp.Location, r.RequestURI)
-		w.WriteHeader(http.StatusSeeOther)
+		sendRetryLocation(w, r)
 		return nil, true
 	}
 	return user, false
@@ -284,4 +274,16 @@ func setImplicitGrantParameter(query url.Values, accessTokenResponse oauth2.Acce
 	query.Set(oauth2.ParameterExpiresIn, fmt.Sprintf("%d", accessTokenResponse.ExpiresIn))
 	// https://datatracker.ietf.org/doc/html/rfc6749#section-4.2.2
 	// The authorization server MUST NOT issue a refresh token.
+}
+
+func sendRetryLocation(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set(internalHttp.Location, r.RequestURI)
+	w.WriteHeader(http.StatusSeeOther)
+}
+
+func sendFound(w http.ResponseWriter, redirectURL *url.URL, query url.Values) {
+	redirectURL.RawQuery = query.Encode()
+
+	w.Header().Set(internalHttp.Location, redirectURL.String())
+	w.WriteHeader(http.StatusFound)
 }
