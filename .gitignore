@@ -8,6 +8,7 @@ bin/
 test_coverage/
 *.crt
 *.key
+report.xml
 
 # Default file created by go build command
 stopnik
