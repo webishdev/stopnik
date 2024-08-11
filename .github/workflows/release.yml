@@ -64,14 +64,10 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: build_result_ubuntu-latest
-          path: bin
+          merge-multiple: true
 
-      - name: Retrieve artifacts for macos-latest
-        uses: actions/download-artifact@v2
-        with:
-          name: build_result_macos-latest
-          path: bin
-
+      - name: Display structure of downloaded files
+        run: ls -R
 
       - uses: ncipollo/release-action@v1
         with:
