@@ -8,6 +8,9 @@ on:
         description: Version for the tag
         required: true
 
+permissions:
+  contents: write
+
 env:
   CGO_ENABLED: 0
 
