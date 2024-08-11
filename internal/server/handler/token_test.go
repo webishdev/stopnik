@@ -2,8 +2,10 @@ package handler
 
 import (
 	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"github.com/google/uuid"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"stopnik/internal/config"
@@ -57,9 +59,9 @@ func testTokenMissingClientCredentials(t *testing.T, testConfig *config.Config) 
 	t.Run("Missing client credentials", func(t *testing.T) {
 		requestValidator := validation.NewRequestValidator(testConfig)
 		sessionManager := store.NewSessionManager(testConfig)
-		tokenManger := store.NewTokenManager(testConfig, store.NewDefaultKeyLoader(testConfig))
+		tokenManager := store.NewTokenManager(testConfig, store.NewDefaultKeyLoader(testConfig))
 
-		tokenHandler := CreateTokenHandler(requestValidator, sessionManager, tokenManger)
+		tokenHandler := CreateTokenHandler(requestValidator, sessionManager, tokenManager)
 
 		rr := httptest.NewRecorder()
 
@@ -75,14 +77,14 @@ func testTokenMissingGrandType(t *testing.T, testConfig *config.Config) {
 	t.Run("Missing grant type", func(t *testing.T) {
 		requestValidator := validation.NewRequestValidator(testConfig)
 		sessionManager := store.NewSessionManager(testConfig)
-		tokenManger := store.NewTokenManager(testConfig, store.NewDefaultKeyLoader(testConfig))
+		tokenManager := store.NewTokenManager(testConfig, store.NewDefaultKeyLoader(testConfig))
 
-		tokenHandler := CreateTokenHandler(requestValidator, sessionManager, tokenManger)
+		tokenHandler := CreateTokenHandler(requestValidator, sessionManager, tokenManager)
 
 		rr := httptest.NewRecorder()
 
 		request := httptest.NewRequest(http.MethodPost, "/token", nil)
-		request.Header.Add("Authorization", fmt.Sprintf("Basic %s", createBasicAuth("foo", "bar")))
+		request.Header.Add("Authorization", fmt.Sprintf("Basic %s", testTokenCreateBasicAuth("foo", "bar")))
 
 		tokenHandler.ServeHTTP(rr, request)
 
@@ -96,16 +98,16 @@ func testTokenInvalidGrandType(t *testing.T, testConfig *config.Config) {
 	t.Run("Invalid grant type", func(t *testing.T) {
 		requestValidator := validation.NewRequestValidator(testConfig)
 		sessionManager := store.NewSessionManager(testConfig)
-		tokenManger := store.NewTokenManager(testConfig, store.NewDefaultKeyLoader(testConfig))
+		tokenManager := store.NewTokenManager(testConfig, store.NewDefaultKeyLoader(testConfig))
 
-		tokenHandler := CreateTokenHandler(requestValidator, sessionManager, tokenManger)
+		tokenHandler := CreateTokenHandler(requestValidator, sessionManager, tokenManager)
 
 		rr := httptest.NewRecorder()
 
 		body := strings.NewReader(fmt.Sprintf("grant_type=%s", "foobar"))
 
 		request := httptest.NewRequest(http.MethodPost, "/token", body)
-		request.Header.Add("Authorization", fmt.Sprintf("Basic %s", createBasicAuth("foo", "bar")))
+		request.Header.Add("Authorization", fmt.Sprintf("Basic %s", testTokenCreateBasicAuth("foo", "bar")))
 		request.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 
 		tokenHandler.ServeHTTP(rr, request)
@@ -120,16 +122,16 @@ func testTokenAuthorizationCodeGrantTypeMissingCodeParameter(t *testing.T, testC
 	t.Run("Authorization code grant type, missing code parameter", func(t *testing.T) {
 		requestValidator := validation.NewRequestValidator(testConfig)
 		sessionManager := store.NewSessionManager(testConfig)
-		tokenManger := store.NewTokenManager(testConfig, store.NewDefaultKeyLoader(testConfig))
+		tokenManager := store.NewTokenManager(testConfig, store.NewDefaultKeyLoader(testConfig))
 
-		tokenHandler := CreateTokenHandler(requestValidator, sessionManager, tokenManger)
+		tokenHandler := CreateTokenHandler(requestValidator, sessionManager, tokenManager)
 
 		rr := httptest.NewRecorder()
 
 		body := strings.NewReader(fmt.Sprintf("grant_type=%s", oauth2.GtAuthorizationCode))
 
 		request := httptest.NewRequest(http.MethodPost, "/token", body)
-		request.Header.Add("Authorization", fmt.Sprintf("Basic %s", createBasicAuth("foo", "bar")))
+		request.Header.Add("Authorization", fmt.Sprintf("Basic %s", testTokenCreateBasicAuth("foo", "bar")))
 		request.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 
 		tokenHandler.ServeHTTP(rr, request)
@@ -157,17 +159,17 @@ func testTokenAuthorizationCodeGrantType(t *testing.T, testConfig *config.Config
 
 		requestValidator := validation.NewRequestValidator(testConfig)
 		sessionManager := store.NewSessionManager(testConfig)
-		tokenManger := store.NewTokenManager(testConfig, store.NewDefaultKeyLoader(testConfig))
+		tokenManager := store.NewTokenManager(testConfig, store.NewDefaultKeyLoader(testConfig))
 		sessionManager.StartSession(authSession)
 
-		tokenHandler := CreateTokenHandler(requestValidator, sessionManager, tokenManger)
+		tokenHandler := CreateTokenHandler(requestValidator, sessionManager, tokenManager)
 
 		rr := httptest.NewRecorder()
 
 		body := strings.NewReader(fmt.Sprintf("grant_type=%s&code=%s", oauth2.GtAuthorizationCode, id.String()))
 
 		request := httptest.NewRequest(http.MethodPost, "/token", body)
-		request.Header.Add("Authorization", fmt.Sprintf("Basic %s", createBasicAuth("foo", "bar")))
+		request.Header.Add("Authorization", fmt.Sprintf("Basic %s", testTokenCreateBasicAuth("foo", "bar")))
 		request.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 
 		tokenHandler.ServeHTTP(rr, request)
@@ -175,6 +177,10 @@ func testTokenAuthorizationCodeGrantType(t *testing.T, testConfig *config.Config
 		if rr.Code != http.StatusOK {
 			t.Errorf("handler returned wrong status code: got %v want %v", rr.Code, http.StatusOK)
 		}
+
+		response := rr.Result()
+
+		testTokenValidate(t, tokenManager, response)
 	})
 }
 
@@ -196,17 +202,17 @@ func testTokenAuthorizationCodeGrantTypePKCE(t *testing.T, testConfig *config.Co
 
 		requestValidator := validation.NewRequestValidator(testConfig)
 		sessionManager := store.NewSessionManager(testConfig)
-		tokenManger := store.NewTokenManager(testConfig, store.NewDefaultKeyLoader(testConfig))
+		tokenManager := store.NewTokenManager(testConfig, store.NewDefaultKeyLoader(testConfig))
 		sessionManager.StartSession(authSession)
 
-		tokenHandler := CreateTokenHandler(requestValidator, sessionManager, tokenManger)
+		tokenHandler := CreateTokenHandler(requestValidator, sessionManager, tokenManager)
 
 		rr := httptest.NewRecorder()
 
 		body := strings.NewReader(fmt.Sprintf("grant_type=%s&code=%s&code_verifier=%s", oauth2.GtAuthorizationCode, id.String(), "foobar"))
 
 		request := httptest.NewRequest(http.MethodPost, "/token", body)
-		request.Header.Add("Authorization", fmt.Sprintf("Basic %s", createBasicAuth("foo", "bar")))
+		request.Header.Add("Authorization", fmt.Sprintf("Basic %s", testTokenCreateBasicAuth("foo", "bar")))
 		request.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 
 		tokenHandler.ServeHTTP(rr, request)
@@ -214,6 +220,10 @@ func testTokenAuthorizationCodeGrantTypePKCE(t *testing.T, testConfig *config.Co
 		if rr.Code != http.StatusOK {
 			t.Errorf("handler returned wrong status code: got %v want %v", rr.Code, http.StatusOK)
 		}
+
+		response := rr.Result()
+
+		testTokenValidate(t, tokenManager, response)
 	})
 }
 
@@ -241,7 +251,35 @@ func testTokenNotAllowedHttpMethods(t *testing.T) {
 	}
 }
 
-func createBasicAuth(username string, password string) string {
+func testTokenCreateBasicAuth(username string, password string) string {
 	auth := username + ":" + password
 	return base64.StdEncoding.EncodeToString([]byte(auth))
+}
+
+func testTokenValidate(t *testing.T, tokenManager *store.TokenManager, response *http.Response) {
+	responseBody, bodyReadErr := io.ReadAll(response.Body)
+
+	if bodyReadErr != nil {
+		t.Errorf("could not read response body: %v", bodyReadErr)
+	}
+
+	if responseBody == nil {
+		t.Errorf("response body was nil")
+	}
+
+	accessTokenResponse := oauth2.AccessTokenResponse{}
+	jsonParseError := json.Unmarshal(responseBody, &accessTokenResponse)
+	if jsonParseError != nil {
+		t.Errorf("could not parse response body: %v", jsonParseError)
+	}
+
+	if accessTokenResponse.AccessTokenKey == "" {
+		t.Errorf("access token key was empty")
+	}
+
+	_, exists := tokenManager.GetAccessToken(accessTokenResponse.AccessTokenKey)
+
+	if !exists {
+		t.Errorf("access token was not found in access token manager")
+	}
 }

@@ -263,9 +263,9 @@ func testAuthorizeValidLoginNoSession(t *testing.T, testConfig *config.Config) {
 			requestValidator := validation.NewRequestValidator(testConfig)
 			sessionManager := store.NewSessionManager(testConfig)
 			cookieManager := internalHttp.NewCookieManager(testConfig)
-			tokenManger := store.NewTokenManager(testConfig, store.NewDefaultKeyLoader(testConfig))
+			tokenManager := store.NewTokenManager(testConfig, store.NewDefaultKeyLoader(testConfig))
 
-			authorizeHandler := CreateAuthorizeHandler(requestValidator, cookieManager, sessionManager, tokenManger)
+			authorizeHandler := CreateAuthorizeHandler(requestValidator, cookieManager, sessionManager, tokenManager)
 
 			rr := httptest.NewRecorder()
 
@@ -364,10 +364,10 @@ func testAuthorizeValidLoginAuthorizationGrant(t *testing.T, testConfig *config.
 			requestValidator := validation.NewRequestValidator(testConfig)
 			sessionManager := store.NewSessionManager(testConfig)
 			cookieManager := internalHttp.NewCookieManager(testConfig)
-			tokenManger := store.NewTokenManager(testConfig, store.NewDefaultKeyLoader(testConfig))
+			tokenManager := store.NewTokenManager(testConfig, store.NewDefaultKeyLoader(testConfig))
 			sessionManager.StartSession(authSession)
 
-			authorizeHandler := CreateAuthorizeHandler(requestValidator, cookieManager, sessionManager, tokenManger)
+			authorizeHandler := CreateAuthorizeHandler(requestValidator, cookieManager, sessionManager, tokenManager)
 
 			rr := httptest.NewRecorder()
 
@@ -448,10 +448,10 @@ func testAuthorizeValidLoginImplicitGrant(t *testing.T, testConfig *config.Confi
 			requestValidator := validation.NewRequestValidator(testConfig)
 			sessionManager := store.NewSessionManager(testConfig)
 			cookieManager := internalHttp.NewCookieManager(testConfig)
-			tokenManger := store.NewTokenManager(testConfig, store.NewDefaultKeyLoader(testConfig))
+			tokenManager := store.NewTokenManager(testConfig, store.NewDefaultKeyLoader(testConfig))
 			sessionManager.StartSession(authSession)
 
-			authorizeHandler := CreateAuthorizeHandler(requestValidator, cookieManager, sessionManager, tokenManger)
+			authorizeHandler := CreateAuthorizeHandler(requestValidator, cookieManager, sessionManager, tokenManager)
 
 			rr := httptest.NewRecorder()
 
@@ -553,13 +553,13 @@ func testAuthorizeImplicitGrant(t *testing.T, testConfig *config.Config) {
 			requestValidator := validation.NewRequestValidator(testConfig)
 			sessionManager := store.NewSessionManager(testConfig)
 			cookieManager := internalHttp.NewCookieManager(testConfig)
-			tokenManger := store.NewTokenManager(testConfig, store.NewDefaultKeyLoader(testConfig))
+			tokenManager := store.NewTokenManager(testConfig, store.NewDefaultKeyLoader(testConfig))
 
 			client, _ := testConfig.GetClient("foo")
 			user, _ := testConfig.GetUser("foo")
 			cookie, _ := cookieManager.CreateCookie(user.Username)
 
-			authorizeHandler := CreateAuthorizeHandler(requestValidator, cookieManager, sessionManager, tokenManger)
+			authorizeHandler := CreateAuthorizeHandler(requestValidator, cookieManager, sessionManager, tokenManager)
 
 			rr := httptest.NewRecorder()
 			request := httptest.NewRequest(http.MethodGet, parsedUri.String(), nil)
