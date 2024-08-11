@@ -22,6 +22,7 @@ func main() {
 	flag.Parse()
 
 	if *isHelp {
+		fmt.Printf("STOPnik %s - %s\n\n", Version, GitHash)
 		flag.Usage()
 		os.Exit(0)
 	} else if *showVersion {
@@ -33,6 +34,7 @@ func main() {
 
 	currentConfig, configError := configLoader.LoadConfig(*configurationFile)
 	if configError != nil {
+		fmt.Printf("STOPnik %s - %s\n\n", Version, GitHash)
 		fmt.Printf("%v", configError)
 		os.Exit(1)
 	}
