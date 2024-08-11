@@ -3,10 +3,12 @@ package handler
 import (
 	"encoding/base64"
 	"fmt"
+	"github.com/google/uuid"
 	"net/http"
 	"net/http/httptest"
 	"stopnik/internal/config"
 	"stopnik/internal/oauth2"
+	"stopnik/internal/pkce"
 	"stopnik/internal/server/validation"
 	"stopnik/internal/store"
 	"strings"
@@ -40,9 +42,13 @@ func Test_Token(t *testing.T) {
 
 	testTokenMissingGrandType(t, testConfig)
 
+	testTokenInvalidGrandType(t, testConfig)
+
 	testTokenAuthorizationCodeGrantTypeMissingCodeParameter(t, testConfig)
 
-	testTokenInvalidGrandType(t, testConfig)
+	testTokenAuthorizationCodeGrantType(t, testConfig)
+
+	testTokenAuthorizationCodeGrantTypePKCE(t, testConfig)
 
 	testTokenNotAllowedHttpMethods(t)
 }
@@ -130,6 +136,83 @@ func testTokenAuthorizationCodeGrantTypeMissingCodeParameter(t *testing.T, testC
 
 		if rr.Code != http.StatusBadRequest {
 			t.Errorf("handler returned wrong status code: got %v want %v", rr.Code, http.StatusBadRequest)
+		}
+	})
+}
+
+func testTokenAuthorizationCodeGrantType(t *testing.T, testConfig *config.Config) {
+	t.Run("Authorization code grant type", func(t *testing.T) {
+		id := uuid.New()
+		authSession := &store.AuthSession{
+			Id:                  id.String(),
+			Redirect:            "https://example.com/callback",
+			AuthURI:             "https://example.com/auth",
+			CodeChallenge:       "",
+			CodeChallengeMethod: "",
+			ClientId:            "foo",
+			ResponseType:        string(oauth2.RtCode),
+			Scopes:              []string{"foo"},
+			State:               "abc",
+		}
+
+		requestValidator := validation.NewRequestValidator(testConfig)
+		sessionManager := store.NewSessionManager(testConfig)
+		tokenManger := store.NewTokenManager(testConfig, store.NewDefaultKeyLoader(testConfig))
+		sessionManager.StartSession(authSession)
+
+		tokenHandler := CreateTokenHandler(requestValidator, sessionManager, tokenManger)
+
+		rr := httptest.NewRecorder()
+
+		body := strings.NewReader(fmt.Sprintf("grant_type=%s&code=%s", oauth2.GtAuthorizationCode, id.String()))
+
+		request := httptest.NewRequest(http.MethodPost, "/token", body)
+		request.Header.Add("Authorization", fmt.Sprintf("Basic %s", createBasicAuth("foo", "bar")))
+		request.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+
+		tokenHandler.ServeHTTP(rr, request)
+
+		if rr.Code != http.StatusOK {
+			t.Errorf("handler returned wrong status code: got %v want %v", rr.Code, http.StatusOK)
+		}
+	})
+}
+
+func testTokenAuthorizationCodeGrantTypePKCE(t *testing.T, testConfig *config.Config) {
+	t.Run("Authorization code grant type with PKCE", func(t *testing.T) {
+		id := uuid.New()
+		pkceCodeChallenge := pkce.CalculatePKCE(pkce.S256, "foobar")
+		authSession := &store.AuthSession{
+			Id:                  id.String(),
+			Redirect:            "https://example.com/callback",
+			AuthURI:             "https://example.com/auth",
+			CodeChallenge:       pkceCodeChallenge,
+			CodeChallengeMethod: string(pkce.S256),
+			ClientId:            "foo",
+			ResponseType:        string(oauth2.RtCode),
+			Scopes:              []string{"foo"},
+			State:               "abc",
+		}
+
+		requestValidator := validation.NewRequestValidator(testConfig)
+		sessionManager := store.NewSessionManager(testConfig)
+		tokenManger := store.NewTokenManager(testConfig, store.NewDefaultKeyLoader(testConfig))
+		sessionManager.StartSession(authSession)
+
+		tokenHandler := CreateTokenHandler(requestValidator, sessionManager, tokenManger)
+
+		rr := httptest.NewRecorder()
+
+		body := strings.NewReader(fmt.Sprintf("grant_type=%s&code=%s&code_verifier=%s", oauth2.GtAuthorizationCode, id.String(), "foobar"))
+
+		request := httptest.NewRequest(http.MethodPost, "/token", body)
+		request.Header.Add("Authorization", fmt.Sprintf("Basic %s", createBasicAuth("foo", "bar")))
+		request.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+
+		tokenHandler.ServeHTTP(rr, request)
+
+		if rr.Code != http.StatusOK {
+			t.Errorf("handler returned wrong status code: got %v want %v", rr.Code, http.StatusOK)
 		}
 	})
 }
