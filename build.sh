@@ -56,7 +56,12 @@ function build() {
   CURRENT_DIR=$(pwd)
   cd bin/$DIR
 
-  echo "Create SHA256 sum for $GO_OS $GO_ARCH"
+  if [[ "$GO_OS" == "darwin" && `command -v xattr`]]; then
+    echo
+    xattr -rc *
+  fi
+
+  echo "Create SHA256 sum for $GO_OS $GO_ARCH"^
   shasum -a 256  $FILE_NAME$FILE_EXTENSION >> sha256sum.txt
   ZIP_NAME="${NAME}.${VERSION}-${OS_NAME}-${GO_ARCH}.zip"
   echo "Package into ZIP: ${ZIP_NAME}"
