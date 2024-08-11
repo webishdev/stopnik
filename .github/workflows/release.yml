@@ -26,7 +26,7 @@ jobs:
 
     steps:
       - name: Show tag
-        run: echo "Will create version ${{ github.event.inputs.version }}"
+        run: echo "Will create version ${{ inputs.stopnik_version }}"
 
       - uses: actions/checkout@v4
 
@@ -74,8 +74,8 @@ jobs:
 
       - uses: ncipollo/release-action@v1
         with:
-          tag: ${{ github.event.inputs.version }}
+          tag: ${{ inputs.stopnik_version }}
           body: >
             STOPnik!
-            Version ${{ github.event.inputs.version }}
+            Version ${{ inputs.stopnik_version }}
           artifacts: "bin/*.zip"
