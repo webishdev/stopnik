@@ -142,15 +142,12 @@ function task_build_ci() {
   if [[ "$CI_OS" == "ubuntu-latest" ]]; then
     echo "Build for Linux"
     CURRENT_OS_VALUES=( "${LINUX_OS_VALUES[@]}" )
-    ZIPPER=false
   elif [[ "$CI_OS" == "macos-latest" ]]; then
     echo "Build for Mac"
     CURRENT_OS_VALUES=( "${MAC_OS_VALUES[@]}" )
-    ZIPPER=false
   elif [[ "$CI_OS" == "windows-latest" ]]; then
     echo "Build for Windows"
     CURRENT_OS_VALUES=( "${WINDOWS_OS_VALUES[@]}" )
-    ZIPPER=false
   fi
   for os_value in "${CURRENT_OS_VALUES[@]}"
   do
