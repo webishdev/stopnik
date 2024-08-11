@@ -5,7 +5,19 @@ name: Build STOPnik
 
 on:
   pull_request:
-    branches: [ "main" ]
+    branches:
+      - main
+    paths:
+      - "**.go"
+      - go.mod
+      - go.sum
+  push:
+    branches:
+      - main
+    paths:
+      - "**.go"
+      - go.mod
+      - go.sum
   workflow_call:
     inputs:
       stopnik_version:
