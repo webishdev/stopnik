@@ -61,6 +61,7 @@ function build() {
     if command -v xattr &> /dev/null
     then
         echo Removing extended attributes
+        ls -lah *
         xattr -rvxc *
     fi
   fi
