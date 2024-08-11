@@ -3,7 +3,7 @@ name: Create STOPnik release
 on:
   workflow_dispatch:
     inputs:
-      version:
+      stopnik_version:
         type: string
         description: Version for the tag
         required: true
