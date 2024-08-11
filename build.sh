@@ -60,14 +60,16 @@ function build() {
   if [[ "$GO_OS" == "darwin" ]]; then
     if command -v xattr &> /dev/null
     then
-        echo Removing extended attributes
-        ls -lah *
-        xattr -rvxc *
+      echo xattr version
+      type -a xattr
+      echo Removing extended attributes
+      ls -lah $FILE_NAME$FILE_EXTENSION
+      xattr -rvx $FILE_NAME$FILE_EXTENSION
     fi
   fi
 
   echo "Create SHA256 sum for $GO_OS $GO_ARCH"
-  shasum -a 256  $FILE_NAME$FILE_EXTENSION >> sha256sum.txt
+  shasum -a 256 $FILE_NAME$FILE_EXTENSION >> sha256sum.txt
   if [[ "$ZIPPER" = true ]]; then
     ZIP_NAME="${NAME}.${VERSION}-${OS_NAME}-${GO_ARCH}.zip"
     echo "Package into ZIP: ${ZIP_NAME}"
