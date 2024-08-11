@@ -2,6 +2,7 @@
 
 set -euo pipefail
 
+ZIPPER=true
 NICE_NAME=STOPnik
 NAME=stopnik
 
@@ -56,15 +57,27 @@ function build() {
   CURRENT_DIR=$(pwd)
   cd bin/$DIR
 
+  if [[ "$GO_OS" == "darwin" ]]; then
+    if command -v xattr &> /dev/null
+    then
+        echo Removing extended attributes
+        xattr -rc *
+    fi
+  fi
+
   echo "Create SHA256 sum for $GO_OS $GO_ARCH"
   shasum -a 256  $FILE_NAME$FILE_EXTENSION >> sha256sum.txt
-  ZIP_NAME="${NAME}.${VERSION}-${OS_NAME}-${GO_ARCH}.zip"
-  echo "Package into ZIP: ${ZIP_NAME}"
-  zip -q -r ../${ZIP_NAME} ./
+  if [[ "$ZIPPER" = true ]]; then
+    ZIP_NAME="${NAME}.${VERSION}-${OS_NAME}-${GO_ARCH}.zip"
+    echo "Package into ZIP: ${ZIP_NAME}"
+    zip -q -r ../${ZIP_NAME} ./
+  fi
 
   cd $CURRENT_DIR
 
-  rm -rf bin/$DIR
+  if [[ "$ZIPPER" = true ]]; then
+    rm -rf bin/$DIR
+  fi
   echo
 }
 
@@ -129,12 +142,15 @@ function task_build_ci() {
   if [[ "$CI_OS" == "ubuntu-latest" ]]; then
     echo "Build for Linux"
     CURRENT_OS_VALUES=( "${LINUX_OS_VALUES[@]}" )
+    ZIPPER=false
   elif [[ "$CI_OS" == "macos-latest" ]]; then
     echo "Build for Mac"
     CURRENT_OS_VALUES=( "${MAC_OS_VALUES[@]}" )
+    ZIPPER=false
   elif [[ "$CI_OS" == "windows-latest" ]]; then
     echo "Build for Windows"
     CURRENT_OS_VALUES=( "${WINDOWS_OS_VALUES[@]}" )
+    ZIPPER=false
   fi
   for os_value in "${CURRENT_OS_VALUES[@]}"
   do
