@@ -65,6 +65,7 @@ jobs:
         with:
           name: build_result_ubuntu-latest
           merge-multiple: true
+          path: bin
 
       - name: Display structure of downloaded files
         run: ls -R
