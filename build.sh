@@ -60,9 +60,8 @@ function build() {
   if [[ "$GO_OS" == "darwin" ]]; then
     if command -v xattr &> /dev/null
     then
-      echo xattr version
       type -a xattr
-      echo Removing extended attributes
+      echo "Removing extended attributes from $FILE_NAME$FILE_EXTENSION"
       ls -lah $FILE_NAME$FILE_EXTENSION
       xattr -rvx $FILE_NAME$FILE_EXTENSION
     fi
