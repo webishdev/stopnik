@@ -21,15 +21,14 @@ function prepare() {
   fi
 
   if [[ $(git diff --stat) != '' ]]; then
-    echo "Please commit current changes before build"
+    echo "Will ignore version settings and use 'dev', please commit current changes before build"
     echo
-    exit 1
-  else
-    GIT_HASH=$(git rev-parse --short=11 HEAD)
-
-    echo "$NAME $VERSION - $GIT_HASH"
-    echo
+    VERSION=dev
   fi
+  GIT_HASH=$(git rev-parse --short=11 HEAD)
+
+  echo "$NAME $VERSION - $GIT_HASH"
+  echo
   mkdir -p bin
 }
 
@@ -117,13 +116,13 @@ function task_build() {
     echo
     exit 1
   fi
-  if [[ ! "$3" =~ ^[0-9].[0-9]$|^ci$ ]]; then
-    echo "Wrong version format. Should be x.y or ci"
+  if [[ ! "$3" =~ ^[0-9].[0-9]$|^ci$|^dev$ ]]; then
+    echo "Wrong version format. Should be x.y, dev or ci"
     echo
     exit 1
   fi
   VERSION=$3
-  echo "Building $NICE_NAME version $VERSION"
+  echo "Building $NICE_NAME for OS $1 and platform $2"
   clean
   prepare $VERSION
   GO_OS=$1
@@ -143,13 +142,10 @@ function task_build_ci() {
   clean
   prepare $VERSION
   if [[ "$CI_OS" == "ubuntu-latest" ]]; then
-    echo "Build for Linux"
     CURRENT_OS_VALUES=( "${LINUX_OS_VALUES[@]}" )
   elif [[ "$CI_OS" == "macos-latest" ]]; then
-    echo "Build for Mac"
     CURRENT_OS_VALUES=( "${MAC_OS_VALUES[@]}" )
   elif [[ "$CI_OS" == "windows-latest" ]]; then
-    echo "Build for Windows"
     CURRENT_OS_VALUES=( "${WINDOWS_OS_VALUES[@]}" )
   fi
   for os_value in "${CURRENT_OS_VALUES[@]}"
@@ -169,13 +165,13 @@ function task_build_all() {
     echo
     exit 1
   fi
-  if [[ ! "$1" =~ ^[0-9].[0-9]$|^ci$ ]]; then
-    echo "Wrong version format. Should be x.y or ci"
+  if [[ ! "$1" =~ ^[0-9].[0-9]$|^ci$|^dev$ ]]; then
+    echo "Wrong version format. Should be x.y, dev or ci"
     echo
     exit 1
   fi
   VERSION=$1
-  echo "Building $NICE_NAME version $VERSION"
+  echo "Building $NICE_NAME for all platforms"
   clean
   prepare $VERSION
   build_all
