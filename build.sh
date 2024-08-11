@@ -56,9 +56,12 @@ function build() {
   CURRENT_DIR=$(pwd)
   cd bin/$DIR
 
-  if [[ "$GO_OS" == "darwin" && `command -v xattr`]]; then
-    echo
-    xattr -rc *
+  if [[ "$GO_OS" == "darwin" ]]; then
+    if command -v xattr &> /dev/null
+    then
+        echo Removing extended attributes
+        xattr -rc *
+    fi
   fi
 
   echo "Create SHA256 sum for $GO_OS $GO_ARCH"^
