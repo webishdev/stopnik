@@ -100,6 +100,7 @@ func (handler *TokenHandler) handlePostRequest(w http.ResponseWriter, r *http.Re
 		oauth2.TokenErrorResponseHandler(w, &oauth2.TokenErrorResponseParameter{Error: oauth2.TokenEtInvalidRequest})
 		return
 	} else if grantType == oauth2.GtRefreshToken && client.GetRefreshTTL() > 0 {
+		// https://datatracker.ietf.org/doc/html/rfc6749#section-6
 		refreshTokenForm := r.PostFormValue(oauth2.ParameterRefreshToken)
 		refreshToken, refreshTokenExists := handler.tokenManager.GetRefreshToken(refreshTokenForm)
 		if !refreshTokenExists {

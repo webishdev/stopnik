@@ -22,9 +22,10 @@ func Test_Token(t *testing.T) {
 	testConfig := &config.Config{
 		Clients: []config.Client{
 			{
-				Id:        "foo",
-				Secret:    "d82c4eb5261cb9c8aa9855edd67d1bd10482f41529858d925094d173fa662aa91ff39bc5b188615273484021dfb16fd8284cf684ccf0fc795be3aa2fc1e6c181",
-				Redirects: []string{"https://example.com/callback"},
+				Id:         "foo",
+				Secret:     "d82c4eb5261cb9c8aa9855edd67d1bd10482f41529858d925094d173fa662aa91ff39bc5b188615273484021dfb16fd8284cf684ccf0fc795be3aa2fc1e6c181",
+				Redirects:  []string{"https://example.com/callback"},
+				RefreshTTL: 100,
 			},
 		},
 		Users: []config.User{
@@ -53,6 +54,10 @@ func Test_Token(t *testing.T) {
 	testTokenAuthorizationCodeGrantTypePKCE(t, testConfig)
 
 	testTokenPasswordGrantType(t, testConfig)
+
+	testTokenClientCredentialsGrantType(t, testConfig)
+
+	testTokenRefreshTokenGrantType(t, testConfig)
 
 	testTokenNotAllowedHttpMethods(t)
 }
@@ -106,7 +111,10 @@ func testTokenInvalidGrandType(t *testing.T, testConfig *config.Config) {
 
 		rr := httptest.NewRecorder()
 
-		body := strings.NewReader(fmt.Sprintf("grant_type=%s", "foobar"))
+		bodyString := testCreateBody(
+			oauth2.ParameterGrantType, "foobar",
+		)
+		body := strings.NewReader(bodyString)
 
 		request := httptest.NewRequest(http.MethodPost, "/token", body)
 		request.Header.Add("Authorization", fmt.Sprintf("Basic %s", testTokenCreateBasicAuth("foo", "bar")))
@@ -130,7 +138,10 @@ func testTokenAuthorizationCodeGrantTypeMissingCodeParameter(t *testing.T, testC
 
 		rr := httptest.NewRecorder()
 
-		body := strings.NewReader(fmt.Sprintf("grant_type=%s", oauth2.GtAuthorizationCode))
+		bodyString := testCreateBody(
+			oauth2.ParameterGrantType, oauth2.GtAuthorizationCode,
+		)
+		body := strings.NewReader(bodyString)
 
 		request := httptest.NewRequest(http.MethodPost, "/token", body)
 		request.Header.Add("Authorization", fmt.Sprintf("Basic %s", testTokenCreateBasicAuth("foo", "bar")))
@@ -253,6 +264,89 @@ func testTokenPasswordGrantType(t *testing.T, testConfig *config.Config) {
 			oauth2.ParameterUsername, "foo",
 			oauth2.ParameterPassword, "bar",
 			oauth2.ParameterScope, "foo:bar moo:abc",
+		)
+		body := strings.NewReader(bodyString)
+
+		request := httptest.NewRequest(http.MethodPost, "/token", body)
+		request.Header.Add("Authorization", fmt.Sprintf("Basic %s", testTokenCreateBasicAuth("foo", "bar")))
+		request.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+
+		tokenHandler.ServeHTTP(rr, request)
+
+		if rr.Code != http.StatusOK {
+			t.Errorf("handler returned wrong status code: got %v want %v", rr.Code, http.StatusOK)
+		}
+
+		response := rr.Result()
+
+		testTokenValidate(t, tokenManager, response)
+	})
+}
+
+func testTokenClientCredentialsGrantType(t *testing.T, testConfig *config.Config) {
+	t.Run("Client credentials grant type", func(t *testing.T) {
+		requestValidator := validation.NewRequestValidator(testConfig)
+		sessionManager := store.NewSessionManager(testConfig)
+		tokenManager := store.NewTokenManager(testConfig, store.NewDefaultKeyLoader(testConfig))
+
+		tokenHandler := CreateTokenHandler(requestValidator, sessionManager, tokenManager)
+
+		rr := httptest.NewRecorder()
+
+		bodyString := testCreateBody(
+			oauth2.ParameterGrantType, oauth2.GtClientCredentials,
+			oauth2.ParameterScope, "foo:bar moo:abc",
+		)
+		body := strings.NewReader(bodyString)
+
+		request := httptest.NewRequest(http.MethodPost, "/token", body)
+		request.Header.Add("Authorization", fmt.Sprintf("Basic %s", testTokenCreateBasicAuth("foo", "bar")))
+		request.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+
+		tokenHandler.ServeHTTP(rr, request)
+
+		if rr.Code != http.StatusOK {
+			t.Errorf("handler returned wrong status code: got %v want %v", rr.Code, http.StatusOK)
+		}
+
+		response := rr.Result()
+
+		testTokenValidate(t, tokenManager, response)
+	})
+}
+
+func testTokenRefreshTokenGrantType(t *testing.T, testConfig *config.Config) {
+	t.Run("Authorization code grant type", func(t *testing.T) {
+		client, _ := testConfig.GetClient("foo")
+		user, _ := testConfig.GetUser("foo")
+		scopes := []string{"foo:bar", "moo:abc"}
+
+		id := uuid.New()
+		authSession := &store.AuthSession{
+			Id:                  id.String(),
+			Redirect:            "https://example.com/callback",
+			AuthURI:             "https://example.com/auth",
+			CodeChallenge:       "",
+			CodeChallengeMethod: "",
+			ClientId:            client.Id,
+			ResponseType:        string(oauth2.RtCode),
+			Scopes:              scopes,
+			State:               "xyz",
+		}
+
+		requestValidator := validation.NewRequestValidator(testConfig)
+		sessionManager := store.NewSessionManager(testConfig)
+		tokenManager := store.NewTokenManager(testConfig, store.NewDefaultKeyLoader(testConfig))
+		sessionManager.StartSession(authSession)
+		accessTokenResponse := tokenManager.CreateAccessTokenResponse(user.Username, client, scopes)
+
+		tokenHandler := CreateTokenHandler(requestValidator, sessionManager, tokenManager)
+
+		rr := httptest.NewRecorder()
+
+		bodyString := testCreateBody(
+			oauth2.ParameterGrantType, oauth2.GtRefreshToken,
+			oauth2.ParameterRefreshToken, accessTokenResponse.RefreshTokenKey,
 		)
 		body := strings.NewReader(bodyString)
 
