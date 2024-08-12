@@ -49,9 +49,9 @@ func Test_Token(t *testing.T) {
 
 	testTokenAuthorizationCodeGrantTypeMissingCodeParameter(t, testConfig)
 
-	testTokenAuthorizationCodeGrantType(t, testConfig)
+	testTokenAuthorizationCodeGrantTypeInvalidPKCE(t, testConfig)
 
-	testTokenAuthorizationCodeGrantTypePKCE(t, testConfig)
+	testTokenAuthorizationCodeGrantType(t, testConfig)
 
 	testTokenPasswordGrantType(t, testConfig)
 
@@ -155,54 +155,8 @@ func testTokenAuthorizationCodeGrantTypeMissingCodeParameter(t *testing.T, testC
 	})
 }
 
-func testTokenAuthorizationCodeGrantType(t *testing.T, testConfig *config.Config) {
-	t.Run("Authorization code grant type", func(t *testing.T) {
-		id := uuid.New()
-		authSession := &store.AuthSession{
-			Id:                  id.String(),
-			Redirect:            "https://example.com/callback",
-			AuthURI:             "https://example.com/auth",
-			CodeChallenge:       "",
-			CodeChallengeMethod: "",
-			ClientId:            "foo",
-			ResponseType:        string(oauth2.RtCode),
-			Scopes:              []string{"foo:bar", "moo:abc"},
-			State:               "xyz",
-		}
-
-		requestValidator := validation.NewRequestValidator(testConfig)
-		sessionManager := store.NewSessionManager(testConfig)
-		tokenManager := store.NewTokenManager(testConfig, store.NewDefaultKeyLoader(testConfig))
-		sessionManager.StartSession(authSession)
-
-		tokenHandler := CreateTokenHandler(requestValidator, sessionManager, tokenManager)
-
-		rr := httptest.NewRecorder()
-
-		bodyString := testCreateBody(
-			oauth2.ParameterGrantType, oauth2.GtAuthorizationCode,
-			oauth2.ParameterCode, id.String(),
-		)
-		body := strings.NewReader(bodyString)
-
-		request := httptest.NewRequest(http.MethodPost, "/token", body)
-		request.Header.Add("Authorization", fmt.Sprintf("Basic %s", testTokenCreateBasicAuth("foo", "bar")))
-		request.Header.Add("Content-Type", "application/x-www-form-urlencoded")
-
-		tokenHandler.ServeHTTP(rr, request)
-
-		if rr.Code != http.StatusOK {
-			t.Errorf("handler returned wrong status code: got %v want %v", rr.Code, http.StatusOK)
-		}
-
-		response := rr.Result()
-
-		testTokenValidate(t, tokenManager, response)
-	})
-}
-
-func testTokenAuthorizationCodeGrantTypePKCE(t *testing.T, testConfig *config.Config) {
-	t.Run("Authorization code grant type with PKCE", func(t *testing.T) {
+func testTokenAuthorizationCodeGrantTypeInvalidPKCE(t *testing.T, testConfig *config.Config) {
+	t.Run("Authorization code grant type with invalid PKCE", func(t *testing.T) {
 		id := uuid.New()
 		pkceCodeChallenge := pkce.CalculatePKCE(pkce.S256, "foobar")
 		authSession := &store.AuthSession{
@@ -229,7 +183,7 @@ func testTokenAuthorizationCodeGrantTypePKCE(t *testing.T, testConfig *config.Co
 		bodyString := testCreateBody(
 			oauth2.ParameterGrantType, oauth2.GtAuthorizationCode,
 			oauth2.ParameterCode, id.String(),
-			pkce.ParameterCodeVerifier, "foobar",
+			pkce.ParameterCodeVerifier, "barfoo",
 		)
 		body := strings.NewReader(bodyString)
 
@@ -239,14 +193,93 @@ func testTokenAuthorizationCodeGrantTypePKCE(t *testing.T, testConfig *config.Co
 
 		tokenHandler.ServeHTTP(rr, request)
 
-		if rr.Code != http.StatusOK {
-			t.Errorf("handler returned wrong status code: got %v want %v", rr.Code, http.StatusOK)
+		if rr.Code != http.StatusBadRequest {
+			t.Errorf("handler returned wrong status code: got %v want %v", rr.Code, http.StatusBadRequest)
 		}
-
-		response := rr.Result()
-
-		testTokenValidate(t, tokenManager, response)
 	})
+}
+
+func testTokenAuthorizationCodeGrantType(t *testing.T, testConfig *config.Config) {
+	type authorizationGrantParameter struct {
+		state                   string
+		scope                   string
+		pkceCodeChallenge       string
+		pkceCodeChallengeMethod *pkce.CodeChallengeMethod
+	}
+
+	ccmS256 := pkce.S256
+	ccmPlain := pkce.PLAIN
+
+	var authorizationGrantParameters = []authorizationGrantParameter{
+		{"", "", "", nil},
+		{"abc", "", "", nil},
+		{"", "foo:moo", "", nil},
+		{"abc", "foo:moo", "", nil},
+		{"abc", "foo:moo", uuid.New().String(), &ccmS256},
+		{"abc", "foo:moo", uuid.New().String(), &ccmPlain},
+	}
+
+	for _, test := range authorizationGrantParameters {
+		pkceCodeChallengeMethod := ""
+		if test.pkceCodeChallengeMethod != nil {
+			pkceCodeChallengeMethod = string(*test.pkceCodeChallengeMethod)
+		}
+		pkceCodeChallenge := ""
+		if test.pkceCodeChallenge != "" {
+			pkceCodeChallenge = pkce.CalculatePKCE(*test.pkceCodeChallengeMethod, test.pkceCodeChallenge)
+		}
+		testMessage := fmt.Sprintf("Authorization code grant type state %v scope %v code challenge %v method %v", test.state, test.scope, pkceCodeChallenge, pkceCodeChallengeMethod)
+		t.Run(testMessage, func(t *testing.T) {
+			id := uuid.New()
+			authSession := &store.AuthSession{
+				Id:                  id.String(),
+				Redirect:            "https://example.com/callback",
+				AuthURI:             "https://example.com/auth",
+				CodeChallenge:       pkceCodeChallenge,
+				CodeChallengeMethod: pkceCodeChallengeMethod,
+				ClientId:            "foo",
+				ResponseType:        string(oauth2.RtCode),
+				Scopes:              []string{"foo:bar", "moo:abc"},
+				State:               test.state,
+			}
+
+			requestValidator := validation.NewRequestValidator(testConfig)
+			sessionManager := store.NewSessionManager(testConfig)
+			tokenManager := store.NewTokenManager(testConfig, store.NewDefaultKeyLoader(testConfig))
+			sessionManager.StartSession(authSession)
+
+			tokenHandler := CreateTokenHandler(requestValidator, sessionManager, tokenManager)
+
+			rr := httptest.NewRecorder()
+
+			bodyString := testCreateBody(
+				oauth2.ParameterGrantType, oauth2.GtAuthorizationCode,
+				oauth2.ParameterCode, id.String(),
+			)
+			if test.pkceCodeChallenge != "" && test.pkceCodeChallengeMethod != nil {
+				bodyString = testCreateBody(
+					oauth2.ParameterGrantType, oauth2.GtAuthorizationCode,
+					oauth2.ParameterCode, id.String(),
+					pkce.ParameterCodeVerifier, test.pkceCodeChallenge,
+				)
+			}
+			body := strings.NewReader(bodyString)
+
+			request := httptest.NewRequest(http.MethodPost, "/token", body)
+			request.Header.Add("Authorization", fmt.Sprintf("Basic %s", testTokenCreateBasicAuth("foo", "bar")))
+			request.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+
+			tokenHandler.ServeHTTP(rr, request)
+
+			if rr.Code != http.StatusOK {
+				t.Errorf("handler returned wrong status code: got %v want %v", rr.Code, http.StatusOK)
+			}
+
+			response := rr.Result()
+
+			testTokenValidate(t, tokenManager, response)
+		})
+	}
 }
 
 func testTokenPasswordGrantType(t *testing.T, testConfig *config.Config) {
