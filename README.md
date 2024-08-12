@@ -48,3 +48,4 @@ They add features like persistence and access to user directories like LDAP.
 | [JSON Web Token (JWT)](https://datatracker.ietf.org/doc/html/rfc7519)                                | By dependency  |
 | [OAuth 2.0 Device Authorization Grant](https://datatracker.ietf.org/doc/html/rfc8628)                |    Planned     |
 | [Resource Indicators for OAuth 2.0](https://datatracker.ietf.org/doc/html/rfc8707)                   |    Planned     |
+| [OAuth 2.0 Authorization Server Issuer Identification](https://datatracker.ietf.org/doc/html/rfc9207) | Planned |
