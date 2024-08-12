@@ -52,6 +52,8 @@ func Test_Token(t *testing.T) {
 
 	testTokenAuthorizationCodeGrantTypePKCE(t, testConfig)
 
+	testTokenPasswordGrantType(t, testConfig)
+
 	testTokenNotAllowedHttpMethods(t)
 }
 
@@ -153,8 +155,8 @@ func testTokenAuthorizationCodeGrantType(t *testing.T, testConfig *config.Config
 			CodeChallengeMethod: "",
 			ClientId:            "foo",
 			ResponseType:        string(oauth2.RtCode),
-			Scopes:              []string{"foo"},
-			State:               "abc",
+			Scopes:              []string{"foo:bar", "moo:abc"},
+			State:               "xyz",
 		}
 
 		requestValidator := validation.NewRequestValidator(testConfig)
@@ -166,7 +168,11 @@ func testTokenAuthorizationCodeGrantType(t *testing.T, testConfig *config.Config
 
 		rr := httptest.NewRecorder()
 
-		body := strings.NewReader(fmt.Sprintf("grant_type=%s&code=%s", oauth2.GtAuthorizationCode, id.String()))
+		bodyString := testCreateBody(
+			oauth2.ParameterGrantType, oauth2.GtAuthorizationCode,
+			oauth2.ParameterCode, id.String(),
+		)
+		body := strings.NewReader(bodyString)
 
 		request := httptest.NewRequest(http.MethodPost, "/token", body)
 		request.Header.Add("Authorization", fmt.Sprintf("Basic %s", testTokenCreateBasicAuth("foo", "bar")))
@@ -196,8 +202,8 @@ func testTokenAuthorizationCodeGrantTypePKCE(t *testing.T, testConfig *config.Co
 			CodeChallengeMethod: string(pkce.S256),
 			ClientId:            "foo",
 			ResponseType:        string(oauth2.RtCode),
-			Scopes:              []string{"foo"},
-			State:               "abc",
+			Scopes:              []string{"foo:bar", "moo:abc"},
+			State:               "xyz",
 		}
 
 		requestValidator := validation.NewRequestValidator(testConfig)
@@ -209,7 +215,46 @@ func testTokenAuthorizationCodeGrantTypePKCE(t *testing.T, testConfig *config.Co
 
 		rr := httptest.NewRecorder()
 
-		body := strings.NewReader(fmt.Sprintf("grant_type=%s&code=%s&code_verifier=%s", oauth2.GtAuthorizationCode, id.String(), "foobar"))
+		bodyString := testCreateBody(
+			oauth2.ParameterGrantType, oauth2.GtAuthorizationCode,
+			oauth2.ParameterCode, id.String(),
+			pkce.ParameterCodeVerifier, "foobar",
+		)
+		body := strings.NewReader(bodyString)
+
+		request := httptest.NewRequest(http.MethodPost, "/token", body)
+		request.Header.Add("Authorization", fmt.Sprintf("Basic %s", testTokenCreateBasicAuth("foo", "bar")))
+		request.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+
+		tokenHandler.ServeHTTP(rr, request)
+
+		if rr.Code != http.StatusOK {
+			t.Errorf("handler returned wrong status code: got %v want %v", rr.Code, http.StatusOK)
+		}
+
+		response := rr.Result()
+
+		testTokenValidate(t, tokenManager, response)
+	})
+}
+
+func testTokenPasswordGrantType(t *testing.T, testConfig *config.Config) {
+	t.Run("Password grant type", func(t *testing.T) {
+		requestValidator := validation.NewRequestValidator(testConfig)
+		sessionManager := store.NewSessionManager(testConfig)
+		tokenManager := store.NewTokenManager(testConfig, store.NewDefaultKeyLoader(testConfig))
+
+		tokenHandler := CreateTokenHandler(requestValidator, sessionManager, tokenManager)
+
+		rr := httptest.NewRecorder()
+
+		bodyString := testCreateBody(
+			oauth2.ParameterGrantType, oauth2.GtPassword,
+			oauth2.ParameterUsername, "foo",
+			oauth2.ParameterPassword, "bar",
+			oauth2.ParameterScope, "foo:bar moo:abc",
+		)
+		body := strings.NewReader(bodyString)
 
 		request := httptest.NewRequest(http.MethodPost, "/token", body)
 		request.Header.Add("Authorization", fmt.Sprintf("Basic %s", testTokenCreateBasicAuth("foo", "bar")))
@@ -256,6 +301,19 @@ func testTokenCreateBasicAuth(username string, password string) string {
 	return base64.StdEncoding.EncodeToString([]byte(auth))
 }
 
+func testCreateBody(values ...any) string {
+	result := ""
+	for index, value := range values {
+		result += fmt.Sprintf("%v", value)
+		if index > 0 && index%2 != 0 && index < len(values)-1 {
+			result += "&"
+		} else if index < len(values)-1 {
+			result += "="
+		}
+	}
+	return result
+}
+
 func testTokenValidate(t *testing.T, tokenManager *store.TokenManager, response *http.Response) {
 	responseBody, bodyReadErr := io.ReadAll(response.Body)
 
@@ -281,5 +339,9 @@ func testTokenValidate(t *testing.T, tokenManager *store.TokenManager, response 
 
 	if !exists {
 		t.Errorf("access token was not found in access token manager")
+	}
+
+	if accessTokenResponse.TokenType != oauth2.TtBearer {
+		t.Errorf("access token type was not bearer")
 	}
 }
