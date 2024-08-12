@@ -4,6 +4,11 @@ Just a few notes taken during development
 
 [OAuth 2.0 Specification, RFC6749](https://datatracker.ietf.org/doc/html/rfc6749)
 
+## Good websites
+
+- [OAuth 2.x and OpenID Connect sequence diagrams](https://www.gabriel.urdhr.fr/2023/02/06/oauth2-diagrams)
+- [Diagrams of All The OpenID Connect Flows](https://darutk.medium.com/diagrams-of-all-the-openid-connect-flows-6968e3990660)
+
 ## OAuth 2.0 Endpoints
 
 ### [Authorization Endpoint](https://datatracker.ietf.org/doc/html/rfc6749#section-3.1)
