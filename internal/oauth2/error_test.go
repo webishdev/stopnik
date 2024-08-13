@@ -13,6 +13,10 @@ func Test_Error(t *testing.T) {
 
 	testAuthorizationErrorResponseHandler(t)
 
+	testTokenErrorResponseHandler(t)
+
+	testTokenErrorStatusResponseHandler(t)
+
 	testAuthorizationErrorTypeFromString(t)
 
 	testTokenErrorTypeFromString(t)
@@ -131,6 +135,32 @@ func testAuthorizationErrorResponseHandler(t *testing.T) {
 
 			if errorUri != test.expectedErrorUri {
 				t.Errorf("error uri %v did not match %v", errorUri, test.expectedErrorUri)
+			}
+		})
+	}
+}
+
+func testTokenErrorResponseHandler(t *testing.T) {
+	t.Run("Token error handler", func(t *testing.T) {
+		rr := httptest.NewRecorder()
+		TokenErrorResponseHandler(rr, &TokenErrorResponseParameter{})
+
+		if rr.Code != http.StatusBadRequest {
+			t.Errorf("handler returned wrong status code: got %v want %v", rr.Code, http.StatusBadRequest)
+		}
+	})
+}
+
+func testTokenErrorStatusResponseHandler(t *testing.T) {
+	statusCodes := []int{http.StatusBadRequest, http.StatusUnauthorized, http.StatusForbidden, http.StatusNotFound, http.StatusMethodNotAllowed, http.StatusRequestTimeout}
+	for _, statusCode := range statusCodes {
+		testMessage := fmt.Sprintf("Token error handler with status code %d", statusCode)
+		t.Run(testMessage, func(t *testing.T) {
+			rr := httptest.NewRecorder()
+			TokenErrorStatusResponseHandler(rr, statusCode, &TokenErrorResponseParameter{})
+
+			if rr.Code != statusCode {
+				t.Errorf("handler returned wrong status code: got %v want %v", rr.Code, statusCode)
 			}
 		})
 	}
