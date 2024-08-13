@@ -109,7 +109,7 @@ jobs:
       - name: Extract some files
         run: |
           mkdir dist
-          unzip bin/stopnik.${{ inputs.stopnik_version }}${{ matrix.target }}.zip -d dist
+          unzip bin/stopnik.${{ inputs.stopnik_version }}-${{ matrix.target }}.zip -d dist
           mv dist/stopnik* dist/stopnik
 
       - name: Log in to the Container registry
