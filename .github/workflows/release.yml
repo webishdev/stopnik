@@ -111,6 +111,7 @@ jobs:
           RAW_TARGET='${{ matrix.target }}'
           UPDATED_TARGET="${RAW_TARGET/\//-}"
           echo "Will extract ZIP from bin/stopnik.${{ inputs.stopnik_version }}-$UPDATED_TARGET.zip into dist/"
+          echo "UPDATED_TARGET=$UPDATED_TARGET" >> $GITHUB_ENV
           mkdir dist
           unzip bin/stopnik.${{ inputs.stopnik_version }}-$UPDATED_TARGET.zip -d dist
           mv dist/stopnik* dist/stopnik
