@@ -133,6 +133,7 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: .
+          file: Dockerfile_${{ env.UPDATED_TARGET }}
           platforms: ${{ matrix.target }}
           push: true
           tags: ghcr.io/${{ github.repository_owner }}/stopnik:${{ inputs.stopnik_version }},ghcr.io/${{ github.repository_owner }}/stopnik:latest
