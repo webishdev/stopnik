@@ -110,7 +110,7 @@ func testAuthorizeInvalidLogin(t *testing.T, testConfig *config.Config) {
 			body := strings.NewReader(bodyString)
 
 			request := httptest.NewRequest(http.MethodPost, parsedUri.String(), body)
-			request.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+			request.Header.Add(internalHttp.ContentType, "application/x-www-form-urlencoded")
 
 			authorizeHandler.ServeHTTP(rr, request)
 
@@ -194,7 +194,7 @@ func testAuthorizeEmptyLogin(t *testing.T, testConfig *config.Config) {
 			body := strings.NewReader(bodyString)
 
 			request := httptest.NewRequest(http.MethodPost, parsedUri.String(), body)
-			request.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+			request.Header.Add(internalHttp.ContentType, "application/x-www-form-urlencoded")
 
 			authorizeHandler.ServeHTTP(rr, request)
 
@@ -283,7 +283,7 @@ func testAuthorizeValidLoginNoSession(t *testing.T, testConfig *config.Config) {
 			body := strings.NewReader(bodyString)
 
 			request := httptest.NewRequest(http.MethodPost, parsedUri.String(), body)
-			request.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+			request.Header.Add(internalHttp.ContentType, "application/x-www-form-urlencoded")
 
 			authorizeHandler.ServeHTTP(rr, request)
 
@@ -389,7 +389,7 @@ func testAuthorizeValidLoginAuthorizationGrant(t *testing.T, testConfig *config.
 			body := strings.NewReader(bodyString)
 
 			request := httptest.NewRequest(http.MethodPost, parsedUri.String(), body)
-			request.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+			request.Header.Add(internalHttp.ContentType, "application/x-www-form-urlencoded")
 
 			authorizeHandler.ServeHTTP(rr, request)
 
@@ -477,7 +477,7 @@ func testAuthorizeValidLoginImplicitGrant(t *testing.T, testConfig *config.Confi
 			body := strings.NewReader(bodyString)
 
 			request := httptest.NewRequest(http.MethodPost, parsedUri.String(), body)
-			request.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+			request.Header.Add(internalHttp.ContentType, "application/x-www-form-urlencoded")
 
 			authorizeHandler.ServeHTTP(rr, request)
 

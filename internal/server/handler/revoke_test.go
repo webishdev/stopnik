@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"stopnik/internal/config"
+	internalHttp "stopnik/internal/http"
 	"stopnik/internal/oauth2"
 	"stopnik/internal/server/validation"
 	"stopnik/internal/store"
@@ -80,7 +81,7 @@ func testRevokeInvalidClientCredentials(t *testing.T, testConfig *config.Config)
 		rr := httptest.NewRecorder()
 
 		request := httptest.NewRequest(http.MethodPost, "/revoke", nil)
-		request.Header.Add("Authorization", fmt.Sprintf("Basic %s", testTokenCreateBasicAuth("foo", "xxx")))
+		request.Header.Add(internalHttp.Authorization, fmt.Sprintf("Basic %s", testTokenCreateBasicAuth("foo", "xxx")))
 
 		revokeHandler.ServeHTTP(rr, request)
 
@@ -116,8 +117,8 @@ func testRevokeEmptyToken(t *testing.T, testConfig *config.Config) {
 			body := strings.NewReader(bodyString)
 
 			request := httptest.NewRequest(http.MethodPost, "/revoke", body)
-			request.Header.Add("Authorization", fmt.Sprintf("Basic %s", testTokenCreateBasicAuth("foo", "bar")))
-			request.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+			request.Header.Add(internalHttp.Authorization, fmt.Sprintf("Basic %s", testTokenCreateBasicAuth("foo", "bar")))
+			request.Header.Add(internalHttp.ContentType, "application/x-www-form-urlencoded")
 
 			revokeHandler.ServeHTTP(rr, request)
 
@@ -156,8 +157,8 @@ func testRevokeInvalidToken(t *testing.T, testConfig *config.Config) {
 			body := strings.NewReader(bodyString)
 
 			request := httptest.NewRequest(http.MethodPost, "/revoke", body)
-			request.Header.Add("Authorization", fmt.Sprintf("Basic %s", testTokenCreateBasicAuth("foo", "bar")))
-			request.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+			request.Header.Add(internalHttp.Authorization, fmt.Sprintf("Basic %s", testTokenCreateBasicAuth("foo", "bar")))
+			request.Header.Add(internalHttp.ContentType, "application/x-www-form-urlencoded")
 
 			revokeHandler.ServeHTTP(rr, request)
 
@@ -220,8 +221,8 @@ func testRevoke(t *testing.T, testConfig *config.Config) {
 			body := strings.NewReader(bodyString)
 
 			request := httptest.NewRequest(http.MethodPost, "/revoke", body)
-			request.Header.Add("Authorization", fmt.Sprintf("Basic %s", testTokenCreateBasicAuth("foo", "bar")))
-			request.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+			request.Header.Add(internalHttp.Authorization, fmt.Sprintf("Basic %s", testTokenCreateBasicAuth("foo", "bar")))
+			request.Header.Add(internalHttp.ContentType, "application/x-www-form-urlencoded")
 
 			revokeHandler.ServeHTTP(rr, request)
 
@@ -296,8 +297,8 @@ func testRevokeWithoutHint(t *testing.T, testConfig *config.Config) {
 			body := strings.NewReader(bodyString)
 
 			request := httptest.NewRequest(http.MethodPost, "/revoke", body)
-			request.Header.Add("Authorization", fmt.Sprintf("Basic %s", testTokenCreateBasicAuth("foo", "bar")))
-			request.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+			request.Header.Add(internalHttp.Authorization, fmt.Sprintf("Basic %s", testTokenCreateBasicAuth("foo", "bar")))
+			request.Header.Add(internalHttp.ContentType, "application/x-www-form-urlencoded")
 
 			revokeHandler.ServeHTTP(rr, request)
 

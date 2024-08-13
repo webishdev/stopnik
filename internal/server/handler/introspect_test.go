@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"stopnik/internal/config"
+	internalHttp "stopnik/internal/http"
 	"stopnik/internal/oauth2"
 	"stopnik/internal/server/validation"
 	"stopnik/internal/store"
@@ -82,7 +83,7 @@ func testIntrospectInvalidClientCredentials(t *testing.T, testConfig *config.Con
 		rr := httptest.NewRecorder()
 
 		request := httptest.NewRequest(http.MethodPost, "/introspect", nil)
-		request.Header.Add("Authorization", fmt.Sprintf("Basic %s", testTokenCreateBasicAuth("foo", "xxx")))
+		request.Header.Add(internalHttp.Authorization, fmt.Sprintf("Basic %s", testTokenCreateBasicAuth("foo", "xxx")))
 
 		introspectHandler.ServeHTTP(rr, request)
 
@@ -118,8 +119,8 @@ func testIntrospectEmptyToken(t *testing.T, testConfig *config.Config) {
 			body := strings.NewReader(bodyString)
 
 			request := httptest.NewRequest(http.MethodPost, "/introspect", body)
-			request.Header.Add("Authorization", fmt.Sprintf("Basic %s", testTokenCreateBasicAuth("foo", "bar")))
-			request.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+			request.Header.Add(internalHttp.Authorization, fmt.Sprintf("Basic %s", testTokenCreateBasicAuth("foo", "bar")))
+			request.Header.Add(internalHttp.ContentType, "application/x-www-form-urlencoded")
 
 			introspectHandler.ServeHTTP(rr, request)
 
@@ -165,8 +166,8 @@ func testIntrospectInvalidToken(t *testing.T, testConfig *config.Config) {
 			body := strings.NewReader(bodyString)
 
 			request := httptest.NewRequest(http.MethodPost, "/introspect", body)
-			request.Header.Add("Authorization", fmt.Sprintf("Basic %s", testTokenCreateBasicAuth("foo", "bar")))
-			request.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+			request.Header.Add(internalHttp.Authorization, fmt.Sprintf("Basic %s", testTokenCreateBasicAuth("foo", "bar")))
+			request.Header.Add(internalHttp.ContentType, "application/x-www-form-urlencoded")
 
 			introspectHandler.ServeHTTP(rr, request)
 
@@ -237,8 +238,8 @@ func testIntrospect(t *testing.T, testConfig *config.Config) {
 			body := strings.NewReader(bodyString)
 
 			request := httptest.NewRequest(http.MethodPost, "/introspect", body)
-			request.Header.Add("Authorization", fmt.Sprintf("Basic %s", testTokenCreateBasicAuth("foo", "bar")))
-			request.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+			request.Header.Add(internalHttp.Authorization, fmt.Sprintf("Basic %s", testTokenCreateBasicAuth("foo", "bar")))
+			request.Header.Add(internalHttp.ContentType, "application/x-www-form-urlencoded")
 
 			introspectHandler.ServeHTTP(rr, request)
 
@@ -308,8 +309,8 @@ func testIntrospectWithoutHint(t *testing.T, testConfig *config.Config) {
 			body := strings.NewReader(bodyString)
 
 			request := httptest.NewRequest(http.MethodPost, "/introspect", body)
-			request.Header.Add("Authorization", fmt.Sprintf("Basic %s", testTokenCreateBasicAuth("foo", "bar")))
-			request.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+			request.Header.Add(internalHttp.Authorization, fmt.Sprintf("Basic %s", testTokenCreateBasicAuth("foo", "bar")))
+			request.Header.Add(internalHttp.ContentType, "application/x-www-form-urlencoded")
 
 			introspectHandler.ServeHTTP(rr, request)
 

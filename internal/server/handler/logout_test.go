@@ -103,7 +103,7 @@ func testLogout(t *testing.T, testConfig *config.Config) {
 			request := httptest.NewRequest(http.MethodPost, "/logout", body)
 			request.AddCookie(&cookie)
 			if bodyString != "" {
-				request.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+				request.Header.Add(internalHttp.ContentType, "application/x-www-form-urlencoded")
 			}
 
 			logoutHandler.ServeHTTP(rr, request)

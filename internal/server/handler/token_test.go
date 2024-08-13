@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"stopnik/internal/config"
+	internalHttp "stopnik/internal/http"
 	"stopnik/internal/oauth2"
 	"stopnik/internal/pkce"
 	"stopnik/internal/server/validation"
@@ -93,7 +94,7 @@ func testTokenInvalidClientCredentials(t *testing.T, testConfig *config.Config) 
 		rr := httptest.NewRecorder()
 
 		request := httptest.NewRequest(http.MethodPost, "/token", nil)
-		request.Header.Add("Authorization", fmt.Sprintf("Basic %s", testTokenCreateBasicAuth("foo", "xxx")))
+		request.Header.Add(internalHttp.Authorization, fmt.Sprintf("Basic %s", testTokenCreateBasicAuth("foo", "xxx")))
 
 		tokenHandler.ServeHTTP(rr, request)
 
@@ -114,7 +115,7 @@ func testTokenMissingGrandType(t *testing.T, testConfig *config.Config) {
 		rr := httptest.NewRecorder()
 
 		request := httptest.NewRequest(http.MethodPost, "/token", nil)
-		request.Header.Add("Authorization", fmt.Sprintf("Basic %s", testTokenCreateBasicAuth("foo", "bar")))
+		request.Header.Add(internalHttp.Authorization, fmt.Sprintf("Basic %s", testTokenCreateBasicAuth("foo", "bar")))
 
 		tokenHandler.ServeHTTP(rr, request)
 
@@ -140,8 +141,8 @@ func testTokenInvalidGrandType(t *testing.T, testConfig *config.Config) {
 		body := strings.NewReader(bodyString)
 
 		request := httptest.NewRequest(http.MethodPost, "/token", body)
-		request.Header.Add("Authorization", fmt.Sprintf("Basic %s", testTokenCreateBasicAuth("foo", "bar")))
-		request.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+		request.Header.Add(internalHttp.Authorization, fmt.Sprintf("Basic %s", testTokenCreateBasicAuth("foo", "bar")))
+		request.Header.Add(internalHttp.ContentType, "application/x-www-form-urlencoded")
 
 		tokenHandler.ServeHTTP(rr, request)
 
@@ -167,8 +168,8 @@ func testTokenAuthorizationCodeGrantTypeMissingCodeParameter(t *testing.T, testC
 		body := strings.NewReader(bodyString)
 
 		request := httptest.NewRequest(http.MethodPost, "/token", body)
-		request.Header.Add("Authorization", fmt.Sprintf("Basic %s", testTokenCreateBasicAuth("foo", "bar")))
-		request.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+		request.Header.Add(internalHttp.Authorization, fmt.Sprintf("Basic %s", testTokenCreateBasicAuth("foo", "bar")))
+		request.Header.Add(internalHttp.ContentType, "application/x-www-form-urlencoded")
 
 		tokenHandler.ServeHTTP(rr, request)
 
@@ -211,8 +212,8 @@ func testTokenAuthorizationCodeGrantTypeInvalidPKCE(t *testing.T, testConfig *co
 		body := strings.NewReader(bodyString)
 
 		request := httptest.NewRequest(http.MethodPost, "/token", body)
-		request.Header.Add("Authorization", fmt.Sprintf("Basic %s", testTokenCreateBasicAuth("foo", "bar")))
-		request.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+		request.Header.Add(internalHttp.Authorization, fmt.Sprintf("Basic %s", testTokenCreateBasicAuth("foo", "bar")))
+		request.Header.Add(internalHttp.ContentType, "application/x-www-form-urlencoded")
 
 		tokenHandler.ServeHTTP(rr, request)
 
@@ -289,8 +290,8 @@ func testTokenAuthorizationCodeGrantType(t *testing.T, testConfig *config.Config
 			body := strings.NewReader(bodyString)
 
 			request := httptest.NewRequest(http.MethodPost, "/token", body)
-			request.Header.Add("Authorization", fmt.Sprintf("Basic %s", testTokenCreateBasicAuth("foo", "bar")))
-			request.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+			request.Header.Add(internalHttp.Authorization, fmt.Sprintf("Basic %s", testTokenCreateBasicAuth("foo", "bar")))
+			request.Header.Add(internalHttp.ContentType, "application/x-www-form-urlencoded")
 
 			tokenHandler.ServeHTTP(rr, request)
 
@@ -324,8 +325,8 @@ func testTokenPasswordGrantType(t *testing.T, testConfig *config.Config) {
 		body := strings.NewReader(bodyString)
 
 		request := httptest.NewRequest(http.MethodPost, "/token", body)
-		request.Header.Add("Authorization", fmt.Sprintf("Basic %s", testTokenCreateBasicAuth("foo", "bar")))
-		request.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+		request.Header.Add(internalHttp.Authorization, fmt.Sprintf("Basic %s", testTokenCreateBasicAuth("foo", "bar")))
+		request.Header.Add(internalHttp.ContentType, "application/x-www-form-urlencoded")
 
 		tokenHandler.ServeHTTP(rr, request)
 
@@ -356,8 +357,8 @@ func testTokenClientCredentialsGrantType(t *testing.T, testConfig *config.Config
 		body := strings.NewReader(bodyString)
 
 		request := httptest.NewRequest(http.MethodPost, "/token", body)
-		request.Header.Add("Authorization", fmt.Sprintf("Basic %s", testTokenCreateBasicAuth("foo", "bar")))
-		request.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+		request.Header.Add(internalHttp.Authorization, fmt.Sprintf("Basic %s", testTokenCreateBasicAuth("foo", "bar")))
+		request.Header.Add(internalHttp.ContentType, "application/x-www-form-urlencoded")
 
 		tokenHandler.ServeHTTP(rr, request)
 
@@ -407,8 +408,8 @@ func testTokenRefreshTokenGrantType(t *testing.T, testConfig *config.Config) {
 		body := strings.NewReader(bodyString)
 
 		request := httptest.NewRequest(http.MethodPost, "/token", body)
-		request.Header.Add("Authorization", fmt.Sprintf("Basic %s", testTokenCreateBasicAuth("foo", "bar")))
-		request.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+		request.Header.Add(internalHttp.Authorization, fmt.Sprintf("Basic %s", testTokenCreateBasicAuth("foo", "bar")))
+		request.Header.Add(internalHttp.ContentType, "application/x-www-form-urlencoded")
 
 		tokenHandler.ServeHTTP(rr, request)
 
