@@ -57,20 +57,19 @@ func (handler *RevokeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 		}
 
 		token := r.PostFormValue(oauth2.ParameterToken)
-		tokenTypeHint := r.PostFormValue(oauth2.ParameterTokenTypeHint)
+		tokenTypeHintParameter := r.PostFormValue(oauth2.ParameterTokenTypeHint)
 
-		if tokenTypeHint == "refresh_token" {
-			refreshToken, tokenExists := handler.tokenManager.GetRefreshToken(token)
+		tokenTypeHint, tokenTypeHintExists := oauth2.IntrospectTokenTypeFromString(tokenTypeHintParameter)
 
-			if tokenExists {
-				handler.tokenManager.RevokeRefreshToken(refreshToken)
+		if !tokenTypeHintExists {
+			accessTokenRevoked := handler.revokeAccessToken(token)
+			if !accessTokenRevoked {
+				handler.revokeRefreshToken(token)
 			}
-		} else {
-			accessToken, tokenExists := handler.tokenManager.GetAccessToken(token)
-
-			if tokenExists {
-				handler.tokenManager.RevokeAccessToken(accessToken)
-			}
+		} else if tokenTypeHint == oauth2.ItAccessToken {
+			handler.revokeAccessToken(token)
+		} else if tokenTypeHint == oauth2.ItRefreshToken {
+			handler.revokeRefreshToken(token)
 		}
 
 		w.WriteHeader(http.StatusOK)
@@ -79,4 +78,24 @@ func (handler *RevokeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 		MethodNotAllowedHandler(w, r)
 		return
 	}
+}
+
+func (handler *RevokeHandler) revokeRefreshToken(token string) bool {
+	refreshToken, tokenExists := handler.tokenManager.GetRefreshToken(token)
+
+	if tokenExists {
+		handler.tokenManager.RevokeRefreshToken(refreshToken)
+	}
+
+	return tokenExists
+}
+
+func (handler *RevokeHandler) revokeAccessToken(token string) bool {
+	accessToken, tokenExists := handler.tokenManager.GetAccessToken(token)
+
+	if tokenExists {
+		handler.tokenManager.RevokeAccessToken(accessToken)
+	}
+
+	return tokenExists
 }

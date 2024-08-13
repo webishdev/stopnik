@@ -66,19 +66,21 @@ func (handler *IntrospectHandler) ServeHTTP(w http.ResponseWriter, r *http.Reque
 		}
 
 		token := r.PostFormValue(oauth2.ParameterToken)
-		tokenTypeHint := r.PostFormValue(oauth2.ParameterTokenTypeHint)
+		tokenTypeHintParameter := r.PostFormValue(oauth2.ParameterTokenTypeHint)
+
+		tokenTypeHint, tokenTypeHintExists := oauth2.IntrospectTokenTypeFromString(tokenTypeHintParameter)
 
 		introspectResponse := IntrospectResponse{}
 
-		if tokenTypeHint == "refresh_token" {
-			handler.checkRefreshToken(token, &introspectResponse)
-		} else if tokenTypeHint == "access_token" {
-			handler.checkAccessToken(token, &introspectResponse)
-		} else {
+		if !tokenTypeHintExists {
 			accessTokenExists := handler.checkAccessToken(token, &introspectResponse)
 			if !accessTokenExists {
 				handler.checkRefreshToken(token, &introspectResponse)
 			}
+		} else if tokenTypeHint == oauth2.ItAccessToken {
+			handler.checkAccessToken(token, &introspectResponse)
+		} else if tokenTypeHint == oauth2.ItRefreshToken {
+			handler.checkRefreshToken(token, &introspectResponse)
 		}
 
 		jsonError := internalHttp.SendJson(introspectResponse, w)
