@@ -40,7 +40,7 @@ jobs:
       - name: Build static website
         run: |
           cd website
-          npm run ci
+          npm ci
           npm run build
           cp -fr build/* ../docs/static
 
