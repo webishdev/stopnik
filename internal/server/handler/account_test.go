@@ -11,6 +11,10 @@ import (
 
 func Test_Account(t *testing.T) {
 
+	testAccountNotAllowedHttpMethods(t)
+}
+
+func testAccountNotAllowedHttpMethods(t *testing.T) {
 	var testInvalidAccountHttpMethods = []string{
 		http.MethodPut,
 		http.MethodPatch,

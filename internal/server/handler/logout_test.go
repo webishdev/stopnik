@@ -41,7 +41,7 @@ func Test_Logout(t *testing.T) {
 }
 
 func testInvalidCookies(t *testing.T, testConfig *config.Config) {
-	t.Run("Invalid cookie", func(t *testing.T) {
+	t.Run("Logout with invalid cookie", func(t *testing.T) {
 		cookieManager := internalHttp.NewCookieManager(testConfig)
 
 		cookie := http.Cookie{
