@@ -102,7 +102,12 @@ func testAuthorizeInvalidLogin(t *testing.T, testConfig *config.Config) {
 
 			rr := httptest.NewRecorder()
 
-			body := strings.NewReader(fmt.Sprintf("stopnik_auth_session=%s&stopnik_username=foo&stopnik_password=xxx", uuid.NewString()))
+			bodyString := testCreateBody(
+				"stopnik_auth_session", uuid.NewString(),
+				"stopnik_username", "foo",
+				"stopnik_password", "xxx",
+			)
+			body := strings.NewReader(bodyString)
 
 			request := httptest.NewRequest(http.MethodPost, parsedUri.String(), body)
 			request.Header.Add("Content-Type", "application/x-www-form-urlencoded")
@@ -113,10 +118,9 @@ func testAuthorizeInvalidLogin(t *testing.T, testConfig *config.Config) {
 				t.Errorf("handler returned wrong status code: got %v want %v", rr.Code, http.StatusSeeOther)
 			}
 
-			locationHeader := rr.Header().Get(internalHttp.Location)
-			location, parseError := url.Parse(locationHeader)
-			if parseError != nil {
-				t.Errorf("location header could not be parsed: %v", parseError)
+			location, locationError := rr.Result().Location()
+			if locationError != nil {
+				t.Errorf("location was not provied: %v", locationError)
 			}
 
 			clientIdQueryParameter := location.Query().Get(oauth2.ParameterClientId)
@@ -184,7 +188,10 @@ func testAuthorizeEmptyLogin(t *testing.T, testConfig *config.Config) {
 
 			rr := httptest.NewRecorder()
 
-			body := strings.NewReader(fmt.Sprintf("stopnik_auth_session=%s", uuid.NewString()))
+			bodyString := testCreateBody(
+				"stopnik_auth_session", uuid.NewString(),
+			)
+			body := strings.NewReader(bodyString)
 
 			request := httptest.NewRequest(http.MethodPost, parsedUri.String(), body)
 			request.Header.Add("Content-Type", "application/x-www-form-urlencoded")
@@ -195,10 +202,9 @@ func testAuthorizeEmptyLogin(t *testing.T, testConfig *config.Config) {
 				t.Errorf("handler returned wrong status code: got %v want %v", rr.Code, http.StatusSeeOther)
 			}
 
-			locationHeader := rr.Header().Get(internalHttp.Location)
-			location, parseError := url.Parse(locationHeader)
-			if parseError != nil {
-				t.Errorf("location header could not be parsed: %v", parseError)
+			location, locationError := rr.Result().Location()
+			if locationError != nil {
+				t.Errorf("location was not provied: %v", locationError)
 			}
 
 			clientIdQueryParameter := location.Query().Get(oauth2.ParameterClientId)
@@ -269,7 +275,12 @@ func testAuthorizeValidLoginNoSession(t *testing.T, testConfig *config.Config) {
 
 			rr := httptest.NewRecorder()
 
-			body := strings.NewReader(fmt.Sprintf("stopnik_auth_session=%s&stopnik_username=foo&stopnik_password=bar", uuid.NewString()))
+			bodyString := testCreateBody(
+				"stopnik_auth_session", uuid.NewString(),
+				"stopnik_username", "foo",
+				"stopnik_password", "bar",
+			)
+			body := strings.NewReader(bodyString)
 
 			request := httptest.NewRequest(http.MethodPost, parsedUri.String(), body)
 			request.Header.Add("Content-Type", "application/x-www-form-urlencoded")
@@ -280,10 +291,9 @@ func testAuthorizeValidLoginNoSession(t *testing.T, testConfig *config.Config) {
 				t.Errorf("handler returned wrong status code: got %v want %v", rr.Code, http.StatusSeeOther)
 			}
 
-			locationHeader := rr.Header().Get(internalHttp.Location)
-			location, parseError := url.Parse(locationHeader)
-			if parseError != nil {
-				t.Errorf("location header could not be parsed: %v", parseError)
+			location, locationError := rr.Result().Location()
+			if locationError != nil {
+				t.Errorf("location was not provied: %v", locationError)
 			}
 
 			clientIdQueryParameter := location.Query().Get(oauth2.ParameterClientId)
@@ -371,7 +381,12 @@ func testAuthorizeValidLoginAuthorizationGrant(t *testing.T, testConfig *config.
 
 			rr := httptest.NewRecorder()
 
-			body := strings.NewReader(fmt.Sprintf("stopnik_auth_session=%s&stopnik_username=foo&stopnik_password=bar", id.String()))
+			bodyString := testCreateBody(
+				"stopnik_auth_session", id.String(),
+				"stopnik_username", "foo",
+				"stopnik_password", "bar",
+			)
+			body := strings.NewReader(bodyString)
 
 			request := httptest.NewRequest(http.MethodPost, parsedUri.String(), body)
 			request.Header.Add("Content-Type", "application/x-www-form-urlencoded")
@@ -382,10 +397,9 @@ func testAuthorizeValidLoginAuthorizationGrant(t *testing.T, testConfig *config.
 				t.Errorf("handler returned wrong status code: got %v want %v", rr.Code, http.StatusFound)
 			}
 
-			locationHeader := rr.Header().Get(internalHttp.Location)
-			location, parseError := url.Parse(locationHeader)
-			if parseError != nil {
-				t.Errorf("location header could not be parsed: %v", parseError)
+			location, locationError := rr.Result().Location()
+			if locationError != nil {
+				t.Errorf("location was not provied: %v", locationError)
 			}
 
 			codeQueryParameter := location.Query().Get(oauth2.ParameterCode)
@@ -455,7 +469,12 @@ func testAuthorizeValidLoginImplicitGrant(t *testing.T, testConfig *config.Confi
 
 			rr := httptest.NewRecorder()
 
-			body := strings.NewReader(fmt.Sprintf("stopnik_auth_session=%s&stopnik_username=foo&stopnik_password=bar", id.String()))
+			bodyString := testCreateBody(
+				"stopnik_auth_session", id.String(),
+				"stopnik_username", "foo",
+				"stopnik_password", "bar",
+			)
+			body := strings.NewReader(bodyString)
 
 			request := httptest.NewRequest(http.MethodPost, parsedUri.String(), body)
 			request.Header.Add("Content-Type", "application/x-www-form-urlencoded")
@@ -466,10 +485,9 @@ func testAuthorizeValidLoginImplicitGrant(t *testing.T, testConfig *config.Confi
 				t.Errorf("handler returned wrong status code: got %v want %v", rr.Code, http.StatusFound)
 			}
 
-			locationHeader := rr.Header().Get(internalHttp.Location)
-			location, parseError := url.Parse(locationHeader)
-			if parseError != nil {
-				t.Errorf("location header could not be parsed: %v", parseError)
+			location, locationError := rr.Result().Location()
+			if locationError != nil {
+				t.Errorf("location was not provied: %v", locationError)
 			}
 
 			accessTokenQueryParameter := location.Query().Get(oauth2.ParameterAccessToken)
@@ -571,10 +589,9 @@ func testAuthorizeImplicitGrant(t *testing.T, testConfig *config.Config) {
 				t.Errorf("handler returned wrong status code: got %v want %v", rr.Code, http.StatusFound)
 			}
 
-			locationHeader := rr.Header().Get(internalHttp.Location)
-			location, parseError := url.Parse(locationHeader)
-			if parseError != nil {
-				t.Errorf("location header could not be parsed: %v", parseError)
+			location, locationError := rr.Result().Location()
+			if locationError != nil {
+				t.Errorf("location was not provied: %v", locationError)
 			}
 
 			accessTokenQueryParameter := location.Query().Get(oauth2.ParameterAccessToken)
@@ -663,10 +680,9 @@ func testAuthorizeAuthorizationGrant(t *testing.T, testConfig *config.Config) {
 				t.Errorf("handler returned wrong status code: got %v want %v", rr.Code, http.StatusFound)
 			}
 
-			locationHeader := rr.Header().Get(internalHttp.Location)
-			location, parseError := url.Parse(locationHeader)
-			if parseError != nil {
-				t.Errorf("location header could not be parsed: %v", parseError)
+			location, locationError := rr.Result().Location()
+			if locationError != nil {
+				t.Errorf("location was not provied: %v", locationError)
 			}
 
 			codeQueryParameter := location.Query().Get(oauth2.ParameterCode)
@@ -760,10 +776,9 @@ func testAuthorizeInvalidResponseType(t *testing.T, testConfig *config.Config) b
 			t.Errorf("handler returned wrong status code: got %v want %v", rr.Code, http.StatusFound)
 		}
 
-		locationHeader := rr.Header().Get(internalHttp.Location)
-		location, parseError := url.Parse(locationHeader)
-		if parseError != nil {
-			t.Errorf("location header could not be parsed: %v", parseError)
+		location, locationError := rr.Result().Location()
+		if locationError != nil {
+			t.Errorf("location was not provied: %v", locationError)
 		}
 
 		errorQueryParameter := location.Query().Get(oauth2.ParameterError)

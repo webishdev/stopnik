@@ -32,10 +32,12 @@ func (handler *LogoutHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 
 		logoutRedirectFrom := r.PostFormValue("stopnik_logout_redirect")
 
-		if handler.logoutRedirect == "" {
+		if logoutRedirectFrom != "" {
 			w.Header().Set(internalHttp.Location, logoutRedirectFrom)
-		} else {
+		} else if handler.logoutRedirect != "" {
 			w.Header().Set(internalHttp.Location, handler.logoutRedirect)
+		} else {
+			w.Header().Set(internalHttp.Location, r.RequestURI)
 		}
 
 		w.WriteHeader(http.StatusSeeOther)
