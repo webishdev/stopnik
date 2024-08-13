@@ -48,7 +48,7 @@ func Test_ResponseTypeFromString(t *testing.T) {
 	for _, test := range responseTypeParameters {
 		testMessage := fmt.Sprintf("Response type %s %v", test.value, test.exists)
 		t.Run(testMessage, func(t *testing.T) {
-			if grandType, exits := ResponseTypeFromString(test.value); exits != test.exists && string(grandType) != test.expected {
+			if responseType, exits := ResponseTypeFromString(test.value); exits != test.exists && string(responseType) != test.expected {
 				t.Errorf("Response type %s not found,", test.value)
 			}
 		})
@@ -72,7 +72,7 @@ func Test_ClientTypeFromString(t *testing.T) {
 	for _, test := range clientTypeParameters {
 		testMessage := fmt.Sprintf("Client type %s %v", test.value, test.exists)
 		t.Run(testMessage, func(t *testing.T) {
-			if grandType, exits := ClientTypeFromString(test.value); exits != test.exists && string(grandType) != test.expected {
+			if clientType, exits := ClientTypeFromString(test.value); exits != test.exists && string(clientType) != test.expected {
 				t.Errorf("Client type %s not found,", test.value)
 			}
 		})
@@ -95,8 +95,31 @@ func Test_TokenTypeFromString(t *testing.T) {
 	for _, test := range tokenTypeParameters {
 		testMessage := fmt.Sprintf("Token type %s %v", test.value, test.exists)
 		t.Run(testMessage, func(t *testing.T) {
-			if grandType, exits := TokenTypeFromString(test.value); exits != test.exists && string(grandType) != test.expected {
+			if tokenType, exits := TokenTypeFromString(test.value); exits != test.exists && string(tokenType) != test.expected {
 				t.Errorf("Token type %s not found,", test.value)
+			}
+		})
+	}
+}
+
+func Test_IntrospectTokenTypeFromString(t *testing.T) {
+	type parameter struct {
+		value    string
+		exists   bool
+		expected string
+	}
+
+	var clientTypeParameters = []parameter{
+		{string(ItAccessToken), true, "access_token"},
+		{string(ItRefreshToken), true, "refresh_token"},
+		{"foo", false, ""},
+	}
+
+	for _, test := range clientTypeParameters {
+		testMessage := fmt.Sprintf("Introspect token type %s %v", test.value, test.exists)
+		t.Run(testMessage, func(t *testing.T) {
+			if introspectTokenType, exits := IntrospectTokenTypeFromString(test.value); exits != test.exists && string(introspectTokenType) != test.expected {
+				t.Errorf("Introspect token type %s not found,", test.value)
 			}
 		})
 	}

@@ -451,19 +451,6 @@ func testTokenCreateBasicAuth(username string, password string) string {
 	return base64.StdEncoding.EncodeToString([]byte(auth))
 }
 
-func testCreateBody(values ...any) string {
-	result := ""
-	for index, value := range values {
-		result += fmt.Sprintf("%v", value)
-		if index > 0 && index%2 != 0 && index < len(values)-1 {
-			result += "&"
-		} else if index < len(values)-1 {
-			result += "="
-		}
-	}
-	return result
-}
-
 func testTokenValidate(t *testing.T, tokenManager *store.TokenManager, response *http.Response) {
 	responseBody, bodyReadErr := io.ReadAll(response.Body)
 

@@ -12,8 +12,8 @@ import (
 	"strings"
 )
 
-// as described in https://datatracker.ietf.org/doc/html/rfc7662#section-2.2
-type introspectResponse struct {
+// IntrospectResponse as described in https://datatracker.ietf.org/doc/html/rfc7662#section-2.2
+type IntrospectResponse struct {
 	Active    bool             `json:"active"`
 	Scope     string           `json:"scope,omitempty"`
 	ClientId  string           `json:"client_id,omitempty"`
@@ -68,28 +68,16 @@ func (handler *IntrospectHandler) ServeHTTP(w http.ResponseWriter, r *http.Reque
 		token := r.PostFormValue(oauth2.ParameterToken)
 		tokenTypeHint := r.PostFormValue(oauth2.ParameterTokenTypeHint)
 
-		introspectResponse := introspectResponse{}
+		introspectResponse := IntrospectResponse{}
 
 		if tokenTypeHint == "refresh_token" {
-			refreshToken, tokenExists := handler.tokenManager.GetRefreshToken(token)
-
-			introspectResponse.Active = tokenExists
-
-			if tokenExists {
-				introspectResponse.Username = refreshToken.Username
-				introspectResponse.ClientId = refreshToken.ClientId
-				introspectResponse.Scope = strings.Join(refreshToken.Scopes, " ")
-			}
+			handler.checkRefreshToken(token, &introspectResponse)
+		} else if tokenTypeHint == "access_token" {
+			handler.checkAccessToken(token, &introspectResponse)
 		} else {
-			accessToken, tokenExists := handler.tokenManager.GetAccessToken(token)
-
-			introspectResponse.Active = tokenExists
-
-			if tokenExists {
-				introspectResponse.Username = accessToken.Username
-				introspectResponse.ClientId = accessToken.ClientId
-				introspectResponse.Scope = strings.Join(accessToken.Scopes, " ")
-				introspectResponse.TokenType = accessToken.TokenType
+			accessTokenExists := handler.checkAccessToken(token, &introspectResponse)
+			if !accessTokenExists {
+				handler.checkRefreshToken(token, &introspectResponse)
 			}
 		}
 
@@ -102,4 +90,33 @@ func (handler *IntrospectHandler) ServeHTTP(w http.ResponseWriter, r *http.Reque
 		MethodNotAllowedHandler(w, r)
 		return
 	}
+}
+
+func (handler *IntrospectHandler) checkRefreshToken(token string, introspectResponse *IntrospectResponse) bool {
+	refreshToken, tokenExists := handler.tokenManager.GetRefreshToken(token)
+
+	introspectResponse.Active = tokenExists
+
+	if tokenExists {
+		introspectResponse.Username = refreshToken.Username
+		introspectResponse.ClientId = refreshToken.ClientId
+		introspectResponse.Scope = strings.Join(refreshToken.Scopes, " ")
+	}
+
+	return tokenExists
+}
+
+func (handler *IntrospectHandler) checkAccessToken(token string, introspectResponse *IntrospectResponse) bool {
+	accessToken, tokenExists := handler.tokenManager.GetAccessToken(token)
+
+	introspectResponse.Active = tokenExists
+
+	if tokenExists {
+		introspectResponse.Username = accessToken.Username
+		introspectResponse.ClientId = accessToken.ClientId
+		introspectResponse.Scope = strings.Join(accessToken.Scopes, " ")
+		introspectResponse.TokenType = accessToken.TokenType
+	}
+
+	return tokenExists
 }

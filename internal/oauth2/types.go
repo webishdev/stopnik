@@ -62,6 +62,19 @@ var tokenTypeMap = map[string]TokenType{
 	"mac":    TtMAC,
 }
 
+// IntrospectTokenType as described in https://datatracker.ietf.org/doc/html/rfc7662#section-2.1
+type IntrospectTokenType string
+
+const (
+	ItAccessToken  IntrospectTokenType = "access_token"
+	ItRefreshToken IntrospectTokenType = "refresh_token"
+)
+
+var introspectTokenTypeMap = map[string]IntrospectTokenType{
+	"access_token":  ItAccessToken,
+	"refresh_token": ItRefreshToken,
+}
+
 func GrantTypeFromString(value string) (GrantType, bool) {
 	result, ok := grantTypeMap[strings.ToLower(value)]
 	return result, ok
@@ -79,5 +92,10 @@ func ClientTypeFromString(value string) (ClientType, bool) {
 
 func TokenTypeFromString(value string) (TokenType, bool) {
 	result, ok := tokenTypeMap[strings.ToLower(value)]
+	return result, ok
+}
+
+func IntrospectTokenTypeFromString(value string) (IntrospectTokenType, bool) {
+	result, ok := introspectTokenTypeMap[strings.ToLower(value)]
 	return result, ok
 }
