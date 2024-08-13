@@ -10,32 +10,29 @@ type FeatureItem = {
 
 const FeatureList: FeatureItem[] = [
   {
-    title: 'Easy to Use',
-    Svg: require('@site/static/img/undraw_docusaurus_mountain.svg').default,
+    title: 'Simple',
+    Svg: require('@site/static/img/undraw_safe_re_kiil.svg').default,
     description: (
       <>
-        Docusaurus was designed from the ground up to be easily installed and
-        used to get your website up and running quickly.
+        STOPNik was primarily designed to be a straightforward and fast authorization server, minimizing code and infrastructure dependencies.
       </>
     ),
   },
   {
-    title: 'Focus on What Matters',
-    Svg: require('@site/static/img/undraw_docusaurus_tree.svg').default,
+    title: 'Reason',
+    Svg: require('@site/static/img/undraw_click_here_re_y6uq.svg').default,
     description: (
       <>
-        Docusaurus lets you focus on your docs, and we&apos;ll do the chores. Go
-        ahead and move your docs into the <code>docs</code> directory.
+        STOPNik was created to learn OAuth2, OpenId Connect and Go.
       </>
     ),
   },
   {
-    title: 'Powered by React',
-    Svg: require('@site/static/img/undraw_docusaurus_react.svg').default,
+    title: 'Cat approved',
+    Svg: require('@site/static/img/undraw_cat_epte.svg').default,
     description: (
       <>
-        Extend or customize your website layout by reusing React. Docusaurus can
-        be extended while reusing the same header and footer.
+          STOPNik was developed with a cat in the room, which might be considered a significant endorsement of its quality.
       </>
     ),
   },
