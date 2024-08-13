@@ -43,6 +43,8 @@ func Test_Token(t *testing.T) {
 
 	testTokenMissingClientCredentials(t, testConfig)
 
+	testTokenInvalidClientCredentials(t, testConfig)
+
 	testTokenMissingGrandType(t, testConfig)
 
 	testTokenInvalidGrandType(t, testConfig)
@@ -76,6 +78,27 @@ func testTokenMissingClientCredentials(t *testing.T, testConfig *config.Config) 
 
 		if rr.Code != http.StatusBadRequest {
 			t.Errorf("handler returned wrong status code: got %v want %v", rr.Code, http.StatusBadRequest)
+		}
+	})
+}
+
+func testTokenInvalidClientCredentials(t *testing.T, testConfig *config.Config) {
+	t.Run("Missing client credentials", func(t *testing.T) {
+		requestValidator := validation.NewRequestValidator(testConfig)
+		sessionManager := store.NewSessionManager(testConfig)
+		tokenManager := store.NewTokenManager(testConfig, store.NewDefaultKeyLoader(testConfig))
+
+		tokenHandler := CreateTokenHandler(requestValidator, sessionManager, tokenManager)
+
+		rr := httptest.NewRecorder()
+
+		request := httptest.NewRequest(http.MethodPost, "/token", nil)
+		request.Header.Add("Authorization", fmt.Sprintf("Basic %s", testTokenCreateBasicAuth("foo", "xxx")))
+
+		tokenHandler.ServeHTTP(rr, request)
+
+		if rr.Code != http.StatusUnauthorized {
+			t.Errorf("handler returned wrong status code: got %v want %v", rr.Code, http.StatusUnauthorized)
 		}
 	})
 }

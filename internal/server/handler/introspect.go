@@ -41,26 +41,26 @@ func (handler *IntrospectHandler) ServeHTTP(w http.ResponseWriter, r *http.Reque
 	if r.Method == http.MethodPost {
 
 		// Check client credentials
-		client, validClientCredentials := handler.validator.ValidateClientCredentials(r)
+		client, _, validClientCredentials := handler.validator.ValidateClientCredentials(r)
 		if !validClientCredentials {
 
 			// Fall back to access token with scopes
 			authorizationHeader := r.Header.Get(internalHttp.Authorization)
 			_, scopes, userExists := handler.tokenManager.ValidateAccessToken(authorizationHeader)
 			if !userExists {
-				ForbiddenHandler(w, r)
+				oauth2.TokenErrorStatusResponseHandler(w, http.StatusUnauthorized, &oauth2.TokenErrorResponseParameter{Error: oauth2.TokenEtInvalidRequest})
 				return
 			}
 
 			hasIntrospectScope := slices.Contains(scopes, handler.config.GetIntrospectScope())
 
 			if !hasIntrospectScope {
-				ForbiddenHandler(w, r)
+				oauth2.TokenErrorStatusResponseHandler(w, http.StatusUnauthorized, &oauth2.TokenErrorResponseParameter{Error: oauth2.TokenEtInvalidRequest})
 				return
 			}
 		} else {
 			if !client.Introspect {
-				ForbiddenHandler(w, r)
+				oauth2.TokenErrorStatusResponseHandler(w, http.StatusUnauthorized, &oauth2.TokenErrorResponseParameter{Error: oauth2.TokenEtInvalidRequest})
 				return
 			}
 		}

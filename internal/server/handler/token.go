@@ -36,10 +36,14 @@ func (handler *TokenHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func (handler *TokenHandler) handlePostRequest(w http.ResponseWriter, r *http.Request) {
-	client, validClientCredentials := handler.validator.ValidateClientCredentials(r)
+	client, fallbackUsed, validClientCredentials := handler.validator.ValidateClientCredentials(r)
 	// https://datatracker.ietf.org/doc/html/rfc6749#section-2.3.1
 	if !validClientCredentials {
-		oauth2.TokenErrorResponseHandler(w, &oauth2.TokenErrorResponseParameter{Error: oauth2.TokenEtInvalidClient})
+		httpStatus := http.StatusUnauthorized
+		if fallbackUsed {
+			httpStatus = http.StatusBadRequest
+		}
+		oauth2.TokenErrorStatusResponseHandler(w, httpStatus, &oauth2.TokenErrorResponseParameter{Error: oauth2.TokenEtInvalidClient})
 		return
 	}
 

@@ -103,7 +103,7 @@ func Test_Validation(t *testing.T) {
 
 				requestValidator := NewRequestValidator(testConfig)
 
-				_, valid := requestValidator.ValidateClientCredentials(httpRequest)
+				_, _, valid := requestValidator.ValidateClientCredentials(httpRequest)
 
 				if httpMethod == http.MethodPost && test.valid != valid {
 					t.Errorf("result does not match %t != %t", test.valid, valid)
@@ -125,7 +125,7 @@ func Test_Validation(t *testing.T) {
 
 		requestValidator := NewRequestValidator(testConfig)
 
-		_, valid := requestValidator.ValidateClientCredentials(httpRequest)
+		_, _, valid := requestValidator.ValidateClientCredentials(httpRequest)
 
 		if valid {
 			t.Errorf("Client password fallback disabled, should not be able to login")

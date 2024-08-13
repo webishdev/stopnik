@@ -31,26 +31,27 @@ func (handler *RevokeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 	if r.Method == http.MethodPost {
 
 		// Check client credentials
-		client, validClientCredentials := handler.validator.ValidateClientCredentials(r)
+		client, _, validClientCredentials := handler.validator.ValidateClientCredentials(r)
 		if !validClientCredentials {
 
 			// Fall back to access token with scopes
 			authorizationHeader := r.Header.Get(internalHttp.Authorization)
 			_, scopes, userExists := handler.tokenManager.ValidateAccessToken(authorizationHeader)
 			if !userExists {
-				ForbiddenHandler(w, r)
+				oauth2.TokenErrorStatusResponseHandler(w, http.StatusUnauthorized, &oauth2.TokenErrorResponseParameter{Error: oauth2.TokenEtInvalidRequest})
 				return
 			}
 
 			hasRevokeScope := slices.Contains(scopes, handler.config.GetRevokeScope())
 
 			if !hasRevokeScope {
-				ForbiddenHandler(w, r)
+				oauth2.TokenErrorStatusResponseHandler(w, http.StatusUnauthorized, &oauth2.TokenErrorResponseParameter{Error: oauth2.TokenEtInvalidRequest})
 				return
 			}
 		} else {
 			if !client.Revoke {
-				ForbiddenHandler(w, r)
+				// https://datatracker.ietf.org/doc/html/rfc7009#section-2.2.1
+				oauth2.TokenErrorStatusResponseHandler(w, http.StatusServiceUnavailable, &oauth2.TokenErrorResponseParameter{Error: oauth2.TokenEtUnsupportedTokenType})
 				return
 			}
 		}

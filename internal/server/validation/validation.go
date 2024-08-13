@@ -46,7 +46,7 @@ func (validator *RequestValidator) ValidateFormLogin(r *http.Request) (*config.U
 	return nil, false
 }
 
-func (validator *RequestValidator) ValidateClientCredentials(r *http.Request) (*config.Client, bool) {
+func (validator *RequestValidator) ValidateClientCredentials(r *http.Request) (*config.Client, bool, bool) {
 	if r.Method == http.MethodPost {
 		log.Debug("Validating client credentials")
 		// https://datatracker.ietf.org/doc/html/rfc6749#section-2.3.1
@@ -61,28 +61,28 @@ func (validator *RequestValidator) ValidateClientCredentials(r *http.Request) (*
 		}
 
 		if clientId == "" || clientSecret == "" {
-			return nil, false
+			return nil, usingFallback, false
 		}
 
 		client, clientExists := validator.ValidateClientId(clientId)
 		if !clientExists {
-			return nil, false
+			return nil, usingFallback, false
 		}
 
 		if !client.PasswordFallbackAllowed && usingFallback {
 			log.Warn("Client password usingFallback denied in configuration for client with id %v", client.Id)
-			return nil, false
+			return nil, usingFallback, false
 		}
 
 		secretHash := crypto.Sha512Hash(clientSecret)
 
 		if secretHash != client.Secret {
-			return nil, false
+			return nil, usingFallback, false
 		}
 
-		return client, true
+		return client, usingFallback, true
 	}
-	return nil, false
+	return nil, false, false
 }
 
 func (validator *RequestValidator) ValidateClientId(clientId string) (*config.Client, bool) {

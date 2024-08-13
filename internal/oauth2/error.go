@@ -55,6 +55,8 @@ const (
 	TokenEtUnauthorizedClient   TokenErrorType = "unauthorized_client"
 	TokenEtUnsupportedGrandType TokenErrorType = "unsupported_grant_type"
 	TokenEtInvalidScope         TokenErrorType = "invalid_scope"
+	// https://datatracker.ietf.org/doc/html/rfc7009#section-2.2.1
+	TokenEtUnsupportedTokenType TokenErrorType = "unsupported_token_type"
 )
 
 var tokenErrorTypeMap = map[string]TokenErrorType{
@@ -64,6 +66,7 @@ var tokenErrorTypeMap = map[string]TokenErrorType{
 	"unauthorized_client":    TokenEtUnauthorizedClient,
 	"unsupported_grant_type": TokenEtUnsupportedGrandType,
 	"invalid_scope":          TokenEtInvalidScope,
+	"unsupported_token_type": TokenEtUnsupportedTokenType,
 }
 
 func AuthorizationErrorTypeFromString(value string) (AuthorizationErrorType, bool) {
@@ -102,7 +105,11 @@ func AuthorizationErrorResponseHandler(w http.ResponseWriter, redirectURL *url.U
 }
 
 func TokenErrorResponseHandler(w http.ResponseWriter, errorResponseParameter *TokenErrorResponseParameter) {
-	err := internalHttp.SendJsonWithStatus(errorResponseParameter, w, http.StatusBadRequest)
+	TokenErrorStatusResponseHandler(w, http.StatusBadRequest, errorResponseParameter)
+}
+
+func TokenErrorStatusResponseHandler(w http.ResponseWriter, statusCode int, errorResponseParameter *TokenErrorResponseParameter) {
+	err := internalHttp.SendJsonWithStatus(errorResponseParameter, w, statusCode)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 	}
