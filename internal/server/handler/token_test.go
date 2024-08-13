@@ -83,7 +83,7 @@ func testTokenMissingClientCredentials(t *testing.T, testConfig *config.Config) 
 }
 
 func testTokenInvalidClientCredentials(t *testing.T, testConfig *config.Config) {
-	t.Run("Missing client credentials", func(t *testing.T) {
+	t.Run("Invalid client credentials", func(t *testing.T) {
 		requestValidator := validation.NewRequestValidator(testConfig)
 		sessionManager := store.NewSessionManager(testConfig)
 		tokenManager := store.NewTokenManager(testConfig, store.NewDefaultKeyLoader(testConfig))
