@@ -9,6 +9,7 @@ bin/
 .lint_result/
 *.crt
 *.key
+dist/
 
 # Default file created by go build command
 stopnik
