@@ -135,7 +135,7 @@ jobs:
           context: .
           platforms: ${{ matrix.target }}
           push: true
-          tags: ghcr.io/${{ github.repository_owner }}/stopnik:${{ inputs.stopnik_version }}
+          tags: ghcr.io/${{ github.repository_owner }}/stopnik:${{ inputs.stopnik_version }},ghcr.io/${{ github.repository_owner }}/stopnik:latest
           labels: ${{ steps.meta.outputs.labels }}
 
       - name: Generate artifact attestation
