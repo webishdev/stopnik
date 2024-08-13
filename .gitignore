@@ -10,6 +10,7 @@ bin/
 *.crt
 *.key
 dist/
+docs/static/
 
 # Default file created by go build command
 stopnik
