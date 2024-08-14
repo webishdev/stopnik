@@ -7,9 +7,9 @@ sidebar_position: 3
 
 The possible configuration options are listed in the next section.
 
-## `config.yml`
+## Configuration file
 
-The configuration file may contain different root options which are described here as followed
+The configuration file (e.g. `config.yml`) may contain different root options which are described here as followed
 
 | Property  | Description                  |
 |-----------|------------------------------|
@@ -17,9 +17,9 @@ The configuration file may contain different root options which are described he
 | `clients` | List of clients              |
 | `users`   | List of users                |
 
-### `server`
+### General server configuration 
 
-General server configuration
+Root entry named `server`
 
 | Property         | Description                              |
 |------------------|------------------------------------------|
@@ -31,9 +31,11 @@ General server configuration
 | `tokenKeys`      | Public and private keys to sign tokens   |
 | `tls`            | Configuration for TLS                    |
 
-# `tokenKeys`
+#### Token keys
 
 Public and private keys to sign tokens
+
+Entry `server`.`tokenKeys`
 
 | Property | Description      |
 |----------|------------------|
@@ -41,27 +43,33 @@ Public and private keys to sign tokens
 | `key`    | Key file         |
 
 
-# `tls`
+#### TLS
 
 Public and private keys to sign tokens
+
+Entry `server`.`tls`
 
 | Property | Description                              |
 |----------|------------------------------------------|
 | `addr`   | Go like address, may contain IP and port |
 | `keys`   | Public and private keys for TLS          |
 
-# `keys`
+##### TLS keys
 
 Public and private keys for TLS
+
+Entry `tls`.`keys`
 
 | Property | Description      |
 |----------|------------------|
 | `cert`   | Certificate file |
 | `key`    | Key file         |
 
-### `clients`
+### Clients
 
 List of clients
+
+Root entry `clients`
 
 Each entry may contain the following options
 
@@ -74,9 +82,11 @@ Each entry may contain the following options
 | `redirects`  | List of redirects URIs     |
 | `claims`     | List of claims             |
 
-# `calims`
+#### Claims
 
 List of claims
+
+Entry `clients[n]`.`calims`
 
 Each entry may contain the following options
 
@@ -85,9 +95,11 @@ Each entry may contain the following options
 | `name`   | Name        |
 | `value`  | Value       |
 
-### `users`
+### Users
 
 List of users
+
+Root entry `users`
 
 Each entry may contain the following options
 
