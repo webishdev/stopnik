@@ -31,6 +31,7 @@ Root entry named `server`
 | `tokenKeys`      | Public and private keys to sign tokens   |
 | `tls`            | Configuration for TLS                    |
 
+
 #### Token keys
 
 Public and private keys to sign tokens
@@ -73,14 +74,23 @@ Root entry `clients`
 
 Each entry may contain the following options
 
-| Property     | Description                |
-|--------------|----------------------------|
-| `id`         | The id of the client       |
-| `secret`     | SHA512 hashed secret       |
-| `accessTTL`  | Access token time to live  |
-| `refreshTTL` | Refresh token time to live |
-| `redirects`  | List of redirects URIs     |
-| `claims`     | List of claims             |
+| Property                  | Description                            |
+|---------------------------|----------------------------------------|
+| `id`                      | The id of the client                   |
+| `secret`                  | SHA512 hashed secret                   |
+| `type`                    | TODO                                   |
+| `accessTTL`               | Access token time to live              |
+| `refreshTTL`              | Refresh token time to live             |
+| `introspect`              | Introspection scope                    |
+| `revoke`                  | Revocation scope                       |
+| `redirects`               | List of redirects URIs                 |
+| `opaqueToken`             | Use opaque token                       |
+| `passwordFallbackAllowed` | Form auth allowed                      |
+| `claims`                  | List of claims                         |
+| `issuer`                  | Issuer                                 |
+| `audience`                | Audience                               |
+| `tokenKeys`               | Public and private keys to sign tokens |
+| `sessionTimeoutSeconds`   | Session timeout in seconds             |            |                       |
 
 #### Claims
 
