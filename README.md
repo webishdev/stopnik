@@ -22,7 +22,7 @@ and [Go](https://go.dev/).
 The logo mascot was mostly inspired by the nice work of [gopherize.me](https://github.com/matryer/gopherize.me) and redrawn by hand as a vector graphic with additional body and a cool hat.
 
 ![build](https://github.com/webishdev/stopnik/actions/workflows/build.yml/badge.svg)
-![report](https://goreportcard.com/badge/github.com/webishdev/stopnik)
+[![report](https://goreportcard.com/badge/github.com/webishdev/stopnik)](https://goreportcard.com/report/github.com/webishdev/stopnik)
 
 ## STOPnik alternatives
 
