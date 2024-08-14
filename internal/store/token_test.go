@@ -2,10 +2,10 @@ package store
 
 import (
 	"fmt"
+	"github.com/webishdev/stopnik/internal/config"
+	internalHttp "github.com/webishdev/stopnik/internal/http"
+	"github.com/webishdev/stopnik/internal/oauth2"
 	"reflect"
-	"stopnik/internal/config"
-	internalHttp "stopnik/internal/http"
-	"stopnik/internal/oauth2"
 	"testing"
 )
 

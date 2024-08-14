@@ -1,10 +1,10 @@
 package oauth2
 
 import (
+	internalHttp "github.com/webishdev/stopnik/internal/http"
+	"github.com/webishdev/stopnik/log"
 	"net/http"
 	"net/url"
-	internalHttp "stopnik/internal/http"
-	"stopnik/log"
 	"strings"
 )
 

@@ -1,4 +1,4 @@
-module stopnik
+module github.com/webishdev/stopnik
 
 go 1.22.6
 

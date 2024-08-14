@@ -2,9 +2,9 @@ package validation
 
 import (
 	"fmt"
+	"github.com/webishdev/stopnik/internal/config"
+	"github.com/webishdev/stopnik/internal/oauth2"
 	"net/http"
-	"stopnik/internal/config"
-	"stopnik/internal/oauth2"
 	"testing"
 )
 

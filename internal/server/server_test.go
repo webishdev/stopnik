@@ -3,10 +3,10 @@ package server
 import (
 	"errors"
 	"fmt"
+	"github.com/webishdev/stopnik/internal/config"
 	"net"
 	"net/http"
 	"slices"
-	"stopnik/internal/config"
 	"sync"
 	"sync/atomic"
 	"testing"

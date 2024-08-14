@@ -1,7 +1,7 @@
 package store
 
 import (
-	"stopnik/log"
+	"github.com/webishdev/stopnik/log"
 	"sync"
 	"time"
 )

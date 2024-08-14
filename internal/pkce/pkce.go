@@ -3,7 +3,7 @@ package pkce
 import (
 	"crypto/sha256"
 	"encoding/base64"
-	"stopnik/log"
+	"github.com/webishdev/stopnik/log"
 )
 
 func ValidatePKCE(method CodeChallengeMethod, value string, verifier string) bool {

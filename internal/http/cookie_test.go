@@ -2,8 +2,8 @@ package http
 
 import (
 	"fmt"
+	"github.com/webishdev/stopnik/internal/config"
 	"net/http"
-	"stopnik/internal/config"
 	"testing"
 	"time"
 )

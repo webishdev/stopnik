@@ -1,11 +1,11 @@
 package handler
 
 import (
+	"github.com/webishdev/stopnik/internal/template/assets"
+	"github.com/webishdev/stopnik/log"
 	"mime"
 	"net/http"
 	"path"
-	"stopnik/internal/template/assets"
-	"stopnik/log"
 	"strings"
 )
 

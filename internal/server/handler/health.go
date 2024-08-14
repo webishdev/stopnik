@@ -1,10 +1,10 @@
 package handler
 
 import (
+	internalHttp "github.com/webishdev/stopnik/internal/http"
+	"github.com/webishdev/stopnik/internal/store"
+	"github.com/webishdev/stopnik/log"
 	"net/http"
-	internalHttp "stopnik/internal/http"
-	"stopnik/internal/store"
-	"stopnik/log"
 )
 
 type Health struct {

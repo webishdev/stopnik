@@ -2,11 +2,11 @@ package handler
 
 import (
 	"github.com/google/uuid"
+	internalHttp "github.com/webishdev/stopnik/internal/http"
+	"github.com/webishdev/stopnik/internal/server/validation"
+	"github.com/webishdev/stopnik/internal/template"
+	"github.com/webishdev/stopnik/log"
 	"net/http"
-	internalHttp "stopnik/internal/http"
-	"stopnik/internal/server/validation"
-	"stopnik/internal/template"
-	"stopnik/log"
 )
 
 type AccountHandler struct {

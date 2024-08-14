@@ -2,10 +2,10 @@ package oauth2
 
 import (
 	"fmt"
+	internalHttp "github.com/webishdev/stopnik/internal/http"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
-	internalHttp "stopnik/internal/http"
 	"testing"
 )
 

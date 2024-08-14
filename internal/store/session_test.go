@@ -1,8 +1,8 @@
 package store
 
 import (
+	"github.com/webishdev/stopnik/internal/config"
 	"reflect"
-	"stopnik/internal/config"
 	"testing"
 )
 

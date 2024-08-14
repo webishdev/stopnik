@@ -1,7 +1,7 @@
 package handler
 
 import (
-	"stopnik/internal/config"
+	"github.com/webishdev/stopnik/internal/config"
 	"testing"
 )
 

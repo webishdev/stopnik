@@ -1,7 +1,7 @@
 package store
 
 import (
-	"stopnik/internal/config"
+	"github.com/webishdev/stopnik/internal/config"
 )
 
 type AuthSession struct {

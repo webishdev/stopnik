@@ -1,11 +1,11 @@
 package validation
 
 import (
+	"github.com/webishdev/stopnik/internal/config"
+	"github.com/webishdev/stopnik/internal/crypto"
+	"github.com/webishdev/stopnik/internal/oauth2"
+	"github.com/webishdev/stopnik/log"
 	"net/http"
-	"stopnik/internal/config"
-	"stopnik/internal/crypto"
-	"stopnik/internal/oauth2"
-	"stopnik/log"
 )
 
 type RequestValidator struct {

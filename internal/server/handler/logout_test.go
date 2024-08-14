@@ -2,10 +2,10 @@ package handler
 
 import (
 	"fmt"
+	"github.com/webishdev/stopnik/internal/config"
+	internalHttp "github.com/webishdev/stopnik/internal/http"
 	"net/http"
 	"net/http/httptest"
-	"stopnik/internal/config"
-	internalHttp "stopnik/internal/http"
 	"strings"
 	"testing"
 )

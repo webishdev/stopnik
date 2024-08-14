@@ -1,8 +1,8 @@
 package handler
 
 import (
+	"github.com/webishdev/stopnik/log"
 	"net/http"
-	"stopnik/log"
 )
 
 func MethodNotAllowedHandler(w http.ResponseWriter, r *http.Request) {

@@ -4,8 +4,8 @@ import (
 	"crypto/rand"
 	"errors"
 	"fmt"
+	"github.com/webishdev/stopnik/log"
 	"math/big"
-	"stopnik/log"
 )
 
 type Keys struct {

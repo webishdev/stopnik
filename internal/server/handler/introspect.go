@@ -1,14 +1,14 @@
 package handler
 
 import (
+	"github.com/webishdev/stopnik/internal/config"
+	internalHttp "github.com/webishdev/stopnik/internal/http"
+	"github.com/webishdev/stopnik/internal/oauth2"
+	"github.com/webishdev/stopnik/internal/server/validation"
+	"github.com/webishdev/stopnik/internal/store"
+	"github.com/webishdev/stopnik/log"
 	"net/http"
 	"slices"
-	"stopnik/internal/config"
-	internalHttp "stopnik/internal/http"
-	"stopnik/internal/oauth2"
-	"stopnik/internal/server/validation"
-	"stopnik/internal/store"
-	"stopnik/log"
 	"strings"
 )
 

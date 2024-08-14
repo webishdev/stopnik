@@ -3,13 +3,13 @@ package handler
 import (
 	"fmt"
 	"github.com/google/uuid"
+	"github.com/webishdev/stopnik/internal/config"
+	internalHttp "github.com/webishdev/stopnik/internal/http"
+	"github.com/webishdev/stopnik/internal/oauth2"
+	"github.com/webishdev/stopnik/internal/server/validation"
+	"github.com/webishdev/stopnik/internal/store"
 	"net/http"
 	"net/http/httptest"
-	"stopnik/internal/config"
-	internalHttp "stopnik/internal/http"
-	"stopnik/internal/oauth2"
-	"stopnik/internal/server/validation"
-	"stopnik/internal/store"
 	"strings"
 	"testing"
 )

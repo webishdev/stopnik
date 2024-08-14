@@ -3,9 +3,9 @@ package http
 import (
 	"github.com/lestrrat-go/jwx/v2/jwa"
 	"github.com/lestrrat-go/jwx/v2/jwt"
+	"github.com/webishdev/stopnik/internal/config"
+	"github.com/webishdev/stopnik/log"
 	"net/http"
-	"stopnik/internal/config"
-	"stopnik/log"
 	"time"
 )
 

@@ -3,12 +3,12 @@ package main
 import (
 	"flag"
 	"fmt"
+	"github.com/webishdev/stopnik/internal/config"
+	"github.com/webishdev/stopnik/internal/server"
+	logger "github.com/webishdev/stopnik/log"
 	"gopkg.in/yaml.v3"
 	"os"
 	"os/signal"
-	"stopnik/internal/config"
-	"stopnik/internal/server"
-	logger "stopnik/log"
 	"syscall"
 )
 
