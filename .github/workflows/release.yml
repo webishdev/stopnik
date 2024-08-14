@@ -104,7 +104,7 @@ jobs:
           path: bin
 
       - name: Display structure of downloaded files
-        run: ls -R
+        run: ls -hR
 
       - name: Extract some files
         run: |
@@ -114,7 +114,7 @@ jobs:
           echo "UPDATED_TARGET=$UPDATED_TARGET" >> $GITHUB_ENV
           mkdir dist
           unzip bin/stopnik.${{ inputs.stopnik_version }}-$UPDATED_TARGET.zip -d dist
-          mv dist/stopnik* dist/stopnik
+          ls -hR
 
       - name: Log in to the Container registry
         uses: docker/login-action@v3
@@ -134,8 +134,8 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: .
-          file: Dockerfile_${{ env.UPDATED_TARGET }}
           platforms: ${{ matrix.target }}
+          build-args: STOPNIK_VERSION=${{ inputs.stopnik_version }}
           push: true
           tags: ghcr.io/${{ github.repository_owner }}/stopnik:${{ inputs.stopnik_version }},ghcr.io/${{ github.repository_owner }}/stopnik:latest
           labels: ${{ steps.meta.outputs.labels }}

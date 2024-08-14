@@ -48,7 +48,7 @@ function build() {
   if [[ "$GO_OS" == "darwin" ]]; then
       OS_NAME="macos"
   fi
-  FILE_NAME="$NAME.$VERSION-$GO_ARCH"
+  FILE_NAME="$NAME.$VERSION-$OS_NAME-$GO_ARCH"
   DIR="$OS_NAME-$GO_ARCH"
   echo "Build $NICE_NAME version $VERSION ($GIT_HASH) for $GO_OS $GO_ARCH into $DIR"
   GOOS=$GO_OS GOARCH=$GO_ARCH go build -ldflags="-s -w -X 'main.Version=$VERSION' -X 'main.GitHash=$GIT_HASH'" -o bin/$DIR/$FILE_NAME$FILE_EXTENSION main.go
@@ -68,7 +68,7 @@ function build() {
   fi
 
   echo "Create SHA256 sum for $GO_OS $GO_ARCH"
-  shasum -a 256 $FILE_NAME$FILE_EXTENSION >> sha256sum.txt
+  shasum -a 256 $FILE_NAME$FILE_EXTENSION >> stopnik.${VERSION}-${OS_NAME}-${GO_ARCH}-sha256sum.txt
   if [[ "$ZIPPER" = true ]]; then
     ZIP_NAME="${NAME}.${VERSION}-${OS_NAME}-${GO_ARCH}.zip"
     echo "Package into ZIP: ${ZIP_NAME}"
@@ -116,8 +116,8 @@ function task_build() {
     echo
     exit 1
   fi
-  if [[ ! "$3" =~ ^[0-9].[0-9]$|^ci$|^dev$ ]]; then
-    echo "Wrong version format. Should be x.y, dev or ci"
+  if [[ ! "$3" =~ ^v[0-9].[0-9]$|^ci$|^dev$ ]]; then
+    echo "Wrong version format. Should be vX.Y, dev or ci"
     echo
     exit 1
   fi
@@ -165,8 +165,8 @@ function task_build_all() {
     echo
     exit 1
   fi
-  if [[ ! "$1" =~ ^[0-9].[0-9]$|^ci$|^dev$ ]]; then
-    echo "Wrong version format. Should be x.y, dev or ci"
+  if [[ ! "$1" =~ ^v[0-9].[0-9]$|^ci$|^dev$ ]]; then
+    echo "Wrong version format. Should be vX.Y, dev or ci"
     echo
     exit 1
   fi
