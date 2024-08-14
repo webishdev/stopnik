@@ -1,0 +1,57 @@
+---
+sidebar_position: 3
+---
+# Configuration
+
+**STOPnik** configuration is a simple `YAML` file.
+
+The possible configuration options are listed in the next section.
+
+## config.yml
+
+TODO
+
+## Example
+
+The shown `config.yml` is used during development and can be found [here](https://github.com/webishdev/stopnik/blob/main/config.yml) in the repository.
+
+To be able to use it, the referenced `server.crt` and `server.key` must be created as self-signed certificate.
+
+```yaml
+server:
+  #logLevel: error
+  authCookieName: stopnik_auth
+  #logoutRedirect: http://localhost:8080
+  secret: WRYldij9ebtDZ5VJSsxNAfCZ
+  tokenKeys:
+    cert: server.crt
+    key: server.key
+  addr: :8080
+  tls:
+    addr: :8081
+    keys:
+      cert: server.crt
+      key: server.key
+clients:
+- id: testclient
+  secret: d82c4eb5261cb9c8aa9855edd67d1bd10482f41529858d925094d173fa662aa91ff39bc5b188615273484021dfb16fd8284cf684ccf0fc795be3aa2fc1e6c181
+  accessTTL: 5
+  refreshTTL: 15
+  type: confidential
+  redirects:
+    - https://oauth.pstmn.io/v1/callback
+  claims:
+    - name: foo
+      value: bar
+- id: testclient2
+  secret: d82c4eb5261cb9c8aa9855edd67d1bd10482f41529858d925094d173fa662aa91ff39bc5b188615273484021dfb16fd8284cf684ccf0fc795be3aa2fc1e6c181
+  accessTTL: 5
+  refreshTTL: 15
+  opaqueToken: true
+  type: confidential
+  redirects:
+    - https://oauth.pstmn.io/v1/callback
+users:
+- username: foo
+  password: d82c4eb5261cb9c8aa9855edd67d1bd10482f41529858d925094d173fa662aa91ff39bc5b188615273484021dfb16fd8284cf684ccf0fc795be3aa2fc1e6c181
+```

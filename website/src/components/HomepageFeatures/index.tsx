@@ -19,17 +19,17 @@ const FeatureList: FeatureItem[] = [
     ),
   },
   {
-    title: 'Reason',
-    Svg: require('@site/static/img/undraw_click_here_re_y6uq.svg').default,
+    title: 'Fast',
+    Svg: require('@site/static/img/undraw_stars_re_6je7.svg').default,
     description: (
       <>
-        STOPNik was created to learn OAuth2, OpenId Connect and Go.
+        STOPNik was created to learn OAuth2, OpenId Connect and Go. It leverages the built-in HTTP stack and Go channels.
       </>
     ),
   },
   {
     title: 'Cat approved',
-    Svg: require('@site/static/img/undraw_cat_epte.svg').default,
+    Svg: require('@site/static/img/undraw_playful_cat_re_ac9g.svg').default,
     description: (
       <>
           STOPNik was developed with a cat in the room, which might be considered a significant endorsement of its quality.

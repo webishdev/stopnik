@@ -13,7 +13,7 @@ function HomepageHeader() {
   return (
     <header className={clsx('hero hero--primary', styles.heroBanner)}>
       <div className="container">
-        <StopnikLogo title="Docusaurus Logo" className="logo" />;
+        <StopnikLogo title="STOPnik Logo" className="logo" />;
         <Heading as="h1" className="hero__title">
           {siteConfig.title}
         </Heading>
@@ -21,7 +21,7 @@ function HomepageHeader() {
         <div className={styles.buttons}>
           <Link
             className="button button--secondary button--lg"
-            to="/docs/intro">
+            to="docs/introduction/getting-started">
             Getting started
           </Link>
         </div>
@@ -31,11 +31,10 @@ function HomepageHeader() {
 }
 
 export default function Home(): JSX.Element {
-  const {siteConfig} = useDocusaurusContext();
   return (
     <Layout
-      title={`Hello from ${siteConfig.title}`}
-      description="Description will go into a meta tag in <head />">
+      title="OAuth2, OIDC server"
+      description="STOPnik OAuth2, OIDC server">
       <HomepageHeader />
       <main>
         <HomepageFeatures />
