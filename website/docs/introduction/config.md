@@ -7,9 +7,94 @@ sidebar_position: 3
 
 The possible configuration options are listed in the next section.
 
-## config.yml
+## `config.yml`
 
-TODO
+The configuration file may contain different root options which are described here as followed
+
+| Property  | Description                  |
+|-----------|------------------------------|
+| `server`  | General server configuration |
+| `clients` | List of clients              |
+| `users`   | List of users                |
+
+### `server`
+
+General server configuration
+
+| Property         | Description                              |
+|------------------|------------------------------------------|
+| `logLevel`       | Log level                                |
+| `authCookieName` | Name of the cookie which will be used    |
+| `logoutRedirect` | Where to redirect user after logout      |
+| `addr`           | Go like address, may contain IP and port |
+| `secret`         | Server secret                            |
+| `tokenKeys`      | Public and private keys to sign tokens   |
+| `tls`            | Configuration for TLS                    |
+
+# `tokenKeys`
+
+Public and private keys to sign tokens
+
+| Property | Description      |
+|----------|------------------|
+| `cert`   | Certificate file |
+| `key`    | Key file         |
+
+
+# `tls`
+
+Public and private keys to sign tokens
+
+| Property | Description                              |
+|----------|------------------------------------------|
+| `addr`   | Go like address, may contain IP and port |
+| `keys`   | Public and private keys for TLS          |
+
+# `keys`
+
+Public and private keys for TLS
+
+| Property | Description      |
+|----------|------------------|
+| `cert`   | Certificate file |
+| `key`    | Key file         |
+
+### `clients`
+
+List of clients
+
+Each entry may contain the following options
+
+| Property     | Description                |
+|--------------|----------------------------|
+| `id`         | The id of the client       |
+| `secret`     | SHA512 hashed secret       |
+| `accessTTL`  | Access token time to live  |
+| `refreshTTL` | Refresh token time to live |
+| `redirects`  | List of redirects URIs     |
+| `claims`     | List of claims             |
+
+# `calims`
+
+List of claims
+
+Each entry may contain the following options
+
+| Property | Description |
+|----------|-------------|
+| `name`   | Name        |
+| `value`  | Value       |
+
+### `users`
+
+List of users
+
+Each entry may contain the following options
+
+| Property   | Description            |
+|------------|------------------------|
+| `username` | Username               |
+| `password` | SHA512 hashed password |
 
 ## Example
 
