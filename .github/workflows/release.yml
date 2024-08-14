@@ -82,6 +82,7 @@ jobs:
       - name: Retrieve artifacts
         uses: actions/download-artifact@v4
         with:
+          pattern: build_result**
           merge-multiple: true
           path: bin
 
@@ -132,6 +133,7 @@ jobs:
       - name: Retrieve artifacts
         uses: actions/download-artifact@v4
         with:
+          pattern: build_result**
           merge-multiple: true
           path: bin
 
