@@ -32,28 +32,14 @@ Using **STOPnik** within a container is more recommended way to start **STOPnik*
 
 Currently, the container images are hosted at the GitHub container registry.
 
-Login into the GitHub container registry is necessary.
-
-The used password is a private access token which needs the `read:packages` scope.
-
 <Tabs>
   <TabItem value="docker" label="Docker">
-Login into the registry
-```bash
-docker login ghcr.io -u <username>
-```
-
 Pull the image
 ```bash
 docker pull ghcr.io/webishdev/stopnik:latest
 ```
   </TabItem>
   <TabItem value="podman" label="Podman">
-Login into the registry
-```bash
-podman login ghcr.io -u <username>
-```
-
 Pull the image
 ```bash
 podman pull ghcr.io/webishdev/stopnik:latest
