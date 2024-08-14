@@ -100,7 +100,7 @@ const config: Config = {
               to: 'docs/introduction/getting-started',
             },
             {
-              label: 'Getting started',
+              label: 'Configuration',
               to: 'docs/introduction/config',
             },
           ],
