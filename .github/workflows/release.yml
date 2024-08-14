@@ -90,9 +90,6 @@ jobs:
       packages: write
       attestations: write
       id-token: write
-    strategy:
-      matrix:
-        target: [ "linux/amd64", "linux/arm64" ]
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -108,12 +105,8 @@ jobs:
 
       - name: Extract some files
         run: |
-          RAW_TARGET='${{ matrix.target }}'
-          UPDATED_TARGET="${RAW_TARGET/\//-}"
-          echo "Will extract ZIP from bin/stopnik.${{ inputs.stopnik_version }}-$UPDATED_TARGET.zip into dist/"
-          echo "UPDATED_TARGET=$UPDATED_TARGET" >> $GITHUB_ENV
           mkdir dist
-          unzip bin/stopnik.${{ inputs.stopnik_version }}-$UPDATED_TARGET.zip -d dist
+          unzip "bin/stopnik*" -d dist
           ls -hR
 
       - name: Log in to the Container registry
@@ -134,7 +127,7 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: .
-          platforms: ${{ matrix.target }}
+          platforms: linux/amd64,linux/arm64
           build-args: STOPNIK_VERSION=${{ inputs.stopnik_version }}
           push: true
           tags: ghcr.io/${{ github.repository_owner }}/stopnik:${{ inputs.stopnik_version }},ghcr.io/${{ github.repository_owner }}/stopnik:latest
