@@ -60,7 +60,7 @@ func (handler *IntrospectHandler) ServeHTTP(w http.ResponseWriter, r *http.Reque
 			}
 		} else {
 			if !client.Introspect {
-				oauth2.TokenErrorStatusResponseHandler(w, http.StatusUnauthorized, &oauth2.TokenErrorResponseParameter{Error: oauth2.TokenEtInvalidRequest})
+				oauth2.TokenErrorStatusResponseHandler(w, http.StatusServiceUnavailable, &oauth2.TokenErrorResponseParameter{Error: oauth2.TokenEtInvalidRequest})
 				return
 			}
 		}

@@ -25,6 +25,13 @@ func Test_Revoke(t *testing.T) {
 				RefreshTTL: 100,
 				Revoke:     true,
 			},
+			{
+				Id:         "bar",
+				Secret:     "d82c4eb5261cb9c8aa9855edd67d1bd10482f41529858d925094d173fa662aa91ff39bc5b188615273484021dfb16fd8284cf684ccf0fc795be3aa2fc1e6c181",
+				Redirects:  []string{"https://example.com/callback"},
+				RefreshTTL: 100,
+				Revoke:     false,
+			},
 		},
 		Users: []config.User{
 			{
@@ -50,6 +57,8 @@ func Test_Revoke(t *testing.T) {
 	testRevoke(t, testConfig)
 
 	testRevokeWithoutHint(t, testConfig)
+
+	testRevokeDisabled(t, testConfig)
 
 	testRevokeNotAllowedHttpMethods(t)
 }
@@ -316,6 +325,71 @@ func testRevokeWithoutHint(t *testing.T, testConfig *config.Config) {
 				if refreshTokenExists {
 					t.Errorf("refresh token should have been revoked")
 				}
+			}
+
+		})
+	}
+}
+
+func testRevokeDisabled(t *testing.T, testConfig *config.Config) {
+	type revokeParameter struct {
+		tokenHint oauth2.IntrospectTokenType
+	}
+
+	var revokeParameters = []revokeParameter{
+		{oauth2.ItAccessToken},
+		{oauth2.ItRefreshToken},
+	}
+
+	for _, test := range revokeParameters {
+		testMessage := fmt.Sprintf("Revoke for disabld client %v", test.tokenHint)
+		t.Run(testMessage, func(t *testing.T) {
+			client, _ := testConfig.GetClient("bar")
+			user, _ := testConfig.GetUser("foo")
+			scopes := []string{"foo:bar", "moo:abc"}
+
+			id := uuid.New()
+			authSession := &store.AuthSession{
+				Id:                  id.String(),
+				Redirect:            "https://example.com/callback",
+				AuthURI:             "https://example.com/auth",
+				CodeChallenge:       "",
+				CodeChallengeMethod: "",
+				ClientId:            client.Id,
+				ResponseType:        string(oauth2.RtCode),
+				Scopes:              scopes,
+				State:               "xyz",
+			}
+
+			requestValidator := validation.NewRequestValidator(testConfig)
+			sessionManager := store.NewSessionManager(testConfig)
+			tokenManager := store.NewTokenManager(testConfig, store.NewDefaultKeyLoader(testConfig))
+			sessionManager.StartSession(authSession)
+			accessTokenResponse := tokenManager.CreateAccessTokenResponse(user.Username, client, scopes)
+
+			revokeHandler := CreateRevokeHandler(testConfig, requestValidator, tokenManager)
+
+			token := accessTokenResponse.AccessTokenKey
+			if test.tokenHint == oauth2.ItRefreshToken {
+				token = accessTokenResponse.RefreshTokenKey
+			}
+
+			rr := httptest.NewRecorder()
+
+			bodyString := testCreateBody(
+				oauth2.ParameterToken, token,
+				oauth2.ParameterTokenTypeHint, test.tokenHint,
+			)
+			body := strings.NewReader(bodyString)
+
+			request := httptest.NewRequest(http.MethodPost, "/revoke", body)
+			request.Header.Add(internalHttp.Authorization, fmt.Sprintf("Basic %s", testTokenCreateBasicAuth("bar", "bar")))
+			request.Header.Add(internalHttp.ContentType, "application/x-www-form-urlencoded")
+
+			revokeHandler.ServeHTTP(rr, request)
+
+			if rr.Code != http.StatusServiceUnavailable {
+				t.Errorf("handler returned wrong status code: got %v want %v", rr.Code, http.StatusServiceUnavailable)
 			}
 
 		})
