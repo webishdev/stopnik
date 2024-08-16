@@ -1,4 +1,4 @@
-package handler
+package authorize
 
 import (
 	"fmt"
@@ -7,6 +7,7 @@ import (
 	internalHttp "github.com/webishdev/stopnik/internal/http"
 	"github.com/webishdev/stopnik/internal/oauth2"
 	"github.com/webishdev/stopnik/internal/pkce"
+	handler2 "github.com/webishdev/stopnik/internal/server/handler"
 	"github.com/webishdev/stopnik/internal/server/validation"
 	"github.com/webishdev/stopnik/internal/store"
 	"github.com/webishdev/stopnik/internal/template"
@@ -52,7 +53,7 @@ func (handler *AuthorizeHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 
 		handler.handlePostRequest(w, r, user)
 	} else {
-		MethodNotAllowedHandler(w, r)
+		handler2.MethodNotAllowedHandler(w, r)
 		return
 	}
 }
@@ -62,7 +63,7 @@ func (handler *AuthorizeHandler) handleGetRequest(w http.ResponseWriter, r *http
 	client, exists := handler.validator.ValidateClientId(clientId)
 	if !exists {
 		log.Error("Invalid client id %s", clientId)
-		BadRequestHandler(w, r)
+		handler2.BadRequestHandler(w, r)
 		return
 	}
 
@@ -71,7 +72,7 @@ func (handler *AuthorizeHandler) handleGetRequest(w http.ResponseWriter, r *http
 	redirectURL, urlParseError := url.Parse(redirect)
 	if urlParseError != nil {
 		log.Error("Could not parse redirect URI %s for client %s", redirect, client.Id)
-		BadRequestHandler(w, r)
+		handler2.BadRequestHandler(w, r)
 		return
 	}
 
@@ -162,7 +163,7 @@ func (handler *AuthorizeHandler) handleGetRequest(w http.ResponseWriter, r *http
 
 		_, err := w.Write(loginTemplate.Bytes())
 		if err != nil {
-			InternalServerErrorHandler(w, r)
+			handler2.InternalServerErrorHandler(w, r)
 			return
 		}
 	}
@@ -171,7 +172,7 @@ func (handler *AuthorizeHandler) handleGetRequest(w http.ResponseWriter, r *http
 func (handler *AuthorizeHandler) handlePostRequest(w http.ResponseWriter, r *http.Request, user *config.User) {
 	cookie, err := handler.cookieManager.CreateCookie(user.Username)
 	if err != nil {
-		InternalServerErrorHandler(w, r)
+		handler2.InternalServerErrorHandler(w, r)
 		return
 	}
 
@@ -185,7 +186,7 @@ func (handler *AuthorizeHandler) handlePostRequest(w http.ResponseWriter, r *htt
 	authSession.Username = user.Username
 	redirectURL, urlParseError := url.Parse(authSession.Redirect)
 	if urlParseError != nil {
-		InternalServerErrorHandler(w, r)
+		handler2.InternalServerErrorHandler(w, r)
 		return
 	}
 
@@ -205,7 +206,7 @@ func (handler *AuthorizeHandler) handlePostRequest(w http.ResponseWriter, r *htt
 	if responseType == oauth2.RtToken {
 		client, exists := handler.validator.ValidateClientId(authSession.ClientId)
 		if !exists {
-			InternalServerErrorHandler(w, r)
+			handler2.InternalServerErrorHandler(w, r)
 			return
 		}
 		accessTokenResponse := handler.tokenManager.CreateAccessTokenResponse(user.Username, client, authSession.Scopes)
@@ -237,7 +238,7 @@ func (handler *AuthorizeHandler) validateLogin(w http.ResponseWriter, r *http.Re
 func validateRedirect(client *config.Client, redirect string) func(w http.ResponseWriter, r *http.Request) {
 	if redirect == "" {
 		log.Error("Redirect provided for client %s was empty", client.Id)
-		return BadRequestHandler
+		return handler2.BadRequestHandler
 	}
 	redirectCount := len(client.Redirects)
 
@@ -253,7 +254,7 @@ func validateRedirect(client *config.Client, redirect string) func(w http.Respon
 			matched, regexError := regexp.MatchString(clientRedirect, redirect)
 			if regexError != nil {
 				log.Error("Cloud not match redirect URI %s for client %s", redirect, client.Id)
-				return InternalServerErrorHandler
+				return handler2.InternalServerErrorHandler
 			}
 
 			matchesRedirect = matchesRedirect || matched
@@ -261,11 +262,11 @@ func validateRedirect(client *config.Client, redirect string) func(w http.Respon
 
 		if !matchesRedirect {
 			log.Error("Configuration for client %s does not match the given redirect URI %s", client.Id, redirect)
-			return BadRequestHandler
+			return handler2.BadRequestHandler
 		}
 	} else {
 		log.Error("Client %s has no redirect URI(s) configured!", client.Id)
-		return BadRequestHandler
+		return handler2.BadRequestHandler
 	}
 
 	return nil

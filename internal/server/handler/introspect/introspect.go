@@ -1,9 +1,10 @@
-package handler
+package introspect
 
 import (
 	"github.com/webishdev/stopnik/internal/config"
 	internalHttp "github.com/webishdev/stopnik/internal/http"
 	"github.com/webishdev/stopnik/internal/oauth2"
+	handler2 "github.com/webishdev/stopnik/internal/server/handler"
 	"github.com/webishdev/stopnik/internal/server/validation"
 	"github.com/webishdev/stopnik/internal/store"
 	"github.com/webishdev/stopnik/log"
@@ -85,11 +86,11 @@ func (handler *IntrospectHandler) ServeHTTP(w http.ResponseWriter, r *http.Reque
 
 		jsonError := internalHttp.SendJson(introspectResponse, w)
 		if jsonError != nil {
-			InternalServerErrorHandler(w, r)
+			handler2.InternalServerErrorHandler(w, r)
 			return
 		}
 	} else {
-		MethodNotAllowedHandler(w, r)
+		handler2.MethodNotAllowedHandler(w, r)
 		return
 	}
 }

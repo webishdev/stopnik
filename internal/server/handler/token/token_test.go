@@ -1,4 +1,4 @@
-package handler
+package token
 
 import (
 	"encoding/base64"
@@ -482,4 +482,17 @@ func testTokenValidate(t *testing.T, tokenManager *store.TokenManager, response 
 	if accessTokenResponse.TokenType != oauth2.TtBearer {
 		t.Errorf("access token type was not bearer")
 	}
+}
+
+func testCreateBody(values ...any) string {
+	result := ""
+	for index, value := range values {
+		result += fmt.Sprintf("%v", value)
+		if index > 0 && index%2 != 0 && index < len(values)-1 {
+			result += "&"
+		} else if index < len(values)-1 {
+			result += "="
+		}
+	}
+	return result
 }

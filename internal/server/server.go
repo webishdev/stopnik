@@ -5,7 +5,14 @@ import (
 	"errors"
 	"github.com/webishdev/stopnik/internal/config"
 	internalHttp "github.com/webishdev/stopnik/internal/http"
-	"github.com/webishdev/stopnik/internal/server/handler"
+	"github.com/webishdev/stopnik/internal/server/handler/account"
+	"github.com/webishdev/stopnik/internal/server/handler/assets"
+	"github.com/webishdev/stopnik/internal/server/handler/authorize"
+	"github.com/webishdev/stopnik/internal/server/handler/health"
+	"github.com/webishdev/stopnik/internal/server/handler/introspect"
+	"github.com/webishdev/stopnik/internal/server/handler/logout"
+	"github.com/webishdev/stopnik/internal/server/handler/revoke"
+	"github.com/webishdev/stopnik/internal/server/handler/token"
 	"github.com/webishdev/stopnik/internal/server/validation"
 	"github.com/webishdev/stopnik/internal/store"
 	"github.com/webishdev/stopnik/internal/template"
@@ -20,7 +27,7 @@ type ListenAndServe func(stopnikServer *StopnikServer, listener *net.Listener, s
 
 type middlewareHandler struct {
 	next   http.Handler
-	assets *handler.AssetHandler
+	assets *assets.AssetHandler
 }
 
 func (mh middlewareHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -72,7 +79,7 @@ func newStopnikServerWithServe(rwMutex *sync.RWMutex, config *config.Config, mux
 
 	middleware := &middlewareHandler{
 		next:   mux,
-		assets: &handler.AssetHandler{},
+		assets: &assets.AssetHandler{},
 	}
 	return &StopnikServer{
 		config:            config,
@@ -168,17 +175,17 @@ func registerHandlers(config *config.Config, handle func(pattern string, handler
 	templateManager := template.NewTemplateManager(config)
 
 	// Own
-	healthHandler := handler.NewHealthHandler(tokenManager)
-	accountHandler := handler.CreateAccountHandler(requestValidator, cookieManager, templateManager)
-	logoutHandler := handler.CreateLogoutHandler(cookieManager, config.Server.LogoutRedirect)
+	healthHandler := health.NewHealthHandler(tokenManager)
+	accountHandler := account.CreateAccountHandler(requestValidator, cookieManager, templateManager)
+	logoutHandler := logout.CreateLogoutHandler(cookieManager, config.Server.LogoutRedirect)
 
 	// OAuth2
-	authorizeHandler := handler.CreateAuthorizeHandler(requestValidator, cookieManager, sessionManager, tokenManager, templateManager)
-	tokenHandler := handler.CreateTokenHandler(requestValidator, sessionManager, tokenManager)
+	authorizeHandler := authorize.CreateAuthorizeHandler(requestValidator, cookieManager, sessionManager, tokenManager, templateManager)
+	tokenHandler := token.CreateTokenHandler(requestValidator, sessionManager, tokenManager)
 
 	// OAuth2 extensions
-	introspectHandler := handler.CreateIntrospectHandler(config, requestValidator, tokenManager)
-	revokeHandler := handler.CreateRevokeHandler(config, requestValidator, tokenManager)
+	introspectHandler := introspect.CreateIntrospectHandler(config, requestValidator, tokenManager)
+	revokeHandler := revoke.CreateRevokeHandler(config, requestValidator, tokenManager)
 
 	// Server
 	handle("/health", healthHandler)

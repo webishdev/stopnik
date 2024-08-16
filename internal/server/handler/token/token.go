@@ -1,9 +1,10 @@
-package handler
+package token
 
 import (
 	internalHttp "github.com/webishdev/stopnik/internal/http"
 	"github.com/webishdev/stopnik/internal/oauth2"
 	"github.com/webishdev/stopnik/internal/pkce"
+	handler2 "github.com/webishdev/stopnik/internal/server/handler"
 	"github.com/webishdev/stopnik/internal/server/validation"
 	"github.com/webishdev/stopnik/internal/store"
 	"github.com/webishdev/stopnik/log"
@@ -30,7 +31,7 @@ func (handler *TokenHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodPost {
 		handler.handlePostRequest(w, r)
 	} else {
-		MethodNotAllowedHandler(w, r)
+		handler2.MethodNotAllowedHandler(w, r)
 		return
 	}
 }
@@ -128,7 +129,7 @@ func (handler *TokenHandler) handlePostRequest(w http.ResponseWriter, r *http.Re
 
 	jsonError := internalHttp.SendJson(accessTokenResponse, w)
 	if jsonError != nil {
-		InternalServerErrorHandler(w, r)
+		handler2.InternalServerErrorHandler(w, r)
 		return
 	}
 }

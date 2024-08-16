@@ -1,6 +1,7 @@
-package handler
+package introspect
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"github.com/google/uuid"
@@ -444,4 +445,22 @@ func testIntrospectParse(t *testing.T, response *http.Response) IntrospectRespon
 	}
 
 	return introspectResponse
+}
+
+func testCreateBody(values ...any) string {
+	result := ""
+	for index, value := range values {
+		result += fmt.Sprintf("%v", value)
+		if index > 0 && index%2 != 0 && index < len(values)-1 {
+			result += "&"
+		} else if index < len(values)-1 {
+			result += "="
+		}
+	}
+	return result
+}
+
+func testTokenCreateBasicAuth(username string, password string) string {
+	auth := username + ":" + password
+	return base64.StdEncoding.EncodeToString([]byte(auth))
 }

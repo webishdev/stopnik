@@ -1,6 +1,7 @@
-package handler
+package revoke
 
 import (
+	"encoding/base64"
 	"fmt"
 	"github.com/google/uuid"
 	"github.com/webishdev/stopnik/internal/config"
@@ -418,4 +419,22 @@ func testRevokeNotAllowedHttpMethods(t *testing.T) {
 			}
 		})
 	}
+}
+
+func testCreateBody(values ...any) string {
+	result := ""
+	for index, value := range values {
+		result += fmt.Sprintf("%v", value)
+		if index > 0 && index%2 != 0 && index < len(values)-1 {
+			result += "&"
+		} else if index < len(values)-1 {
+			result += "="
+		}
+	}
+	return result
+}
+
+func testTokenCreateBasicAuth(username string, password string) string {
+	auth := username + ":" + password
+	return base64.StdEncoding.EncodeToString([]byte(auth))
 }

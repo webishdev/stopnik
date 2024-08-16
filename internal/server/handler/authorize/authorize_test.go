@@ -1,4 +1,4 @@
-package handler
+package authorize
 
 import (
 	"fmt"
@@ -888,4 +888,17 @@ func createUri(t *testing.T, uri string, handler func(query url.Values)) *url.UR
 	}
 
 	return parsedUri
+}
+
+func testCreateBody(values ...any) string {
+	result := ""
+	for index, value := range values {
+		result += fmt.Sprintf("%v", value)
+		if index > 0 && index%2 != 0 && index < len(values)-1 {
+			result += "&"
+		} else if index < len(values)-1 {
+			result += "="
+		}
+	}
+	return result
 }
