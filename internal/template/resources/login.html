@@ -1,8 +1,11 @@
-{{ template "header" }}
+{{ template "header" . }}
 <main>
-    <form method="POST" action="{{.Action}}">
-        <input type="hidden" name="stopnik_auth_session" value="{{.Token}}" />
-        <div class="logo"><img src="assets/stopnik_250.png" title="STOPnik mascot" alt="STOPnik mascot" /></div>
+    <form method="POST" action="{{ .Action }}">
+        <input type="hidden" name="stopnik_auth_session" value="{{ .Token }}" />
+        {{ template "mascot" . }}
+        {{ if .ShowTitle }}
+        <div class="title">{{ .Title }}</div>
+        {{ end }}
         <div class="input">
             <label for="stopnik_username">Username</label>
             <input id="stopnik_username" type="text" name="stopnik_username" />
@@ -16,4 +19,4 @@
         </div>
     </form>
 </main>
-{{ template "footer" }}
+{{ template "footer" . }}

@@ -733,8 +733,9 @@ func testAuthorizeNoCookeExists(t *testing.T, testConfig *config.Config) bool {
 		requestValidator := validation.NewRequestValidator(testConfig)
 		sessionManager := store.NewSessionManager(testConfig)
 		cookieManager := internalHttp.NewCookieManager(testConfig)
+		templateManager := template.NewTemplateManager(testConfig)
 
-		authorizeHandler := CreateAuthorizeHandler(requestValidator, cookieManager, sessionManager, &store.TokenManager{}, &template.TemplateManager{})
+		authorizeHandler := CreateAuthorizeHandler(requestValidator, cookieManager, sessionManager, &store.TokenManager{}, templateManager)
 
 		rr := httptest.NewRecorder()
 

@@ -58,18 +58,21 @@ type Client struct {
 	TokenKeys               Keys     `yaml:"tokenKeys"`
 }
 
+type UI struct {
+	HideFooter bool   `yaml:"hideFooter"`
+	HideMascot bool   `yaml:"hideMascot"`
+	Title      string `yaml:"title"`
+	FooterText string `yaml:"footerText"`
+}
+
 type Config struct {
 	Server          Server   `yaml:"server"`
 	Clients         []Client `yaml:"clients"`
 	Users           []User   `yaml:"users"`
+	UI              UI       `yaml:"ui"`
 	generatedSecret string
 	userMap         map[string]*User
 	clientMap       map[string]*Client
-}
-
-type UI struct {
-	ShowFooter bool `yaml:"showFooter"`
-	ShowMascot bool `yaml:"showMascot"`
 }
 
 type ReadFile func(filename string) ([]byte, error)
@@ -223,6 +226,22 @@ func (config *Config) GetRevokeScope() string {
 
 func (config *Config) GetServerSecret() string {
 	return GetOrDefaultString(config.Server.Secret, config.generatedSecret)
+}
+
+func (config *Config) GetHideFooter() bool {
+	return config.UI.HideFooter
+}
+
+func (config *Config) GetHideMascot() bool {
+	return config.UI.HideMascot
+}
+
+func (config *Config) GetTitle() string {
+	return config.UI.Title
+}
+
+func (config *Config) GetFooterText() string {
+	return GetOrDefaultString(config.UI.FooterText, "STOPnik")
 }
 
 func (client *Client) GetAccessTTL() int {

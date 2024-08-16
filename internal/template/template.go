@@ -13,6 +13,9 @@ var headerHtml []byte
 //go:embed resources/footer.html
 var footerHtml []byte
 
+//go:embed resources/mascot.html
+var mascotHtml []byte
+
 //go:embed resources/login.html
 var loginHtml []byte
 
@@ -35,6 +38,11 @@ func addTemplates(main *template.Template) bytes.Buffer {
 		panic(headerParseError)
 	}
 
+	_, mascotParseError := main.New("mascot").Parse(string(mascotHtml))
+	if mascotParseError != nil {
+		panic(mascotParseError)
+	}
+
 	_, footerParseError := main.New("footer").Parse(string(footerHtml))
 	if footerParseError != nil {
 		panic(footerParseError)
@@ -54,11 +62,21 @@ func (templateManager *TemplateManager) LoginTemplate(id string, action string) 
 	addTemplates(loginTemplate)
 
 	data := struct {
-		Action string
-		Token  string
+		Action     string
+		Token      string
+		HideFooter bool
+		HideMascot bool
+		ShowTitle  bool
+		Title      string
+		FooterText string
 	}{
-		Action: action,
-		Token:  id,
+		Action:     action,
+		Token:      id,
+		HideFooter: templateManager.config.GetHideFooter(),
+		HideMascot: templateManager.config.GetHideMascot(),
+		ShowTitle:  templateManager.config.GetTitle() != "",
+		Title:      templateManager.config.GetTitle(),
+		FooterText: templateManager.config.GetFooterText(),
 	}
 
 	templateExecuteError := loginTemplate.Execute(&tpl, data)
@@ -82,9 +100,19 @@ func (templateManager *TemplateManager) LogoutTemplate(username string, requestU
 	data := struct {
 		Username   string
 		RequestURI string
+		HideFooter bool
+		HideMascot bool
+		ShowTitle  bool
+		Title      string
+		FooterText string
 	}{
 		Username:   username,
 		RequestURI: requestURI,
+		HideFooter: templateManager.config.GetHideFooter(),
+		HideMascot: templateManager.config.GetHideMascot(),
+		ShowTitle:  templateManager.config.GetTitle() != "",
+		Title:      templateManager.config.GetTitle(),
+		FooterText: templateManager.config.GetFooterText(),
 	}
 
 	templateExecuteError := logoutTemplate.Execute(&tpl, data)

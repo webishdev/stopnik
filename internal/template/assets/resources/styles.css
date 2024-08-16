@@ -1,6 +1,6 @@
 /* styles.css */
 :root {
-    --bg-color: #fafafa;
+    --bg-color: #fcfcfc;
     --footer-bg-color: #ABC3D6;
     --border-color: #888;
     --button-color: #5870A2;
@@ -31,7 +31,7 @@ footer {
     display: flex;
     width: 100vw;
     background-color: var(--footer-bg-color);
-    border-top: 2px solid var(--border-color);
+    border-top: 0.05rem solid var(--border-color);
 }
 
 footer div {
@@ -72,6 +72,12 @@ div.input button:hover {
     cursor: pointer;
     background-color: var(--button-hover-color);
     color: #000;
+}
+
+div.title {
+    padding-top: 2rem;
+    font-weight: lighter;
+    font-size: 1.25rem;
 }
 
 @media (max-width: 767px) {
