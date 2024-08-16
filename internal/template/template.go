@@ -22,12 +22,12 @@ var loginHtml []byte
 //go:embed resources/logout.html
 var logoutHtml []byte
 
-type TemplateManager struct {
+type Manager struct {
 	config *config.Config
 }
 
-func NewTemplateManager(config *config.Config) *TemplateManager {
-	return &TemplateManager{config}
+func NewTemplateManager(config *config.Config) *Manager {
+	return &Manager{config}
 }
 
 func addTemplates(main *template.Template) bytes.Buffer {
@@ -51,7 +51,7 @@ func addTemplates(main *template.Template) bytes.Buffer {
 	return tpl
 }
 
-func (templateManager *TemplateManager) LoginTemplate(id string, action string) bytes.Buffer {
+func (templateManager *Manager) LoginTemplate(id string, action string) bytes.Buffer {
 	var tpl bytes.Buffer
 
 	loginTemplate, loginParseError := template.New("login").Parse(string(loginHtml))
@@ -87,7 +87,7 @@ func (templateManager *TemplateManager) LoginTemplate(id string, action string) 
 	return tpl
 }
 
-func (templateManager *TemplateManager) LogoutTemplate(username string, requestURI string) bytes.Buffer {
+func (templateManager *Manager) LogoutTemplate(username string, requestURI string) bytes.Buffer {
 	var tpl bytes.Buffer
 
 	logoutTemplate, loginParseError := template.New("logout").Parse(string(logoutHtml))

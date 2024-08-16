@@ -22,7 +22,7 @@ type AuthorizeHandler struct {
 	cookieManager   *internalHttp.CookieManager
 	sessionManager  *store.SessionManager
 	tokenManager    *store.TokenManager
-	templateManager *template.TemplateManager
+	templateManager *template.Manager
 }
 
 func CreateAuthorizeHandler(
@@ -30,7 +30,7 @@ func CreateAuthorizeHandler(
 	cookieManager *internalHttp.CookieManager,
 	sessionManager *store.SessionManager,
 	tokenManager *store.TokenManager,
-	templateManager *template.TemplateManager) *AuthorizeHandler {
+	templateManager *template.Manager) *AuthorizeHandler {
 	return &AuthorizeHandler{
 		validator:       validator,
 		cookieManager:   cookieManager,

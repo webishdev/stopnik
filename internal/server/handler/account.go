@@ -12,13 +12,13 @@ import (
 type AccountHandler struct {
 	validator       *validation.RequestValidator
 	cookieManager   *internalHttp.CookieManager
-	templateManager *template.TemplateManager
+	templateManager *template.Manager
 }
 
 func CreateAccountHandler(
 	validator *validation.RequestValidator,
 	cookieManager *internalHttp.CookieManager,
-	templateManager *template.TemplateManager,
+	templateManager *template.Manager,
 ) *AccountHandler {
 	return &AccountHandler{
 		validator:       validator,

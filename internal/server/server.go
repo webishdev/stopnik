@@ -121,7 +121,6 @@ func (stopnikServer *StopnikServer) Start() {
 func (stopnikServer *StopnikServer) Shutdown() {
 	log.Info("Shutting down STOPnik...")
 	stopnikServer.rwMutex.RLock()
-	log.Info("Shutting down STOPnik...xxxx")
 	defer stopnikServer.rwMutex.RUnlock()
 	if stopnikServer.httpServer != nil {
 		shutdownServer(stopnikServer.httpServer)
