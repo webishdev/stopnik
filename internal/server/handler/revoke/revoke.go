@@ -4,7 +4,7 @@ import (
 	"github.com/webishdev/stopnik/internal/config"
 	internalHttp "github.com/webishdev/stopnik/internal/http"
 	"github.com/webishdev/stopnik/internal/oauth2"
-	handler2 "github.com/webishdev/stopnik/internal/server/handler"
+	serverHandler "github.com/webishdev/stopnik/internal/server/handler"
 	"github.com/webishdev/stopnik/internal/server/validation"
 	"github.com/webishdev/stopnik/internal/store"
 	"github.com/webishdev/stopnik/log"
@@ -76,7 +76,7 @@ func (handler *RevokeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 		w.WriteHeader(http.StatusOK)
 
 	} else {
-		handler2.MethodNotAllowedHandler(w, r)
+		serverHandler.MethodNotAllowedHandler(w, r)
 		return
 	}
 }

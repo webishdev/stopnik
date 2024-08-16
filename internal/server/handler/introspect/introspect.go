@@ -4,7 +4,7 @@ import (
 	"github.com/webishdev/stopnik/internal/config"
 	internalHttp "github.com/webishdev/stopnik/internal/http"
 	"github.com/webishdev/stopnik/internal/oauth2"
-	handler2 "github.com/webishdev/stopnik/internal/server/handler"
+	serverHandler "github.com/webishdev/stopnik/internal/server/handler"
 	"github.com/webishdev/stopnik/internal/server/validation"
 	"github.com/webishdev/stopnik/internal/store"
 	"github.com/webishdev/stopnik/log"
@@ -86,11 +86,11 @@ func (handler *IntrospectHandler) ServeHTTP(w http.ResponseWriter, r *http.Reque
 
 		jsonError := internalHttp.SendJson(introspectResponse, w)
 		if jsonError != nil {
-			handler2.InternalServerErrorHandler(w, r)
+			serverHandler.InternalServerErrorHandler(w, r)
 			return
 		}
 	} else {
-		handler2.MethodNotAllowedHandler(w, r)
+		serverHandler.MethodNotAllowedHandler(w, r)
 		return
 	}
 }

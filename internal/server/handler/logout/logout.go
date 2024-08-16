@@ -2,7 +2,7 @@ package logout
 
 import (
 	internalHttp "github.com/webishdev/stopnik/internal/http"
-	handler2 "github.com/webishdev/stopnik/internal/server/handler"
+	serverHandler "github.com/webishdev/stopnik/internal/server/handler"
 	"github.com/webishdev/stopnik/log"
 	"net/http"
 )
@@ -24,7 +24,7 @@ func (handler *LogoutHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 	if r.Method == http.MethodPost {
 		_, validCookie := handler.cookieManager.ValidateCookie(r)
 		if !validCookie {
-			handler2.ForbiddenHandler(w, r)
+			serverHandler.ForbiddenHandler(w, r)
 			return
 		}
 		cookie := handler.cookieManager.DeleteCookie()
@@ -43,7 +43,7 @@ func (handler *LogoutHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 
 		w.WriteHeader(http.StatusSeeOther)
 	} else {
-		handler2.MethodNotAllowedHandler(w, r)
+		serverHandler.MethodNotAllowedHandler(w, r)
 		return
 	}
 }

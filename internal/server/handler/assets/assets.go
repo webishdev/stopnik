@@ -1,7 +1,7 @@
 package assets
 
 import (
-	handler2 "github.com/webishdev/stopnik/internal/server/handler"
+	serverHandler "github.com/webishdev/stopnik/internal/server/handler"
 	"github.com/webishdev/stopnik/internal/template/assets"
 	"github.com/webishdev/stopnik/log"
 	"mime"
@@ -29,7 +29,7 @@ func (handler *AssetHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 		data, assetsFSError := assetsFS.ReadFile(assetFSPath)
 		if assetsFSError != nil {
-			handler2.NotFoundHandler(w, r)
+			serverHandler.NotFoundHandler(w, r)
 			return
 		}
 
@@ -42,7 +42,7 @@ func (handler *AssetHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			log.Error("Could not send data: %v", writeError)
 		}
 	} else {
-		handler2.MethodNotAllowedHandler(w, r)
+		serverHandler.MethodNotAllowedHandler(w, r)
 		return
 	}
 }

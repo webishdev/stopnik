@@ -3,7 +3,7 @@ package account
 import (
 	"github.com/google/uuid"
 	internalHttp "github.com/webishdev/stopnik/internal/http"
-	handler2 "github.com/webishdev/stopnik/internal/server/handler"
+	serverHandler "github.com/webishdev/stopnik/internal/server/handler"
 	"github.com/webishdev/stopnik/internal/server/validation"
 	"github.com/webishdev/stopnik/internal/template"
 	"github.com/webishdev/stopnik/log"
@@ -37,7 +37,7 @@ func (handler *AccountHandler) ServeHTTP(w http.ResponseWriter, r *http.Request)
 
 			_, err := w.Write(logoutTemplate.Bytes())
 			if err != nil {
-				handler2.InternalServerErrorHandler(w, r)
+				serverHandler.InternalServerErrorHandler(w, r)
 				return
 			}
 		} else {
@@ -46,7 +46,7 @@ func (handler *AccountHandler) ServeHTTP(w http.ResponseWriter, r *http.Request)
 
 			_, err := w.Write(loginTemplate.Bytes())
 			if err != nil {
-				handler2.InternalServerErrorHandler(w, r)
+				serverHandler.InternalServerErrorHandler(w, r)
 				return
 			}
 		}
@@ -61,7 +61,7 @@ func (handler *AccountHandler) ServeHTTP(w http.ResponseWriter, r *http.Request)
 
 		cookie, err := handler.cookieManager.CreateCookie(user.Username)
 		if err != nil {
-			handler2.InternalServerErrorHandler(w, r)
+			serverHandler.InternalServerErrorHandler(w, r)
 			return
 		}
 
@@ -72,7 +72,7 @@ func (handler *AccountHandler) ServeHTTP(w http.ResponseWriter, r *http.Request)
 		return
 
 	} else {
-		handler2.MethodNotAllowedHandler(w, r)
+		serverHandler.MethodNotAllowedHandler(w, r)
 		return
 	}
 }
