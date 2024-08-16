@@ -48,6 +48,11 @@ func Test_Server(t *testing.T) {
 	t.Run("simple", simpleServerConfiguration)
 }
 
+func Test_UI(t *testing.T) {
+	t.Run("empty", emptyUIConfiguration)
+	t.Run("simple", simpleUIConfiguration)
+}
+
 func Test_Users(t *testing.T) {
 	t.Run("valid", validUsers)
 	t.Run("invalid", invalidUsers)
@@ -181,6 +186,87 @@ func simpleServerConfiguration(t *testing.T) {
 	sessionTimeout := config.GetSessionTimeoutSeconds()
 	if sessionTimeout != 4200 {
 		t.Error("expected session timeout to be 4200")
+	}
+}
+
+func emptyUIConfiguration(t *testing.T) {
+	configLoader := NewConfigLoader(func(filename string) ([]byte, error) {
+		return make([]byte, 10), nil
+	}, func(in []byte, out interface{}) (err error) {
+		origin := out.(*Config)
+		*origin = Config{
+			UI: UI{},
+		}
+		return nil
+	})
+
+	config, err := configLoader.LoadConfig("foo.txt")
+
+	if err != nil {
+		t.Error("did not expect error when loading config")
+	}
+
+	footerText := config.GetFooterText()
+	if footerText != "STOPnik" {
+		t.Error("expected footer text to be 'STOPnik")
+	}
+
+	title := config.GetTitle()
+	if title != "" {
+		t.Error("expected title to be empty")
+	}
+
+	hideMascot := config.GetHideMascot()
+	if hideMascot {
+		t.Error("expected hideMascot to be false")
+	}
+
+	hideFooter := config.GetHideFooter()
+	if hideFooter {
+		t.Error("expected hideFooter to be false")
+	}
+}
+
+func simpleUIConfiguration(t *testing.T) {
+	configLoader := NewConfigLoader(func(filename string) ([]byte, error) {
+		return make([]byte, 10), nil
+	}, func(in []byte, out interface{}) (err error) {
+		origin := out.(*Config)
+		*origin = Config{
+			UI: UI{
+				HideFooter: true,
+				HideMascot: true,
+				Title:      "Oh my Foo!",
+				FooterText: "In the end",
+			},
+		}
+		return nil
+	})
+
+	config, err := configLoader.LoadConfig("foo.txt")
+
+	if err != nil {
+		t.Error("did not expect error when loading config")
+	}
+
+	footerText := config.GetFooterText()
+	if footerText != "In the end" {
+		t.Error("expected footer text be 'In the end'")
+	}
+
+	title := config.GetTitle()
+	if title != "Oh my Foo!" {
+		t.Error("expected title to be 'Oh my Foo!'")
+	}
+
+	hideMascot := config.GetHideMascot()
+	if !hideMascot {
+		t.Error("expected hideMascot to be true")
+	}
+
+	hideFooter := config.GetHideFooter()
+	if !hideFooter {
+		t.Error("expected hideFooter to be true")
 	}
 }
 

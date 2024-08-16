@@ -91,19 +91,23 @@ func NewConfigLoader(fileReader ReadFile, unmarshaler Unmarshal) *Loader {
 }
 
 func (loader *Loader) LoadConfig(name string) (*Config, error) {
-	config := &Config{}
-
 	data, readError := loader.fileReader(name)
 	if readError != nil {
-		return config, readError
+		return nil, readError
 	}
 
+	config := &Config{}
 	parseError := loader.unmarshaler(data, config)
 	if parseError != nil {
-		return config, parseError
+		return nil, parseError
 	}
 
-	return config, config.Setup()
+	setupError := config.Setup()
+	if setupError != nil {
+		return nil, setupError
+	}
+
+	return config, nil
 }
 
 func generateRandomString(n int) (string, error) {
