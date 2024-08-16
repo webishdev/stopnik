@@ -10,19 +10,19 @@ import (
 	"net/http"
 )
 
-type AccountHandler struct {
+type Handler struct {
 	validator       *validation.RequestValidator
 	cookieManager   *internalHttp.CookieManager
 	templateManager *template.Manager
-	errorHandler    *error.RequestHandler
+	errorHandler    *error.Handler
 }
 
 func CreateAccountHandler(
 	validator *validation.RequestValidator,
 	cookieManager *internalHttp.CookieManager,
 	templateManager *template.Manager,
-) *AccountHandler {
-	return &AccountHandler{
+) *Handler {
+	return &Handler{
 		validator:       validator,
 		cookieManager:   cookieManager,
 		templateManager: templateManager,
@@ -30,40 +30,40 @@ func CreateAccountHandler(
 	}
 }
 
-func (handler *AccountHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	log.AccessLogRequest(r)
 	if r.Method == http.MethodGet {
-		user, validCookie := handler.cookieManager.ValidateCookie(r)
+		user, validCookie := h.cookieManager.ValidateCookie(r)
 		if validCookie {
-			logoutTemplate := handler.templateManager.LogoutTemplate(user.Username, r.RequestURI)
+			logoutTemplate := h.templateManager.LogoutTemplate(user.Username, r.RequestURI)
 
 			_, err := w.Write(logoutTemplate.Bytes())
 			if err != nil {
-				handler.errorHandler.InternalServerErrorHandler(w, r)
+				h.errorHandler.InternalServerErrorHandler(w, r)
 				return
 			}
 		} else {
 			id := uuid.New()
-			loginTemplate := handler.templateManager.LoginTemplate(id.String(), "account")
+			loginTemplate := h.templateManager.LoginTemplate(id.String(), "account")
 
 			_, err := w.Write(loginTemplate.Bytes())
 			if err != nil {
-				handler.errorHandler.InternalServerErrorHandler(w, r)
+				h.errorHandler.InternalServerErrorHandler(w, r)
 				return
 			}
 		}
 	} else if r.Method == http.MethodPost {
 		// Handle POST from login
-		user, userExists := handler.validator.ValidateFormLogin(r)
+		user, userExists := h.validator.ValidateFormLogin(r)
 		if !userExists {
 			w.Header().Set(internalHttp.Location, r.RequestURI)
 			w.WriteHeader(http.StatusSeeOther)
 			return
 		}
 
-		cookie, err := handler.cookieManager.CreateCookie(user.Username)
+		cookie, err := h.cookieManager.CreateCookie(user.Username)
 		if err != nil {
-			handler.errorHandler.InternalServerErrorHandler(w, r)
+			h.errorHandler.InternalServerErrorHandler(w, r)
 			return
 		}
 
@@ -74,7 +74,7 @@ func (handler *AccountHandler) ServeHTTP(w http.ResponseWriter, r *http.Request)
 		return
 
 	} else {
-		handler.errorHandler.MethodNotAllowedHandler(w, r)
+		h.errorHandler.MethodNotAllowedHandler(w, r)
 		return
 	}
 }

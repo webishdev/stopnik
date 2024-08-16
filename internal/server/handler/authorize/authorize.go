@@ -18,13 +18,13 @@ import (
 	"strings"
 )
 
-type AuthorizeHandler struct {
+type Handler struct {
 	validator       *validation.RequestValidator
 	cookieManager   *internalHttp.CookieManager
 	sessionManager  *store.SessionManager
 	tokenManager    *store.TokenManager
 	templateManager *template.Manager
-	errorHandler    *error.RequestHandler
+	errorHandler    *error.Handler
 }
 
 func CreateAuthorizeHandler(
@@ -32,8 +32,8 @@ func CreateAuthorizeHandler(
 	cookieManager *internalHttp.CookieManager,
 	sessionManager *store.SessionManager,
 	tokenManager *store.TokenManager,
-	templateManager *template.Manager) *AuthorizeHandler {
-	return &AuthorizeHandler{
+	templateManager *template.Manager) *Handler {
+	return &Handler{
 		validator:       validator,
 		cookieManager:   cookieManager,
 		sessionManager:  sessionManager,
@@ -43,29 +43,29 @@ func CreateAuthorizeHandler(
 	}
 }
 
-func (handler *AuthorizeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	log.AccessLogRequest(r)
 	if r.Method == http.MethodGet {
-		handler.handleGetRequest(w, r)
+		h.handleGetRequest(w, r)
 	} else if r.Method == http.MethodPost {
-		user, failed := handler.validateLogin(w, r)
+		user, failed := h.validateLogin(w, r)
 		if failed {
 			return
 		}
 
-		handler.handlePostRequest(w, r, user)
+		h.handlePostRequest(w, r, user)
 	} else {
-		handler.errorHandler.MethodNotAllowedHandler(w, r)
+		h.errorHandler.MethodNotAllowedHandler(w, r)
 		return
 	}
 }
 
-func (handler *AuthorizeHandler) handleGetRequest(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) handleGetRequest(w http.ResponseWriter, r *http.Request) {
 	clientId := r.URL.Query().Get(oauth2.ParameterClientId)
-	client, exists := handler.validator.ValidateClientId(clientId)
+	client, exists := h.validator.ValidateClientId(clientId)
 	if !exists {
 		log.Error("Invalid client id %s", clientId)
-		handler.errorHandler.BadRequestHandler(w, r)
+		h.errorHandler.BadRequestHandler(w, r)
 		return
 	}
 
@@ -74,11 +74,11 @@ func (handler *AuthorizeHandler) handleGetRequest(w http.ResponseWriter, r *http
 	redirectURL, urlParseError := url.Parse(redirect)
 	if urlParseError != nil {
 		log.Error("Could not parse redirect URI %s for client %s", redirect, client.Id)
-		handler.errorHandler.BadRequestHandler(w, r)
+		h.errorHandler.BadRequestHandler(w, r)
 		return
 	}
 
-	invalidRedirectErrorHandler := handler.validateRedirect(client, redirect)
+	invalidRedirectErrorHandler := h.validateRedirect(client, redirect)
 	if invalidRedirectErrorHandler != nil {
 		invalidRedirectErrorHandler(w, r)
 		return
@@ -128,9 +128,9 @@ func (handler *AuthorizeHandler) handleGetRequest(w http.ResponseWriter, r *http
 		State:               state,
 	}
 
-	handler.sessionManager.StartSession(authSession)
+	h.sessionManager.StartSession(authSession)
 
-	user, validCookie := handler.cookieManager.ValidateCookie(r)
+	user, validCookie := h.cookieManager.ValidateCookie(r)
 
 	if validCookie {
 		authSession.Username = user.Username
@@ -138,7 +138,7 @@ func (handler *AuthorizeHandler) handleGetRequest(w http.ResponseWriter, r *http
 		query := redirectURL.Query()
 
 		if responseType == oauth2.RtToken {
-			accessTokenResponse := handler.tokenManager.CreateAccessTokenResponse(user.Username, client, scopes)
+			accessTokenResponse := h.tokenManager.CreateAccessTokenResponse(user.Username, client, scopes)
 			setImplicitGrantParameter(query, accessTokenResponse)
 		} else if responseType == oauth2.RtCode {
 			setAuthorizationGrantParameter(query, id.String())
@@ -161,25 +161,25 @@ func (handler *AuthorizeHandler) handleGetRequest(w http.ResponseWriter, r *http
 		query := r.URL.Query()
 		encodedQuery := query.Encode()
 		formAction := fmt.Sprintf("authorize?%s", encodedQuery)
-		loginTemplate := handler.templateManager.LoginTemplate(authSession.Id, formAction)
+		loginTemplate := h.templateManager.LoginTemplate(authSession.Id, formAction)
 
 		_, err := w.Write(loginTemplate.Bytes())
 		if err != nil {
-			handler.errorHandler.InternalServerErrorHandler(w, r)
+			h.errorHandler.InternalServerErrorHandler(w, r)
 			return
 		}
 	}
 }
 
-func (handler *AuthorizeHandler) handlePostRequest(w http.ResponseWriter, r *http.Request, user *config.User) {
-	cookie, err := handler.cookieManager.CreateCookie(user.Username)
+func (h *Handler) handlePostRequest(w http.ResponseWriter, r *http.Request, user *config.User) {
+	cookie, err := h.cookieManager.CreateCookie(user.Username)
 	if err != nil {
-		handler.errorHandler.InternalServerErrorHandler(w, r)
+		h.errorHandler.InternalServerErrorHandler(w, r)
 		return
 	}
 
 	authSessionForm := r.PostFormValue("stopnik_auth_session")
-	authSession, exists := handler.sessionManager.GetSession(authSessionForm)
+	authSession, exists := h.sessionManager.GetSession(authSessionForm)
 	if !exists {
 		sendRetryLocation(w, r)
 		return
@@ -188,7 +188,7 @@ func (handler *AuthorizeHandler) handlePostRequest(w http.ResponseWriter, r *htt
 	authSession.Username = user.Username
 	redirectURL, urlParseError := url.Parse(authSession.Redirect)
 	if urlParseError != nil {
-		handler.errorHandler.InternalServerErrorHandler(w, r)
+		h.errorHandler.InternalServerErrorHandler(w, r)
 		return
 	}
 
@@ -206,12 +206,12 @@ func (handler *AuthorizeHandler) handlePostRequest(w http.ResponseWriter, r *htt
 
 	query := redirectURL.Query()
 	if responseType == oauth2.RtToken {
-		client, exists := handler.validator.ValidateClientId(authSession.ClientId)
+		client, exists := h.validator.ValidateClientId(authSession.ClientId)
 		if !exists {
-			handler.errorHandler.InternalServerErrorHandler(w, r)
+			h.errorHandler.InternalServerErrorHandler(w, r)
 			return
 		}
-		accessTokenResponse := handler.tokenManager.CreateAccessTokenResponse(user.Username, client, authSession.Scopes)
+		accessTokenResponse := h.tokenManager.CreateAccessTokenResponse(user.Username, client, authSession.Scopes)
 		setImplicitGrantParameter(query, accessTokenResponse)
 	} else if responseType == oauth2.RtCode {
 		setAuthorizationGrantParameter(query, authSession.Id)
@@ -227,9 +227,9 @@ func (handler *AuthorizeHandler) handlePostRequest(w http.ResponseWriter, r *htt
 	sendFound(w, redirectURL, query)
 }
 
-func (handler *AuthorizeHandler) validateLogin(w http.ResponseWriter, r *http.Request) (*config.User, bool) {
+func (h *Handler) validateLogin(w http.ResponseWriter, r *http.Request) (*config.User, bool) {
 	// Handle Post from Login
-	user, userExists := handler.validator.ValidateFormLogin(r)
+	user, userExists := h.validator.ValidateFormLogin(r)
 	if !userExists {
 		sendRetryLocation(w, r)
 		return nil, true
@@ -237,10 +237,10 @@ func (handler *AuthorizeHandler) validateLogin(w http.ResponseWriter, r *http.Re
 	return user, false
 }
 
-func (handler *AuthorizeHandler) validateRedirect(client *config.Client, redirect string) func(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) validateRedirect(client *config.Client, redirect string) func(w http.ResponseWriter, r *http.Request) {
 	if redirect == "" {
 		log.Error("Redirect provided for client %s was empty", client.Id)
-		return handler.errorHandler.BadRequestHandler
+		return h.errorHandler.BadRequestHandler
 	}
 	redirectCount := len(client.Redirects)
 
@@ -256,7 +256,7 @@ func (handler *AuthorizeHandler) validateRedirect(client *config.Client, redirec
 			matched, regexError := regexp.MatchString(clientRedirect, redirect)
 			if regexError != nil {
 				log.Error("Cloud not match redirect URI %s for client %s", redirect, client.Id)
-				return handler.errorHandler.InternalServerErrorHandler
+				return h.errorHandler.InternalServerErrorHandler
 			}
 
 			matchesRedirect = matchesRedirect || matched
@@ -264,11 +264,11 @@ func (handler *AuthorizeHandler) validateRedirect(client *config.Client, redirec
 
 		if !matchesRedirect {
 			log.Error("Configuration for client %s does not match the given redirect URI %s", client.Id, redirect)
-			return handler.errorHandler.BadRequestHandler
+			return h.errorHandler.BadRequestHandler
 		}
 	} else {
 		log.Error("Client %s has no redirect URI(s) configured!", client.Id)
-		return handler.errorHandler.BadRequestHandler
+		return h.errorHandler.BadRequestHandler
 	}
 
 	return nil

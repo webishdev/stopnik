@@ -31,7 +31,7 @@ func Test_Assets(t *testing.T) {
 		{path: "/abc/123.css", expectedCode: http.StatusNotFound, matches: false},
 	}
 
-	assetsHandler := &AssetHandler{}
+	assetsHandler := &Handler{}
 
 	for _, test := range testAssetsHttpParameters {
 		testMessage := fmt.Sprintf("Access assets %s with result %d", test.path, test.expectedCode)
@@ -72,7 +72,7 @@ func Test_Assets(t *testing.T) {
 	for _, method := range testAssetsHttpMethods {
 		testMessage := fmt.Sprintf("Assets with unsupported method %s", method)
 		t.Run(testMessage, func(t *testing.T) {
-			assetsHandler := &AssetHandler{}
+			assetsHandler := &Handler{}
 
 			httpRequest := &http.Request{
 				Method: method,

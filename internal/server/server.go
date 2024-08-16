@@ -27,7 +27,7 @@ type ListenAndServe func(stopnikServer *StopnikServer, listener *net.Listener, s
 
 type middlewareHandler struct {
 	next   http.Handler
-	assets *assets.AssetHandler
+	assets *assets.Handler
 }
 
 func (mh middlewareHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {

@@ -22,15 +22,15 @@ type IntrospectResponse struct {
 	TokenType oauth2.TokenType `json:"token_type,omitempty"`
 }
 
-type IntrospectHandler struct {
+type Handler struct {
 	config       *config.Config
 	validator    *validation.RequestValidator
 	tokenManager *store.TokenManager
-	errorHandler *error.RequestHandler
+	errorHandler *error.Handler
 }
 
-func CreateIntrospectHandler(config *config.Config, validator *validation.RequestValidator, tokenManager *store.TokenManager) *IntrospectHandler {
-	return &IntrospectHandler{
+func CreateIntrospectHandler(config *config.Config, validator *validation.RequestValidator, tokenManager *store.TokenManager) *Handler {
+	return &Handler{
 		config:       config,
 		validator:    validator,
 		tokenManager: tokenManager,
@@ -39,23 +39,23 @@ func CreateIntrospectHandler(config *config.Config, validator *validation.Reques
 }
 
 // Implements https://datatracker.ietf.org/doc/html/rfc7662
-func (handler *IntrospectHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	log.AccessLogRequest(r)
 	if r.Method == http.MethodPost {
 
 		// Check client credentials
-		client, _, validClientCredentials := handler.validator.ValidateClientCredentials(r)
+		client, _, validClientCredentials := h.validator.ValidateClientCredentials(r)
 		if !validClientCredentials {
 
 			// Fall back to access token with scopes
 			authorizationHeader := r.Header.Get(internalHttp.Authorization)
-			_, scopes, userExists := handler.tokenManager.ValidateAccessToken(authorizationHeader)
+			_, scopes, userExists := h.tokenManager.ValidateAccessToken(authorizationHeader)
 			if !userExists {
 				oauth2.TokenErrorStatusResponseHandler(w, http.StatusUnauthorized, &oauth2.TokenErrorResponseParameter{Error: oauth2.TokenEtInvalidRequest})
 				return
 			}
 
-			hasIntrospectScope := slices.Contains(scopes, handler.config.GetIntrospectScope())
+			hasIntrospectScope := slices.Contains(scopes, h.config.GetIntrospectScope())
 
 			if !hasIntrospectScope {
 				oauth2.TokenErrorStatusResponseHandler(w, http.StatusUnauthorized, &oauth2.TokenErrorResponseParameter{Error: oauth2.TokenEtInvalidRequest})
@@ -76,29 +76,29 @@ func (handler *IntrospectHandler) ServeHTTP(w http.ResponseWriter, r *http.Reque
 		introspectResponse := IntrospectResponse{}
 
 		if !tokenTypeHintExists {
-			accessTokenExists := handler.checkAccessToken(token, &introspectResponse)
+			accessTokenExists := h.checkAccessToken(token, &introspectResponse)
 			if !accessTokenExists {
-				handler.checkRefreshToken(token, &introspectResponse)
+				h.checkRefreshToken(token, &introspectResponse)
 			}
 		} else if tokenTypeHint == oauth2.ItAccessToken {
-			handler.checkAccessToken(token, &introspectResponse)
+			h.checkAccessToken(token, &introspectResponse)
 		} else if tokenTypeHint == oauth2.ItRefreshToken {
-			handler.checkRefreshToken(token, &introspectResponse)
+			h.checkRefreshToken(token, &introspectResponse)
 		}
 
 		jsonError := internalHttp.SendJson(introspectResponse, w)
 		if jsonError != nil {
-			handler.errorHandler.InternalServerErrorHandler(w, r)
+			h.errorHandler.InternalServerErrorHandler(w, r)
 			return
 		}
 	} else {
-		handler.errorHandler.MethodNotAllowedHandler(w, r)
+		h.errorHandler.MethodNotAllowedHandler(w, r)
 		return
 	}
 }
 
-func (handler *IntrospectHandler) checkRefreshToken(token string, introspectResponse *IntrospectResponse) bool {
-	refreshToken, tokenExists := handler.tokenManager.GetRefreshToken(token)
+func (h *Handler) checkRefreshToken(token string, introspectResponse *IntrospectResponse) bool {
+	refreshToken, tokenExists := h.tokenManager.GetRefreshToken(token)
 
 	introspectResponse.Active = tokenExists
 
@@ -111,8 +111,8 @@ func (handler *IntrospectHandler) checkRefreshToken(token string, introspectResp
 	return tokenExists
 }
 
-func (handler *IntrospectHandler) checkAccessToken(token string, introspectResponse *IntrospectResponse) bool {
-	accessToken, tokenExists := handler.tokenManager.GetAccessToken(token)
+func (h *Handler) checkAccessToken(token string, introspectResponse *IntrospectResponse) bool {
+	accessToken, tokenExists := h.tokenManager.GetAccessToken(token)
 
 	introspectResponse.Active = tokenExists
 

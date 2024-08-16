@@ -14,26 +14,26 @@ type Health struct {
 	Scopes   []string `json:"scopes,omitempty"`
 }
 
-type HealthHandler struct {
+type Handler struct {
 	tokenManager *store.TokenManager
-	errorHandler *error.RequestHandler
+	errorHandler *error.Handler
 }
 
-func NewHealthHandler(tokenManager *store.TokenManager) *HealthHandler {
-	return &HealthHandler{
+func NewHealthHandler(tokenManager *store.TokenManager) *Handler {
+	return &Handler{
 		tokenManager: tokenManager,
 		errorHandler: error.NewErrorHandler(),
 	}
 }
 
-func (handler *HealthHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	log.AccessLogRequest(r)
 	if r.Method == http.MethodGet {
 
 		healthResponse := Health{Ping: "pong"}
 
 		authorizationHeader := r.Header.Get(internalHttp.Authorization)
-		user, scopes, userExists := handler.tokenManager.ValidateAccessToken(authorizationHeader)
+		user, scopes, userExists := h.tokenManager.ValidateAccessToken(authorizationHeader)
 		if userExists {
 			healthResponse.Username = user.Username
 			healthResponse.Scopes = scopes
@@ -41,11 +41,11 @@ func (handler *HealthHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 
 		jsonError := internalHttp.SendJson(healthResponse, w)
 		if jsonError != nil {
-			handler.errorHandler.InternalServerErrorHandler(w, r)
+			h.errorHandler.InternalServerErrorHandler(w, r)
 			return
 		}
 	} else {
-		handler.errorHandler.MethodNotAllowedHandler(w, r)
+		h.errorHandler.MethodNotAllowedHandler(w, r)
 		return
 	}
 }

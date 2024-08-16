@@ -7,28 +7,28 @@ import (
 	"net/http"
 )
 
-type LogoutHandler struct {
+type Handler struct {
 	logoutRedirect string
 	cookieManager  *internalHttp.CookieManager
-	errorHandler   *error.RequestHandler
+	errorHandler   *error.Handler
 }
 
-func CreateLogoutHandler(cookieManager *internalHttp.CookieManager, logoutRedirect string) *LogoutHandler {
-	return &LogoutHandler{
+func CreateLogoutHandler(cookieManager *internalHttp.CookieManager, logoutRedirect string) *Handler {
+	return &Handler{
 		cookieManager:  cookieManager,
 		logoutRedirect: logoutRedirect,
 	}
 }
 
-func (handler *LogoutHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	log.AccessLogRequest(r)
 	if r.Method == http.MethodPost {
-		_, validCookie := handler.cookieManager.ValidateCookie(r)
+		_, validCookie := h.cookieManager.ValidateCookie(r)
 		if !validCookie {
-			handler.errorHandler.ForbiddenHandler(w, r)
+			h.errorHandler.ForbiddenHandler(w, r)
 			return
 		}
-		cookie := handler.cookieManager.DeleteCookie()
+		cookie := h.cookieManager.DeleteCookie()
 
 		http.SetCookie(w, &cookie)
 
@@ -36,15 +36,15 @@ func (handler *LogoutHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 
 		if logoutRedirectFrom != "" {
 			w.Header().Set(internalHttp.Location, logoutRedirectFrom)
-		} else if handler.logoutRedirect != "" {
-			w.Header().Set(internalHttp.Location, handler.logoutRedirect)
+		} else if h.logoutRedirect != "" {
+			w.Header().Set(internalHttp.Location, h.logoutRedirect)
 		} else {
 			w.Header().Set(internalHttp.Location, r.RequestURI)
 		}
 
 		w.WriteHeader(http.StatusSeeOther)
 	} else {
-		handler.errorHandler.MethodNotAllowedHandler(w, r)
+		h.errorHandler.MethodNotAllowedHandler(w, r)
 		return
 	}
 }

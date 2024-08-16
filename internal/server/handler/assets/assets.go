@@ -10,23 +10,23 @@ import (
 	"strings"
 )
 
-type AssetHandler struct {
-	errorHandler *error.RequestHandler
+type Handler struct {
+	errorHandler *error.Handler
 }
 
-func NewAssetHandler() *AssetHandler {
-	return &AssetHandler{
+func NewAssetHandler() *Handler {
+	return &Handler{
 		errorHandler: error.NewErrorHandler(),
 	}
 }
 
-func (handler *AssetHandler) Matches(r *http.Request) bool {
+func (h *Handler) Matches(r *http.Request) bool {
 	currentPath, _ := path.Split(r.URL.Path)
 	currentPath = strings.TrimSuffix(currentPath, "/")
 	return strings.HasSuffix(currentPath, "/assets")
 }
 
-func (handler *AssetHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	log.AccessLogRequest(r)
 	if r.Method == http.MethodGet {
 
@@ -36,7 +36,7 @@ func (handler *AssetHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 		data, assetsFSError := assetsFS.ReadFile(assetFSPath)
 		if assetsFSError != nil {
-			handler.errorHandler.NotFoundHandler(w, r)
+			h.errorHandler.NotFoundHandler(w, r)
 			return
 		}
 
@@ -49,7 +49,7 @@ func (handler *AssetHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			log.Error("Could not send data: %v", writeError)
 		}
 	} else {
-		handler.errorHandler.MethodNotAllowedHandler(w, r)
+		h.errorHandler.MethodNotAllowedHandler(w, r)
 		return
 	}
 }

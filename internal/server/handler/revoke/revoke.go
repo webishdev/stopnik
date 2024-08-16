@@ -12,15 +12,15 @@ import (
 	"slices"
 )
 
-type RevokeHandler struct {
+type Handler struct {
 	config       *config.Config
 	validator    *validation.RequestValidator
 	tokenManager *store.TokenManager
-	errorHandler *error.RequestHandler
+	errorHandler *error.Handler
 }
 
-func CreateRevokeHandler(config *config.Config, validator *validation.RequestValidator, tokenManager *store.TokenManager) *RevokeHandler {
-	return &RevokeHandler{
+func CreateRevokeHandler(config *config.Config, validator *validation.RequestValidator, tokenManager *store.TokenManager) *Handler {
+	return &Handler{
 		config:       config,
 		validator:    validator,
 		tokenManager: tokenManager,
@@ -29,23 +29,23 @@ func CreateRevokeHandler(config *config.Config, validator *validation.RequestVal
 }
 
 // Implements https://datatracker.ietf.org/doc/html/rfc7009
-func (handler *RevokeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	log.AccessLogRequest(r)
 	if r.Method == http.MethodPost {
 
 		// Check client credentials
-		client, _, validClientCredentials := handler.validator.ValidateClientCredentials(r)
+		client, _, validClientCredentials := h.validator.ValidateClientCredentials(r)
 		if !validClientCredentials {
 
 			// Fall back to access token with scopes
 			authorizationHeader := r.Header.Get(internalHttp.Authorization)
-			_, scopes, userExists := handler.tokenManager.ValidateAccessToken(authorizationHeader)
+			_, scopes, userExists := h.tokenManager.ValidateAccessToken(authorizationHeader)
 			if !userExists {
 				oauth2.TokenErrorStatusResponseHandler(w, http.StatusUnauthorized, &oauth2.TokenErrorResponseParameter{Error: oauth2.TokenEtInvalidRequest})
 				return
 			}
 
-			hasRevokeScope := slices.Contains(scopes, handler.config.GetRevokeScope())
+			hasRevokeScope := slices.Contains(scopes, h.config.GetRevokeScope())
 
 			if !hasRevokeScope {
 				oauth2.TokenErrorStatusResponseHandler(w, http.StatusUnauthorized, &oauth2.TokenErrorResponseParameter{Error: oauth2.TokenEtInvalidRequest})
@@ -65,39 +65,39 @@ func (handler *RevokeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 		tokenTypeHint, tokenTypeHintExists := oauth2.IntrospectTokenTypeFromString(tokenTypeHintParameter)
 
 		if !tokenTypeHintExists {
-			accessTokenRevoked := handler.revokeAccessToken(token)
+			accessTokenRevoked := h.revokeAccessToken(token)
 			if !accessTokenRevoked {
-				handler.revokeRefreshToken(token)
+				h.revokeRefreshToken(token)
 			}
 		} else if tokenTypeHint == oauth2.ItAccessToken {
-			handler.revokeAccessToken(token)
+			h.revokeAccessToken(token)
 		} else if tokenTypeHint == oauth2.ItRefreshToken {
-			handler.revokeRefreshToken(token)
+			h.revokeRefreshToken(token)
 		}
 
 		w.WriteHeader(http.StatusOK)
 
 	} else {
-		handler.errorHandler.MethodNotAllowedHandler(w, r)
+		h.errorHandler.MethodNotAllowedHandler(w, r)
 		return
 	}
 }
 
-func (handler *RevokeHandler) revokeRefreshToken(token string) bool {
-	refreshToken, tokenExists := handler.tokenManager.GetRefreshToken(token)
+func (h *Handler) revokeRefreshToken(token string) bool {
+	refreshToken, tokenExists := h.tokenManager.GetRefreshToken(token)
 
 	if tokenExists {
-		handler.tokenManager.RevokeRefreshToken(refreshToken)
+		h.tokenManager.RevokeRefreshToken(refreshToken)
 	}
 
 	return tokenExists
 }
 
-func (handler *RevokeHandler) revokeAccessToken(token string) bool {
-	accessToken, tokenExists := handler.tokenManager.GetAccessToken(token)
+func (h *Handler) revokeAccessToken(token string) bool {
+	accessToken, tokenExists := h.tokenManager.GetAccessToken(token)
 
 	if tokenExists {
-		handler.tokenManager.RevokeAccessToken(accessToken)
+		h.tokenManager.RevokeAccessToken(accessToken)
 	}
 
 	return tokenExists

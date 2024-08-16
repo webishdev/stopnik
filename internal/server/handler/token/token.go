@@ -12,15 +12,15 @@ import (
 	"strings"
 )
 
-type TokenHandler struct {
+type Handler struct {
 	validator      *validation.RequestValidator
 	sessionManager *store.SessionManager
 	tokenManager   *store.TokenManager
-	errorHandler   *error.RequestHandler
+	errorHandler   *error.Handler
 }
 
-func CreateTokenHandler(validator *validation.RequestValidator, sessionManager *store.SessionManager, tokenManager *store.TokenManager) *TokenHandler {
-	return &TokenHandler{
+func CreateTokenHandler(validator *validation.RequestValidator, sessionManager *store.SessionManager, tokenManager *store.TokenManager) *Handler {
+	return &Handler{
 		validator:      validator,
 		sessionManager: sessionManager,
 		tokenManager:   tokenManager,
@@ -28,18 +28,18 @@ func CreateTokenHandler(validator *validation.RequestValidator, sessionManager *
 	}
 }
 
-func (handler *TokenHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	log.AccessLogRequest(r)
 	if r.Method == http.MethodPost {
-		handler.handlePostRequest(w, r)
+		h.handlePostRequest(w, r)
 	} else {
-		handler.errorHandler.MethodNotAllowedHandler(w, r)
+		h.errorHandler.MethodNotAllowedHandler(w, r)
 		return
 	}
 }
 
-func (handler *TokenHandler) handlePostRequest(w http.ResponseWriter, r *http.Request) {
-	client, fallbackUsed, validClientCredentials := handler.validator.ValidateClientCredentials(r)
+func (h *Handler) handlePostRequest(w http.ResponseWriter, r *http.Request) {
+	client, fallbackUsed, validClientCredentials := h.validator.ValidateClientCredentials(r)
 	// https://datatracker.ietf.org/doc/html/rfc6749#section-2.3.1
 	if !validClientCredentials {
 		httpStatus := http.StatusUnauthorized
@@ -63,7 +63,7 @@ func (handler *TokenHandler) handlePostRequest(w http.ResponseWriter, r *http.Re
 	if grantType == oauth2.GtAuthorizationCode {
 		// https://datatracker.ietf.org/doc/html/rfc6749#section-4.1.3
 		code := r.PostFormValue(oauth2.ParameterCode)
-		authSession, authSessionExists := handler.sessionManager.GetSession(code)
+		authSession, authSessionExists := h.sessionManager.GetSession(code)
 		if !authSessionExists {
 			oauth2.TokenErrorResponseHandler(w, &oauth2.TokenErrorResponseParameter{Error: oauth2.TokenEtInvalidRequest})
 			return
@@ -91,7 +91,7 @@ func (handler *TokenHandler) handlePostRequest(w http.ResponseWriter, r *http.Re
 		passwordForm := r.PostFormValue(oauth2.ParameterPassword)
 		scopeForm := r.PostFormValue(oauth2.ParameterScope)
 
-		user, exists := handler.validator.ValidateUserPassword(usernameFrom, passwordForm)
+		user, exists := h.validator.ValidateUserPassword(usernameFrom, passwordForm)
 		if !exists {
 			oauth2.TokenErrorResponseHandler(w, &oauth2.TokenErrorResponseParameter{Error: oauth2.TokenEtInvalidRequest})
 			return
@@ -109,7 +109,7 @@ func (handler *TokenHandler) handlePostRequest(w http.ResponseWriter, r *http.Re
 	} else if grantType == oauth2.GtRefreshToken && client.GetRefreshTTL() > 0 {
 		// https://datatracker.ietf.org/doc/html/rfc6749#section-6
 		refreshTokenForm := r.PostFormValue(oauth2.ParameterRefreshToken)
-		refreshToken, refreshTokenExists := handler.tokenManager.GetRefreshToken(refreshTokenForm)
+		refreshToken, refreshTokenExists := h.tokenManager.GetRefreshToken(refreshTokenForm)
 		if !refreshTokenExists {
 			oauth2.TokenErrorResponseHandler(w, &oauth2.TokenErrorResponseParameter{Error: oauth2.TokenEtInvalidRequest})
 			return
@@ -127,11 +127,11 @@ func (handler *TokenHandler) handlePostRequest(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	accessTokenResponse := handler.tokenManager.CreateAccessTokenResponse(username, client, scopes)
+	accessTokenResponse := h.tokenManager.CreateAccessTokenResponse(username, client, scopes)
 
 	jsonError := internalHttp.SendJson(accessTokenResponse, w)
 	if jsonError != nil {
-		handler.errorHandler.InternalServerErrorHandler(w, r)
+		h.errorHandler.InternalServerErrorHandler(w, r)
 		return
 	}
 }
