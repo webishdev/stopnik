@@ -13,7 +13,7 @@ type Handler struct {
 	errorHandler   *error.Handler
 }
 
-func CreateLogoutHandler(cookieManager *internalHttp.CookieManager, logoutRedirect string) *Handler {
+func NewLogoutHandler(cookieManager *internalHttp.CookieManager, logoutRedirect string) *Handler {
 	return &Handler{
 		cookieManager:  cookieManager,
 		logoutRedirect: logoutRedirect,

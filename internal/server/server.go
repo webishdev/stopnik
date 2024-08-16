@@ -11,6 +11,7 @@ import (
 	"github.com/webishdev/stopnik/internal/server/handler/authorize"
 	"github.com/webishdev/stopnik/internal/server/handler/health"
 	"github.com/webishdev/stopnik/internal/server/handler/introspect"
+	"github.com/webishdev/stopnik/internal/server/handler/keys"
 	"github.com/webishdev/stopnik/internal/server/handler/logout"
 	"github.com/webishdev/stopnik/internal/server/handler/metadata"
 	"github.com/webishdev/stopnik/internal/server/handler/revoke"
@@ -178,17 +179,18 @@ func registerHandlers(config *config.Config, handle func(pattern string, handler
 
 	// Own
 	healthHandler := health.NewHealthHandler(tokenManager)
-	accountHandler := account.CreateAccountHandler(requestValidator, cookieManager, templateManager)
-	logoutHandler := logout.CreateLogoutHandler(cookieManager, config.Server.LogoutRedirect)
+	accountHandler := account.NewAccountHandler(requestValidator, cookieManager, templateManager)
+	logoutHandler := logout.NewLogoutHandler(cookieManager, config.Server.LogoutRedirect)
 
 	// OAuth2
-	authorizeHandler := authorize.CreateAuthorizeHandler(requestValidator, cookieManager, sessionManager, tokenManager, templateManager)
-	tokenHandler := token.CreateTokenHandler(requestValidator, sessionManager, tokenManager)
+	authorizeHandler := authorize.NewAuthorizeHandler(requestValidator, cookieManager, sessionManager, tokenManager, templateManager)
+	tokenHandler := token.NewTokenHandler(requestValidator, sessionManager, tokenManager)
 
 	// OAuth2 extensions
-	introspectHandler := introspect.CreateIntrospectHandler(config, requestValidator, tokenManager)
-	revokeHandler := revoke.CreateRevokeHandler(config, requestValidator, tokenManager)
-	metadataHandler := metadata.CreateMetadataHandler()
+	introspectHandler := introspect.NewIntrospectHandler(config, requestValidator, tokenManager)
+	revokeHandler := revoke.NewRevokeHandler(config, requestValidator, tokenManager)
+	metadataHandler := metadata.NewMetadataHandler()
+	keysHandler := keys.NewKeysHandler(config)
 
 	// Server
 	handle(endpoint.Health, healthHandler)
@@ -203,4 +205,5 @@ func registerHandlers(config *config.Config, handle func(pattern string, handler
 	handle(endpoint.Introspect, introspectHandler)
 	handle(endpoint.Revoke, revokeHandler)
 	handle(endpoint.Metadata, metadataHandler)
+	handle(endpoint.Keys, keysHandler)
 }

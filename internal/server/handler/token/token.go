@@ -19,7 +19,7 @@ type Handler struct {
 	errorHandler   *error.Handler
 }
 
-func CreateTokenHandler(validator *validation.RequestValidator, sessionManager *store.SessionManager, tokenManager *store.TokenManager) *Handler {
+func NewTokenHandler(validator *validation.RequestValidator, sessionManager *store.SessionManager, tokenManager *store.TokenManager) *Handler {
 	return &Handler{
 		validator:      validator,
 		sessionManager: sessionManager,

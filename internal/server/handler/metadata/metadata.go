@@ -47,8 +47,10 @@ type Handler struct {
 	errorHandler *errorHandler.Handler
 }
 
-func CreateMetadataHandler() *Handler {
-	return &Handler{}
+func NewMetadataHandler() *Handler {
+	return &Handler{
+		errorHandler: errorHandler.NewErrorHandler(),
+	}
 }
 
 func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -60,12 +62,23 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			h.errorHandler.InternalServerErrorHandler(w, r)
 			return
 		}
+
+		// OAuth2
 		authorizationEndpoint := urlFromRequest.JoinPath(endpoint.Authorization)
 		tokenEndpoint := urlFromRequest.JoinPath(endpoint.Token)
+
+		// OAuth2 extensions
+		introspectEndpoint := urlFromRequest.JoinPath(endpoint.Introspect)
+		revokeEndpoint := urlFromRequest.JoinPath(endpoint.Revoke)
+		keysEndpoint := urlFromRequest.JoinPath(endpoint.Keys)
+
 		metadataResponse := &response{
 			Issuer:                requestData.IssuerString(),
 			AuthorizationEndpoint: authorizationEndpoint.String(),
 			TokenEndpoint:         tokenEndpoint.String(),
+			IntrospectionEndpoint: introspectEndpoint.String(),
+			RevocationEndpoint:    revokeEndpoint.String(),
+			JWKsUri:               keysEndpoint.String(),
 		}
 		jsonError := internalHttp.SendJson(metadataResponse, w)
 		if jsonError != nil {

@@ -29,7 +29,7 @@ type Handler struct {
 	errorHandler *error.Handler
 }
 
-func CreateIntrospectHandler(config *config.Config, validator *validation.RequestValidator, tokenManager *store.TokenManager) *Handler {
+func NewIntrospectHandler(config *config.Config, validator *validation.RequestValidator, tokenManager *store.TokenManager) *Handler {
 	return &Handler{
 		config:       config,
 		validator:    validator,

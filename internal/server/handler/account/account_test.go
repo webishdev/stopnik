@@ -52,7 +52,7 @@ func testAccountWithoutCookie(t *testing.T, testConfig *config.Config) {
 		cookieManager := internalHttp.NewCookieManager(testConfig)
 		templateManager := template.NewTemplateManager(testConfig)
 
-		accountHandler := CreateAccountHandler(requestValidator, cookieManager, templateManager)
+		accountHandler := NewAccountHandler(requestValidator, cookieManager, templateManager)
 
 		rr := httptest.NewRecorder()
 
@@ -90,7 +90,7 @@ func testAccountWithCookie(t *testing.T, testConfig *config.Config) {
 		user, _ := testConfig.GetUser("foo")
 		cookie, _ := cookieManager.CreateCookie(user.Username)
 
-		accountHandler := CreateAccountHandler(requestValidator, cookieManager, templateManager)
+		accountHandler := NewAccountHandler(requestValidator, cookieManager, templateManager)
 
 		rr := httptest.NewRecorder()
 
@@ -141,7 +141,7 @@ func testAccountLogin(t *testing.T, testConfig *config.Config) {
 
 			cookie, _ := cookieManager.CreateCookie(test.username)
 
-			accountHandler := CreateAccountHandler(requestValidator, cookieManager, templateManager)
+			accountHandler := NewAccountHandler(requestValidator, cookieManager, templateManager)
 
 			rr := httptest.NewRecorder()
 
@@ -183,7 +183,7 @@ func testAccountNotAllowedHttpMethods(t *testing.T) {
 	for _, method := range testInvalidAccountHttpMethods {
 		testMessage := fmt.Sprintf("Account with unsupported method %s", method)
 		t.Run(testMessage, func(t *testing.T) {
-			accountHandler := CreateAccountHandler(&validation.RequestValidator{}, &internalHttp.CookieManager{}, &template.Manager{})
+			accountHandler := NewAccountHandler(&validation.RequestValidator{}, &internalHttp.CookieManager{}, &template.Manager{})
 
 			rr := httptest.NewRecorder()
 

@@ -72,7 +72,7 @@ func testTokenMissingClientCredentials(t *testing.T, testConfig *config.Config) 
 		sessionManager := store.NewSessionManager(testConfig)
 		tokenManager := store.NewTokenManager(testConfig, store.NewDefaultKeyLoader(testConfig))
 
-		tokenHandler := CreateTokenHandler(requestValidator, sessionManager, tokenManager)
+		tokenHandler := NewTokenHandler(requestValidator, sessionManager, tokenManager)
 
 		rr := httptest.NewRecorder()
 
@@ -90,7 +90,7 @@ func testTokenInvalidClientCredentials(t *testing.T, testConfig *config.Config) 
 		sessionManager := store.NewSessionManager(testConfig)
 		tokenManager := store.NewTokenManager(testConfig, store.NewDefaultKeyLoader(testConfig))
 
-		tokenHandler := CreateTokenHandler(requestValidator, sessionManager, tokenManager)
+		tokenHandler := NewTokenHandler(requestValidator, sessionManager, tokenManager)
 
 		rr := httptest.NewRecorder()
 
@@ -111,7 +111,7 @@ func testTokenMissingGrandType(t *testing.T, testConfig *config.Config) {
 		sessionManager := store.NewSessionManager(testConfig)
 		tokenManager := store.NewTokenManager(testConfig, store.NewDefaultKeyLoader(testConfig))
 
-		tokenHandler := CreateTokenHandler(requestValidator, sessionManager, tokenManager)
+		tokenHandler := NewTokenHandler(requestValidator, sessionManager, tokenManager)
 
 		rr := httptest.NewRecorder()
 
@@ -132,7 +132,7 @@ func testTokenInvalidGrandType(t *testing.T, testConfig *config.Config) {
 		sessionManager := store.NewSessionManager(testConfig)
 		tokenManager := store.NewTokenManager(testConfig, store.NewDefaultKeyLoader(testConfig))
 
-		tokenHandler := CreateTokenHandler(requestValidator, sessionManager, tokenManager)
+		tokenHandler := NewTokenHandler(requestValidator, sessionManager, tokenManager)
 
 		rr := httptest.NewRecorder()
 
@@ -159,7 +159,7 @@ func testTokenAuthorizationCodeGrantTypeMissingCodeParameter(t *testing.T, testC
 		sessionManager := store.NewSessionManager(testConfig)
 		tokenManager := store.NewTokenManager(testConfig, store.NewDefaultKeyLoader(testConfig))
 
-		tokenHandler := CreateTokenHandler(requestValidator, sessionManager, tokenManager)
+		tokenHandler := NewTokenHandler(requestValidator, sessionManager, tokenManager)
 
 		rr := httptest.NewRecorder()
 
@@ -201,7 +201,7 @@ func testTokenAuthorizationCodeGrantTypeInvalidPKCE(t *testing.T, testConfig *co
 		tokenManager := store.NewTokenManager(testConfig, store.NewDefaultKeyLoader(testConfig))
 		sessionManager.StartSession(authSession)
 
-		tokenHandler := CreateTokenHandler(requestValidator, sessionManager, tokenManager)
+		tokenHandler := NewTokenHandler(requestValidator, sessionManager, tokenManager)
 
 		rr := httptest.NewRecorder()
 
@@ -273,7 +273,7 @@ func testTokenAuthorizationCodeGrantType(t *testing.T, testConfig *config.Config
 			tokenManager := store.NewTokenManager(testConfig, store.NewDefaultKeyLoader(testConfig))
 			sessionManager.StartSession(authSession)
 
-			tokenHandler := CreateTokenHandler(requestValidator, sessionManager, tokenManager)
+			tokenHandler := NewTokenHandler(requestValidator, sessionManager, tokenManager)
 
 			rr := httptest.NewRecorder()
 
@@ -313,7 +313,7 @@ func testTokenPasswordGrantType(t *testing.T, testConfig *config.Config) {
 		sessionManager := store.NewSessionManager(testConfig)
 		tokenManager := store.NewTokenManager(testConfig, store.NewDefaultKeyLoader(testConfig))
 
-		tokenHandler := CreateTokenHandler(requestValidator, sessionManager, tokenManager)
+		tokenHandler := NewTokenHandler(requestValidator, sessionManager, tokenManager)
 
 		rr := httptest.NewRecorder()
 
@@ -347,7 +347,7 @@ func testTokenClientCredentialsGrantType(t *testing.T, testConfig *config.Config
 		sessionManager := store.NewSessionManager(testConfig)
 		tokenManager := store.NewTokenManager(testConfig, store.NewDefaultKeyLoader(testConfig))
 
-		tokenHandler := CreateTokenHandler(requestValidator, sessionManager, tokenManager)
+		tokenHandler := NewTokenHandler(requestValidator, sessionManager, tokenManager)
 
 		rr := httptest.NewRecorder()
 
@@ -398,7 +398,7 @@ func testTokenRefreshTokenGrantType(t *testing.T, testConfig *config.Config) {
 		sessionManager.StartSession(authSession)
 		accessTokenResponse := tokenManager.CreateAccessTokenResponse(user.Username, client, scopes)
 
-		tokenHandler := CreateTokenHandler(requestValidator, sessionManager, tokenManager)
+		tokenHandler := NewTokenHandler(requestValidator, sessionManager, tokenManager)
 
 		rr := httptest.NewRecorder()
 
@@ -435,7 +435,7 @@ func testTokenNotAllowedHttpMethods(t *testing.T) {
 	for _, method := range testInvalidTokenHttpMethods {
 		testMessage := fmt.Sprintf("Token with unsupported method %s", method)
 		t.Run(testMessage, func(t *testing.T) {
-			tokenHandler := CreateTokenHandler(&validation.RequestValidator{}, &store.SessionManager{}, &store.TokenManager{})
+			tokenHandler := NewTokenHandler(&validation.RequestValidator{}, &store.SessionManager{}, &store.TokenManager{})
 
 			rr := httptest.NewRecorder()
 

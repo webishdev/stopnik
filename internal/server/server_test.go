@@ -60,8 +60,9 @@ func Test_Server(t *testing.T) {
 		}
 		registerHandlers(&config.Config{}, reg)
 
-		if len(*patterns) != 8 {
-			t.Errorf("Incorrect number of patterns registered, expected 7 got %v", len(*patterns))
+		expectedHandlers := 9
+		if len(*patterns) != expectedHandlers {
+			t.Errorf("Incorrect number of patterns registered, expected %v got %v", expectedHandlers, len(*patterns))
 		}
 
 		// Server
@@ -77,6 +78,7 @@ func Test_Server(t *testing.T) {
 		slices.Contains(*patterns, endpoint.Introspect)
 		slices.Contains(*patterns, endpoint.Revoke)
 		slices.Contains(*patterns, endpoint.Metadata)
+		slices.Contains(*patterns, endpoint.Keys)
 	})
 
 	for _, test := range testConfigParameters {

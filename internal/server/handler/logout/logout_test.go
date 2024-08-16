@@ -54,7 +54,7 @@ func testInvalidCookies(t *testing.T, testConfig *config.Config) {
 			SameSite: http.SameSiteLaxMode,
 		}
 
-		logoutHandler := CreateLogoutHandler(cookieManager, "")
+		logoutHandler := NewLogoutHandler(cookieManager, "")
 
 		rr := httptest.NewRecorder()
 
@@ -89,7 +89,7 @@ func testLogout(t *testing.T, testConfig *config.Config) {
 			user, _ := testConfig.GetUser("foo")
 			cookie, _ := cookieManager.CreateCookie(user.Username)
 
-			logoutHandler := CreateLogoutHandler(cookieManager, test.handlerRedirect)
+			logoutHandler := NewLogoutHandler(cookieManager, test.handlerRedirect)
 
 			rr := httptest.NewRecorder()
 
@@ -147,7 +147,7 @@ func testLogoutNotAllowedHttpMethods(t *testing.T) {
 	for _, method := range testInvalidLogoutHttpMethods {
 		testMessage := fmt.Sprintf("Logout with unsupported method %s", method)
 		t.Run(testMessage, func(t *testing.T) {
-			logoutHandler := CreateLogoutHandler(&internalHttp.CookieManager{}, "")
+			logoutHandler := NewLogoutHandler(&internalHttp.CookieManager{}, "")
 
 			rr := httptest.NewRecorder()
 

@@ -17,7 +17,7 @@ type Handler struct {
 	errorHandler    *error.Handler
 }
 
-func CreateAccountHandler(
+func NewAccountHandler(
 	validator *validation.RequestValidator,
 	cookieManager *internalHttp.CookieManager,
 	templateManager *template.Manager,

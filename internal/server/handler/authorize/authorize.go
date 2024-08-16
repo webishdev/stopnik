@@ -27,7 +27,7 @@ type Handler struct {
 	errorHandler    *error.Handler
 }
 
-func CreateAuthorizeHandler(
+func NewAuthorizeHandler(
 	validator *validation.RequestValidator,
 	cookieManager *internalHttp.CookieManager,
 	sessionManager *store.SessionManager,

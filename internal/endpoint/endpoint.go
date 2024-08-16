@@ -9,4 +9,5 @@ const (
 	Introspect           = "/introspect"
 	Revoke               = "/revoke"
 	Metadata             = "/.well-known/oauth-authorization-server"
+	Keys                 = "/keys"
 )
