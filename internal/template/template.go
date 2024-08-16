@@ -3,6 +3,7 @@ package template
 import (
 	"bytes"
 	_ "embed"
+	"github.com/webishdev/stopnik/internal/config"
 	"html/template"
 )
 
@@ -17,6 +18,14 @@ var loginHtml []byte
 
 //go:embed resources/logout.html
 var logoutHtml []byte
+
+type TemplateManager struct {
+	config *config.Config
+}
+
+func NewTemplateManager(config *config.Config) *TemplateManager {
+	return &TemplateManager{config}
+}
 
 func addTemplates(main *template.Template) bytes.Buffer {
 	var tpl bytes.Buffer
@@ -34,7 +43,7 @@ func addTemplates(main *template.Template) bytes.Buffer {
 	return tpl
 }
 
-func LoginTemplate(id string, action string) bytes.Buffer {
+func (templateManager *TemplateManager) LoginTemplate(id string, action string) bytes.Buffer {
 	var tpl bytes.Buffer
 
 	loginTemplate, loginParseError := template.New("login").Parse(string(loginHtml))
@@ -60,7 +69,7 @@ func LoginTemplate(id string, action string) bytes.Buffer {
 	return tpl
 }
 
-func LogoutTemplate(username string, requestURI string) bytes.Buffer {
+func (templateManager *TemplateManager) LogoutTemplate(username string, requestURI string) bytes.Buffer {
 	var tpl bytes.Buffer
 
 	logoutTemplate, loginParseError := template.New("logout").Parse(string(logoutHtml))

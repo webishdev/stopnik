@@ -1,13 +1,37 @@
 package template
 
 import (
+	"github.com/webishdev/stopnik/internal/config"
 	"strings"
 	"testing"
 )
 
 func Test_Template(t *testing.T) {
+	testConfig := &config.Config{
+		Clients: []config.Client{
+			{
+				Id:        "foo",
+				Secret:    "d82c4eb5261cb9c8aa9855edd67d1bd10482f41529858d925094d173fa662aa91ff39bc5b188615273484021dfb16fd8284cf684ccf0fc795be3aa2fc1e6c181",
+				Redirects: []string{"https://example.com/callback"},
+			},
+		},
+		Users: []config.User{
+			{
+				Username: "foo",
+				Password: "d82c4eb5261cb9c8aa9855edd67d1bd10482f41529858d925094d173fa662aa91ff39bc5b188615273484021dfb16fd8284cf684ccf0fc795be3aa2fc1e6c181",
+			},
+		},
+	}
+
+	err := testConfig.Setup()
+	if err != nil {
+		t.Error(err)
+	}
+
+	templateManager := NewTemplateManager(testConfig)
+
 	t.Run("Login", func(t *testing.T) {
-		loginTemplateBuffer := LoginTemplate("foo", "/some/post")
+		loginTemplateBuffer := templateManager.LoginTemplate("foo", "/some/post")
 
 		result := loginTemplateBuffer.String()
 
@@ -20,7 +44,7 @@ func Test_Template(t *testing.T) {
 	})
 
 	t.Run("Logout", func(t *testing.T) {
-		logoutTemplateBuffer := LogoutTemplate("foo", "/some/value")
+		logoutTemplateBuffer := templateManager.LogoutTemplate("foo", "/some/value")
 
 		result := logoutTemplateBuffer.String()
 

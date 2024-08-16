@@ -10,14 +10,20 @@ import (
 )
 
 type AccountHandler struct {
-	validator     *validation.RequestValidator
-	cookieManager *internalHttp.CookieManager
+	validator       *validation.RequestValidator
+	cookieManager   *internalHttp.CookieManager
+	templateManager *template.TemplateManager
 }
 
-func CreateAccountHandler(validator *validation.RequestValidator, cookieManager *internalHttp.CookieManager) *AccountHandler {
+func CreateAccountHandler(
+	validator *validation.RequestValidator,
+	cookieManager *internalHttp.CookieManager,
+	templateManager *template.TemplateManager,
+) *AccountHandler {
 	return &AccountHandler{
-		validator:     validator,
-		cookieManager: cookieManager,
+		validator:       validator,
+		cookieManager:   cookieManager,
+		templateManager: templateManager,
 	}
 }
 
@@ -26,7 +32,7 @@ func (handler *AccountHandler) ServeHTTP(w http.ResponseWriter, r *http.Request)
 	if r.Method == http.MethodGet {
 		user, validCookie := handler.cookieManager.ValidateCookie(r)
 		if validCookie {
-			logoutTemplate := template.LogoutTemplate(user.Username, r.RequestURI)
+			logoutTemplate := handler.templateManager.LogoutTemplate(user.Username, r.RequestURI)
 
 			_, err := w.Write(logoutTemplate.Bytes())
 			if err != nil {
@@ -35,7 +41,7 @@ func (handler *AccountHandler) ServeHTTP(w http.ResponseWriter, r *http.Request)
 			}
 		} else {
 			id := uuid.New()
-			loginTemplate := template.LoginTemplate(id.String(), "account")
+			loginTemplate := handler.templateManager.LoginTemplate(id.String(), "account")
 
 			_, err := w.Write(loginTemplate.Bytes())
 			if err != nil {

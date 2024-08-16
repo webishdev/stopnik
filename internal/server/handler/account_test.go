@@ -5,6 +5,7 @@ import (
 	"github.com/webishdev/stopnik/internal/config"
 	internalHttp "github.com/webishdev/stopnik/internal/http"
 	"github.com/webishdev/stopnik/internal/server/validation"
+	"github.com/webishdev/stopnik/internal/template"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -48,8 +49,9 @@ func testAccountWithoutCookie(t *testing.T, testConfig *config.Config) {
 	t.Run("Account without cookie", func(t *testing.T) {
 		requestValidator := validation.NewRequestValidator(testConfig)
 		cookieManager := internalHttp.NewCookieManager(testConfig)
+		templateManager := template.NewTemplateManager(testConfig)
 
-		accountHandler := CreateAccountHandler(requestValidator, cookieManager)
+		accountHandler := CreateAccountHandler(requestValidator, cookieManager, templateManager)
 
 		rr := httptest.NewRecorder()
 
@@ -82,11 +84,12 @@ func testAccountWithCookie(t *testing.T, testConfig *config.Config) {
 	t.Run("Account cookie", func(t *testing.T) {
 		requestValidator := validation.NewRequestValidator(testConfig)
 		cookieManager := internalHttp.NewCookieManager(testConfig)
+		templateManager := template.NewTemplateManager(testConfig)
 
 		user, _ := testConfig.GetUser("foo")
 		cookie, _ := cookieManager.CreateCookie(user.Username)
 
-		accountHandler := CreateAccountHandler(requestValidator, cookieManager)
+		accountHandler := CreateAccountHandler(requestValidator, cookieManager, templateManager)
 
 		rr := httptest.NewRecorder()
 
@@ -133,10 +136,11 @@ func testAccountLogin(t *testing.T, testConfig *config.Config) {
 		t.Run(testMessage, func(t *testing.T) {
 			requestValidator := validation.NewRequestValidator(testConfig)
 			cookieManager := internalHttp.NewCookieManager(testConfig)
+			templateManager := template.NewTemplateManager(testConfig)
 
 			cookie, _ := cookieManager.CreateCookie(test.username)
 
-			accountHandler := CreateAccountHandler(requestValidator, cookieManager)
+			accountHandler := CreateAccountHandler(requestValidator, cookieManager, templateManager)
 
 			rr := httptest.NewRecorder()
 
@@ -178,7 +182,7 @@ func testAccountNotAllowedHttpMethods(t *testing.T) {
 	for _, method := range testInvalidAccountHttpMethods {
 		testMessage := fmt.Sprintf("Account with unsupported method %s", method)
 		t.Run(testMessage, func(t *testing.T) {
-			accountHandler := CreateAccountHandler(&validation.RequestValidator{}, &internalHttp.CookieManager{})
+			accountHandler := CreateAccountHandler(&validation.RequestValidator{}, &internalHttp.CookieManager{}, &template.TemplateManager{})
 
 			rr := httptest.NewRecorder()
 

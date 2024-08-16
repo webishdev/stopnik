@@ -18,18 +18,25 @@ import (
 )
 
 type AuthorizeHandler struct {
-	validator      *validation.RequestValidator
-	cookieManager  *internalHttp.CookieManager
-	sessionManager *store.SessionManager
-	tokenManager   *store.TokenManager
+	validator       *validation.RequestValidator
+	cookieManager   *internalHttp.CookieManager
+	sessionManager  *store.SessionManager
+	tokenManager    *store.TokenManager
+	templateManager *template.TemplateManager
 }
 
-func CreateAuthorizeHandler(validator *validation.RequestValidator, cookieManager *internalHttp.CookieManager, sessionManager *store.SessionManager, tokenManager *store.TokenManager) *AuthorizeHandler {
+func CreateAuthorizeHandler(
+	validator *validation.RequestValidator,
+	cookieManager *internalHttp.CookieManager,
+	sessionManager *store.SessionManager,
+	tokenManager *store.TokenManager,
+	templateManager *template.TemplateManager) *AuthorizeHandler {
 	return &AuthorizeHandler{
-		validator:      validator,
-		cookieManager:  cookieManager,
-		sessionManager: sessionManager,
-		tokenManager:   tokenManager,
+		validator:       validator,
+		cookieManager:   cookieManager,
+		sessionManager:  sessionManager,
+		tokenManager:    tokenManager,
+		templateManager: templateManager,
 	}
 }
 
@@ -151,7 +158,7 @@ func (handler *AuthorizeHandler) handleGetRequest(w http.ResponseWriter, r *http
 		query := r.URL.Query()
 		encodedQuery := query.Encode()
 		formAction := fmt.Sprintf("authorize?%s", encodedQuery)
-		loginTemplate := template.LoginTemplate(authSession.Id, formAction)
+		loginTemplate := handler.templateManager.LoginTemplate(authSession.Id, formAction)
 
 		_, err := w.Write(loginTemplate.Bytes())
 		if err != nil {

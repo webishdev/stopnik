@@ -8,6 +8,7 @@ import (
 	"github.com/webishdev/stopnik/internal/server/handler"
 	"github.com/webishdev/stopnik/internal/server/validation"
 	"github.com/webishdev/stopnik/internal/store"
+	"github.com/webishdev/stopnik/internal/template"
 	"github.com/webishdev/stopnik/log"
 	"net"
 	"net/http"
@@ -165,14 +166,15 @@ func registerHandlers(config *config.Config, handle func(pattern string, handler
 	tokenManager := store.NewTokenManager(config, store.NewDefaultKeyLoader(config))
 	cookieManager := internalHttp.NewCookieManager(config)
 	requestValidator := validation.NewRequestValidator(config)
+	templateManager := template.NewTemplateManager(config)
 
 	// Own
 	healthHandler := handler.NewHealthHandler(tokenManager)
-	accountHandler := handler.CreateAccountHandler(requestValidator, cookieManager)
+	accountHandler := handler.CreateAccountHandler(requestValidator, cookieManager, templateManager)
 	logoutHandler := handler.CreateLogoutHandler(cookieManager, config.Server.LogoutRedirect)
 
 	// OAuth2
-	authorizeHandler := handler.CreateAuthorizeHandler(requestValidator, cookieManager, sessionManager, tokenManager)
+	authorizeHandler := handler.CreateAuthorizeHandler(requestValidator, cookieManager, sessionManager, tokenManager, templateManager)
 	tokenHandler := handler.CreateTokenHandler(requestValidator, sessionManager, tokenManager)
 
 	// OAuth2 extensions

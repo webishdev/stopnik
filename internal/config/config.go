@@ -67,6 +67,11 @@ type Config struct {
 	clientMap       map[string]*Client
 }
 
+type UI struct {
+	ShowFooter bool `yaml:"showFooter"`
+	ShowMascot bool `yaml:"showMascot"`
+}
+
 type ReadFile func(filename string) ([]byte, error)
 type Unmarshal func(in []byte, out interface{}) (err error)
 
