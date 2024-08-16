@@ -168,8 +168,6 @@ func (handler *AuthorizeHandler) handlePostRequest(w http.ResponseWriter, r *htt
 		return
 	}
 
-	http.SetCookie(w, &cookie)
-
 	authSessionForm := r.PostFormValue("stopnik_auth_session")
 	authSession, exists := handler.sessionManager.GetSession(authSessionForm)
 	if !exists {
@@ -183,6 +181,8 @@ func (handler *AuthorizeHandler) handlePostRequest(w http.ResponseWriter, r *htt
 		InternalServerErrorHandler(w, r)
 		return
 	}
+
+	http.SetCookie(w, &cookie)
 
 	responseType, valid := oauth2.ResponseTypeFromString(authSession.ResponseType)
 	if !valid {

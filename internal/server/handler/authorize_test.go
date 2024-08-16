@@ -291,6 +291,12 @@ func testAuthorizeValidLoginNoSession(t *testing.T, testConfig *config.Config) {
 				t.Errorf("handler returned wrong status code: got %v want %v", rr.Code, http.StatusSeeOther)
 			}
 
+			cookies := rr.Result().Cookies()
+
+			if len(cookies) != 0 {
+				t.Errorf("cookies returned when it should not have been: %v", cookies)
+			}
+
 			location, locationError := rr.Result().Location()
 			if locationError != nil {
 				t.Errorf("location was not provied: %v", locationError)
