@@ -4,7 +4,7 @@ import (
 	internalHttp "github.com/webishdev/stopnik/internal/http"
 	"github.com/webishdev/stopnik/internal/oauth2"
 	"github.com/webishdev/stopnik/internal/pkce"
-	serverHandler "github.com/webishdev/stopnik/internal/server/handler"
+	"github.com/webishdev/stopnik/internal/server/handler/error"
 	"github.com/webishdev/stopnik/internal/server/validation"
 	"github.com/webishdev/stopnik/internal/store"
 	"github.com/webishdev/stopnik/log"
@@ -16,6 +16,7 @@ type TokenHandler struct {
 	validator      *validation.RequestValidator
 	sessionManager *store.SessionManager
 	tokenManager   *store.TokenManager
+	errorHandler   *error.RequestHandler
 }
 
 func CreateTokenHandler(validator *validation.RequestValidator, sessionManager *store.SessionManager, tokenManager *store.TokenManager) *TokenHandler {
@@ -23,6 +24,7 @@ func CreateTokenHandler(validator *validation.RequestValidator, sessionManager *
 		validator:      validator,
 		sessionManager: sessionManager,
 		tokenManager:   tokenManager,
+		errorHandler:   error.NewErrorHandler(),
 	}
 }
 
@@ -31,7 +33,7 @@ func (handler *TokenHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodPost {
 		handler.handlePostRequest(w, r)
 	} else {
-		serverHandler.MethodNotAllowedHandler(w, r)
+		handler.errorHandler.MethodNotAllowedHandler(w, r)
 		return
 	}
 }
@@ -129,7 +131,7 @@ func (handler *TokenHandler) handlePostRequest(w http.ResponseWriter, r *http.Re
 
 	jsonError := internalHttp.SendJson(accessTokenResponse, w)
 	if jsonError != nil {
-		serverHandler.InternalServerErrorHandler(w, r)
+		handler.errorHandler.InternalServerErrorHandler(w, r)
 		return
 	}
 }

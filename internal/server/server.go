@@ -79,7 +79,7 @@ func newStopnikServerWithServe(rwMutex *sync.RWMutex, config *config.Config, mux
 
 	middleware := &middlewareHandler{
 		next:   mux,
-		assets: &assets.AssetHandler{},
+		assets: assets.NewAssetHandler(),
 	}
 	return &StopnikServer{
 		config:            config,

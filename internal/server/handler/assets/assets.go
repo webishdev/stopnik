@@ -1,7 +1,7 @@
 package assets
 
 import (
-	serverHandler "github.com/webishdev/stopnik/internal/server/handler"
+	"github.com/webishdev/stopnik/internal/server/handler/error"
 	"github.com/webishdev/stopnik/internal/template/assets"
 	"github.com/webishdev/stopnik/log"
 	"mime"
@@ -11,6 +11,13 @@ import (
 )
 
 type AssetHandler struct {
+	errorHandler *error.RequestHandler
+}
+
+func NewAssetHandler() *AssetHandler {
+	return &AssetHandler{
+		errorHandler: error.NewErrorHandler(),
+	}
 }
 
 func (handler *AssetHandler) Matches(r *http.Request) bool {
@@ -29,7 +36,7 @@ func (handler *AssetHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 		data, assetsFSError := assetsFS.ReadFile(assetFSPath)
 		if assetsFSError != nil {
-			serverHandler.NotFoundHandler(w, r)
+			handler.errorHandler.NotFoundHandler(w, r)
 			return
 		}
 
@@ -42,7 +49,7 @@ func (handler *AssetHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			log.Error("Could not send data: %v", writeError)
 		}
 	} else {
-		serverHandler.MethodNotAllowedHandler(w, r)
+		handler.errorHandler.MethodNotAllowedHandler(w, r)
 		return
 	}
 }

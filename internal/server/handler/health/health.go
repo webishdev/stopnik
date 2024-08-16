@@ -2,7 +2,7 @@ package health
 
 import (
 	internalHttp "github.com/webishdev/stopnik/internal/http"
-	serverHandler "github.com/webishdev/stopnik/internal/server/handler"
+	"github.com/webishdev/stopnik/internal/server/handler/error"
 	"github.com/webishdev/stopnik/internal/store"
 	"github.com/webishdev/stopnik/log"
 	"net/http"
@@ -16,10 +16,14 @@ type Health struct {
 
 type HealthHandler struct {
 	tokenManager *store.TokenManager
+	errorHandler *error.RequestHandler
 }
 
 func NewHealthHandler(tokenManager *store.TokenManager) *HealthHandler {
-	return &HealthHandler{tokenManager: tokenManager}
+	return &HealthHandler{
+		tokenManager: tokenManager,
+		errorHandler: error.NewErrorHandler(),
+	}
 }
 
 func (handler *HealthHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -37,11 +41,11 @@ func (handler *HealthHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 
 		jsonError := internalHttp.SendJson(healthResponse, w)
 		if jsonError != nil {
-			serverHandler.InternalServerErrorHandler(w, r)
+			handler.errorHandler.InternalServerErrorHandler(w, r)
 			return
 		}
 	} else {
-		serverHandler.MethodNotAllowedHandler(w, r)
+		handler.errorHandler.MethodNotAllowedHandler(w, r)
 		return
 	}
 }

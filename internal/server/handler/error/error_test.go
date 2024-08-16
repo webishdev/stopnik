@@ -1,4 +1,4 @@
-package handler
+package error
 
 import (
 	"fmt"
@@ -14,13 +14,15 @@ func Test_Errors(t *testing.T) {
 		handler func(http.ResponseWriter, *http.Request)
 	}
 
+	errorHandler := NewErrorHandler()
+
 	var errorTestCases = []errorTestCase{
-		{"Method not allowed", http.StatusMethodNotAllowed, MethodNotAllowedHandler},
-		{"Forbidden", http.StatusForbidden, ForbiddenHandler},
-		{"Internal server error", http.StatusInternalServerError, InternalServerErrorHandler},
-		{"Not found", http.StatusNotFound, NotFoundHandler},
-		{"No content", http.StatusNoContent, NoContentHandler},
-		{"See other", http.StatusSeeOther, SeeOtherHandler},
+		{"Method not allowed", http.StatusMethodNotAllowed, errorHandler.MethodNotAllowedHandler},
+		{"Forbidden", http.StatusForbidden, errorHandler.ForbiddenHandler},
+		{"Internal server error", http.StatusInternalServerError, errorHandler.InternalServerErrorHandler},
+		{"Not found", http.StatusNotFound, errorHandler.NotFoundHandler},
+		{"No content", http.StatusNoContent, errorHandler.NoContentHandler},
+		{"See other", http.StatusSeeOther, errorHandler.SeeOtherHandler},
 	}
 
 	var testStatusCodes = []int{
@@ -49,7 +51,7 @@ func Test_Errors(t *testing.T) {
 			httpRequest := &http.Request{}
 			rr := httptest.NewRecorder()
 
-			sendStatus(testStatus, "message", rr, httpRequest)
+			errorHandler.sendStatus(testStatus, "message", rr, httpRequest)
 
 			if rr.Code != testStatus {
 				t.Errorf("handler returned wrong status code: got %v want %v", rr.Code, testStatus)

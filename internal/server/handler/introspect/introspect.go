@@ -4,7 +4,7 @@ import (
 	"github.com/webishdev/stopnik/internal/config"
 	internalHttp "github.com/webishdev/stopnik/internal/http"
 	"github.com/webishdev/stopnik/internal/oauth2"
-	serverHandler "github.com/webishdev/stopnik/internal/server/handler"
+	"github.com/webishdev/stopnik/internal/server/handler/error"
 	"github.com/webishdev/stopnik/internal/server/validation"
 	"github.com/webishdev/stopnik/internal/store"
 	"github.com/webishdev/stopnik/log"
@@ -26,6 +26,7 @@ type IntrospectHandler struct {
 	config       *config.Config
 	validator    *validation.RequestValidator
 	tokenManager *store.TokenManager
+	errorHandler *error.RequestHandler
 }
 
 func CreateIntrospectHandler(config *config.Config, validator *validation.RequestValidator, tokenManager *store.TokenManager) *IntrospectHandler {
@@ -33,6 +34,7 @@ func CreateIntrospectHandler(config *config.Config, validator *validation.Reques
 		config:       config,
 		validator:    validator,
 		tokenManager: tokenManager,
+		errorHandler: error.NewErrorHandler(),
 	}
 }
 
@@ -86,11 +88,11 @@ func (handler *IntrospectHandler) ServeHTTP(w http.ResponseWriter, r *http.Reque
 
 		jsonError := internalHttp.SendJson(introspectResponse, w)
 		if jsonError != nil {
-			serverHandler.InternalServerErrorHandler(w, r)
+			handler.errorHandler.InternalServerErrorHandler(w, r)
 			return
 		}
 	} else {
-		serverHandler.MethodNotAllowedHandler(w, r)
+		handler.errorHandler.MethodNotAllowedHandler(w, r)
 		return
 	}
 }

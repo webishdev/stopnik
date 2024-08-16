@@ -7,7 +7,7 @@ import (
 	internalHttp "github.com/webishdev/stopnik/internal/http"
 	"github.com/webishdev/stopnik/internal/oauth2"
 	"github.com/webishdev/stopnik/internal/pkce"
-	serverHandler "github.com/webishdev/stopnik/internal/server/handler"
+	"github.com/webishdev/stopnik/internal/server/handler/error"
 	"github.com/webishdev/stopnik/internal/server/validation"
 	"github.com/webishdev/stopnik/internal/store"
 	"github.com/webishdev/stopnik/internal/template"
@@ -24,6 +24,7 @@ type AuthorizeHandler struct {
 	sessionManager  *store.SessionManager
 	tokenManager    *store.TokenManager
 	templateManager *template.Manager
+	errorHandler    *error.RequestHandler
 }
 
 func CreateAuthorizeHandler(
@@ -38,6 +39,7 @@ func CreateAuthorizeHandler(
 		sessionManager:  sessionManager,
 		tokenManager:    tokenManager,
 		templateManager: templateManager,
+		errorHandler:    error.NewErrorHandler(),
 	}
 }
 
@@ -53,7 +55,7 @@ func (handler *AuthorizeHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 
 		handler.handlePostRequest(w, r, user)
 	} else {
-		serverHandler.MethodNotAllowedHandler(w, r)
+		handler.errorHandler.MethodNotAllowedHandler(w, r)
 		return
 	}
 }
@@ -63,7 +65,7 @@ func (handler *AuthorizeHandler) handleGetRequest(w http.ResponseWriter, r *http
 	client, exists := handler.validator.ValidateClientId(clientId)
 	if !exists {
 		log.Error("Invalid client id %s", clientId)
-		serverHandler.BadRequestHandler(w, r)
+		handler.errorHandler.BadRequestHandler(w, r)
 		return
 	}
 
@@ -72,11 +74,11 @@ func (handler *AuthorizeHandler) handleGetRequest(w http.ResponseWriter, r *http
 	redirectURL, urlParseError := url.Parse(redirect)
 	if urlParseError != nil {
 		log.Error("Could not parse redirect URI %s for client %s", redirect, client.Id)
-		serverHandler.BadRequestHandler(w, r)
+		handler.errorHandler.BadRequestHandler(w, r)
 		return
 	}
 
-	invalidRedirectErrorHandler := validateRedirect(client, redirect)
+	invalidRedirectErrorHandler := handler.validateRedirect(client, redirect)
 	if invalidRedirectErrorHandler != nil {
 		invalidRedirectErrorHandler(w, r)
 		return
@@ -163,7 +165,7 @@ func (handler *AuthorizeHandler) handleGetRequest(w http.ResponseWriter, r *http
 
 		_, err := w.Write(loginTemplate.Bytes())
 		if err != nil {
-			serverHandler.InternalServerErrorHandler(w, r)
+			handler.errorHandler.InternalServerErrorHandler(w, r)
 			return
 		}
 	}
@@ -172,7 +174,7 @@ func (handler *AuthorizeHandler) handleGetRequest(w http.ResponseWriter, r *http
 func (handler *AuthorizeHandler) handlePostRequest(w http.ResponseWriter, r *http.Request, user *config.User) {
 	cookie, err := handler.cookieManager.CreateCookie(user.Username)
 	if err != nil {
-		serverHandler.InternalServerErrorHandler(w, r)
+		handler.errorHandler.InternalServerErrorHandler(w, r)
 		return
 	}
 
@@ -186,7 +188,7 @@ func (handler *AuthorizeHandler) handlePostRequest(w http.ResponseWriter, r *htt
 	authSession.Username = user.Username
 	redirectURL, urlParseError := url.Parse(authSession.Redirect)
 	if urlParseError != nil {
-		serverHandler.InternalServerErrorHandler(w, r)
+		handler.errorHandler.InternalServerErrorHandler(w, r)
 		return
 	}
 
@@ -206,7 +208,7 @@ func (handler *AuthorizeHandler) handlePostRequest(w http.ResponseWriter, r *htt
 	if responseType == oauth2.RtToken {
 		client, exists := handler.validator.ValidateClientId(authSession.ClientId)
 		if !exists {
-			serverHandler.InternalServerErrorHandler(w, r)
+			handler.errorHandler.InternalServerErrorHandler(w, r)
 			return
 		}
 		accessTokenResponse := handler.tokenManager.CreateAccessTokenResponse(user.Username, client, authSession.Scopes)
@@ -235,10 +237,10 @@ func (handler *AuthorizeHandler) validateLogin(w http.ResponseWriter, r *http.Re
 	return user, false
 }
 
-func validateRedirect(client *config.Client, redirect string) func(w http.ResponseWriter, r *http.Request) {
+func (handler *AuthorizeHandler) validateRedirect(client *config.Client, redirect string) func(w http.ResponseWriter, r *http.Request) {
 	if redirect == "" {
 		log.Error("Redirect provided for client %s was empty", client.Id)
-		return serverHandler.BadRequestHandler
+		return handler.errorHandler.BadRequestHandler
 	}
 	redirectCount := len(client.Redirects)
 
@@ -254,7 +256,7 @@ func validateRedirect(client *config.Client, redirect string) func(w http.Respon
 			matched, regexError := regexp.MatchString(clientRedirect, redirect)
 			if regexError != nil {
 				log.Error("Cloud not match redirect URI %s for client %s", redirect, client.Id)
-				return serverHandler.InternalServerErrorHandler
+				return handler.errorHandler.InternalServerErrorHandler
 			}
 
 			matchesRedirect = matchesRedirect || matched
@@ -262,11 +264,11 @@ func validateRedirect(client *config.Client, redirect string) func(w http.Respon
 
 		if !matchesRedirect {
 			log.Error("Configuration for client %s does not match the given redirect URI %s", client.Id, redirect)
-			return serverHandler.BadRequestHandler
+			return handler.errorHandler.BadRequestHandler
 		}
 	} else {
 		log.Error("Client %s has no redirect URI(s) configured!", client.Id)
-		return serverHandler.BadRequestHandler
+		return handler.errorHandler.BadRequestHandler
 	}
 
 	return nil
