@@ -11,6 +11,7 @@ import (
 	"github.com/webishdev/stopnik/internal/server/handler/health"
 	"github.com/webishdev/stopnik/internal/server/handler/introspect"
 	"github.com/webishdev/stopnik/internal/server/handler/logout"
+	"github.com/webishdev/stopnik/internal/server/handler/metadata"
 	"github.com/webishdev/stopnik/internal/server/handler/revoke"
 	"github.com/webishdev/stopnik/internal/server/handler/token"
 	"github.com/webishdev/stopnik/internal/server/validation"
@@ -186,6 +187,7 @@ func registerHandlers(config *config.Config, handle func(pattern string, handler
 	// OAuth2 extensions
 	introspectHandler := introspect.CreateIntrospectHandler(config, requestValidator, tokenManager)
 	revokeHandler := revoke.CreateRevokeHandler(config, requestValidator, tokenManager)
+	metadataHandler := metadata.CreateMetadataHandler()
 
 	// Server
 	handle("/health", healthHandler)
@@ -199,4 +201,5 @@ func registerHandlers(config *config.Config, handle func(pattern string, handler
 	// OAuth2 extensions
 	handle("/introspect", introspectHandler)
 	handle("/revoke", revokeHandler)
+	handle("/.well-known/oauth-authorization-server", metadataHandler)
 }
