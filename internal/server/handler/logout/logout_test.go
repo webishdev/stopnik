@@ -3,6 +3,7 @@ package logout
 import (
 	"fmt"
 	"github.com/webishdev/stopnik/internal/config"
+	"github.com/webishdev/stopnik/internal/endpoint"
 	internalHttp "github.com/webishdev/stopnik/internal/http"
 	"net/http"
 	"net/http/httptest"
@@ -57,7 +58,7 @@ func testInvalidCookies(t *testing.T, testConfig *config.Config) {
 
 		rr := httptest.NewRecorder()
 
-		request := httptest.NewRequest(http.MethodPost, "/logout", nil)
+		request := httptest.NewRequest(http.MethodPost, endpoint.Logout, nil)
 		request.AddCookie(&cookie)
 
 		logoutHandler.ServeHTTP(rr, request)
@@ -76,7 +77,7 @@ func testLogout(t *testing.T, testConfig *config.Config) {
 	}
 
 	var logoutParameters = []logoutParameter{
-		{"", "", "/logout"},
+		{"", "", endpoint.Logout},
 		{"/foo", "", "/foo"},
 		{"", "/bar", "/bar"},
 	}
@@ -100,7 +101,7 @@ func testLogout(t *testing.T, testConfig *config.Config) {
 			}
 			body := strings.NewReader(bodyString)
 
-			request := httptest.NewRequest(http.MethodPost, "/logout", body)
+			request := httptest.NewRequest(http.MethodPost, endpoint.Logout, body)
 			request.AddCookie(&cookie)
 			if bodyString != "" {
 				request.Header.Add(internalHttp.ContentType, "application/x-www-form-urlencoded")
@@ -150,7 +151,7 @@ func testLogoutNotAllowedHttpMethods(t *testing.T) {
 
 			rr := httptest.NewRecorder()
 
-			logoutHandler.ServeHTTP(rr, httptest.NewRequest(method, "/logout", nil))
+			logoutHandler.ServeHTTP(rr, httptest.NewRequest(method, endpoint.Logout, nil))
 
 			if rr.Code != http.StatusMethodNotAllowed {
 				t.Errorf("handler returned wrong status code: got %v want %v", rr.Code, http.StatusMethodNotAllowed)

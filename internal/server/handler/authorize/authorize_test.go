@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/google/uuid"
 	"github.com/webishdev/stopnik/internal/config"
+	"github.com/webishdev/stopnik/internal/endpoint"
 	internalHttp "github.com/webishdev/stopnik/internal/http"
 	"github.com/webishdev/stopnik/internal/oauth2"
 	"github.com/webishdev/stopnik/internal/pkce"
@@ -86,7 +87,7 @@ func testAuthorizeInvalidLogin(t *testing.T, testConfig *config.Config) {
 	for _, test := range invalidLoginParameters {
 		testMessage := fmt.Sprintf("Invalid login credentials with with state %v scope %v", test.state, test.scope)
 		t.Run(testMessage, func(t *testing.T) {
-			parsedUri := createUri(t, "/authorize", func(query url.Values) {
+			parsedUri := createUri(t, endpoint.Authorization, func(query url.Values) {
 				query.Set(oauth2.ParameterClientId, "foo")
 				query.Set(oauth2.ParameterRedirectUri, "https://example.com/callback")
 				query.Set(oauth2.ParameterResponseType, oauth2.ParameterToken)
@@ -172,7 +173,7 @@ func testAuthorizeEmptyLogin(t *testing.T, testConfig *config.Config) {
 	for _, test := range emptyLoginParameters {
 		testMessage := fmt.Sprintf("Empty login credentials with with state %v scope %v", test.state, test.scope)
 		t.Run(testMessage, func(t *testing.T) {
-			parsedUri := createUri(t, "/authorize", func(query url.Values) {
+			parsedUri := createUri(t, endpoint.Authorization, func(query url.Values) {
 				query.Set(oauth2.ParameterClientId, "foo")
 				query.Set(oauth2.ParameterRedirectUri, "https://example.com/callback")
 				query.Set(oauth2.ParameterResponseType, oauth2.ParameterToken)
@@ -256,7 +257,7 @@ func testAuthorizeValidLoginNoSession(t *testing.T, testConfig *config.Config) {
 	for _, test := range validLoginParameters {
 		testMessage := fmt.Sprintf("Valid login credentials, no session, with with state %v scope %v", test.state, test.scope)
 		t.Run(testMessage, func(t *testing.T) {
-			parsedUri := createUri(t, "/authorize", func(query url.Values) {
+			parsedUri := createUri(t, endpoint.Authorization, func(query url.Values) {
 				query.Set(oauth2.ParameterClientId, "foo")
 				query.Set(oauth2.ParameterRedirectUri, "https://example.com/callback")
 				query.Set(oauth2.ParameterResponseType, oauth2.ParameterToken)
@@ -351,7 +352,7 @@ func testAuthorizeValidLoginAuthorizationGrant(t *testing.T, testConfig *config.
 	for _, test := range validLoginParameters {
 		testMessage := fmt.Sprintf("Valid login credentials, authorization grant session, with with state %v scope %v", test.state, test.scope)
 		t.Run(testMessage, func(t *testing.T) {
-			parsedUri := createUri(t, "/authorize", func(query url.Values) {
+			parsedUri := createUri(t, endpoint.Authorization, func(query url.Values) {
 				query.Set(oauth2.ParameterClientId, "foo")
 				query.Set(oauth2.ParameterRedirectUri, "https://example.com/callback")
 				query.Set(oauth2.ParameterResponseType, oauth2.ParameterCode)
@@ -439,7 +440,7 @@ func testAuthorizeValidLoginImplicitGrant(t *testing.T, testConfig *config.Confi
 	for _, test := range validLoginParameters {
 		testMessage := fmt.Sprintf("Valid login credentials, implicit grant session with with state %v scope %v", test.state, test.scope)
 		t.Run(testMessage, func(t *testing.T) {
-			parsedUri := createUri(t, "/authorize", func(query url.Values) {
+			parsedUri := createUri(t, endpoint.Authorization, func(query url.Values) {
 				query.Set(oauth2.ParameterClientId, "foo")
 				query.Set(oauth2.ParameterRedirectUri, "https://example.com/callback")
 				query.Set(oauth2.ParameterResponseType, oauth2.ParameterToken)
@@ -539,7 +540,7 @@ func testAuthorizeNotAllowedHttpMethods(t *testing.T) {
 
 			rr := httptest.NewRecorder()
 
-			authorizeHandler.ServeHTTP(rr, httptest.NewRequest(method, "/authorize", nil))
+			authorizeHandler.ServeHTTP(rr, httptest.NewRequest(method, endpoint.Authorization, nil))
 
 			if rr.Code != http.StatusMethodNotAllowed {
 				t.Errorf("handler returned wrong status code: got %v want %v", rr.Code, http.StatusMethodNotAllowed)
@@ -564,7 +565,7 @@ func testAuthorizeImplicitGrant(t *testing.T, testConfig *config.Config) {
 	for _, test := range implicitGrantParameters {
 		testMessage := fmt.Sprintf("Cookie exists, implicit code grant with state %v scope %v", test.state, test.scope)
 		t.Run(testMessage, func(t *testing.T) {
-			parsedUri := createUri(t, "/authorize", func(query url.Values) {
+			parsedUri := createUri(t, endpoint.Authorization, func(query url.Values) {
 				query.Set(oauth2.ParameterClientId, "foo")
 				query.Set(oauth2.ParameterRedirectUri, "https://example.com/callback")
 				query.Set(oauth2.ParameterResponseType, oauth2.ParameterToken)
@@ -653,7 +654,7 @@ func testAuthorizeAuthorizationGrant(t *testing.T, testConfig *config.Config) {
 		testMessage := fmt.Sprintf("Cookie exists, authorization code grant with state %v scope %v code challenge %v", test.state, test.scope, test.pkceCodeChallenge)
 		t.Run(testMessage, func(t *testing.T) {
 			pkceCodeChallenge := ""
-			parsedUri := createUri(t, "/authorize", func(query url.Values) {
+			parsedUri := createUri(t, endpoint.Authorization, func(query url.Values) {
 				query.Set(oauth2.ParameterClientId, "foo")
 				query.Set(oauth2.ParameterRedirectUri, "https://example.com/callback")
 				query.Set(oauth2.ParameterResponseType, oauth2.ParameterCode)
@@ -725,7 +726,7 @@ func testAuthorizeAuthorizationGrant(t *testing.T, testConfig *config.Config) {
 
 func testAuthorizeNoCookeExists(t *testing.T, testConfig *config.Config) bool {
 	return t.Run("No cookie exists", func(t *testing.T) {
-		parsedUri := createUri(t, "/authorize", func(query url.Values) {
+		parsedUri := createUri(t, endpoint.Authorization, func(query url.Values) {
 			query.Set(oauth2.ParameterClientId, "foo")
 			query.Set(oauth2.ParameterRedirectUri, "https://example.com/callback")
 			query.Set(oauth2.ParameterResponseType, oauth2.ParameterCode)
@@ -767,7 +768,7 @@ func testAuthorizeNoCookeExists(t *testing.T, testConfig *config.Config) bool {
 
 func testAuthorizeInvalidResponseType(t *testing.T, testConfig *config.Config) bool {
 	return t.Run("Invalid response type", func(t *testing.T) {
-		parsedUri := createUri(t, "/authorize", func(query url.Values) {
+		parsedUri := createUri(t, endpoint.Authorization, func(query url.Values) {
 			query.Set(oauth2.ParameterClientId, "foo")
 			query.Set(oauth2.ParameterRedirectUri, "https://example.com/callback")
 			query.Set(oauth2.ParameterResponseType, "abc")
@@ -818,7 +819,7 @@ func testAuthorizeInvalidRedirect(t *testing.T, testConfig *config.Config) {
 	for _, test := range redirectTestParameters {
 		testMessage := fmt.Sprintf("Invalid redirect with %s", test.redirect)
 		t.Run(testMessage, func(t *testing.T) {
-			parsedUri := createUri(t, "/authorize", func(query url.Values) {
+			parsedUri := createUri(t, endpoint.Authorization, func(query url.Values) {
 				query.Set(oauth2.ParameterClientId, "foo")
 				query.Set(oauth2.ParameterRedirectUri, test.redirect)
 			})
@@ -841,7 +842,7 @@ func testAuthorizeInvalidRedirect(t *testing.T, testConfig *config.Config) {
 
 func testAuthorizeInvalidClientId(t *testing.T, testConfig *config.Config) bool {
 	return t.Run("Invalid client id", func(t *testing.T) {
-		parsedUri := createUri(t, "/authorize", func(query url.Values) {
+		parsedUri := createUri(t, endpoint.Authorization, func(query url.Values) {
 			query.Set(oauth2.ParameterClientId, "bar")
 		})
 
@@ -867,7 +868,7 @@ func testAuthorizeNoClientId(t *testing.T, testConfig *config.Config) bool {
 
 		rr := httptest.NewRecorder()
 
-		authorizeHandler.ServeHTTP(rr, httptest.NewRequest(http.MethodGet, "/authorize", nil))
+		authorizeHandler.ServeHTTP(rr, httptest.NewRequest(http.MethodGet, endpoint.Authorization, nil))
 
 		if rr.Code != http.StatusBadRequest {
 			t.Errorf("handler returned wrong status code: got %v want %v", rr.Code, http.StatusBadRequest)

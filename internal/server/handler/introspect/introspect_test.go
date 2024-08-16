@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/google/uuid"
 	"github.com/webishdev/stopnik/internal/config"
+	"github.com/webishdev/stopnik/internal/endpoint"
 	internalHttp "github.com/webishdev/stopnik/internal/http"
 	"github.com/webishdev/stopnik/internal/oauth2"
 	"github.com/webishdev/stopnik/internal/server/validation"
@@ -75,7 +76,7 @@ func testIntrospectMissingClientCredentials(t *testing.T, testConfig *config.Con
 
 		rr := httptest.NewRecorder()
 
-		introspectHandler.ServeHTTP(rr, httptest.NewRequest(http.MethodPost, "/introspect", nil))
+		introspectHandler.ServeHTTP(rr, httptest.NewRequest(http.MethodPost, endpoint.Introspect, nil))
 
 		if rr.Code != http.StatusUnauthorized {
 			t.Errorf("handler returned wrong status code: got %v want %v", rr.Code, http.StatusUnauthorized)
@@ -92,7 +93,7 @@ func testIntrospectInvalidClientCredentials(t *testing.T, testConfig *config.Con
 
 		rr := httptest.NewRecorder()
 
-		request := httptest.NewRequest(http.MethodPost, "/introspect", nil)
+		request := httptest.NewRequest(http.MethodPost, endpoint.Introspect, nil)
 		request.Header.Add(internalHttp.Authorization, fmt.Sprintf("Basic %s", testTokenCreateBasicAuth("foo", "xxx")))
 
 		introspectHandler.ServeHTTP(rr, request)
@@ -128,7 +129,7 @@ func testIntrospectEmptyToken(t *testing.T, testConfig *config.Config) {
 			)
 			body := strings.NewReader(bodyString)
 
-			request := httptest.NewRequest(http.MethodPost, "/introspect", body)
+			request := httptest.NewRequest(http.MethodPost, endpoint.Introspect, body)
 			request.Header.Add(internalHttp.Authorization, fmt.Sprintf("Basic %s", testTokenCreateBasicAuth("foo", "bar")))
 			request.Header.Add(internalHttp.ContentType, "application/x-www-form-urlencoded")
 
@@ -175,7 +176,7 @@ func testIntrospectInvalidToken(t *testing.T, testConfig *config.Config) {
 			)
 			body := strings.NewReader(bodyString)
 
-			request := httptest.NewRequest(http.MethodPost, "/introspect", body)
+			request := httptest.NewRequest(http.MethodPost, endpoint.Introspect, body)
 			request.Header.Add(internalHttp.Authorization, fmt.Sprintf("Basic %s", testTokenCreateBasicAuth("foo", "bar")))
 			request.Header.Add(internalHttp.ContentType, "application/x-www-form-urlencoded")
 
@@ -247,7 +248,7 @@ func testIntrospect(t *testing.T, testConfig *config.Config) {
 			)
 			body := strings.NewReader(bodyString)
 
-			request := httptest.NewRequest(http.MethodPost, "/introspect", body)
+			request := httptest.NewRequest(http.MethodPost, endpoint.Introspect, body)
 			request.Header.Add(internalHttp.Authorization, fmt.Sprintf("Basic %s", testTokenCreateBasicAuth("foo", "bar")))
 			request.Header.Add(internalHttp.ContentType, "application/x-www-form-urlencoded")
 
@@ -318,7 +319,7 @@ func testIntrospectWithoutHint(t *testing.T, testConfig *config.Config) {
 			)
 			body := strings.NewReader(bodyString)
 
-			request := httptest.NewRequest(http.MethodPost, "/introspect", body)
+			request := httptest.NewRequest(http.MethodPost, endpoint.Introspect, body)
 			request.Header.Add(internalHttp.Authorization, fmt.Sprintf("Basic %s", testTokenCreateBasicAuth("foo", "bar")))
 			request.Header.Add(internalHttp.ContentType, "application/x-www-form-urlencoded")
 
@@ -390,7 +391,7 @@ func testIntrospectDisabled(t *testing.T, testConfig *config.Config) {
 			)
 			body := strings.NewReader(bodyString)
 
-			request := httptest.NewRequest(http.MethodPost, "/introspect", body)
+			request := httptest.NewRequest(http.MethodPost, endpoint.Introspect, body)
 			request.Header.Add(internalHttp.Authorization, fmt.Sprintf("Basic %s", testTokenCreateBasicAuth("bar", "bar")))
 			request.Header.Add(internalHttp.ContentType, "application/x-www-form-urlencoded")
 
@@ -418,7 +419,7 @@ func testIntrospectNotAllowedHttpMethods(t *testing.T) {
 
 			rr := httptest.NewRecorder()
 
-			introspectHandler.ServeHTTP(rr, httptest.NewRequest(method, "/introspect", nil))
+			introspectHandler.ServeHTTP(rr, httptest.NewRequest(method, endpoint.Introspect, nil))
 
 			if rr.Code != http.StatusMethodNotAllowed {
 				t.Errorf("handler returned wrong status code: got %v want %v", rr.Code, http.StatusMethodNotAllowed)

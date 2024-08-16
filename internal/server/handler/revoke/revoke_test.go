@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/google/uuid"
 	"github.com/webishdev/stopnik/internal/config"
+	"github.com/webishdev/stopnik/internal/endpoint"
 	internalHttp "github.com/webishdev/stopnik/internal/http"
 	"github.com/webishdev/stopnik/internal/oauth2"
 	"github.com/webishdev/stopnik/internal/server/validation"
@@ -73,7 +74,7 @@ func testRevokeMissingClientCredentials(t *testing.T, testConfig *config.Config)
 
 		rr := httptest.NewRecorder()
 
-		revokeHandler.ServeHTTP(rr, httptest.NewRequest(http.MethodPost, "/revoke", nil))
+		revokeHandler.ServeHTTP(rr, httptest.NewRequest(http.MethodPost, endpoint.Revoke, nil))
 
 		if rr.Code != http.StatusUnauthorized {
 			t.Errorf("handler returned wrong status code: got %v want %v", rr.Code, http.StatusUnauthorized)
@@ -90,7 +91,7 @@ func testRevokeInvalidClientCredentials(t *testing.T, testConfig *config.Config)
 
 		rr := httptest.NewRecorder()
 
-		request := httptest.NewRequest(http.MethodPost, "/revoke", nil)
+		request := httptest.NewRequest(http.MethodPost, endpoint.Revoke, nil)
 		request.Header.Add(internalHttp.Authorization, fmt.Sprintf("Basic %s", testTokenCreateBasicAuth("foo", "xxx")))
 
 		revokeHandler.ServeHTTP(rr, request)
@@ -126,7 +127,7 @@ func testRevokeEmptyToken(t *testing.T, testConfig *config.Config) {
 			)
 			body := strings.NewReader(bodyString)
 
-			request := httptest.NewRequest(http.MethodPost, "/revoke", body)
+			request := httptest.NewRequest(http.MethodPost, endpoint.Revoke, body)
 			request.Header.Add(internalHttp.Authorization, fmt.Sprintf("Basic %s", testTokenCreateBasicAuth("foo", "bar")))
 			request.Header.Add(internalHttp.ContentType, "application/x-www-form-urlencoded")
 
@@ -166,7 +167,7 @@ func testRevokeInvalidToken(t *testing.T, testConfig *config.Config) {
 			)
 			body := strings.NewReader(bodyString)
 
-			request := httptest.NewRequest(http.MethodPost, "/revoke", body)
+			request := httptest.NewRequest(http.MethodPost, endpoint.Revoke, body)
 			request.Header.Add(internalHttp.Authorization, fmt.Sprintf("Basic %s", testTokenCreateBasicAuth("foo", "bar")))
 			request.Header.Add(internalHttp.ContentType, "application/x-www-form-urlencoded")
 
@@ -230,7 +231,7 @@ func testRevoke(t *testing.T, testConfig *config.Config) {
 			)
 			body := strings.NewReader(bodyString)
 
-			request := httptest.NewRequest(http.MethodPost, "/revoke", body)
+			request := httptest.NewRequest(http.MethodPost, endpoint.Revoke, body)
 			request.Header.Add(internalHttp.Authorization, fmt.Sprintf("Basic %s", testTokenCreateBasicAuth("foo", "bar")))
 			request.Header.Add(internalHttp.ContentType, "application/x-www-form-urlencoded")
 
@@ -306,7 +307,7 @@ func testRevokeWithoutHint(t *testing.T, testConfig *config.Config) {
 			)
 			body := strings.NewReader(bodyString)
 
-			request := httptest.NewRequest(http.MethodPost, "/revoke", body)
+			request := httptest.NewRequest(http.MethodPost, endpoint.Revoke, body)
 			request.Header.Add(internalHttp.Authorization, fmt.Sprintf("Basic %s", testTokenCreateBasicAuth("foo", "bar")))
 			request.Header.Add(internalHttp.ContentType, "application/x-www-form-urlencoded")
 
@@ -383,7 +384,7 @@ func testRevokeDisabled(t *testing.T, testConfig *config.Config) {
 			)
 			body := strings.NewReader(bodyString)
 
-			request := httptest.NewRequest(http.MethodPost, "/revoke", body)
+			request := httptest.NewRequest(http.MethodPost, endpoint.Revoke, body)
 			request.Header.Add(internalHttp.Authorization, fmt.Sprintf("Basic %s", testTokenCreateBasicAuth("bar", "bar")))
 			request.Header.Add(internalHttp.ContentType, "application/x-www-form-urlencoded")
 
@@ -412,7 +413,7 @@ func testRevokeNotAllowedHttpMethods(t *testing.T) {
 
 			rr := httptest.NewRecorder()
 
-			revokeHandler.ServeHTTP(rr, httptest.NewRequest(method, "/revoke", nil))
+			revokeHandler.ServeHTTP(rr, httptest.NewRequest(method, endpoint.Revoke, nil))
 
 			if rr.Code != http.StatusMethodNotAllowed {
 				t.Errorf("handler returned wrong status code: got %v want %v", rr.Code, http.StatusMethodNotAllowed)

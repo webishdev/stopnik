@@ -3,6 +3,7 @@ package account
 import (
 	"fmt"
 	"github.com/webishdev/stopnik/internal/config"
+	"github.com/webishdev/stopnik/internal/endpoint"
 	internalHttp "github.com/webishdev/stopnik/internal/http"
 	"github.com/webishdev/stopnik/internal/server/validation"
 	"github.com/webishdev/stopnik/internal/template"
@@ -55,7 +56,7 @@ func testAccountWithoutCookie(t *testing.T, testConfig *config.Config) {
 
 		rr := httptest.NewRecorder()
 
-		accountHandler.ServeHTTP(rr, httptest.NewRequest(http.MethodGet, "/account", nil))
+		accountHandler.ServeHTTP(rr, httptest.NewRequest(http.MethodGet, endpoint.Account, nil))
 
 		if rr.Code != http.StatusOK {
 			t.Errorf("handler returned wrong status code: got %v want %v", rr.Code, http.StatusOK)
@@ -93,7 +94,7 @@ func testAccountWithCookie(t *testing.T, testConfig *config.Config) {
 
 		rr := httptest.NewRecorder()
 
-		request := httptest.NewRequest(http.MethodGet, "/account", nil)
+		request := httptest.NewRequest(http.MethodGet, endpoint.Account, nil)
 		request.AddCookie(&cookie)
 
 		accountHandler.ServeHTTP(rr, request)
@@ -150,7 +151,7 @@ func testAccountLogin(t *testing.T, testConfig *config.Config) {
 			)
 			body := strings.NewReader(bodyString)
 
-			request := httptest.NewRequest(http.MethodPost, "/account", body)
+			request := httptest.NewRequest(http.MethodPost, endpoint.Account, body)
 			request.Header.Add(internalHttp.ContentType, "application/x-www-form-urlencoded")
 			request.AddCookie(&cookie)
 
@@ -165,8 +166,8 @@ func testAccountLogin(t *testing.T, testConfig *config.Config) {
 				t.Errorf("location was not provied: %v", locationError)
 			}
 
-			if location.String() != "/account" {
-				t.Errorf("handler returned wrong location: got %v want %v", location.String(), "/account")
+			if location.String() != endpoint.Account {
+				t.Errorf("handler returned wrong location: got %v want %v", location.String(), endpoint.Account)
 			}
 		})
 	}
@@ -186,7 +187,7 @@ func testAccountNotAllowedHttpMethods(t *testing.T) {
 
 			rr := httptest.NewRecorder()
 
-			accountHandler.ServeHTTP(rr, httptest.NewRequest(method, "/account", nil))
+			accountHandler.ServeHTTP(rr, httptest.NewRequest(method, endpoint.Account, nil))
 
 			if rr.Code != http.StatusMethodNotAllowed {
 				t.Errorf("handler returned wrong status code: got %v want %v", rr.Code, http.StatusMethodNotAllowed)

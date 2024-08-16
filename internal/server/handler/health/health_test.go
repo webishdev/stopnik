@@ -3,6 +3,7 @@ package health
 import (
 	"fmt"
 	"github.com/webishdev/stopnik/internal/config"
+	"github.com/webishdev/stopnik/internal/endpoint"
 	internalHttp "github.com/webishdev/stopnik/internal/http"
 	"github.com/webishdev/stopnik/internal/store"
 	"net/http"
@@ -107,7 +108,7 @@ func Test_Health(t *testing.T) {
 
 			rr := httptest.NewRecorder()
 
-			healthHandler.ServeHTTP(rr, httptest.NewRequest(method, "/health", nil))
+			healthHandler.ServeHTTP(rr, httptest.NewRequest(method, endpoint.Health, nil))
 
 			if rr.Code != http.StatusMethodNotAllowed {
 				t.Errorf("handler returned wrong status code: got %v want %v", rr.Code, http.StatusMethodNotAllowed)

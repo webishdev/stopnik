@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/google/uuid"
 	"github.com/webishdev/stopnik/internal/config"
+	"github.com/webishdev/stopnik/internal/endpoint"
 	internalHttp "github.com/webishdev/stopnik/internal/http"
 	"github.com/webishdev/stopnik/internal/oauth2"
 	"github.com/webishdev/stopnik/internal/pkce"
@@ -75,7 +76,7 @@ func testTokenMissingClientCredentials(t *testing.T, testConfig *config.Config) 
 
 		rr := httptest.NewRecorder()
 
-		tokenHandler.ServeHTTP(rr, httptest.NewRequest(http.MethodPost, "/token", nil))
+		tokenHandler.ServeHTTP(rr, httptest.NewRequest(http.MethodPost, endpoint.Token, nil))
 
 		if rr.Code != http.StatusBadRequest {
 			t.Errorf("handler returned wrong status code: got %v want %v", rr.Code, http.StatusBadRequest)
@@ -93,7 +94,7 @@ func testTokenInvalidClientCredentials(t *testing.T, testConfig *config.Config) 
 
 		rr := httptest.NewRecorder()
 
-		request := httptest.NewRequest(http.MethodPost, "/token", nil)
+		request := httptest.NewRequest(http.MethodPost, endpoint.Token, nil)
 		request.Header.Add(internalHttp.Authorization, fmt.Sprintf("Basic %s", testTokenCreateBasicAuth("foo", "xxx")))
 
 		tokenHandler.ServeHTTP(rr, request)
@@ -114,7 +115,7 @@ func testTokenMissingGrandType(t *testing.T, testConfig *config.Config) {
 
 		rr := httptest.NewRecorder()
 
-		request := httptest.NewRequest(http.MethodPost, "/token", nil)
+		request := httptest.NewRequest(http.MethodPost, endpoint.Token, nil)
 		request.Header.Add(internalHttp.Authorization, fmt.Sprintf("Basic %s", testTokenCreateBasicAuth("foo", "bar")))
 
 		tokenHandler.ServeHTTP(rr, request)
@@ -140,7 +141,7 @@ func testTokenInvalidGrandType(t *testing.T, testConfig *config.Config) {
 		)
 		body := strings.NewReader(bodyString)
 
-		request := httptest.NewRequest(http.MethodPost, "/token", body)
+		request := httptest.NewRequest(http.MethodPost, endpoint.Token, body)
 		request.Header.Add(internalHttp.Authorization, fmt.Sprintf("Basic %s", testTokenCreateBasicAuth("foo", "bar")))
 		request.Header.Add(internalHttp.ContentType, "application/x-www-form-urlencoded")
 
@@ -167,7 +168,7 @@ func testTokenAuthorizationCodeGrantTypeMissingCodeParameter(t *testing.T, testC
 		)
 		body := strings.NewReader(bodyString)
 
-		request := httptest.NewRequest(http.MethodPost, "/token", body)
+		request := httptest.NewRequest(http.MethodPost, endpoint.Token, body)
 		request.Header.Add(internalHttp.Authorization, fmt.Sprintf("Basic %s", testTokenCreateBasicAuth("foo", "bar")))
 		request.Header.Add(internalHttp.ContentType, "application/x-www-form-urlencoded")
 
@@ -211,7 +212,7 @@ func testTokenAuthorizationCodeGrantTypeInvalidPKCE(t *testing.T, testConfig *co
 		)
 		body := strings.NewReader(bodyString)
 
-		request := httptest.NewRequest(http.MethodPost, "/token", body)
+		request := httptest.NewRequest(http.MethodPost, endpoint.Token, body)
 		request.Header.Add(internalHttp.Authorization, fmt.Sprintf("Basic %s", testTokenCreateBasicAuth("foo", "bar")))
 		request.Header.Add(internalHttp.ContentType, "application/x-www-form-urlencoded")
 
@@ -289,7 +290,7 @@ func testTokenAuthorizationCodeGrantType(t *testing.T, testConfig *config.Config
 			}
 			body := strings.NewReader(bodyString)
 
-			request := httptest.NewRequest(http.MethodPost, "/token", body)
+			request := httptest.NewRequest(http.MethodPost, endpoint.Token, body)
 			request.Header.Add(internalHttp.Authorization, fmt.Sprintf("Basic %s", testTokenCreateBasicAuth("foo", "bar")))
 			request.Header.Add(internalHttp.ContentType, "application/x-www-form-urlencoded")
 
@@ -324,7 +325,7 @@ func testTokenPasswordGrantType(t *testing.T, testConfig *config.Config) {
 		)
 		body := strings.NewReader(bodyString)
 
-		request := httptest.NewRequest(http.MethodPost, "/token", body)
+		request := httptest.NewRequest(http.MethodPost, endpoint.Token, body)
 		request.Header.Add(internalHttp.Authorization, fmt.Sprintf("Basic %s", testTokenCreateBasicAuth("foo", "bar")))
 		request.Header.Add(internalHttp.ContentType, "application/x-www-form-urlencoded")
 
@@ -356,7 +357,7 @@ func testTokenClientCredentialsGrantType(t *testing.T, testConfig *config.Config
 		)
 		body := strings.NewReader(bodyString)
 
-		request := httptest.NewRequest(http.MethodPost, "/token", body)
+		request := httptest.NewRequest(http.MethodPost, endpoint.Token, body)
 		request.Header.Add(internalHttp.Authorization, fmt.Sprintf("Basic %s", testTokenCreateBasicAuth("foo", "bar")))
 		request.Header.Add(internalHttp.ContentType, "application/x-www-form-urlencoded")
 
@@ -407,7 +408,7 @@ func testTokenRefreshTokenGrantType(t *testing.T, testConfig *config.Config) {
 		)
 		body := strings.NewReader(bodyString)
 
-		request := httptest.NewRequest(http.MethodPost, "/token", body)
+		request := httptest.NewRequest(http.MethodPost, endpoint.Token, body)
 		request.Header.Add(internalHttp.Authorization, fmt.Sprintf("Basic %s", testTokenCreateBasicAuth("foo", "bar")))
 		request.Header.Add(internalHttp.ContentType, "application/x-www-form-urlencoded")
 
@@ -438,7 +439,7 @@ func testTokenNotAllowedHttpMethods(t *testing.T) {
 
 			rr := httptest.NewRecorder()
 
-			tokenHandler.ServeHTTP(rr, httptest.NewRequest(method, "/token", nil))
+			tokenHandler.ServeHTTP(rr, httptest.NewRequest(method, endpoint.Token, nil))
 
 			if rr.Code != http.StatusMethodNotAllowed {
 				t.Errorf("handler returned wrong status code: got %v want %v", rr.Code, http.StatusMethodNotAllowed)
