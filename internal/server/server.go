@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"github.com/webishdev/stopnik/internal/config"
+	"github.com/webishdev/stopnik/internal/endpoint"
 	internalHttp "github.com/webishdev/stopnik/internal/http"
 	"github.com/webishdev/stopnik/internal/server/handler/account"
 	"github.com/webishdev/stopnik/internal/server/handler/assets"
@@ -190,16 +191,16 @@ func registerHandlers(config *config.Config, handle func(pattern string, handler
 	metadataHandler := metadata.CreateMetadataHandler()
 
 	// Server
-	handle("/health", healthHandler)
-	handle("/account", accountHandler)
-	handle("/logout", logoutHandler)
+	handle(endpoint.Health, healthHandler)
+	handle(endpoint.Account, accountHandler)
+	handle(endpoint.Logout, logoutHandler)
 
 	// OAuth2
-	handle("/authorize", authorizeHandler)
-	handle("/token", tokenHandler)
+	handle(endpoint.Authorization, authorizeHandler)
+	handle(endpoint.Token, tokenHandler)
 
 	// OAuth2 extensions
-	handle("/introspect", introspectHandler)
-	handle("/revoke", revokeHandler)
-	handle("/.well-known/oauth-authorization-server", metadataHandler)
+	handle(endpoint.Introspect, introspectHandler)
+	handle(endpoint.Revoke, revokeHandler)
+	handle(endpoint.Metadata, metadataHandler)
 }

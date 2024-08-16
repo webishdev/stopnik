@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/webishdev/stopnik/internal/config"
+	"github.com/webishdev/stopnik/internal/endpoint"
 	"net"
 	"net/http"
 	"slices"
@@ -59,22 +60,23 @@ func Test_Server(t *testing.T) {
 		}
 		registerHandlers(&config.Config{}, reg)
 
-		if len(*patterns) != 7 {
-			t.Error("Incorrect number of patterns registered")
+		if len(*patterns) != 8 {
+			t.Errorf("Incorrect number of patterns registered, expected 7 got %v", len(*patterns))
 		}
 
 		// Server
-		slices.Contains(*patterns, "/health")
-		slices.Contains(*patterns, "/account")
-		slices.Contains(*patterns, "/logout")
+		slices.Contains(*patterns, endpoint.Health)
+		slices.Contains(*patterns, endpoint.Account)
+		slices.Contains(*patterns, endpoint.Logout)
 
 		// OAuth2
-		slices.Contains(*patterns, "/authorize")
-		slices.Contains(*patterns, "/token")
+		slices.Contains(*patterns, endpoint.Authorization)
+		slices.Contains(*patterns, endpoint.Token)
 
 		// OAuth2 extensions
-		slices.Contains(*patterns, "/introspect")
-		slices.Contains(*patterns, "/revoke")
+		slices.Contains(*patterns, endpoint.Introspect)
+		slices.Contains(*patterns, endpoint.Revoke)
+		slices.Contains(*patterns, endpoint.Metadata)
 	})
 
 	for _, test := range testConfigParameters {

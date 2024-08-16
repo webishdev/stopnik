@@ -2,6 +2,7 @@ package metadata
 
 import (
 	"fmt"
+	"github.com/webishdev/stopnik/internal/endpoint"
 	internalHttp "github.com/webishdev/stopnik/internal/http"
 	errorHandler "github.com/webishdev/stopnik/internal/server/handler/error"
 	"github.com/webishdev/stopnik/log"
@@ -59,8 +60,8 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			h.errorHandler.InternalServerErrorHandler(w, r)
 			return
 		}
-		authorizationEndpoint := urlFromRequest.JoinPath("/authorize")
-		tokenEndpoint := urlFromRequest.JoinPath("/token")
+		authorizationEndpoint := urlFromRequest.JoinPath(endpoint.Authorization)
+		tokenEndpoint := urlFromRequest.JoinPath(endpoint.Token)
 		metadataResponse := &response{
 			Issuer:                requestData.IssuerString(),
 			AuthorizationEndpoint: authorizationEndpoint.String(),
