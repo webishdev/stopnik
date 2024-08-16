@@ -13,8 +13,8 @@ import (
 	"strings"
 )
 
-// IntrospectResponse as described in https://datatracker.ietf.org/doc/html/rfc7662#section-2.2
-type IntrospectResponse struct {
+// response as described in https://datatracker.ietf.org/doc/html/rfc7662#section-2.2
+type response struct {
 	Active    bool             `json:"active"`
 	Scope     string           `json:"scope,omitempty"`
 	ClientId  string           `json:"client_id,omitempty"`
@@ -73,7 +73,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 		tokenTypeHint, tokenTypeHintExists := oauth2.IntrospectTokenTypeFromString(tokenTypeHintParameter)
 
-		introspectResponse := IntrospectResponse{}
+		introspectResponse := response{}
 
 		if !tokenTypeHintExists {
 			accessTokenExists := h.checkAccessToken(token, &introspectResponse)
@@ -97,7 +97,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (h *Handler) checkRefreshToken(token string, introspectResponse *IntrospectResponse) bool {
+func (h *Handler) checkRefreshToken(token string, introspectResponse *response) bool {
 	refreshToken, tokenExists := h.tokenManager.GetRefreshToken(token)
 
 	introspectResponse.Active = tokenExists
@@ -111,7 +111,7 @@ func (h *Handler) checkRefreshToken(token string, introspectResponse *Introspect
 	return tokenExists
 }
 
-func (h *Handler) checkAccessToken(token string, introspectResponse *IntrospectResponse) bool {
+func (h *Handler) checkAccessToken(token string, introspectResponse *response) bool {
 	accessToken, tokenExists := h.tokenManager.GetAccessToken(token)
 
 	introspectResponse.Active = tokenExists

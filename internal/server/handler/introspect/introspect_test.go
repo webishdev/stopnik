@@ -427,8 +427,8 @@ func testIntrospectNotAllowedHttpMethods(t *testing.T) {
 	}
 }
 
-func testIntrospectParse(t *testing.T, response *http.Response) IntrospectResponse {
-	responseBody, bodyReadErr := io.ReadAll(response.Body)
+func testIntrospectParse(t *testing.T, r *http.Response) response {
+	responseBody, bodyReadErr := io.ReadAll(r.Body)
 
 	if bodyReadErr != nil {
 		t.Errorf("could not read response body: %v", bodyReadErr)
@@ -438,7 +438,7 @@ func testIntrospectParse(t *testing.T, response *http.Response) IntrospectRespon
 		t.Errorf("response body was nil")
 	}
 
-	introspectResponse := IntrospectResponse{}
+	introspectResponse := response{}
 	jsonParseError := json.Unmarshal(responseBody, &introspectResponse)
 	if jsonParseError != nil {
 		t.Errorf("could not parse response body: %v", jsonParseError)
