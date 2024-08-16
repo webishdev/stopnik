@@ -1,4 +1,3 @@
-
 <p align="center">
     <picture>
       <source media="(prefers-color-scheme: dark)" srcset="docs/content/assets/stopnik_250.png">
@@ -19,7 +18,8 @@ This project was used to
 learn [OAuth 2.0](https://datatracker.ietf.org/doc/html/rfc6749), [OpenId Connect Core 1.0](https://openid.net/specs/openid-connect-core-1_0-final.html)
 and [Go](https://go.dev/).
 
-The logo mascot was mostly inspired by the nice work of [gopherize.me](https://github.com/matryer/gopherize.me) and redrawn by hand as a vector graphic with additional body and a cool hat.
+The logo mascot was mostly inspired by the nice work of [gopherize.me](https://github.com/matryer/gopherize.me) and
+redrawn by hand as a vector graphic with additional body and a cool hat.
 
 ![build](https://github.com/webishdev/stopnik/actions/workflows/build.yml/badge.svg)
 [![report](https://goreportcard.com/badge/github.com/webishdev/stopnik)](https://goreportcard.com/report/github.com/webishdev/stopnik)
@@ -40,17 +40,22 @@ They add features like persistence and access to user directories like LDAP.
 
 ## Related specifications
 
-| RFC                                                                                                  | Implementation |
-|:-----------------------------------------------------------------------------------------------------|:--------------:|
-| [The OAuth 2.0 Authorization Framework](https://datatracker.ietf.org/doc/html/rfc6749)               |      Yes       | 
-| [Proof Key for Code Exchange by OAuth Public Clients](https://datatracker.ietf.org/doc/html/rfc7636) |      Yes       |
-| [OAuth 2.0 Token Introspection](https://datatracker.ietf.org/doc/html/rfc7662)                       |      Yes       |
-| [OAuth 2.0 Token Revocation](https://datatracker.ietf.org/doc/html/rfc7009)                          |      Yes       |
-| [JSON Web Token (JWT)](https://datatracker.ietf.org/doc/html/rfc7519)                                |   Dependency   |
-| [OAuth 2.0 Device Authorization Grant](https://datatracker.ietf.org/doc/html/rfc8628)                |    Planned     |
-| [Resource Indicators for OAuth 2.0](https://datatracker.ietf.org/doc/html/rfc8707)                   |    Planned     |
-| [OAuth 2.0 Authorization Server Issuer Identification](https://datatracker.ietf.org/doc/html/rfc9207) |    Planned     |
-| [OpenID Connect Core 1.0](https://openid.net/specs/openid-connect-core-1_0.html) |    Planned     |
+| RFC                                                                                                                                 | Implementation |
+|:------------------------------------------------------------------------------------------------------------------------------------|:--------------:|
+| [The OAuth 2.0 Authorization Framework](https://datatracker.ietf.org/doc/html/rfc6749)                                              |      Yes       | 
+| [Proof Key for Code Exchange by OAuth Public Clients](https://datatracker.ietf.org/doc/html/rfc7636)                                |      Yes       |
+| [OAuth 2.0 Token Introspection](https://datatracker.ietf.org/doc/html/rfc7662)                                                      |      Yes       |
+| [OAuth 2.0 Token Revocation](https://datatracker.ietf.org/doc/html/rfc7009)                                                         |      Yes       |
+| [JSON Web Token (JWT) Profile for OAuth 2.0 Client Authentication and Authorization Grants](https://www.rfc-editor.org/rfc/rfc7523) |      Yes       |
+| [JSON Web Token (JWT)](https://datatracker.ietf.org/doc/html/rfc7519)                                                               |   Dependency   |
+| [OAuth 2.0 Device Authorization Grant](https://datatracker.ietf.org/doc/html/rfc8628)                                               |    Planned     |
+| [Resource Indicators for OAuth 2.0](https://datatracker.ietf.org/doc/html/rfc8707)                                                  |    Planned     |
+| [OAuth 2.0 Authorization Server Issuer Identification](https://datatracker.ietf.org/doc/html/rfc9207)                               |    Planned     |
+| [OpenID Connect Core 1.0](https://openid.net/specs/openid-connect-core-1_0.html)                                                    |    Planned     |
+
+## Documentation
+
+More details about **STOPnik** can be found at https://stopnik.webish.dev/
 
 ## License
 

@@ -20,7 +20,7 @@ const sidebars: SidebarsConfig = {
     {
       type: 'category',
       label: 'Introduction',
-      items: ['introduction/why', 'introduction/getting-started', 'introduction/config'],
+      items: ['introduction/about', 'introduction/getting-started', 'introduction/config'],
     },
   ],
 };
