@@ -1,14 +1,13 @@
 package store
 
 import (
-	"crypto/rsa"
-	"crypto/tls"
 	"encoding/base64"
 	"fmt"
 	"github.com/google/uuid"
 	"github.com/lestrrat-go/jwx/v2/jwa"
 	"github.com/lestrrat-go/jwx/v2/jwt"
 	"github.com/webishdev/stopnik/internal/config"
+	"github.com/webishdev/stopnik/internal/crypto"
 	internalHttp "github.com/webishdev/stopnik/internal/http"
 	"github.com/webishdev/stopnik/internal/oauth2"
 	"github.com/webishdev/stopnik/log"
@@ -24,16 +23,16 @@ type TokenManager struct {
 }
 
 type KeyLoader interface {
-	LoadKeys(client *config.Client) (*rsa.PrivateKey, bool, error)
+	LoadKeys(client *config.Client) (interface{}, bool, error)
 }
 
 type DefaultKeyLoader struct {
-	serverKeys config.Keys
+	privateKey string
 }
 
 func NewDefaultKeyLoader(config *config.Config) *DefaultKeyLoader {
 	return &DefaultKeyLoader{
-		serverKeys: config.Server.TokenKeys,
+		privateKey: config.Server.PrivateKey,
 	}
 }
 
@@ -181,7 +180,8 @@ func (tokenManager *TokenManager) generateJWTToken(tokenId string, duration time
 	key, keyExists, keyLoaderError := loader.LoadKeys(client)
 
 	if !keyExists {
-		tokenString, tokenError := jwt.Sign(token, jwt.WithKey(jwa.HS256, []byte(tokenManager.config.GetServerSecret())))
+		signKey := jwt.WithKey(jwa.HS256, []byte(tokenManager.config.GetServerSecret()))
+		tokenString, tokenError := jwt.Sign(token, signKey)
 		if tokenError != nil {
 			panic(tokenError)
 		}
@@ -202,16 +202,16 @@ func (tokenManager *TokenManager) generateJWTToken(tokenId string, duration time
 
 }
 
-func (defaultKeyLoader *DefaultKeyLoader) LoadKeys(client *config.Client) (*rsa.PrivateKey, bool, error) {
-	if defaultKeyLoader.serverKeys.Cert == "" || defaultKeyLoader.serverKeys.Key == "" {
+func (defaultKeyLoader *DefaultKeyLoader) LoadKeys(client *config.Client) (interface{}, bool, error) {
+	if defaultKeyLoader.privateKey == "" {
 		return nil, false, nil
 	}
-	keyPair, pairError := tls.LoadX509KeyPair(defaultKeyLoader.serverKeys.Cert, defaultKeyLoader.serverKeys.Key)
-	if pairError != nil {
-		return nil, false, pairError
+	privateKey, loadError := crypto.LoadPrivateKey(defaultKeyLoader.privateKey)
+	if loadError != nil {
+		return nil, false, loadError
 	}
-	key := keyPair.PrivateKey.(*rsa.PrivateKey)
-	return key, true, nil
+
+	return privateKey, true, nil
 }
 
 func getAuthorizationHeaderValue(authorizationHeader string) *string {

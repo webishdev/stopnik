@@ -23,7 +23,7 @@ type Server struct {
 	Addr                  string `yaml:"addr"`
 	AuthCookieName        string `yaml:"authCookieName"`
 	Secret                string `yaml:"secret"`
-	TokenKeys             Keys   `yaml:"tokenKeys"`
+	PrivateKey            string `yaml:"privateKey"`
 	TLS                   TLS    `yaml:"tls"`
 	LogoutRedirect        string `yaml:"logoutRedirect"`
 	IntrospectScope       string `yaml:"introspectScope"`
@@ -55,7 +55,7 @@ type Client struct {
 	Claims                  []Claim  `yaml:"claims"`
 	Issuer                  string   `yaml:"issuer"`
 	Audience                []string `yaml:"audience"`
-	TokenKeys               Keys     `yaml:"tokenKeys"`
+	PrivateKey              string   `yaml:"privateKey"`
 }
 
 type UI struct {

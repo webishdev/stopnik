@@ -129,3 +129,15 @@ func (currentCache *Store[T]) Get(key string) (*T, bool) {
 	}
 	return value.value, exists
 }
+
+func (currentCache *Store[T]) GetValues() []*T {
+	currentCache.mux.RLock()
+	defer currentCache.mux.RUnlock()
+	values := make([]*T, 0, len(currentCache.storeMap))
+
+	for _, value := range currentCache.storeMap {
+		values = append(values, value.value)
+	}
+
+	return values
+}

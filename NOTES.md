@@ -9,6 +9,27 @@ Just a few notes taken during development
 - [OAuth 2.x and OpenID Connect sequence diagrams](https://www.gabriel.urdhr.fr/2023/02/06/oauth2-diagrams)
 - [Diagrams of All The OpenID Connect Flows](https://darutk.medium.com/diagrams-of-all-the-openid-connect-flows-6968e3990660)
 
+## Create private keys and self-signed certificates
+
+See https://superuser.com/a/226229
+
+```bash
+openssl req -new -newkey rsa:4096 -days 365 -nodes -x509 -subj "/C=DE/ST=NRW/L=Dortmund/O=STOPnik/CN=www.example.com" -keyout www.example.com.key -out www.example.com.cert
+```
+
+```bash
+openssl req -new -newkey ec -pkeyopt ec_paramgen_curve:prime256v1 -days 365 -nodes -x509 -subj "/C=DE/ST=NRW/L=Dortmund/O=STOPnik/CN=www.example.com" -keyout www.example.com.key -out www.example.com.cert
+```
+
+### RSA
+```bash
+openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 -out rsakey.pem
+```
+
+```bash
+openssl ecparam -name prime256v1 -genkey -noout -out ecdsakey.pem
+```
+
 ## OAuth 2.0 Endpoints
 
 ### [Authorization Endpoint](https://datatracker.ietf.org/doc/html/rfc6749#section-3.1)
