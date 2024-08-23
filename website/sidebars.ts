@@ -22,6 +22,11 @@ const sidebars: SidebarsConfig = {
       label: 'Introduction',
       items: ['introduction/about', 'introduction/getting-started', 'introduction/config'],
     },
+    {
+      type: 'category',
+      label: 'Advanced Topics',
+      items: ['advanced/endpoints'],
+    },
   ],
 };
 
