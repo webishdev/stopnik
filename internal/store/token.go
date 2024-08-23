@@ -36,32 +36,41 @@ func NewDefaultKeyLoader(keyManager *KeyManger) *DefaultKeyLoader {
 }
 
 func NewTokenManager(config *config.Config, keyLoader KeyLoader) *TokenManager {
+	accessTokenStore := NewDefaultTimedStore[oauth2.AccessToken]()
+	refreshTokenStore := NewDefaultTimedStore[oauth2.RefreshToken]()
 	return &TokenManager{
 		config:            config,
 		keyLoader:         keyLoader,
-		accessTokenStore:  NewStore[oauth2.AccessToken](),
-		refreshTokenStore: NewStore[oauth2.RefreshToken](),
+		accessTokenStore:  &accessTokenStore,
+		refreshTokenStore: &refreshTokenStore,
 	}
 }
 
 func (tokenManager *TokenManager) GetAccessToken(token string) (*oauth2.AccessToken, bool) {
-	return tokenManager.accessTokenStore.Get(token)
+	accessTokenStore := *tokenManager.accessTokenStore
+	return accessTokenStore.Get(token)
 }
 
 func (tokenManager *TokenManager) RevokeAccessToken(accessToken *oauth2.AccessToken) {
-	tokenManager.accessTokenStore.Delete(accessToken.Key)
+	accessTokenStore := *tokenManager.accessTokenStore
+	accessTokenStore.Delete(accessToken.Key)
 }
 
 func (tokenManager *TokenManager) GetRefreshToken(token string) (*oauth2.RefreshToken, bool) {
-	return tokenManager.refreshTokenStore.Get(token)
+	refreshTokenStore := *tokenManager.refreshTokenStore
+	return refreshTokenStore.Get(token)
 }
 
 func (tokenManager *TokenManager) RevokeRefreshToken(refreshToken *oauth2.RefreshToken) {
-	tokenManager.refreshTokenStore.Delete(refreshToken.Key)
+	refreshTokenStore := *tokenManager.refreshTokenStore
+	refreshTokenStore.Delete(refreshToken.Key)
 }
 
 func (tokenManager *TokenManager) CreateAccessTokenResponse(username string, client *config.Client, scopes []string) oauth2.AccessTokenResponse {
 	log.Debug("Creating new access token for %s, access TTL %d, refresh TTL %d", client.Id, client.GetAccessTTL(), client.GetRefreshTTL())
+
+	accessTokenStore := *tokenManager.accessTokenStore
+	refreshTokenStore := *tokenManager.refreshTokenStore
 
 	accessTokenDuration := time.Minute * time.Duration(client.GetAccessTTL())
 	accessTokenKey := tokenManager.generateToken(username, client, accessTokenDuration)
@@ -73,7 +82,7 @@ func (tokenManager *TokenManager) CreateAccessTokenResponse(username string, cli
 		Scopes:    scopes,
 	}
 
-	tokenManager.accessTokenStore.SetWithDuration(accessTokenKey, accessToken, accessTokenDuration)
+	accessTokenStore.SetWithDuration(accessTokenKey, accessToken, accessTokenDuration)
 
 	accessTokenResponse := oauth2.AccessTokenResponse{
 		AccessTokenKey: accessTokenKey,
@@ -91,7 +100,7 @@ func (tokenManager *TokenManager) CreateAccessTokenResponse(username string, cli
 			Scopes:   scopes,
 		}
 
-		tokenManager.refreshTokenStore.SetWithDuration(refreshTokenKey, refreshToken, refreshTokenDuration)
+		refreshTokenStore.SetWithDuration(refreshTokenKey, refreshToken, refreshTokenDuration)
 
 		accessTokenResponse.RefreshTokenKey = refreshTokenKey
 	}
@@ -101,11 +110,12 @@ func (tokenManager *TokenManager) CreateAccessTokenResponse(username string, cli
 
 func (tokenManager *TokenManager) ValidateAccessToken(authorizationHeader string) (*config.User, []string, bool) {
 	log.Debug("Validating access token")
+	accessTokenStore := *tokenManager.accessTokenStore
 	headerValue := getAuthorizationHeaderValue(authorizationHeader)
 	if headerValue == nil {
 		return nil, []string{}, false
 	}
-	accessToken, authorizationHeaderExists := tokenManager.accessTokenStore.Get(*headerValue)
+	accessToken, authorizationHeaderExists := accessTokenStore.Get(*headerValue)
 	if !authorizationHeaderExists {
 		return nil, []string{}, false
 	}

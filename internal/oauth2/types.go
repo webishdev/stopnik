@@ -4,12 +4,17 @@ import "strings"
 
 type GrantType string
 
-// GrantType as described in https://datatracker.ietf.org/doc/html/rfc6749#appendix-A.10
+/*
+ * GrantType as described in
+ * - https://datatracker.ietf.org/doc/html/rfc6749#appendix-A.10
+ * - https://datatracker.ietf.org/doc/html/rfc7591#section-2
+ */
 const (
 	GtAuthorizationCode GrantType = "authorization_code"
 	GtClientCredentials GrantType = "client_credentials"
 	GtPassword          GrantType = "password"
 	GtRefreshToken      GrantType = "refresh_token"
+	GtImplicit          GrantType = "implicit" // RFC7591
 )
 
 var grantTypeMap = map[string]GrantType{
@@ -17,6 +22,7 @@ var grantTypeMap = map[string]GrantType{
 	"client_credentials": GtClientCredentials,
 	"password":           GtPassword,
 	"refresh_token":      GtRefreshToken,
+	"implicit":           GtImplicit, // RFC7591
 }
 
 // ResponseType as described in https://datatracker.ietf.org/doc/html/rfc6749#appendix-A.3

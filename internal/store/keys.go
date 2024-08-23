@@ -23,8 +23,9 @@ type KeyManger struct {
 }
 
 func NewKeyManger(config *config.Config) (*KeyManger, error) {
+	newStore := NewDefaultTimedStore[ManagedKey]()
 	keyManager := &KeyManger{
-		keyStore: NewStore[ManagedKey](),
+		keyStore: &newStore,
 	}
 
 	serverKeyError := keyManager.addSeverKey(config)
@@ -58,7 +59,8 @@ func (km *KeyManger) getClientKey(c *config.Client) *ManagedKey {
 }
 
 func (km *KeyManger) GetAllKeys() []*ManagedKey {
-	return km.keyStore.GetValues()
+	keyStore := *km.keyStore
+	return keyStore.GetValues()
 }
 
 func (km *KeyManger) addSeverKey(c *config.Config) error {
@@ -102,7 +104,8 @@ func (km *KeyManger) addClientKeys(c *config.Config) error {
 }
 
 func (km *KeyManger) addManagedKey(managedKey *ManagedKey) {
-	existingKey, exists := km.keyStore.Get(managedKey.Id)
+	keyStore := *km.keyStore
+	existingKey, exists := keyStore.Get(managedKey.Id)
 	if exists {
 		mergedKey := &ManagedKey{
 			Id:      managedKey.Id,
@@ -110,9 +113,9 @@ func (km *KeyManger) addManagedKey(managedKey *ManagedKey) {
 			Server:  managedKey.Server || existingKey.Server,
 			Clients: append(managedKey.Clients, existingKey.Clients...),
 		}
-		km.keyStore.Set(mergedKey.Id, mergedKey)
+		keyStore.Set(mergedKey.Id, mergedKey)
 	} else {
-		km.keyStore.Set(managedKey.Id, managedKey)
+		keyStore.Set(managedKey.Id, managedKey)
 	}
 }
 

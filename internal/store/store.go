@@ -19,12 +19,26 @@ type expiringType[T any] struct {
 	expireDate time.Time
 }
 
-type Store[T any] struct {
+type timedStore[T any] struct {
 	storeMap      map[string]expiringType[*T]
 	mux           *sync.RWMutex
 	tickerChannel <-chan time.Time
 	now           Now
 	duration      time.Duration
+	Store[T]
+}
+
+type store[T any] struct {
+	storeMap map[string]*T
+	Store[T]
+}
+
+type Store[T any] interface {
+	Delete(key string)
+	Set(key string, value *T)
+	SetWithDuration(key string, value *T, duration time.Duration)
+	Get(key string) (*T, bool)
+	GetValues() []*T
 }
 
 func NewTimer() *Timer {
@@ -37,17 +51,17 @@ func NewTimer() *Timer {
 	}
 }
 
-func NewStore[T any]() *Store[T] {
+func NewDefaultTimedStore[T any]() Store[T] {
 	return NewTimedStore[T](time.Minute * time.Duration(5))
 }
 
-func NewTimedStore[T any](duration time.Duration) *Store[T] {
+func NewTimedStore[T any](duration time.Duration) Store[T] {
 	return newTimedStoreWithTimer[T](duration, NewTimer())
 }
 
-func newTimedStoreWithTimer[T any](duration time.Duration, timer *Timer) *Store[T] {
+func newTimedStoreWithTimer[T any](duration time.Duration, timer *Timer) Store[T] {
 	tickerChannel := timer.tickerChannel()
-	cache := &Store[T]{
+	cache := &timedStore[T]{
 		storeMap:      make(map[string]expiringType[*T]),
 		mux:           &sync.RWMutex{},
 		tickerChannel: tickerChannel,
@@ -58,14 +72,14 @@ func newTimedStoreWithTimer[T any](duration time.Duration, timer *Timer) *Store[
 	return cache
 }
 
-func (currentCache *Store[T]) startCleanUp() {
+func (currentCache *timedStore[T]) startCleanUp() {
 	for {
 		<-currentCache.tickerChannel
 		currentCache.cleanUp()
 	}
 }
 
-func (currentCache *Store[T]) cleanUp() {
+func (currentCache *timedStore[T]) cleanUp() {
 	if log.IsDebug() {
 		log.Debug("%s - %T", "Cleaning up", *new(T))
 	}
@@ -83,21 +97,21 @@ func (currentCache *Store[T]) cleanUp() {
 	}
 }
 
-func (currentCache *Store[T]) expiredNow(value expiringType[*T]) bool {
+func (currentCache *timedStore[T]) expiredNow(value expiringType[*T]) bool {
 	return currentCache.expired(currentCache.now(), value)
 }
 
-func (currentCache *Store[T]) expired(time time.Time, value expiringType[*T]) bool {
+func (currentCache *timedStore[T]) expired(time time.Time, value expiringType[*T]) bool {
 	return time.After(value.expireDate)
 }
 
-func (currentCache *Store[T]) empty() bool {
+func (currentCache *timedStore[T]) empty() bool {
 	currentCache.mux.RLock()
 	defer currentCache.mux.RUnlock()
 	return len(currentCache.storeMap) == 0
 }
 
-func (currentCache *Store[T]) Delete(key string) {
+func (currentCache *timedStore[T]) Delete(key string) {
 	currentCache.mux.Lock()
 	defer currentCache.mux.Unlock()
 	if log.IsDebug() {
@@ -106,11 +120,11 @@ func (currentCache *Store[T]) Delete(key string) {
 	delete(currentCache.storeMap, key)
 }
 
-func (currentCache *Store[T]) Set(key string, value *T) {
+func (currentCache *timedStore[T]) Set(key string, value *T) {
 	currentCache.SetWithDuration(key, value, currentCache.duration)
 }
 
-func (currentCache *Store[T]) SetWithDuration(key string, value *T, duration time.Duration) {
+func (currentCache *timedStore[T]) SetWithDuration(key string, value *T, duration time.Duration) {
 	currentCache.mux.Lock()
 	defer currentCache.mux.Unlock()
 	currentCache.storeMap[key] = expiringType[*T]{
@@ -119,7 +133,7 @@ func (currentCache *Store[T]) SetWithDuration(key string, value *T, duration tim
 	}
 }
 
-func (currentCache *Store[T]) Get(key string) (*T, bool) {
+func (currentCache *timedStore[T]) Get(key string) (*T, bool) {
 	currentCache.mux.RLock()
 	defer currentCache.mux.RUnlock()
 	value, exists := currentCache.storeMap[key]
@@ -130,7 +144,7 @@ func (currentCache *Store[T]) Get(key string) (*T, bool) {
 	return value.value, exists
 }
 
-func (currentCache *Store[T]) GetValues() []*T {
+func (currentCache *timedStore[T]) GetValues() []*T {
 	currentCache.mux.RLock()
 	defer currentCache.mux.RUnlock()
 	values := make([]*T, 0, len(currentCache.storeMap))

@@ -23,16 +23,19 @@ type SessionManager struct {
 }
 
 func NewSessionManager(config *config.Config) *SessionManager {
+	authSessionStore := NewDefaultTimedStore[AuthSession]()
 	return &SessionManager{
 		config:           config,
-		authSessionStore: NewStore[AuthSession](),
+		authSessionStore: &authSessionStore,
 	}
 }
 
 func (sessionManager *SessionManager) StartSession(authSession *AuthSession) {
-	sessionManager.authSessionStore.Set(authSession.Id, authSession)
+	authSessionStore := *sessionManager.authSessionStore
+	authSessionStore.Set(authSession.Id, authSession)
 }
 
 func (sessionManager *SessionManager) GetSession(id string) (*AuthSession, bool) {
-	return sessionManager.authSessionStore.Get(id)
+	authSessionStore := *sessionManager.authSessionStore
+	return authSessionStore.Get(id)
 }
