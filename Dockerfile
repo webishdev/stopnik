@@ -7,7 +7,6 @@ ARG TARGETARCH
 ARG STOPNIK_VERSION=dev
 
 RUN apk add --no-cache --no-progress ca-certificates tzdata
-RUN touch /config.yml
 
 COPY ./dist/stopnik.$STOPNIK_VERSION-$TARGETOS-$TARGETARCH /stopnik
 
