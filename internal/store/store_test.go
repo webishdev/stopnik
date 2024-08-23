@@ -44,13 +44,13 @@ func Test_Store(t *testing.T) {
 		nice: true,
 	}
 
-	t.Run("Set and get", func(t *testing.T) {
-		store := newTimedStoreWithTimer[Tester](time.Hour*time.Duration(1), timer)
+	t.Run("Set, get and delete", func(t *testing.T) {
+		simpleStore := NewStore[Tester]()
 
-		store.Set("foo", tester)
-		store.SetWithDuration("bar", tester, time.Hour*time.Duration(10))
+		simpleStore.Set("foo", tester)
+		simpleStore.SetWithDuration("bar", tester, time.Hour*time.Duration(10))
 
-		fooValueFromStore, fooValueExists := store.Get("foo")
+		fooValueFromStore, fooValueExists := simpleStore.Get("foo")
 
 		if !fooValueExists {
 			t.Error("value did not exist in store")
@@ -60,7 +60,42 @@ func Test_Store(t *testing.T) {
 			t.Error("value did not match")
 		}
 
-		barValueFromStore, barValueExists := store.Get("bar")
+		values := simpleStore.GetValues()
+		if len(values) != 2 {
+			t.Error("amount of values did not match")
+		}
+
+		simpleStore.Delete("foo")
+
+		_, fooValueExists = simpleStore.Get("foo")
+
+		if fooValueExists {
+			t.Error("value did exist in store after delete")
+		}
+
+		values = simpleStore.GetValues()
+		if len(values) != 1 {
+			t.Error("amount of values did not match")
+		}
+	})
+
+	t.Run("Set and get for expiring store", func(t *testing.T) {
+		storeWithTimer := newTimedStoreWithTimer[Tester](time.Hour*time.Duration(1), timer)
+
+		storeWithTimer.Set("foo", tester)
+		storeWithTimer.SetWithDuration("bar", tester, time.Hour*time.Duration(10))
+
+		fooValueFromStore, fooValueExists := storeWithTimer.Get("foo")
+
+		if !fooValueExists {
+			t.Error("value did not exist in store")
+		}
+
+		if !reflect.DeepEqual(fooValueFromStore, tester) {
+			t.Error("value did not match")
+		}
+
+		barValueFromStore, barValueExists := storeWithTimer.Get("bar")
 
 		if !barValueExists {
 			t.Error("value did not exist in store")
@@ -77,26 +112,26 @@ func Test_Store(t *testing.T) {
 		addTime(time.Hour * time.Duration(5))
 		mockedTickerChannel <- time.Now()
 
-		_, fooValueExists = store.Get("foo")
+		_, fooValueExists = storeWithTimer.Get("foo")
 
 		if fooValueExists {
 			t.Error("value did exist in store after expiration")
 		}
 
-		_, barValueExists = store.Get("bar")
+		_, barValueExists = storeWithTimer.Get("bar")
 
 		if !barValueExists {
 			t.Error("value did not exist in store")
 		}
 	})
 
-	t.Run("Set, get and delete", func(t *testing.T) {
-		store := newTimedStoreWithTimer[Tester](time.Hour*time.Duration(1), timer)
+	t.Run("Set, get and delete for expiring store", func(t *testing.T) {
+		storeWithTimer := newTimedStoreWithTimer[Tester](time.Hour*time.Duration(1), timer)
 
-		store.Set("foo", tester)
-		store.SetWithDuration("bar", tester, time.Hour*time.Duration(10))
+		storeWithTimer.Set("foo", tester)
+		storeWithTimer.SetWithDuration("bar", tester, time.Hour*time.Duration(10))
 
-		fooValueFromStore, fooValueExists := store.Get("foo")
+		fooValueFromStore, fooValueExists := storeWithTimer.Get("foo")
 
 		if !fooValueExists {
 			t.Error("value did not exist in store")
@@ -106,12 +141,22 @@ func Test_Store(t *testing.T) {
 			t.Error("value did not match")
 		}
 
-		store.Delete("foo")
+		values := storeWithTimer.GetValues()
+		if len(values) != 2 {
+			t.Error("amount of values did not match")
+		}
 
-		_, fooValueExists = store.Get("foo")
+		storeWithTimer.Delete("foo")
+
+		_, fooValueExists = storeWithTimer.Get("foo")
 
 		if fooValueExists {
-			t.Error("value did exist in store after expiration")
+			t.Error("value did exist in store after delete")
+		}
+
+		values = storeWithTimer.GetValues()
+		if len(values) != 1 {
+			t.Error("amount of values did not match")
 		}
 	})
 }
