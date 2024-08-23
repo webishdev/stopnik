@@ -23,7 +23,7 @@ type KeyManger struct {
 }
 
 func NewKeyManger(config *config.Config) (*KeyManger, error) {
-	newStore := NewDefaultTimedStore[ManagedKey]()
+	newStore := NewStore[ManagedKey]()
 	keyManager := &KeyManger{
 		keyStore: &newStore,
 	}
