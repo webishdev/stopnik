@@ -17,8 +17,8 @@ import (
 type TokenManager struct {
 	config            *config.Config
 	keyLoader         KeyLoader
-	accessTokenStore  *Store[oauth2.AccessToken]
-	refreshTokenStore *Store[oauth2.RefreshToken]
+	accessTokenStore  *ExpiringStore[oauth2.AccessToken]
+	refreshTokenStore *ExpiringStore[oauth2.RefreshToken]
 }
 
 type KeyLoader interface {

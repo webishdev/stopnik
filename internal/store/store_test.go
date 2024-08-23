@@ -48,7 +48,7 @@ func Test_Store(t *testing.T) {
 		simpleStore := NewStore[Tester]()
 
 		simpleStore.Set("foo", tester)
-		simpleStore.SetWithDuration("bar", tester, time.Hour*time.Duration(10))
+		simpleStore.Set("bar", tester)
 
 		fooValueFromStore, fooValueExists := simpleStore.Get("foo")
 

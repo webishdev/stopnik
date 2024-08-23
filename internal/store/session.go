@@ -19,7 +19,7 @@ type AuthSession struct {
 
 type SessionManager struct {
 	config           *config.Config
-	authSessionStore *Store[AuthSession]
+	authSessionStore *ExpiringStore[AuthSession]
 }
 
 func NewSessionManager(config *config.Config) *SessionManager {
