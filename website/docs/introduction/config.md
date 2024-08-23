@@ -3,7 +3,9 @@ sidebar_position: 3
 ---
 # Configuration
 
-**STOPnik** configuration is a simple `YAML` file.
+**STOPnik** configuration is a simple YAML file.
+
+By default **STOPnik** will use the `config.yml` in the same directory as the executable.
 
 The possible configuration options are listed in the next section.
 
@@ -13,36 +15,24 @@ The configuration file (e.g. `config.yml`) may contain different root options wh
 
 | Property  | Description                  |
 |-----------|------------------------------|
-| `server`  | General server configuration |
+| `server`  | Server configuration         |
+| `ui`      | User interface configuration |
 | `clients` | List of clients              |
 | `users`   | List of users                |
 
-### General server configuration 
+### Server configuration 
 
 Root entry named `server`
 
-| Property         | Description                                                        |
-|------------------|--------------------------------------------------------------------|
-| `logLevel`       | Log level                                                          |
-| `authCookieName` | Name of the cookie which will be used                              |
-| `logoutRedirect` | Where to redirect user after logout                                |
-| `addr`           | Go like address, may contain IP and port                           |
-| `secret`         | Server secret                                                      |
-| `privateKey`     | General RSA or EC private key (can be overwritten for each client) |
-| `tls`            | Configuration for TLS                                              |
-
-
-#### Token keys
-
-Public and private keys to sign tokens
-
-Entry `server`.`tokenKeys`
-
-| Property | Description      |
-|----------|------------------|
-| `cert`   | Certificate file |
-| `key`    | Key file         |
-
+| Property         | Description                                                                       |
+|------------------|-----------------------------------------------------------------------------------|
+| `logLevel`       | Log level                                                                         |
+| `authCookieName` | Name of the cookie which will be used                                             |
+| `logoutRedirect` | Where to redirect user after logout                                               |
+| `addr`           | Go like address, may contain IP and port                                          |
+| `secret`         | Server secret                                                                     |
+| `privateKey`     | General RSA or EC private key (can be overwritten for each client) to sign tokens |
+| `tls`            | Configuration for TLS                                                             |
 
 #### TLS
 
@@ -66,6 +56,18 @@ Entry `tls`.`keys`
 | `cert`   | Certificate file |
 | `key`    | Key file         |
 
+
+### User interface configuration
+
+Root entry named `ui`
+
+| Property     | Description                      |
+|--------------|----------------------------------|
+| `hideFooter` | Will hide the **STOPnik** footer |
+| `hideMascot` | Will hide the **STOPnik** mascot |
+| `footerText` | The footer text                  |
+| `title`      | Title                            |
+
 ### Clients
 
 List of clients
@@ -74,23 +76,23 @@ Root entry `clients`
 
 Each entry may contain the following options
 
-| Property                  | Description                |
-|---------------------------|----------------------------|
-| `id`                      | The id of the client       |
-| `secret`                  | SHA512 hashed secret       |
-| `type`                    | TODO                       |
-| `accessTTL`               | Access token time to live  |
-| `refreshTTL`              | Refresh token time to live |
-| `introspect`              | Introspection scope        |
-| `revoke`                  | Revocation scope           |
-| `redirects`               | List of redirects URIs     |
-| `opaqueToken`             | Use opaque token           |
-| `passwordFallbackAllowed` | Form auth allowed          |
-| `claims`                  | List of claims             |
-| `issuer`                  | Issuer                     |
-| `audience`                | Audience                   |
-| `privateKey`              | RSA or EC private key      |
-| `sessionTimeoutSeconds`   | Session timeout in seconds |            |                       |
+| Property                  | Description                          |
+|---------------------------|--------------------------------------|
+| `id`                      | The id of the client                 |
+| `secret`                  | SHA512 hashed secret                 |
+| `type`                    | TODO                                 |
+| `accessTTL`               | Access token time to live            |
+| `refreshTTL`              | Refresh token time to live           |
+| `introspect`              | Introspection scope                  |
+| `revoke`                  | Revocation scope                     |
+| `redirects`               | List of redirects URIs               |
+| `opaqueToken`             | Use opaque token                     |
+| `passwordFallbackAllowed` | Form auth allowed                    |
+| `claims`                  | List of claims                       |
+| `issuer`                  | Issuer                               |
+| `audience`                | Audience                             |
+| `privateKey`              | RSA or EC private key to sign tokens |
+| `sessionTimeoutSeconds`   | Session timeout in seconds           |
 
 #### Claims
 
