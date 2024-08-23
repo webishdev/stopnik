@@ -99,7 +99,7 @@ To continue a configuration must be provided.
 
 For the binary variant just put a `config.yml` into the same directory as the binary.
 
-For the container variant the `config.yml` and the necessery certificates/private keys should be mounted into the container.
+For the container variant the `config.yml` should be mounted into the container. It may be also necessary to mount the necessery TLS certificates and private keys used for signing tokens.
 
 <Tabs>
   <TabItem value="docker" label="Docker">
