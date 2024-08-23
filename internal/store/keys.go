@@ -6,13 +6,16 @@ import (
 	"crypto/x509"
 	"encoding/base64"
 	"fmt"
+	"github.com/lestrrat-go/jwx/v2/jwk"
 	"github.com/webishdev/stopnik/internal/config"
 	"github.com/webishdev/stopnik/internal/crypto"
 )
 
 type ManagedKey struct {
-	Id  string
-	Key interface{}
+	Id      string
+	Clients []*config.Client
+	Server  bool
+	Key     *jwk.Key
 }
 
 type KeyManger struct {
@@ -37,13 +40,30 @@ func NewKeyManger(config *config.Config) (*KeyManger, error) {
 	return keyManager, nil
 }
 
+func (km *KeyManger) getClientKey(c *config.Client) *ManagedKey {
+	var result *ManagedKey
+	for _, mangedKey := range km.GetAllKeys() {
+		if mangedKey.Server {
+			result = mangedKey
+		}
+		for _, client := range mangedKey.Clients {
+			if client.Id == c.Id {
+				result = mangedKey
+				break
+			}
+		}
+	}
+
+	return result
+}
+
 func (km *KeyManger) GetAllKeys() []*ManagedKey {
 	return km.keyStore.GetValues()
 }
 
-func (km *KeyManger) addSeverKey(config *config.Config) error {
-	if config.Server.PrivateKey != "" {
-		privateKey, loadError := crypto.LoadPrivateKey(config.Server.PrivateKey)
+func (km *KeyManger) addSeverKey(c *config.Config) error {
+	if c.Server.PrivateKey != "" {
+		privateKey, loadError := crypto.LoadPrivateKey(c.Server.PrivateKey)
 		if loadError != nil {
 			return loadError
 		}
@@ -53,43 +73,80 @@ func (km *KeyManger) addSeverKey(config *config.Config) error {
 			return convertError
 		}
 
-		km.keyStore.Set(managedKey.Id, managedKey)
+		managedKey.Server = true
+		km.addManagedKey(managedKey)
 	}
 
 	return nil
 }
 
-func (km *KeyManger) addClientKeys(config *config.Config) error {
+func (km *KeyManger) addClientKeys(c *config.Config) error {
 
-	for _, client := range config.Clients {
+	for _, client := range c.Clients {
 		if client.PrivateKey != "" {
-			privateKey, loadError := crypto.LoadPrivateKey(client.PrivateKey)
+			signingPrivateKey, loadError := crypto.LoadPrivateKey(client.PrivateKey)
 			if loadError != nil {
 				return loadError
 			}
-			managedKey, convertError := km.convert(privateKey)
+			managedKey, convertError := km.convert(signingPrivateKey)
 			if convertError != nil {
 				return convertError
 			}
 
-			km.keyStore.Set(managedKey.Id, managedKey)
+			managedKey.Clients = []*config.Client{&client}
+			km.addManagedKey(managedKey)
 		}
 	}
 
 	return nil
 }
 
-func (km *KeyManger) convert(privateKey interface{}) (*ManagedKey, error) {
-	keyAsBytes, loadError := km.getBytes(privateKey)
+func (km *KeyManger) addManagedKey(managedKey *ManagedKey) {
+	existingKey, exists := km.keyStore.Get(managedKey.Id)
+	if exists {
+		mergedKey := &ManagedKey{
+			Id:      managedKey.Id,
+			Key:     managedKey.Key,
+			Server:  managedKey.Server || existingKey.Server,
+			Clients: append(managedKey.Clients, existingKey.Clients...),
+		}
+		km.keyStore.Set(mergedKey.Id, mergedKey)
+	} else {
+		km.keyStore.Set(managedKey.Id, managedKey)
+	}
+}
+
+func (km *KeyManger) convert(signingPrivateKey *crypto.SigningPrivateKey) (*ManagedKey, error) {
+	keyAsBytes, loadError := km.getBytes(signingPrivateKey.PrivateKey)
 	if loadError != nil {
 		return nil, loadError
 	}
 	base64String := base64.StdEncoding.EncodeToString(keyAsBytes)
 	kid := crypto.Sha1Hash(base64String)
 
+	key, jwkError := jwk.FromRaw(signingPrivateKey.PrivateKey)
+	if jwkError != nil {
+		return nil, jwkError
+	}
+
+	var setError error
+
+	if settError := key.Set(jwk.KeyIDKey, kid); settError != nil {
+		return nil, setError
+	}
+
+	if settError := key.Set(jwk.AlgorithmKey, signingPrivateKey.SignatureAlgorithm); settError != nil {
+		return nil, setError
+	}
+
+	if settError := key.Set(jwk.KeyUsageKey, "sig"); settError != nil {
+		return nil, setError
+	}
+
 	managedKey := &ManagedKey{
-		Id:  kid,
-		Key: privateKey,
+		Id:      kid,
+		Key:     &key,
+		Clients: []*config.Client{},
 	}
 
 	return managedKey, nil

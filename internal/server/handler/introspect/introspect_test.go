@@ -50,27 +50,32 @@ func Test_Introspect(t *testing.T) {
 		t.Error(err)
 	}
 
-	testIntrospectMissingClientCredentials(t, testConfig)
+	keyManger, keyLoadingError := store.NewKeyManger(testConfig)
+	if keyLoadingError != nil {
+		t.Error(keyLoadingError)
+	}
 
-	testIntrospectInvalidClientCredentials(t, testConfig)
+	testIntrospectMissingClientCredentials(t, testConfig, keyManger)
 
-	testIntrospectEmptyToken(t, testConfig)
+	testIntrospectInvalidClientCredentials(t, testConfig, keyManger)
 
-	testIntrospectInvalidToken(t, testConfig)
+	testIntrospectEmptyToken(t, testConfig, keyManger)
 
-	testIntrospect(t, testConfig)
+	testIntrospectInvalidToken(t, testConfig, keyManger)
 
-	testIntrospectWithoutHint(t, testConfig)
+	testIntrospect(t, testConfig, keyManger)
 
-	testIntrospectDisabled(t, testConfig)
+	testIntrospectWithoutHint(t, testConfig, keyManger)
+
+	testIntrospectDisabled(t, testConfig, keyManger)
 
 	testIntrospectNotAllowedHttpMethods(t)
 }
 
-func testIntrospectMissingClientCredentials(t *testing.T, testConfig *config.Config) {
+func testIntrospectMissingClientCredentials(t *testing.T, testConfig *config.Config, keyManger *store.KeyManger) {
 	t.Run("Missing client credentials", func(t *testing.T) {
 		requestValidator := validation.NewRequestValidator(testConfig)
-		tokenManager := store.NewTokenManager(testConfig, store.NewDefaultKeyLoader(testConfig))
+		tokenManager := store.NewTokenManager(testConfig, store.NewDefaultKeyLoader(keyManger))
 
 		introspectHandler := NewIntrospectHandler(testConfig, requestValidator, tokenManager)
 
@@ -84,10 +89,10 @@ func testIntrospectMissingClientCredentials(t *testing.T, testConfig *config.Con
 	})
 }
 
-func testIntrospectInvalidClientCredentials(t *testing.T, testConfig *config.Config) {
+func testIntrospectInvalidClientCredentials(t *testing.T, testConfig *config.Config, keyManger *store.KeyManger) {
 	t.Run("Invalid client credentials", func(t *testing.T) {
 		requestValidator := validation.NewRequestValidator(testConfig)
-		tokenManager := store.NewTokenManager(testConfig, store.NewDefaultKeyLoader(testConfig))
+		tokenManager := store.NewTokenManager(testConfig, store.NewDefaultKeyLoader(keyManger))
 
 		introspectHandler := NewIntrospectHandler(testConfig, requestValidator, tokenManager)
 
@@ -104,7 +109,7 @@ func testIntrospectInvalidClientCredentials(t *testing.T, testConfig *config.Con
 	})
 }
 
-func testIntrospectEmptyToken(t *testing.T, testConfig *config.Config) {
+func testIntrospectEmptyToken(t *testing.T, testConfig *config.Config, keyManger *store.KeyManger) {
 	type introspectParameter struct {
 		tokenHint oauth2.IntrospectTokenType
 	}
@@ -118,7 +123,7 @@ func testIntrospectEmptyToken(t *testing.T, testConfig *config.Config) {
 		testMessage := fmt.Sprintf("Introspect empty %v", test.tokenHint)
 		t.Run(testMessage, func(t *testing.T) {
 			requestValidator := validation.NewRequestValidator(testConfig)
-			tokenManager := store.NewTokenManager(testConfig, store.NewDefaultKeyLoader(testConfig))
+			tokenManager := store.NewTokenManager(testConfig, store.NewDefaultKeyLoader(keyManger))
 
 			introspectHandler := NewIntrospectHandler(testConfig, requestValidator, tokenManager)
 
@@ -150,7 +155,7 @@ func testIntrospectEmptyToken(t *testing.T, testConfig *config.Config) {
 	}
 }
 
-func testIntrospectInvalidToken(t *testing.T, testConfig *config.Config) {
+func testIntrospectInvalidToken(t *testing.T, testConfig *config.Config, keyManger *store.KeyManger) {
 	type introspectParameter struct {
 		tokenHint oauth2.IntrospectTokenType
 	}
@@ -164,7 +169,7 @@ func testIntrospectInvalidToken(t *testing.T, testConfig *config.Config) {
 		testMessage := fmt.Sprintf("Introspect invalid %v", test.tokenHint)
 		t.Run(testMessage, func(t *testing.T) {
 			requestValidator := validation.NewRequestValidator(testConfig)
-			tokenManager := store.NewTokenManager(testConfig, store.NewDefaultKeyLoader(testConfig))
+			tokenManager := store.NewTokenManager(testConfig, store.NewDefaultKeyLoader(keyManger))
 
 			introspectHandler := NewIntrospectHandler(testConfig, requestValidator, tokenManager)
 
@@ -197,7 +202,7 @@ func testIntrospectInvalidToken(t *testing.T, testConfig *config.Config) {
 	}
 }
 
-func testIntrospect(t *testing.T, testConfig *config.Config) {
+func testIntrospect(t *testing.T, testConfig *config.Config, keyManger *store.KeyManger) {
 	type introspectParameter struct {
 		tokenHint oauth2.IntrospectTokenType
 	}
@@ -229,7 +234,7 @@ func testIntrospect(t *testing.T, testConfig *config.Config) {
 
 			requestValidator := validation.NewRequestValidator(testConfig)
 			sessionManager := store.NewSessionManager(testConfig)
-			tokenManager := store.NewTokenManager(testConfig, store.NewDefaultKeyLoader(testConfig))
+			tokenManager := store.NewTokenManager(testConfig, store.NewDefaultKeyLoader(keyManger))
 			sessionManager.StartSession(authSession)
 			accessTokenResponse := tokenManager.CreateAccessTokenResponse(user.Username, client, scopes)
 
@@ -269,7 +274,7 @@ func testIntrospect(t *testing.T, testConfig *config.Config) {
 	}
 }
 
-func testIntrospectWithoutHint(t *testing.T, testConfig *config.Config) {
+func testIntrospectWithoutHint(t *testing.T, testConfig *config.Config, keyManger *store.KeyManger) {
 	type introspectParameter struct {
 		tokenType oauth2.IntrospectTokenType
 	}
@@ -301,7 +306,7 @@ func testIntrospectWithoutHint(t *testing.T, testConfig *config.Config) {
 
 			requestValidator := validation.NewRequestValidator(testConfig)
 			sessionManager := store.NewSessionManager(testConfig)
-			tokenManager := store.NewTokenManager(testConfig, store.NewDefaultKeyLoader(testConfig))
+			tokenManager := store.NewTokenManager(testConfig, store.NewDefaultKeyLoader(keyManger))
 			sessionManager.StartSession(authSession)
 			accessTokenResponse := tokenManager.CreateAccessTokenResponse(user.Username, client, scopes)
 
@@ -340,7 +345,7 @@ func testIntrospectWithoutHint(t *testing.T, testConfig *config.Config) {
 	}
 }
 
-func testIntrospectDisabled(t *testing.T, testConfig *config.Config) {
+func testIntrospectDisabled(t *testing.T, testConfig *config.Config, keyManger *store.KeyManger) {
 	type introspectParameter struct {
 		tokenHint oauth2.IntrospectTokenType
 	}
@@ -372,7 +377,7 @@ func testIntrospectDisabled(t *testing.T, testConfig *config.Config) {
 
 			requestValidator := validation.NewRequestValidator(testConfig)
 			sessionManager := store.NewSessionManager(testConfig)
-			tokenManager := store.NewTokenManager(testConfig, store.NewDefaultKeyLoader(testConfig))
+			tokenManager := store.NewTokenManager(testConfig, store.NewDefaultKeyLoader(keyManger))
 			sessionManager.StartSession(authSession)
 			accessTokenResponse := tokenManager.CreateAccessTokenResponse(user.Username, client, scopes)
 

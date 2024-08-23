@@ -60,19 +60,9 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) addKey(mangedKey *store.ManagedKey) error {
-	key := mangedKey.Key
-	kid := mangedKey.Id
-	raw, jwkError := jwk.FromRaw(key)
-	if jwkError != nil {
-		return jwkError
-	}
+	key := *mangedKey.Key
 
-	setError := raw.Set(jwk.KeyIDKey, kid)
-	if setError != nil {
-		return setError
-	}
-
-	addKeyError := h.keySet.AddKey(raw)
+	addKeyError := h.keySet.AddKey(key)
 	if addKeyError != nil {
 		return addKeyError
 	}

@@ -7,7 +7,6 @@ import (
 	"github.com/lestrrat-go/jwx/v2/jwa"
 	"github.com/lestrrat-go/jwx/v2/jwt"
 	"github.com/webishdev/stopnik/internal/config"
-	"github.com/webishdev/stopnik/internal/crypto"
 	internalHttp "github.com/webishdev/stopnik/internal/http"
 	"github.com/webishdev/stopnik/internal/oauth2"
 	"github.com/webishdev/stopnik/log"
@@ -23,16 +22,16 @@ type TokenManager struct {
 }
 
 type KeyLoader interface {
-	LoadKeys(client *config.Client) (interface{}, bool, error)
+	LoadKeys(client *config.Client) (*ManagedKey, bool)
 }
 
 type DefaultKeyLoader struct {
-	privateKey string
+	keyManager *KeyManger
 }
 
-func NewDefaultKeyLoader(config *config.Config) *DefaultKeyLoader {
+func NewDefaultKeyLoader(keyManager *KeyManger) *DefaultKeyLoader {
 	return &DefaultKeyLoader{
-		privateKey: config.Server.PrivateKey,
+		keyManager: keyManager,
 	}
 }
 
@@ -177,7 +176,7 @@ func (tokenManager *TokenManager) generateJWTToken(tokenId string, duration time
 	}
 
 	loader := tokenManager.keyLoader
-	key, keyExists, keyLoaderError := loader.LoadKeys(client)
+	managedKey, keyExists := loader.LoadKeys(client)
 
 	if !keyExists {
 		signKey := jwt.WithKey(jwa.HS256, []byte(tokenManager.config.GetServerSecret()))
@@ -188,11 +187,11 @@ func (tokenManager *TokenManager) generateJWTToken(tokenId string, duration time
 
 		return string(tokenString)
 	} else {
-		if keyLoaderError != nil {
-			panic(keyLoaderError)
-		}
+		key := *managedKey.Key
 
-		tokenString, tokenError := jwt.Sign(token, jwt.WithKey(jwa.RS256, key))
+		options := jwt.WithKey(key.Algorithm(), key)
+
+		tokenString, tokenError := jwt.Sign(token, options)
 		if tokenError != nil {
 			panic(tokenError)
 		}
@@ -202,16 +201,13 @@ func (tokenManager *TokenManager) generateJWTToken(tokenId string, duration time
 
 }
 
-func (defaultKeyLoader *DefaultKeyLoader) LoadKeys(client *config.Client) (interface{}, bool, error) {
-	if defaultKeyLoader.privateKey == "" {
-		return nil, false, nil
-	}
-	privateKey, loadError := crypto.LoadPrivateKey(defaultKeyLoader.privateKey)
-	if loadError != nil {
-		return nil, false, loadError
+func (defaultKeyLoader *DefaultKeyLoader) LoadKeys(client *config.Client) (*ManagedKey, bool) {
+	key := defaultKeyLoader.keyManager.getClientKey(client)
+	if key == nil {
+		return nil, false
 	}
 
-	return privateKey, true, nil
+	return key, true
 }
 
 func getAuthorizationHeaderValue(authorizationHeader string) *string {

@@ -43,34 +43,39 @@ func Test_Token(t *testing.T) {
 		t.Error(err)
 	}
 
-	testTokenMissingClientCredentials(t, testConfig)
+	keyManger, keyLoadingError := store.NewKeyManger(testConfig)
+	if keyLoadingError != nil {
+		t.Error(keyLoadingError)
+	}
 
-	testTokenInvalidClientCredentials(t, testConfig)
+	testTokenMissingClientCredentials(t, testConfig, keyManger)
 
-	testTokenMissingGrandType(t, testConfig)
+	testTokenInvalidClientCredentials(t, testConfig, keyManger)
 
-	testTokenInvalidGrandType(t, testConfig)
+	testTokenMissingGrandType(t, testConfig, keyManger)
 
-	testTokenAuthorizationCodeGrantTypeMissingCodeParameter(t, testConfig)
+	testTokenInvalidGrandType(t, testConfig, keyManger)
 
-	testTokenAuthorizationCodeGrantTypeInvalidPKCE(t, testConfig)
+	testTokenAuthorizationCodeGrantTypeMissingCodeParameter(t, testConfig, keyManger)
 
-	testTokenAuthorizationCodeGrantType(t, testConfig)
+	testTokenAuthorizationCodeGrantTypeInvalidPKCE(t, testConfig, keyManger)
 
-	testTokenPasswordGrantType(t, testConfig)
+	testTokenAuthorizationCodeGrantType(t, testConfig, keyManger)
 
-	testTokenClientCredentialsGrantType(t, testConfig)
+	testTokenPasswordGrantType(t, testConfig, keyManger)
 
-	testTokenRefreshTokenGrantType(t, testConfig)
+	testTokenClientCredentialsGrantType(t, testConfig, keyManger)
+
+	testTokenRefreshTokenGrantType(t, testConfig, keyManger)
 
 	testTokenNotAllowedHttpMethods(t)
 }
 
-func testTokenMissingClientCredentials(t *testing.T, testConfig *config.Config) {
+func testTokenMissingClientCredentials(t *testing.T, testConfig *config.Config, keyManager *store.KeyManger) {
 	t.Run("Missing client credentials", func(t *testing.T) {
 		requestValidator := validation.NewRequestValidator(testConfig)
 		sessionManager := store.NewSessionManager(testConfig)
-		tokenManager := store.NewTokenManager(testConfig, store.NewDefaultKeyLoader(testConfig))
+		tokenManager := store.NewTokenManager(testConfig, store.NewDefaultKeyLoader(keyManager))
 
 		tokenHandler := NewTokenHandler(requestValidator, sessionManager, tokenManager)
 
@@ -84,11 +89,11 @@ func testTokenMissingClientCredentials(t *testing.T, testConfig *config.Config) 
 	})
 }
 
-func testTokenInvalidClientCredentials(t *testing.T, testConfig *config.Config) {
+func testTokenInvalidClientCredentials(t *testing.T, testConfig *config.Config, keyManager *store.KeyManger) {
 	t.Run("Invalid client credentials", func(t *testing.T) {
 		requestValidator := validation.NewRequestValidator(testConfig)
 		sessionManager := store.NewSessionManager(testConfig)
-		tokenManager := store.NewTokenManager(testConfig, store.NewDefaultKeyLoader(testConfig))
+		tokenManager := store.NewTokenManager(testConfig, store.NewDefaultKeyLoader(keyManager))
 
 		tokenHandler := NewTokenHandler(requestValidator, sessionManager, tokenManager)
 
@@ -105,11 +110,11 @@ func testTokenInvalidClientCredentials(t *testing.T, testConfig *config.Config) 
 	})
 }
 
-func testTokenMissingGrandType(t *testing.T, testConfig *config.Config) {
+func testTokenMissingGrandType(t *testing.T, testConfig *config.Config, keyManager *store.KeyManger) {
 	t.Run("Missing grant type", func(t *testing.T) {
 		requestValidator := validation.NewRequestValidator(testConfig)
 		sessionManager := store.NewSessionManager(testConfig)
-		tokenManager := store.NewTokenManager(testConfig, store.NewDefaultKeyLoader(testConfig))
+		tokenManager := store.NewTokenManager(testConfig, store.NewDefaultKeyLoader(keyManager))
 
 		tokenHandler := NewTokenHandler(requestValidator, sessionManager, tokenManager)
 
@@ -126,11 +131,11 @@ func testTokenMissingGrandType(t *testing.T, testConfig *config.Config) {
 	})
 }
 
-func testTokenInvalidGrandType(t *testing.T, testConfig *config.Config) {
+func testTokenInvalidGrandType(t *testing.T, testConfig *config.Config, keyManager *store.KeyManger) {
 	t.Run("Invalid grant type", func(t *testing.T) {
 		requestValidator := validation.NewRequestValidator(testConfig)
 		sessionManager := store.NewSessionManager(testConfig)
-		tokenManager := store.NewTokenManager(testConfig, store.NewDefaultKeyLoader(testConfig))
+		tokenManager := store.NewTokenManager(testConfig, store.NewDefaultKeyLoader(keyManager))
 
 		tokenHandler := NewTokenHandler(requestValidator, sessionManager, tokenManager)
 
@@ -153,11 +158,11 @@ func testTokenInvalidGrandType(t *testing.T, testConfig *config.Config) {
 	})
 }
 
-func testTokenAuthorizationCodeGrantTypeMissingCodeParameter(t *testing.T, testConfig *config.Config) {
+func testTokenAuthorizationCodeGrantTypeMissingCodeParameter(t *testing.T, testConfig *config.Config, keyManager *store.KeyManger) {
 	t.Run("Authorization code grant type, missing code parameter", func(t *testing.T) {
 		requestValidator := validation.NewRequestValidator(testConfig)
 		sessionManager := store.NewSessionManager(testConfig)
-		tokenManager := store.NewTokenManager(testConfig, store.NewDefaultKeyLoader(testConfig))
+		tokenManager := store.NewTokenManager(testConfig, store.NewDefaultKeyLoader(keyManager))
 
 		tokenHandler := NewTokenHandler(requestValidator, sessionManager, tokenManager)
 
@@ -180,7 +185,7 @@ func testTokenAuthorizationCodeGrantTypeMissingCodeParameter(t *testing.T, testC
 	})
 }
 
-func testTokenAuthorizationCodeGrantTypeInvalidPKCE(t *testing.T, testConfig *config.Config) {
+func testTokenAuthorizationCodeGrantTypeInvalidPKCE(t *testing.T, testConfig *config.Config, keyManager *store.KeyManger) {
 	t.Run("Authorization code grant type with invalid PKCE", func(t *testing.T) {
 		id := uuid.New()
 		pkceCodeChallenge := pkce.CalculatePKCE(pkce.S256, "foobar")
@@ -198,7 +203,7 @@ func testTokenAuthorizationCodeGrantTypeInvalidPKCE(t *testing.T, testConfig *co
 
 		requestValidator := validation.NewRequestValidator(testConfig)
 		sessionManager := store.NewSessionManager(testConfig)
-		tokenManager := store.NewTokenManager(testConfig, store.NewDefaultKeyLoader(testConfig))
+		tokenManager := store.NewTokenManager(testConfig, store.NewDefaultKeyLoader(keyManager))
 		sessionManager.StartSession(authSession)
 
 		tokenHandler := NewTokenHandler(requestValidator, sessionManager, tokenManager)
@@ -224,7 +229,7 @@ func testTokenAuthorizationCodeGrantTypeInvalidPKCE(t *testing.T, testConfig *co
 	})
 }
 
-func testTokenAuthorizationCodeGrantType(t *testing.T, testConfig *config.Config) {
+func testTokenAuthorizationCodeGrantType(t *testing.T, testConfig *config.Config, keyManager *store.KeyManger) {
 	type authorizationGrantParameter struct {
 		state                   string
 		scope                   string
@@ -270,7 +275,7 @@ func testTokenAuthorizationCodeGrantType(t *testing.T, testConfig *config.Config
 
 			requestValidator := validation.NewRequestValidator(testConfig)
 			sessionManager := store.NewSessionManager(testConfig)
-			tokenManager := store.NewTokenManager(testConfig, store.NewDefaultKeyLoader(testConfig))
+			tokenManager := store.NewTokenManager(testConfig, store.NewDefaultKeyLoader(keyManager))
 			sessionManager.StartSession(authSession)
 
 			tokenHandler := NewTokenHandler(requestValidator, sessionManager, tokenManager)
@@ -307,11 +312,11 @@ func testTokenAuthorizationCodeGrantType(t *testing.T, testConfig *config.Config
 	}
 }
 
-func testTokenPasswordGrantType(t *testing.T, testConfig *config.Config) {
+func testTokenPasswordGrantType(t *testing.T, testConfig *config.Config, keyManager *store.KeyManger) {
 	t.Run("Password grant type", func(t *testing.T) {
 		requestValidator := validation.NewRequestValidator(testConfig)
 		sessionManager := store.NewSessionManager(testConfig)
-		tokenManager := store.NewTokenManager(testConfig, store.NewDefaultKeyLoader(testConfig))
+		tokenManager := store.NewTokenManager(testConfig, store.NewDefaultKeyLoader(keyManager))
 
 		tokenHandler := NewTokenHandler(requestValidator, sessionManager, tokenManager)
 
@@ -341,11 +346,11 @@ func testTokenPasswordGrantType(t *testing.T, testConfig *config.Config) {
 	})
 }
 
-func testTokenClientCredentialsGrantType(t *testing.T, testConfig *config.Config) {
+func testTokenClientCredentialsGrantType(t *testing.T, testConfig *config.Config, keyManager *store.KeyManger) {
 	t.Run("Client credentials grant type", func(t *testing.T) {
 		requestValidator := validation.NewRequestValidator(testConfig)
 		sessionManager := store.NewSessionManager(testConfig)
-		tokenManager := store.NewTokenManager(testConfig, store.NewDefaultKeyLoader(testConfig))
+		tokenManager := store.NewTokenManager(testConfig, store.NewDefaultKeyLoader(keyManager))
 
 		tokenHandler := NewTokenHandler(requestValidator, sessionManager, tokenManager)
 
@@ -373,7 +378,7 @@ func testTokenClientCredentialsGrantType(t *testing.T, testConfig *config.Config
 	})
 }
 
-func testTokenRefreshTokenGrantType(t *testing.T, testConfig *config.Config) {
+func testTokenRefreshTokenGrantType(t *testing.T, testConfig *config.Config, keyManager *store.KeyManger) {
 	t.Run("Authorization code grant type", func(t *testing.T) {
 		client, _ := testConfig.GetClient("foo")
 		user, _ := testConfig.GetUser("foo")
@@ -394,7 +399,7 @@ func testTokenRefreshTokenGrantType(t *testing.T, testConfig *config.Config) {
 
 		requestValidator := validation.NewRequestValidator(testConfig)
 		sessionManager := store.NewSessionManager(testConfig)
-		tokenManager := store.NewTokenManager(testConfig, store.NewDefaultKeyLoader(testConfig))
+		tokenManager := store.NewTokenManager(testConfig, store.NewDefaultKeyLoader(keyManager))
 		sessionManager.StartSession(authSession)
 		accessTokenResponse := tokenManager.CreateAccessTokenResponse(user.Username, client, scopes)
 

@@ -178,7 +178,7 @@ func registerHandlers(config *config.Config, handle func(pattern string, handler
 		os.Exit(1)
 	}
 	sessionManager := store.NewSessionManager(config)
-	tokenManager := store.NewTokenManager(config, store.NewDefaultKeyLoader(config))
+	tokenManager := store.NewTokenManager(config, store.NewDefaultKeyLoader(keyManger))
 	cookieManager := internalHttp.NewCookieManager(config)
 	requestValidator := validation.NewRequestValidator(config)
 	templateManager := template.NewTemplateManager(config)

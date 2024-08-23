@@ -48,27 +48,32 @@ func Test_Revoke(t *testing.T) {
 		t.Error(err)
 	}
 
-	testRevokeMissingClientCredentials(t, testConfig)
+	keyManger, keyLoadingError := store.NewKeyManger(testConfig)
+	if keyLoadingError != nil {
+		t.Error(keyLoadingError)
+	}
 
-	testRevokeInvalidClientCredentials(t, testConfig)
+	testRevokeMissingClientCredentials(t, testConfig, keyManger)
 
-	testRevokeEmptyToken(t, testConfig)
+	testRevokeInvalidClientCredentials(t, testConfig, keyManger)
 
-	testRevokeInvalidToken(t, testConfig)
+	testRevokeEmptyToken(t, testConfig, keyManger)
 
-	testRevoke(t, testConfig)
+	testRevokeInvalidToken(t, testConfig, keyManger)
 
-	testRevokeWithoutHint(t, testConfig)
+	testRevoke(t, testConfig, keyManger)
 
-	testRevokeDisabled(t, testConfig)
+	testRevokeWithoutHint(t, testConfig, keyManger)
+
+	testRevokeDisabled(t, testConfig, keyManger)
 
 	testRevokeNotAllowedHttpMethods(t)
 }
 
-func testRevokeMissingClientCredentials(t *testing.T, testConfig *config.Config) {
+func testRevokeMissingClientCredentials(t *testing.T, testConfig *config.Config, keyManager *store.KeyManger) {
 	t.Run("Missing client credentials", func(t *testing.T) {
 		requestValidator := validation.NewRequestValidator(testConfig)
-		tokenManager := store.NewTokenManager(testConfig, store.NewDefaultKeyLoader(testConfig))
+		tokenManager := store.NewTokenManager(testConfig, store.NewDefaultKeyLoader(keyManager))
 
 		revokeHandler := NewRevokeHandler(testConfig, requestValidator, tokenManager)
 
@@ -82,10 +87,10 @@ func testRevokeMissingClientCredentials(t *testing.T, testConfig *config.Config)
 	})
 }
 
-func testRevokeInvalidClientCredentials(t *testing.T, testConfig *config.Config) {
+func testRevokeInvalidClientCredentials(t *testing.T, testConfig *config.Config, keyManager *store.KeyManger) {
 	t.Run("Invalid client credentials", func(t *testing.T) {
 		requestValidator := validation.NewRequestValidator(testConfig)
-		tokenManager := store.NewTokenManager(testConfig, store.NewDefaultKeyLoader(testConfig))
+		tokenManager := store.NewTokenManager(testConfig, store.NewDefaultKeyLoader(keyManager))
 
 		revokeHandler := NewRevokeHandler(testConfig, requestValidator, tokenManager)
 
@@ -102,7 +107,7 @@ func testRevokeInvalidClientCredentials(t *testing.T, testConfig *config.Config)
 	})
 }
 
-func testRevokeEmptyToken(t *testing.T, testConfig *config.Config) {
+func testRevokeEmptyToken(t *testing.T, testConfig *config.Config, keyManager *store.KeyManger) {
 	type introspectParameter struct {
 		tokenHint oauth2.IntrospectTokenType
 	}
@@ -116,7 +121,7 @@ func testRevokeEmptyToken(t *testing.T, testConfig *config.Config) {
 		testMessage := fmt.Sprintf("Revoke empty %v", test.tokenHint)
 		t.Run(testMessage, func(t *testing.T) {
 			requestValidator := validation.NewRequestValidator(testConfig)
-			tokenManager := store.NewTokenManager(testConfig, store.NewDefaultKeyLoader(testConfig))
+			tokenManager := store.NewTokenManager(testConfig, store.NewDefaultKeyLoader(keyManager))
 
 			revokeHandler := NewRevokeHandler(testConfig, requestValidator, tokenManager)
 
@@ -141,7 +146,7 @@ func testRevokeEmptyToken(t *testing.T, testConfig *config.Config) {
 	}
 }
 
-func testRevokeInvalidToken(t *testing.T, testConfig *config.Config) {
+func testRevokeInvalidToken(t *testing.T, testConfig *config.Config, keyManager *store.KeyManger) {
 	type introspectParameter struct {
 		tokenHint oauth2.IntrospectTokenType
 	}
@@ -155,7 +160,7 @@ func testRevokeInvalidToken(t *testing.T, testConfig *config.Config) {
 		testMessage := fmt.Sprintf("Revoke invalid %v", test.tokenHint)
 		t.Run(testMessage, func(t *testing.T) {
 			requestValidator := validation.NewRequestValidator(testConfig)
-			tokenManager := store.NewTokenManager(testConfig, store.NewDefaultKeyLoader(testConfig))
+			tokenManager := store.NewTokenManager(testConfig, store.NewDefaultKeyLoader(keyManager))
 
 			revokeHandler := NewRevokeHandler(testConfig, requestValidator, tokenManager)
 
@@ -180,7 +185,7 @@ func testRevokeInvalidToken(t *testing.T, testConfig *config.Config) {
 	}
 }
 
-func testRevoke(t *testing.T, testConfig *config.Config) {
+func testRevoke(t *testing.T, testConfig *config.Config, keyManager *store.KeyManger) {
 	type revokeParameter struct {
 		tokenHint oauth2.IntrospectTokenType
 	}
@@ -212,7 +217,7 @@ func testRevoke(t *testing.T, testConfig *config.Config) {
 
 			requestValidator := validation.NewRequestValidator(testConfig)
 			sessionManager := store.NewSessionManager(testConfig)
-			tokenManager := store.NewTokenManager(testConfig, store.NewDefaultKeyLoader(testConfig))
+			tokenManager := store.NewTokenManager(testConfig, store.NewDefaultKeyLoader(keyManager))
 			sessionManager.StartSession(authSession)
 			accessTokenResponse := tokenManager.CreateAccessTokenResponse(user.Username, client, scopes)
 
@@ -257,7 +262,7 @@ func testRevoke(t *testing.T, testConfig *config.Config) {
 	}
 }
 
-func testRevokeWithoutHint(t *testing.T, testConfig *config.Config) {
+func testRevokeWithoutHint(t *testing.T, testConfig *config.Config, keyManager *store.KeyManger) {
 	type revokeParameter struct {
 		tokenHint oauth2.IntrospectTokenType
 	}
@@ -289,7 +294,7 @@ func testRevokeWithoutHint(t *testing.T, testConfig *config.Config) {
 
 			requestValidator := validation.NewRequestValidator(testConfig)
 			sessionManager := store.NewSessionManager(testConfig)
-			tokenManager := store.NewTokenManager(testConfig, store.NewDefaultKeyLoader(testConfig))
+			tokenManager := store.NewTokenManager(testConfig, store.NewDefaultKeyLoader(keyManager))
 			sessionManager.StartSession(authSession)
 			accessTokenResponse := tokenManager.CreateAccessTokenResponse(user.Username, client, scopes)
 
@@ -333,7 +338,7 @@ func testRevokeWithoutHint(t *testing.T, testConfig *config.Config) {
 	}
 }
 
-func testRevokeDisabled(t *testing.T, testConfig *config.Config) {
+func testRevokeDisabled(t *testing.T, testConfig *config.Config, keyManager *store.KeyManger) {
 	type revokeParameter struct {
 		tokenHint oauth2.IntrospectTokenType
 	}
@@ -365,7 +370,7 @@ func testRevokeDisabled(t *testing.T, testConfig *config.Config) {
 
 			requestValidator := validation.NewRequestValidator(testConfig)
 			sessionManager := store.NewSessionManager(testConfig)
-			tokenManager := store.NewTokenManager(testConfig, store.NewDefaultKeyLoader(testConfig))
+			tokenManager := store.NewTokenManager(testConfig, store.NewDefaultKeyLoader(keyManager))
 			sessionManager.StartSession(authSession)
 			accessTokenResponse := tokenManager.CreateAccessTokenResponse(user.Username, client, scopes)
 

@@ -11,23 +11,44 @@ Just a few notes taken during development
 
 ## Create private keys and self-signed certificates
 
+### Self-signed certificates
+
 See https://superuser.com/a/226229
+
+#### RSA
 
 ```bash
 openssl req -new -newkey rsa:4096 -days 365 -nodes -x509 -subj "/C=DE/ST=NRW/L=Dortmund/O=STOPnik/CN=www.example.com" -keyout www.example.com.key -out www.example.com.cert
 ```
 
+### EC
+
 ```bash
 openssl req -new -newkey ec -pkeyopt ec_paramgen_curve:prime256v1 -days 365 -nodes -x509 -subj "/C=DE/ST=NRW/L=Dortmund/O=STOPnik/CN=www.example.com" -keyout www.example.com.key -out www.example.com.cert
 ```
 
-### RSA
+### Private keys
+
+See [How to generate RSA and EC keys with OpenSSL](https://connect2id.com/products/nimbus-jose-jwt/openssl-key-generation)
+
+#### RSA 256
 ```bash
-openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 -out rsakey.pem
+openssl genrsa -out rsa256key.pem 3072
 ```
 
+#### EC P-256
 ```bash
-openssl ecparam -name prime256v1 -genkey -noout -out ecdsakey.pem
+openssl ecparam -name prime256v1 -genkey -noout -out ecdsa256key.pem
+```
+
+#### EC P-384
+```bash
+openssl ecparam -name secp384r1 -genkey -noout -out ecdsa384key.pem
+```
+
+#### EC P-521
+```bash
+openssl ecparam -name secp521r1 -genkey -noout -out ecdsa521key.pem
 ```
 
 ## OAuth 2.0 Endpoints
