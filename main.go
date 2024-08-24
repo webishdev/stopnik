@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"github.com/webishdev/stopnik/cmd"
 	"github.com/webishdev/stopnik/internal/config"
 	"github.com/webishdev/stopnik/internal/server"
 	logger "github.com/webishdev/stopnik/log"
@@ -18,6 +19,7 @@ var GitHash = "none"
 func main() {
 	isHelp := flag.Bool("help", false, "Show help message")
 	showVersion := flag.Bool("version", false, "Show version information")
+	askPassword := flag.Bool("password", false, "Ask for password and salt to create hash")
 	configurationFile := flag.String("file", "config.yml", "Configuration file to use")
 	flag.Parse()
 
@@ -26,7 +28,10 @@ func main() {
 		flag.Usage()
 		os.Exit(0)
 	} else if *showVersion {
-		fmt.Printf("STOPnik %s - %s\n\n", Version, GitHash)
+		fmt.Printf("STOPnik %s - %s\n", Version, GitHash)
+		os.Exit(0)
+	} else if *askPassword {
+		cmd.ReadPassword()
 		os.Exit(0)
 	}
 
