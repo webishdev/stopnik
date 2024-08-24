@@ -76,23 +76,24 @@ Root entry `clients`
 
 Each entry may contain the following options
 
-| Property                  | Description                          |
-|---------------------------|--------------------------------------|
-| `id`                      | The id of the client                 |
-| `secret`                  | SHA512 hashed secret                 |
-| `type`                    | TODO                                 |
-| `accessTTL`               | Access token time to live            |
-| `refreshTTL`              | Refresh token time to live           |
-| `introspect`              | Introspection scope                  |
-| `revoke`                  | Revocation scope                     |
-| `redirects`               | List of redirects URIs               |
-| `opaqueToken`             | Use opaque token                     |
-| `passwordFallbackAllowed` | Form auth allowed                    |
-| `claims`                  | List of claims                       |
-| `issuer`                  | Issuer                               |
-| `audience`                | Audience                             |
-| `privateKey`              | RSA or EC private key to sign tokens |
-| `sessionTimeoutSeconds`   | Session timeout in seconds           |
+| Property                  | Description                                             |
+|---------------------------|---------------------------------------------------------|
+| `id`                      | The id of the client                                    |
+| `secret`                  | SHA512 hashed secret                                    |
+| `salt`                    | Optional salt for secret to avoid identical hash values |
+| `type`                    | TODO                                                    |
+| `accessTTL`               | Access token time to live                               |
+| `refreshTTL`              | Refresh token time to live                              |
+| `introspect`              | Introspection scope                                     |
+| `revoke`                  | Revocation scope                                        |
+| `redirects`               | List of redirects URIs                                  |
+| `opaqueToken`             | Use opaque token                                        |
+| `passwordFallbackAllowed` | Form auth allowed                                       |
+| `claims`                  | List of claims                                          |
+| `issuer`                  | Issuer                                                  |
+| `audience`                | Audience                                                |
+| `privateKey`              | RSA or EC private key to sign tokens                    |
+| `sessionTimeoutSeconds`   | Session timeout in seconds                              |
 
 #### Claims
 
@@ -115,10 +116,11 @@ Root entry `users`
 
 Each entry may contain the following options
 
-| Property   | Description            |
-|------------|------------------------|
-| `username` | Username               |
-| `password` | SHA512 hashed password |
+| Property   | Description                                               |
+|------------|-----------------------------------------------------------|
+| `username` | Username                                                  |
+| `password` | SHA512 hashed password                                    |
+| `salt`     | Optional salt for password to avoid identical hash values |
 
 ## Example
 
@@ -146,7 +148,8 @@ ui:
 #  title: Test realm
 clients:
   - id: testclient
-    secret: d82c4eb5261cb9c8aa9855edd67d1bd10482f41529858d925094d173fa662aa91ff39bc5b188615273484021dfb16fd8284cf684ccf0fc795be3aa2fc1e6c181
+    secret: 43a77b3b7f74190654023e68a972b4b0dc21a90be9b85e80222d7bce31eb02ce3205a5fed49a7710afd0ba1fcb97b793d67b5b7ae69607461cdac1a235610dd8
+    salt: 123
     accessTTL: 5
     refreshTTL: 15
     type: confidential
@@ -156,7 +159,8 @@ clients:
       - name: foo
         value: bar
   - id: testclient2
-    secret: d82c4eb5261cb9c8aa9855edd67d1bd10482f41529858d925094d173fa662aa91ff39bc5b188615273484021dfb16fd8284cf684ccf0fc795be3aa2fc1e6c181
+    secret: deb920477e822d9373831d5521749d3685a3c359504139eb3ff61c7d2fe91986b1978aa1a7834bb304762699b05da2700319e5d60c1183f6f9f66f9c6e73e34e
+    salt: abc
     accessTTL: 5
     refreshTTL: 15
     opaqueToken: true
@@ -164,7 +168,8 @@ clients:
     redirects:
       - https://oauth.pstmn.io/v1/callback
   - id: testclient3
-    secret: d82c4eb5261cb9c8aa9855edd67d1bd10482f41529858d925094d173fa662aa91ff39bc5b188615273484021dfb16fd8284cf684ccf0fc795be3aa2fc1e6c181
+    secret: 1efcbc37f7d7e2f9f8cf009b91c95b2b7b913b89d36a21a05da1e3cb396ed1ab0e596e2b649e9407367e40d852ac4d0abfcfc1c4227eb661385e9f2e0f3203ca
+    salt: 321
     accessTTL: 5
     refreshTTL: 15
     type: confidential
@@ -173,5 +178,6 @@ clients:
       - https://oauth.pstmn.io/v1/callback
 users:
   - username: foo
-    password: d82c4eb5261cb9c8aa9855edd67d1bd10482f41529858d925094d173fa662aa91ff39bc5b188615273484021dfb16fd8284cf684ccf0fc795be3aa2fc1e6c181
+    password: 695e6f39f5ffd36ae60e0ade727c892d725531455a19c6035cb739d099e8f20e63d3fdfd3241888e38de1d8db85532dd65f817b12fe33ac7cdcc358ef6c8ea23
+    salt: moo
 ```
