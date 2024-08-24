@@ -38,7 +38,7 @@ Root entry named `server`
 
 Public and private keys to sign tokens
 
-Entry `server`.`tls`
+Entry `server.tls`
 
 | Property | Description                              |
 |----------|------------------------------------------|
@@ -49,7 +49,7 @@ Entry `server`.`tls`
 
 Public and private keys for TLS
 
-Entry `tls`.`keys`
+Entry `server.tls.keys`
 
 | Property | Description      |
 |----------|------------------|
@@ -99,7 +99,7 @@ Each entry may contain the following options
 
 List of claims
 
-Entry `clients[n]`.`calims`
+Entry `clients[n].calims`
 
 Each entry may contain the following options
 
