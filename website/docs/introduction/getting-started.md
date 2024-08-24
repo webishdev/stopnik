@@ -14,7 +14,9 @@ It can be started within a container and also from a downloaded binary.
 
 Starting within a container is the recommended way so far.
 
-## Container
+## Get STOPnik
+
+### Container
 
 Using **STOPnik** within a container is more recommended way to start **STOPnik**.
 
@@ -39,7 +41,7 @@ podman pull ghcr.io/webishdev/stopnik:latest
   </TabItem>
 </Tabs>
 
-## Download
+### Download
 
 To get the current version of **STOPnik** head over to GitHub [Releases](https://github.com/webishdev/stopnik/releases)
 and download the most recent release for your operating system and system architecture.
@@ -47,9 +49,9 @@ and download the most recent release for your operating system and system archit
 The current build creates executables for Linux, MacOS and Windows.
 The executables can be used on ARM and AMD/Intel 64-bit system architectures.
 
-### MacOS
+:::warning
 
-The MacOS version is not notarized or signed right now, so probably an error will be shown by MacOS.
+The MacOS version is not notarized or signed right now, so probably an error will be shown on MacOS.
 
 To get rid of this error, it is necessary to remove the quarantine attribute after download.
 
@@ -57,7 +59,11 @@ To get rid of this error, it is necessary to remove the quarantine attribute aft
 xattr -rc stopnik*
 ```
 
+:::
+
 ## Starting for the first time
+
+After download or pull of the container image, **STOPnik** can be started.
 
 When starting **STOPnik** for the first time, it will complain about the missing configuration.
 

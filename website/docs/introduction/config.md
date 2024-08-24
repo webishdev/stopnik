@@ -122,7 +122,33 @@ Each entry may contain the following options
 | `password` | SHA512 hashed password                                    |
 | `salt`     | Optional salt for password to avoid identical hash values |
 
-## Example
+## Examples
+
+### Minimal configuration
+
+The shown `config.yml` is the minimal version possible.
+
+It only defines the HTTP port **STOPnik** should listen on.
+
+After starting locally with this configuration, **STOPnik** will be accessible at
+
+- http://localhost:8080/account
+- http://localhost:8080/health
+
+```yaml
+server:
+  addr: :8080
+```
+
+:::warning
+
+This configuration only allows to start **STOPnik** but makes no sense at all, as no users and clients are defined.
+
+Not login and not `OAuth | OpenId Connect` flow will be possible.
+
+:::
+
+### Development configuration
 
 The shown `config.yml` is used during development and can be found [here](https://github.com/webishdev/stopnik/blob/main/config.yml) in the repository.
 
