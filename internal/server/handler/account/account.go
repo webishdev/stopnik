@@ -33,7 +33,7 @@ func NewAccountHandler(
 func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	log.AccessLogRequest(r)
 	if r.Method == http.MethodGet {
-		user, validCookie := h.cookieManager.ValidateCookie(r)
+		user, validCookie := h.cookieManager.ValidateAuthCookie(r)
 		if validCookie {
 			logoutTemplate := h.templateManager.LogoutTemplate(user.Username, r.RequestURI)
 
@@ -43,8 +43,10 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 		} else {
+			message := h.cookieManager.GetMessageCookieValue(r)
+
 			id := uuid.New()
-			loginTemplate := h.templateManager.LoginTemplate(id.String(), "account")
+			loginTemplate := h.templateManager.LoginTemplate(id.String(), "account", message)
 
 			_, err := w.Write(loginTemplate.Bytes())
 			if err != nil {
@@ -56,12 +58,16 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		// Handle POST from login
 		user, userExists := h.validator.ValidateFormLogin(r)
 		if !userExists {
+
+			messageCookie := h.cookieManager.CreateMessageCookie("Invalid credentials")
+			http.SetCookie(w, &messageCookie)
+
 			w.Header().Set(internalHttp.Location, r.RequestURI)
 			w.WriteHeader(http.StatusSeeOther)
 			return
 		}
 
-		cookie, err := h.cookieManager.CreateCookie(user.Username)
+		cookie, err := h.cookieManager.CreateAuthCookie(user.Username)
 		if err != nil {
 			h.errorHandler.InternalServerErrorHandler(w, r)
 			return

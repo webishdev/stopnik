@@ -34,6 +34,7 @@ type Server struct {
 type User struct {
 	Username string `yaml:"username"`
 	Password string `yaml:"password"`
+	Salt     string `yaml:"salt"`
 }
 
 type Claim struct {
@@ -44,6 +45,7 @@ type Claim struct {
 type Client struct {
 	Id                      string   `yaml:"id"`
 	Secret                  string   `yaml:"secret"`
+	Salt                    string   `yaml:"salt"`
 	ClientType              string   `yaml:"type"`
 	AccessTTL               int      `yaml:"accessTTL"`
 	RefreshTTL              int      `yaml:"refreshTTL"`

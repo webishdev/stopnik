@@ -88,7 +88,7 @@ func testAccountWithCookie(t *testing.T, testConfig *config.Config) {
 		templateManager := template.NewTemplateManager(testConfig)
 
 		user, _ := testConfig.GetUser("foo")
-		cookie, _ := cookieManager.CreateCookie(user.Username)
+		cookie, _ := cookieManager.CreateAuthCookie(user.Username)
 
 		accountHandler := NewAccountHandler(requestValidator, cookieManager, templateManager)
 
@@ -139,7 +139,7 @@ func testAccountLogin(t *testing.T, testConfig *config.Config) {
 			cookieManager := internalHttp.NewCookieManager(testConfig)
 			templateManager := template.NewTemplateManager(testConfig)
 
-			cookie, _ := cookieManager.CreateCookie(test.username)
+			cookie, _ := cookieManager.CreateAuthCookie(test.username)
 
 			accountHandler := NewAccountHandler(requestValidator, cookieManager, templateManager)
 

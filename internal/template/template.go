@@ -51,7 +51,7 @@ func addTemplates(main *template.Template) bytes.Buffer {
 	return tpl
 }
 
-func (templateManager *Manager) LoginTemplate(id string, action string) bytes.Buffer {
+func (templateManager *Manager) LoginTemplate(id string, action string, message string) bytes.Buffer {
 	var tpl bytes.Buffer
 
 	loginTemplate, loginParseError := template.New("login").Parse(string(loginHtml))
@@ -62,21 +62,25 @@ func (templateManager *Manager) LoginTemplate(id string, action string) bytes.Bu
 	addTemplates(loginTemplate)
 
 	data := struct {
-		Action     string
-		Token      string
-		HideFooter bool
-		HideMascot bool
-		ShowTitle  bool
-		Title      string
-		FooterText string
+		Action      string
+		Token       string
+		HideFooter  bool
+		HideMascot  bool
+		ShowTitle   bool
+		Title       string
+		FooterText  string
+		ShowMessage bool
+		Message     string
 	}{
-		Action:     action,
-		Token:      id,
-		HideFooter: templateManager.config.GetHideFooter(),
-		HideMascot: templateManager.config.GetHideMascot(),
-		ShowTitle:  templateManager.config.GetTitle() != "",
-		Title:      templateManager.config.GetTitle(),
-		FooterText: templateManager.config.GetFooterText(),
+		Action:      action,
+		Token:       id,
+		HideFooter:  templateManager.config.GetHideFooter(),
+		HideMascot:  templateManager.config.GetHideMascot(),
+		ShowTitle:   templateManager.config.GetTitle() != "",
+		Title:       templateManager.config.GetTitle(),
+		FooterText:  templateManager.config.GetFooterText(),
+		ShowMessage: message != "",
+		Message:     message,
 	}
 
 	templateExecuteError := loginTemplate.Execute(&tpl, data)

@@ -5,6 +5,8 @@
     --border-color: #888;
     --button-color: #5870A2;
     --button-hover-color: #81a2d4;
+    --error-message-color: #d13b3b;
+    --default-top-margin: 1rem;
 }
 body {
     font-size: 16px;
@@ -53,7 +55,7 @@ form {
 div.input {
     display: flex;
     flex-direction: column;
-    margin-top: 1rem;
+    margin-top: var(--default-top-margin);
 }
 
 div.input input, div.input button {
@@ -78,6 +80,11 @@ div.title {
     padding-top: 2rem;
     font-weight: lighter;
     font-size: 1.25rem;
+}
+
+div.error-message {
+    color: var(--error-message-color);
+    margin-top: var(--default-top-margin);
 }
 
 @media (max-width: 767px) {

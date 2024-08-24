@@ -87,7 +87,7 @@ func testLogout(t *testing.T, testConfig *config.Config) {
 			cookieManager := internalHttp.NewCookieManager(testConfig)
 
 			user, _ := testConfig.GetUser("foo")
-			cookie, _ := cookieManager.CreateCookie(user.Username)
+			cookie, _ := cookieManager.CreateAuthCookie(user.Username)
 
 			logoutHandler := NewLogoutHandler(cookieManager, test.handlerRedirect)
 

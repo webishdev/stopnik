@@ -28,7 +28,7 @@ func Test_Cookie(t *testing.T) {
 	t.Run("Create and validate Cookie", func(t *testing.T) {
 		cookieManager := NewCookieManager(testConfig)
 
-		cookie, cookieError := cookieManager.CreateCookie("foo")
+		cookie, cookieError := cookieManager.CreateAuthCookie("foo")
 
 		if cookieError != nil {
 			t.Error(cookieError)
@@ -42,7 +42,7 @@ func Test_Cookie(t *testing.T) {
 			},
 		}
 
-		_, userExists := cookieManager.ValidateCookie(httpRequest)
+		_, userExists := cookieManager.ValidateAuthCookie(httpRequest)
 
 		if !userExists {
 			t.Error("Token in cookie is invalid")
@@ -52,7 +52,7 @@ func Test_Cookie(t *testing.T) {
 	t.Run("Create and validate expired Cookie", func(t *testing.T) {
 		cookieManager := newCookieManagerWithTime(testConfig, now)
 
-		cookie, cookieError := cookieManager.CreateCookie("foo")
+		cookie, cookieError := cookieManager.CreateAuthCookie("foo")
 
 		if cookieError != nil {
 			t.Error(cookieError)
@@ -66,7 +66,7 @@ func Test_Cookie(t *testing.T) {
 
 		mockedTime = mockedTime.Add(time.Hour * time.Duration(-6))
 
-		_, userExists := cookieManager.ValidateCookie(httpRequest)
+		_, userExists := cookieManager.ValidateAuthCookie(httpRequest)
 
 		if userExists {
 			t.Error("Expired token should not provide a user")
@@ -76,7 +76,7 @@ func Test_Cookie(t *testing.T) {
 	t.Run("Create and validate Cookie with wrong username", func(t *testing.T) {
 		cookieManager := NewCookieManager(testConfig)
 
-		cookie, cookieError := cookieManager.CreateCookie("bar")
+		cookie, cookieError := cookieManager.CreateAuthCookie("bar")
 
 		if cookieError != nil {
 			t.Error(cookieError)
@@ -88,7 +88,7 @@ func Test_Cookie(t *testing.T) {
 			},
 		}
 
-		_, userExists := cookieManager.ValidateCookie(httpRequest)
+		_, userExists := cookieManager.ValidateAuthCookie(httpRequest)
 
 		if userExists {
 			t.Error("User should not exists")
@@ -106,7 +106,7 @@ func Test_Cookie(t *testing.T) {
 			},
 		}
 
-		_, userExists := cookieManager.ValidateCookie(httpRequest)
+		_, userExists := cookieManager.ValidateAuthCookie(httpRequest)
 
 		if userExists {
 			t.Error("User should not exists")
@@ -116,7 +116,7 @@ func Test_Cookie(t *testing.T) {
 	t.Run("Delete Cookie", func(t *testing.T) {
 		cookieManager := NewCookieManager(testConfig)
 
-		deleteCookie := cookieManager.DeleteCookie()
+		deleteCookie := cookieManager.DeleteAuthCookie()
 
 		testCookieValues(t, deleteCookie, -1)
 	})

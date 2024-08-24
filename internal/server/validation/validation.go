@@ -1,6 +1,7 @@
 package validation
 
 import (
+	"fmt"
 	"github.com/webishdev/stopnik/internal/config"
 	"github.com/webishdev/stopnik/internal/crypto"
 	"github.com/webishdev/stopnik/internal/oauth2"
@@ -36,7 +37,14 @@ func (validator *RequestValidator) ValidateFormLogin(r *http.Request) (*config.U
 			return nil, false
 		}
 
-		passwordHash := crypto.Sha512Hash(password)
+		passwordHash := ""
+		if user.Salt != "" {
+			saltedPassword := fmt.Sprintf("%s/!%s", password, user.Salt)
+			passwordHash = crypto.Sha512Hash(saltedPassword)
+		} else {
+			passwordHash = crypto.Sha512Hash(password)
+		}
+
 		if passwordHash != user.Password {
 			return nil, false
 		}
@@ -74,7 +82,13 @@ func (validator *RequestValidator) ValidateClientCredentials(r *http.Request) (*
 			return nil, usingFallback, false
 		}
 
-		secretHash := crypto.Sha512Hash(clientSecret)
+		secretHash := ""
+		if client.Salt != "" {
+			saltedPassword := fmt.Sprintf("%s/!%s", clientSecret, client.Salt)
+			secretHash = crypto.Sha512Hash(saltedPassword)
+		} else {
+			secretHash = crypto.Sha512Hash(clientSecret)
+		}
 
 		if secretHash != client.Secret {
 			return nil, usingFallback, false

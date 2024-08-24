@@ -14,6 +14,9 @@
             <label for="stopnik_password">Password</label>
             <input id="stopnik_password" type="password" name="stopnik_password" />
         </div>
+        {{ if .ShowMessage }}
+        <div class="error-message">{{ .Message }}</div>
+        {{ end }}
         <div class="input">
             <button type="submit">Login</button>
         </div>

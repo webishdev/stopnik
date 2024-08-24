@@ -24,7 +24,27 @@ func newCookieManagerWithTime(config *config.Config, now Now) *CookieManager {
 	return &CookieManager{config: config, now: now}
 }
 
-func (cookieManager *CookieManager) DeleteCookie() http.Cookie {
+func (cookieManager *CookieManager) CreateMessageCookie(message string) http.Cookie {
+	log.Debug("Creating %s message cookie", message)
+	return http.Cookie{
+		Name:     "stopnik_message",
+		Value:    message,
+		Path:     "/",
+		MaxAge:   5,
+		HttpOnly: true,
+		SameSite: http.SameSiteLaxMode,
+	}
+}
+
+func (cookieManager *CookieManager) GetMessageCookieValue(r *http.Request) string {
+	cookie, cookieError := r.Cookie("stopnik_message")
+	if cookieError != nil {
+		return ""
+	}
+	return cookie.Value
+}
+
+func (cookieManager *CookieManager) DeleteAuthCookie() http.Cookie {
 	authCookieName := cookieManager.config.GetAuthCookieName()
 	return http.Cookie{
 		Name:     authCookieName,
@@ -36,9 +56,9 @@ func (cookieManager *CookieManager) DeleteCookie() http.Cookie {
 	}
 }
 
-func (cookieManager *CookieManager) CreateCookie(username string) (http.Cookie, error) {
+func (cookieManager *CookieManager) CreateAuthCookie(username string) (http.Cookie, error) {
 	authCookieName := cookieManager.config.GetAuthCookieName()
-	log.Debug("Creating %s cookie", authCookieName)
+	log.Debug("Creating %s auth cookie", authCookieName)
 	value, err := cookieManager.generateCookieValue(username)
 	if err != nil {
 		return http.Cookie{}, err
@@ -53,7 +73,7 @@ func (cookieManager *CookieManager) CreateCookie(username string) (http.Cookie, 
 	}, nil
 }
 
-func (cookieManager *CookieManager) ValidateCookie(r *http.Request) (*config.User, bool) {
+func (cookieManager *CookieManager) ValidateAuthCookie(r *http.Request) (*config.User, bool) {
 	authCookieName := cookieManager.config.GetAuthCookieName()
 	log.Debug("Validating %s cookie", authCookieName)
 	cookie, cookieError := r.Cookie(authCookieName)

@@ -588,7 +588,7 @@ func testAuthorizeImplicitGrant(t *testing.T, testConfig *config.Config, keyMang
 
 			client, _ := testConfig.GetClient("foo")
 			user, _ := testConfig.GetUser("foo")
-			cookie, _ := cookieManager.CreateCookie(user.Username)
+			cookie, _ := cookieManager.CreateAuthCookie(user.Username)
 
 			authorizeHandler := NewAuthorizeHandler(requestValidator, cookieManager, sessionManager, tokenManager, &template.Manager{})
 
@@ -679,7 +679,7 @@ func testAuthorizeAuthorizationGrant(t *testing.T, testConfig *config.Config) {
 			cookieManager := internalHttp.NewCookieManager(testConfig)
 
 			user, _ := testConfig.GetUser("foo")
-			cookie, _ := cookieManager.CreateCookie(user.Username)
+			cookie, _ := cookieManager.CreateAuthCookie(user.Username)
 
 			authorizeHandler := NewAuthorizeHandler(requestValidator, cookieManager, sessionManager, &store.TokenManager{}, &template.Manager{})
 

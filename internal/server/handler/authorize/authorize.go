@@ -130,7 +130,7 @@ func (h *Handler) handleGetRequest(w http.ResponseWriter, r *http.Request) {
 
 	h.sessionManager.StartSession(authSession)
 
-	user, validCookie := h.cookieManager.ValidateCookie(r)
+	user, validCookie := h.cookieManager.ValidateAuthCookie(r)
 
 	if validCookie {
 		authSession.Username = user.Username
@@ -158,10 +158,13 @@ func (h *Handler) handleGetRequest(w http.ResponseWriter, r *http.Request) {
 		// bytes := []byte(loginHtml)
 
 		// Show login page
+
+		message := h.cookieManager.GetMessageCookieValue(r)
+
 		query := r.URL.Query()
 		encodedQuery := query.Encode()
 		formAction := fmt.Sprintf("authorize?%s", encodedQuery)
-		loginTemplate := h.templateManager.LoginTemplate(authSession.Id, formAction)
+		loginTemplate := h.templateManager.LoginTemplate(authSession.Id, formAction, message)
 
 		_, err := w.Write(loginTemplate.Bytes())
 		if err != nil {
@@ -172,7 +175,7 @@ func (h *Handler) handleGetRequest(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) handlePostRequest(w http.ResponseWriter, r *http.Request, user *config.User) {
-	cookie, err := h.cookieManager.CreateCookie(user.Username)
+	cookie, err := h.cookieManager.CreateAuthCookie(user.Username)
 	if err != nil {
 		h.errorHandler.InternalServerErrorHandler(w, r)
 		return
@@ -181,7 +184,7 @@ func (h *Handler) handlePostRequest(w http.ResponseWriter, r *http.Request, user
 	authSessionForm := r.PostFormValue("stopnik_auth_session")
 	authSession, exists := h.sessionManager.GetSession(authSessionForm)
 	if !exists {
-		sendRetryLocation(w, r)
+		h.sendRetryLocation(w, r, "")
 		return
 	}
 
@@ -231,7 +234,7 @@ func (h *Handler) validateLogin(w http.ResponseWriter, r *http.Request) (*config
 	// Handle Post from Login
 	user, userExists := h.validator.ValidateFormLogin(r)
 	if !userExists {
-		sendRetryLocation(w, r)
+		h.sendRetryLocation(w, r, "Invalid credentials")
 		return nil, true
 	}
 	return user, false
@@ -286,7 +289,11 @@ func setImplicitGrantParameter(query url.Values, accessTokenResponse oauth2.Acce
 	// The authorization server MUST NOT issue a refresh token.
 }
 
-func sendRetryLocation(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) sendRetryLocation(w http.ResponseWriter, r *http.Request, message string) {
+	if message != "" {
+		messageCookie := h.cookieManager.CreateMessageCookie("Invalid credentials")
+		http.SetCookie(w, &messageCookie)
+	}
 	w.Header().Set(internalHttp.Location, r.RequestURI)
 	w.WriteHeader(http.StatusSeeOther)
 }

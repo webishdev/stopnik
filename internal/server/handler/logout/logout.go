@@ -23,12 +23,12 @@ func NewLogoutHandler(cookieManager *internalHttp.CookieManager, logoutRedirect 
 func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	log.AccessLogRequest(r)
 	if r.Method == http.MethodPost {
-		_, validCookie := h.cookieManager.ValidateCookie(r)
+		_, validCookie := h.cookieManager.ValidateAuthCookie(r)
 		if !validCookie {
 			h.errorHandler.ForbiddenHandler(w, r)
 			return
 		}
-		cookie := h.cookieManager.DeleteCookie()
+		cookie := h.cookieManager.DeleteAuthCookie()
 
 		http.SetCookie(w, &cookie)
 
