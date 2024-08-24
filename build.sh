@@ -116,8 +116,8 @@ function task_build() {
     echo
     exit 1
   fi
-  if [[ ! "$3" =~ ^v[0-9].[0-9]$|^dev$ ]]; then
-    echo "Wrong version format. Should be vX.Y or dev"
+  if [[ ! "$3" =~ ^v[0-9].[0-9].[0-9]$|^dev$ ]]; then
+    echo "Wrong version format. Should be vX.Y.Z or dev"
     echo
     exit 1
   fi
@@ -165,8 +165,8 @@ function task_build_all() {
     echo
     exit 1
   fi
-  if [[ ! "$1" =~ ^v[0-9].[0-9]$|^dev$ ]]; then
-    echo "Wrong version format. Should be vX.Y or dev"
+  if [[ ! "$1" =~ ^v[0-9].[0-9].[0-9]$|^dev$ ]]; then
+    echo "Wrong version format. Should be vX.Y.Z or dev"
     echo
     exit 1
   fi
