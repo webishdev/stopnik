@@ -121,10 +121,6 @@ const config: Config = {
               label: 'Stack Overflow',
               href: 'https://stackoverflow.com/questions/tagged/stopnik',
             },
-            {
-              label: 'Twitter',
-              href: 'https://twitter.com/stopnik',
-            },
           ],
         },
         {
