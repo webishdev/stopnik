@@ -33,8 +33,8 @@ function prepare() {
 }
 
 function clean() {
-  rm -rf bin
-  echo "The bin/ directory was cleaned"
+  rm -rf bin/ dist/
+  echo "The bin/ and dist/ directories were cleaned"
   echo
 }
 
@@ -51,7 +51,7 @@ function build() {
   FILE_NAME="$NAME.$VERSION-$OS_NAME-$GO_ARCH"
   DIR="$OS_NAME-$GO_ARCH"
   echo "Build $NICE_NAME version $VERSION ($GIT_HASH) for $GO_OS $GO_ARCH into $DIR"
-  GOOS=$GO_OS GOARCH=$GO_ARCH go build -ldflags="-s -w -X 'main.Version=$VERSION' -X 'main.GitHash=$GIT_HASH'" -o bin/$DIR/$FILE_NAME$FILE_EXTENSION main.go
+  GOOS=$GO_OS GOARCH=$GO_ARCH go build -ldflags="-s -w -X 'main.Version=$VERSION' -X 'main.GitHash=$GIT_HASH'" -o bin/$DIR/$FILE_NAME$FILE_EXTENSION ./cmd/stopnik
 
   CURRENT_DIR=$(pwd)
   cd bin/$DIR
