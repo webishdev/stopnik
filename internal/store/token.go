@@ -4,9 +4,9 @@ import (
 	"encoding/base64"
 	"fmt"
 	"github.com/google/uuid"
-	"github.com/lestrrat-go/jwx/v2/jwa"
 	"github.com/lestrrat-go/jwx/v2/jwt"
 	"github.com/webishdev/stopnik/internal/config"
+	"github.com/webishdev/stopnik/internal/crypto"
 	internalHttp "github.com/webishdev/stopnik/internal/http"
 	"github.com/webishdev/stopnik/internal/oauth2"
 	"github.com/webishdev/stopnik/log"
@@ -16,26 +16,12 @@ import (
 
 type TokenManager struct {
 	config            *config.Config
-	keyLoader         KeyLoader
+	keyLoader         crypto.KeyLoader
 	accessTokenStore  *ExpiringStore[oauth2.AccessToken]
 	refreshTokenStore *ExpiringStore[oauth2.RefreshToken]
 }
 
-type KeyLoader interface {
-	LoadKeys(client *config.Client) (*ManagedKey, bool)
-}
-
-type DefaultKeyLoader struct {
-	keyManager *KeyManger
-}
-
-func NewDefaultKeyLoader(keyManager *KeyManger) *DefaultKeyLoader {
-	return &DefaultKeyLoader{
-		keyManager: keyManager,
-	}
-}
-
-func NewTokenManager(config *config.Config, keyLoader KeyLoader) *TokenManager {
+func NewTokenManager(config *config.Config, keyLoader crypto.KeyLoader) *TokenManager {
 	accessTokenStore := NewDefaultTimedStore[oauth2.AccessToken]()
 	refreshTokenStore := NewDefaultTimedStore[oauth2.RefreshToken]()
 	return &TokenManager{
@@ -189,8 +175,8 @@ func (tokenManager *TokenManager) generateJWTToken(tokenId string, duration time
 	managedKey, keyExists := loader.LoadKeys(client)
 
 	if !keyExists {
-		signKey := jwt.WithKey(jwa.HS256, []byte(tokenManager.config.GetServerSecret()))
-		tokenString, tokenError := jwt.Sign(token, signKey)
+		options := loader.GetServerSecret()
+		tokenString, tokenError := jwt.Sign(token, options)
 		if tokenError != nil {
 			panic(tokenError)
 		}
@@ -209,15 +195,6 @@ func (tokenManager *TokenManager) generateJWTToken(tokenId string, duration time
 		return string(tokenString)
 	}
 
-}
-
-func (defaultKeyLoader *DefaultKeyLoader) LoadKeys(client *config.Client) (*ManagedKey, bool) {
-	key := defaultKeyLoader.keyManager.getClientKey(client)
-	if key == nil {
-		return nil, false
-	}
-
-	return key, true
 }
 
 func getAuthorizationHeaderValue(authorizationHeader string) *string {

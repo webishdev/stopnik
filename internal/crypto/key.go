@@ -6,12 +6,43 @@ import (
 	"encoding/pem"
 	"errors"
 	"github.com/lestrrat-go/jwx/v2/jwa"
+	"github.com/lestrrat-go/jwx/v2/jwk"
+	"github.com/lestrrat-go/jwx/v2/jwt"
+	"github.com/webishdev/stopnik/internal/config"
 	"os"
 )
 
 type SigningPrivateKey struct {
 	PrivateKey         interface{}
 	SignatureAlgorithm jwa.SignatureAlgorithm
+}
+
+type ManagedKey struct {
+	Id      string
+	Clients []*config.Client
+	Server  bool
+	Key     *jwk.Key
+}
+
+type ServerSecretLoader interface {
+	GetServerSecret() jwt.SignEncryptParseOption
+}
+
+type serverSecret struct {
+	secret string
+}
+
+type KeyLoader interface {
+	LoadKeys(client *config.Client) (*ManagedKey, bool)
+	ServerSecretLoader
+}
+
+func NewServerSecretLoader(config *config.Config) ServerSecretLoader {
+	return &serverSecret{secret: config.GetServerSecret()}
+}
+
+func (s *serverSecret) GetServerSecret() jwt.SignEncryptParseOption {
+	return jwt.WithKey(jwa.HS256, []byte(s.secret))
 }
 
 func LoadPrivateKey(name string) (*SigningPrivateKey, error) {

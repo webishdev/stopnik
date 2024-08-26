@@ -278,7 +278,7 @@ func testAuthorizeValidLoginNoSession(t *testing.T, testConfig *config.Config, k
 			requestValidator := validation.NewRequestValidator(testConfig)
 			sessionManager := store.NewSessionManager(testConfig)
 			cookieManager := internalHttp.NewCookieManager(testConfig)
-			tokenManager := store.NewTokenManager(testConfig, store.NewDefaultKeyLoader(keyManger))
+			tokenManager := store.NewTokenManager(testConfig, store.NewDefaultKeyLoader(testConfig, keyManger))
 
 			authorizeHandler := NewAuthorizeHandler(requestValidator, cookieManager, sessionManager, tokenManager, &template.Manager{})
 
@@ -389,7 +389,7 @@ func testAuthorizeValidLoginAuthorizationGrant(t *testing.T, testConfig *config.
 			requestValidator := validation.NewRequestValidator(testConfig)
 			sessionManager := store.NewSessionManager(testConfig)
 			cookieManager := internalHttp.NewCookieManager(testConfig)
-			tokenManager := store.NewTokenManager(testConfig, store.NewDefaultKeyLoader(keyManger))
+			tokenManager := store.NewTokenManager(testConfig, store.NewDefaultKeyLoader(testConfig, keyManger))
 			sessionManager.StartSession(authSession)
 
 			authorizeHandler := NewAuthorizeHandler(requestValidator, cookieManager, sessionManager, tokenManager, &template.Manager{})
@@ -477,7 +477,7 @@ func testAuthorizeValidLoginImplicitGrant(t *testing.T, testConfig *config.Confi
 			requestValidator := validation.NewRequestValidator(testConfig)
 			sessionManager := store.NewSessionManager(testConfig)
 			cookieManager := internalHttp.NewCookieManager(testConfig)
-			tokenManager := store.NewTokenManager(testConfig, store.NewDefaultKeyLoader(keyManger))
+			tokenManager := store.NewTokenManager(testConfig, store.NewDefaultKeyLoader(testConfig, keyManger))
 			sessionManager.StartSession(authSession)
 
 			authorizeHandler := NewAuthorizeHandler(requestValidator, cookieManager, sessionManager, tokenManager, &template.Manager{})
@@ -586,7 +586,7 @@ func testAuthorizeImplicitGrant(t *testing.T, testConfig *config.Config, keyMang
 			requestValidator := validation.NewRequestValidator(testConfig)
 			sessionManager := store.NewSessionManager(testConfig)
 			cookieManager := internalHttp.NewCookieManager(testConfig)
-			tokenManager := store.NewTokenManager(testConfig, store.NewDefaultKeyLoader(keyManger))
+			tokenManager := store.NewTokenManager(testConfig, store.NewDefaultKeyLoader(testConfig, keyManger))
 
 			client, _ := testConfig.GetClient("foo")
 			user, _ := testConfig.GetUser("foo")

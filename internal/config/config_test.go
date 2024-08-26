@@ -143,8 +143,10 @@ func simpleServerConfiguration(t *testing.T) {
 		origin := out.(*Config)
 		*origin = Config{
 			Server: Server{
-				Secret:                "5XyLSgKpo5kWrJqm",
-				AuthCookieName:        "my_auth",
+				Secret: "5XyLSgKpo5kWrJqm",
+				Cookies: Cookies{
+					AuthName: "my_auth",
+				},
 				IntrospectScope:       "i:a",
 				RevokeScope:           "r:b",
 				SessionTimeoutSeconds: 4200,

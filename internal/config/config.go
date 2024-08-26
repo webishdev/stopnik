@@ -18,18 +18,22 @@ type TLS struct {
 	Keys Keys   `yaml:"keys"`
 }
 
+type Cookies struct {
+	AuthName    string `yaml:"authName"`
+	MessageName string `yaml:"messageName"`
+}
+
 type Server struct {
-	LogLevel              string `yaml:"logLevel"`
-	Addr                  string `yaml:"addr"`
-	AuthCookieName        string `yaml:"authCookieName"`
-	MessageCookieName     string `yaml:"messageCookieName"`
-	Secret                string `yaml:"secret"`
-	PrivateKey            string `yaml:"privateKey"`
-	TLS                   TLS    `yaml:"tls"`
-	LogoutRedirect        string `yaml:"logoutRedirect"`
-	IntrospectScope       string `yaml:"introspectScope"`
-	RevokeScope           string `yaml:"revokeScopeScope"`
-	SessionTimeoutSeconds int    `yaml:"sessionTimeoutSeconds"`
+	LogLevel              string  `yaml:"logLevel"`
+	Addr                  string  `yaml:"addr"`
+	Cookies               Cookies `yaml:"cookies"`
+	Secret                string  `yaml:"secret"`
+	PrivateKey            string  `yaml:"privateKey"`
+	TLS                   TLS     `yaml:"tls"`
+	LogoutRedirect        string  `yaml:"logoutRedirect"`
+	IntrospectScope       string  `yaml:"introspectScope"`
+	RevokeScope           string  `yaml:"revokeScopeScope"`
+	SessionTimeoutSeconds int     `yaml:"sessionTimeoutSeconds"`
 }
 
 type UserAddress struct {
@@ -246,11 +250,11 @@ func (config *Config) GetClient(name string) (*Client, bool) {
 }
 
 func (config *Config) GetAuthCookieName() string {
-	return GetOrDefaultString(config.Server.AuthCookieName, "stopnik_auth")
+	return GetOrDefaultString(config.Server.Cookies.AuthName, "stopnik_auth")
 }
 
 func (config *Config) GetMessageCookieName() string {
-	return GetOrDefaultString(config.Server.MessageCookieName, "stopnik_message")
+	return GetOrDefaultString(config.Server.Cookies.MessageName, "stopnik_message")
 }
 
 func (config *Config) GetSessionTimeoutSeconds() int {

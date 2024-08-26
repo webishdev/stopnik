@@ -3,6 +3,7 @@ package keys
 import (
 	"github.com/lestrrat-go/jwx/v2/jwk"
 	"github.com/webishdev/stopnik/internal/config"
+	"github.com/webishdev/stopnik/internal/crypto"
 	http2 "github.com/webishdev/stopnik/internal/http"
 	errorHandler "github.com/webishdev/stopnik/internal/server/handler/error"
 	"github.com/webishdev/stopnik/internal/store"
@@ -59,7 +60,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (h *Handler) addKey(mangedKey *store.ManagedKey) error {
+func (h *Handler) addKey(mangedKey *crypto.ManagedKey) error {
 	key := *mangedKey.Key
 
 	addKeyError := h.keySet.AddKey(key)

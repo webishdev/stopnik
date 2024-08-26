@@ -7,23 +7,42 @@ import (
 	"encoding/base64"
 	"fmt"
 	"github.com/lestrrat-go/jwx/v2/jwk"
+	"github.com/lestrrat-go/jwx/v2/jwt"
 	"github.com/webishdev/stopnik/internal/config"
 	"github.com/webishdev/stopnik/internal/crypto"
 )
 
-type ManagedKey struct {
-	Id      string
-	Clients []*config.Client
-	Server  bool
-	Key     *jwk.Key
+type KeyManger struct {
+	keyStore *Store[crypto.ManagedKey]
 }
 
-type KeyManger struct {
-	keyStore *Store[ManagedKey]
+type DefaultKeyLoader struct {
+	keyFallback crypto.ServerSecretLoader
+	keyManager  *KeyManger
+}
+
+func NewDefaultKeyLoader(config *config.Config, keyManager *KeyManger) *DefaultKeyLoader {
+	return &DefaultKeyLoader{
+		keyFallback: crypto.NewServerSecretLoader(config),
+		keyManager:  keyManager,
+	}
+}
+
+func (defaultKeyLoader *DefaultKeyLoader) LoadKeys(client *config.Client) (*crypto.ManagedKey, bool) {
+	key := defaultKeyLoader.keyManager.getClientKey(client)
+	if key == nil {
+		return nil, false
+	}
+
+	return key, true
+}
+
+func (defaultKeyLoader *DefaultKeyLoader) GetServerSecret() jwt.SignEncryptParseOption {
+	return defaultKeyLoader.keyFallback.GetServerSecret()
 }
 
 func NewKeyManger(config *config.Config) (*KeyManger, error) {
-	newStore := NewStore[ManagedKey]()
+	newStore := NewStore[crypto.ManagedKey]()
 	keyManager := &KeyManger{
 		keyStore: &newStore,
 	}
@@ -41,8 +60,8 @@ func NewKeyManger(config *config.Config) (*KeyManger, error) {
 	return keyManager, nil
 }
 
-func (km *KeyManger) getClientKey(c *config.Client) *ManagedKey {
-	var result *ManagedKey
+func (km *KeyManger) getClientKey(c *config.Client) *crypto.ManagedKey {
+	var result *crypto.ManagedKey
 	for _, mangedKey := range km.GetAllKeys() {
 		if mangedKey.Server {
 			result = mangedKey
@@ -58,7 +77,7 @@ func (km *KeyManger) getClientKey(c *config.Client) *ManagedKey {
 	return result
 }
 
-func (km *KeyManger) GetAllKeys() []*ManagedKey {
+func (km *KeyManger) GetAllKeys() []*crypto.ManagedKey {
 	keyStore := *km.keyStore
 	return keyStore.GetValues()
 }
@@ -103,11 +122,11 @@ func (km *KeyManger) addClientKeys(c *config.Config) error {
 	return nil
 }
 
-func (km *KeyManger) addManagedKey(managedKey *ManagedKey) {
+func (km *KeyManger) addManagedKey(managedKey *crypto.ManagedKey) {
 	keyStore := *km.keyStore
 	existingKey, exists := keyStore.Get(managedKey.Id)
 	if exists {
-		mergedKey := &ManagedKey{
+		mergedKey := &crypto.ManagedKey{
 			Id:      managedKey.Id,
 			Key:     managedKey.Key,
 			Server:  managedKey.Server || existingKey.Server,
@@ -119,7 +138,7 @@ func (km *KeyManger) addManagedKey(managedKey *ManagedKey) {
 	}
 }
 
-func (km *KeyManger) convert(signingPrivateKey *crypto.SigningPrivateKey) (*ManagedKey, error) {
+func (km *KeyManger) convert(signingPrivateKey *crypto.SigningPrivateKey) (*crypto.ManagedKey, error) {
 	keyAsBytes, loadError := km.getBytes(signingPrivateKey.PrivateKey)
 	if loadError != nil {
 		return nil, loadError
@@ -146,7 +165,7 @@ func (km *KeyManger) convert(signingPrivateKey *crypto.SigningPrivateKey) (*Mana
 		return nil, setError
 	}
 
-	managedKey := &ManagedKey{
+	managedKey := &crypto.ManagedKey{
 		Id:      kid,
 		Key:     &key,
 		Clients: []*config.Client{},

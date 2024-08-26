@@ -27,7 +27,7 @@ func Test_Token(t *testing.T) {
 		t.Run(testMessage, func(t *testing.T) {
 			testConfig := createTestConfig(t, test.opaque, test.refreshTokenTTL)
 			keyManager := createTestKeyManager(t, testConfig)
-			tokenManager := NewTokenManager(testConfig, NewDefaultKeyLoader(keyManager))
+			tokenManager := NewTokenManager(testConfig, NewDefaultKeyLoader(testConfig, keyManager))
 			client, clientExists := testConfig.GetClient("foo")
 			if !clientExists {
 				t.Fatal("client does not exist")
@@ -107,7 +107,7 @@ func Test_Token(t *testing.T) {
 	t.Run("Invalid HTTP Authorization header", func(t *testing.T) {
 		testConfig := createTestConfig(t, false, 0)
 		keyManager := createTestKeyManager(t, testConfig)
-		tokenManager := NewTokenManager(testConfig, NewDefaultKeyLoader(keyManager))
+		tokenManager := NewTokenManager(testConfig, NewDefaultKeyLoader(testConfig, keyManager))
 
 		_, _, valid := tokenManager.ValidateAccessToken("foooo")
 
@@ -119,7 +119,7 @@ func Test_Token(t *testing.T) {
 	t.Run("Invalid Token value", func(t *testing.T) {
 		testConfig := createTestConfig(t, false, 0)
 		keyManager := createTestKeyManager(t, testConfig)
-		tokenManager := NewTokenManager(testConfig, NewDefaultKeyLoader(keyManager))
+		tokenManager := NewTokenManager(testConfig, NewDefaultKeyLoader(testConfig, keyManager))
 
 		_, _, valid := tokenManager.ValidateAccessToken(fmt.Sprintf("%s %s", internalHttp.AuthBearer, "foo"))
 
@@ -131,7 +131,7 @@ func Test_Token(t *testing.T) {
 	t.Run("Invalid User in token", func(t *testing.T) {
 		testConfig := createTestConfig(t, false, 0)
 		keyManager := createTestKeyManager(t, testConfig)
-		tokenManager := NewTokenManager(testConfig, NewDefaultKeyLoader(keyManager))
+		tokenManager := NewTokenManager(testConfig, NewDefaultKeyLoader(testConfig, keyManager))
 		client, clientExists := testConfig.GetClient("foo")
 		if !clientExists {
 			t.Fatal("client does not exist")

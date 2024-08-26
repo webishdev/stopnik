@@ -85,6 +85,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			jwa.ES256,
 			jwa.ES384,
 			jwa.ES512,
+			jwa.HS256,
 		}
 
 		metadataResponse := &response{

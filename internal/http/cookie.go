@@ -1,9 +1,9 @@
 package http
 
 import (
-	"github.com/lestrrat-go/jwx/v2/jwa"
 	"github.com/lestrrat-go/jwx/v2/jwt"
 	"github.com/webishdev/stopnik/internal/config"
+	"github.com/webishdev/stopnik/internal/crypto"
 	"github.com/webishdev/stopnik/log"
 	"net/http"
 	"time"
@@ -12,8 +12,9 @@ import (
 type Now func() time.Time
 
 type CookieManager struct {
-	config *config.Config
-	now    Now
+	config      *config.Config
+	keyFallback crypto.ServerSecretLoader
+	now         Now
 }
 
 func NewCookieManager(config *config.Config) *CookieManager {
@@ -21,7 +22,11 @@ func NewCookieManager(config *config.Config) *CookieManager {
 }
 
 func newCookieManagerWithTime(config *config.Config, now Now) *CookieManager {
-	return &CookieManager{config: config, now: now}
+	return &CookieManager{
+		config:      config,
+		keyFallback: crypto.NewServerSecretLoader(config),
+		now:         now,
+	}
 }
 
 func (cookieManager *CookieManager) CreateMessageCookie(message string) http.Cookie {
@@ -87,7 +92,8 @@ func (cookieManager *CookieManager) ValidateAuthCookie(r *http.Request) (*config
 }
 
 func (cookieManager *CookieManager) validateCookieValue(cookie *http.Cookie) (*config.User, bool) {
-	token, err := jwt.Parse([]byte(cookie.Value), jwt.WithKey(jwa.HS256, []byte(cookieManager.config.GetServerSecret())))
+	options := cookieManager.keyFallback.GetServerSecret()
+	token, err := jwt.Parse([]byte(cookie.Value), options)
 	if err != nil {
 		return &config.User{}, false
 	}
@@ -108,7 +114,8 @@ func (cookieManager *CookieManager) generateCookieValue(username string) (string
 		return "", builderError
 	}
 
-	tokenString, tokenError := jwt.Sign(token, jwt.WithKey(jwa.HS256, []byte(cookieManager.config.GetServerSecret())))
+	options := cookieManager.keyFallback.GetServerSecret()
+	tokenString, tokenError := jwt.Sign(token, options)
 	if tokenError != nil {
 		return "", tokenError
 	}
