@@ -22,6 +22,7 @@ type Server struct {
 	LogLevel              string `yaml:"logLevel"`
 	Addr                  string `yaml:"addr"`
 	AuthCookieName        string `yaml:"authCookieName"`
+	MessageCookieName     string `yaml:"messageCookieName"`
 	Secret                string `yaml:"secret"`
 	PrivateKey            string `yaml:"privateKey"`
 	TLS                   TLS    `yaml:"tls"`
@@ -31,10 +32,39 @@ type Server struct {
 	SessionTimeoutSeconds int    `yaml:"sessionTimeoutSeconds"`
 }
 
+type UserAddress struct {
+	Street     string `yaml:"street"`
+	City       string `yaml:"city"`
+	PostalCode string `yaml:"postalCode"`
+	Region     string `yaml:"region"`
+	Country    string `yaml:"country"`
+}
+
+type UserProfile struct {
+	Subject           string `yaml:"subject"`
+	GivenName         string `yaml:"givenName"`
+	FamilyName        string `yaml:"familyName"`
+	Nickname          string `yaml:"nickname"`
+	PreferredUserName string `yaml:"preferredUserName"`
+	Email             string `yaml:"email"`
+	EmailVerified     bool   `yaml:"emailVerified"`
+	Gender            string `yaml:"gender"`
+	BirthDate         string `yaml:"birthDate"`
+	ZoneInfo          string `yaml:"zoneInfo"`
+	Locale            string `yaml:"locale"`
+	PhoneNumber       string `yaml:"phoneNumber"`
+	PhoneVerified     bool   `yaml:"phoneVerified"`
+	Website           string `yaml:"website"`
+	Profile           string `yaml:"profile"`
+	ProfilePicture    string `yaml:"profilePicture"`
+}
+
 type User struct {
-	Username string `yaml:"username"`
-	Password string `yaml:"password"`
-	Salt     string `yaml:"salt"`
+	Username string      `yaml:"username"`
+	Password string      `yaml:"password"`
+	Salt     string      `yaml:"salt"`
+	Profile  UserProfile `yaml:"profile"`
+	Address  UserAddress `yaml:"address"`
 }
 
 type Claim struct {
@@ -72,6 +102,7 @@ type Config struct {
 	Clients         []Client `yaml:"clients"`
 	Users           []User   `yaml:"users"`
 	UI              UI       `yaml:"ui"`
+	OIDC            bool     `yaml:"oidc"`
 	generatedSecret string
 	userMap         map[string]*User
 	clientMap       map[string]*Client
@@ -216,6 +247,10 @@ func (config *Config) GetClient(name string) (*Client, bool) {
 
 func (config *Config) GetAuthCookieName() string {
 	return GetOrDefaultString(config.Server.AuthCookieName, "stopnik_auth")
+}
+
+func (config *Config) GetMessageCookieName() string {
+	return GetOrDefaultString(config.Server.MessageCookieName, "stopnik_message")
 }
 
 func (config *Config) GetSessionTimeoutSeconds() int {

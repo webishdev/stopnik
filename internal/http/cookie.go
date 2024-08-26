@@ -25,9 +25,10 @@ func newCookieManagerWithTime(config *config.Config, now Now) *CookieManager {
 }
 
 func (cookieManager *CookieManager) CreateMessageCookie(message string) http.Cookie {
+	messageCookieName := cookieManager.config.GetMessageCookieName()
 	log.Debug("Creating %s message cookie", message)
 	return http.Cookie{
-		Name:     "stopnik_message",
+		Name:     messageCookieName,
 		Value:    message,
 		Path:     "/",
 		MaxAge:   5,
@@ -37,7 +38,8 @@ func (cookieManager *CookieManager) CreateMessageCookie(message string) http.Coo
 }
 
 func (cookieManager *CookieManager) GetMessageCookieValue(r *http.Request) string {
-	cookie, cookieError := r.Cookie("stopnik_message")
+	messageCookieName := cookieManager.config.GetMessageCookieName()
+	cookie, cookieError := r.Cookie(messageCookieName)
 	if cookieError != nil {
 		return ""
 	}

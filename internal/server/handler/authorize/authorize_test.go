@@ -103,9 +103,10 @@ func testAuthorizeInvalidLogin(t *testing.T, testConfig *config.Config) {
 					query.Set(oauth2.ParameterScope, test.scope)
 				}
 			})
+			cookieManager := internalHttp.NewCookieManager(testConfig)
 			requestValidator := validation.NewRequestValidator(testConfig)
 
-			authorizeHandler := NewAuthorizeHandler(requestValidator, &internalHttp.CookieManager{}, &store.SessionManager{}, &store.TokenManager{}, &template.Manager{})
+			authorizeHandler := NewAuthorizeHandler(requestValidator, cookieManager, &store.SessionManager{}, &store.TokenManager{}, &template.Manager{})
 
 			rr := httptest.NewRecorder()
 
@@ -189,9 +190,10 @@ func testAuthorizeEmptyLogin(t *testing.T, testConfig *config.Config) {
 					query.Set(oauth2.ParameterScope, test.scope)
 				}
 			})
+			cookieManager := internalHttp.NewCookieManager(testConfig)
 			requestValidator := validation.NewRequestValidator(testConfig)
 
-			authorizeHandler := NewAuthorizeHandler(requestValidator, &internalHttp.CookieManager{}, &store.SessionManager{}, &store.TokenManager{}, &template.Manager{})
+			authorizeHandler := NewAuthorizeHandler(requestValidator, cookieManager, &store.SessionManager{}, &store.TokenManager{}, &template.Manager{})
 
 			rr := httptest.NewRecorder()
 
