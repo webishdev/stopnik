@@ -157,7 +157,9 @@ To be able to use it, the referenced `server.crt` and `server.key` must be creat
 ```yaml
 server:
   #logLevel: error
-  authCookieName: stopnik_auth
+  cookies:
+    authName: stopnik_auth
+    messageName: stopnik_message
   #logoutRedirect: http://localhost:8080
   secret: WRYldij9ebtDZ5VJSsxNAfCZ
   privateKey: ./test_keys/rsa256key.pem
@@ -165,8 +167,8 @@ server:
   tls:
     addr: :8081
     keys:
-      cert: server.crt
-      key: server.key
+      cert: ./test_keys/server.crt
+      key: ./test_keys/server.key
 ui:
 #  hideFooter: true
 #  hideMascot: true
@@ -174,7 +176,7 @@ ui:
 #  title: Test realm
 clients:
   - id: testclient
-    secret: 43a77b3b7f74190654023e68a972b4b0dc21a90be9b85e80222d7bce31eb02ce3205a5fed49a7710afd0ba1fcb97b793d67b5b7ae69607461cdac1a235610dd8
+    clientSecret: 43a77b3b7f74190654023e68a972b4b0dc21a90be9b85e80222d7bce31eb02ce3205a5fed49a7710afd0ba1fcb97b793d67b5b7ae69607461cdac1a235610dd8
     salt: 123
     accessTTL: 5
     refreshTTL: 15
@@ -185,7 +187,7 @@ clients:
       - name: foo
         value: bar
   - id: testclient2
-    secret: deb920477e822d9373831d5521749d3685a3c359504139eb3ff61c7d2fe91986b1978aa1a7834bb304762699b05da2700319e5d60c1183f6f9f66f9c6e73e34e
+    clientSecret: deb920477e822d9373831d5521749d3685a3c359504139eb3ff61c7d2fe91986b1978aa1a7834bb304762699b05da2700319e5d60c1183f6f9f66f9c6e73e34e
     salt: abc
     accessTTL: 5
     refreshTTL: 15
@@ -194,7 +196,7 @@ clients:
     redirects:
       - https://oauth.pstmn.io/v1/callback
   - id: testclient3
-    secret: 1efcbc37f7d7e2f9f8cf009b91c95b2b7b913b89d36a21a05da1e3cb396ed1ab0e596e2b649e9407367e40d852ac4d0abfcfc1c4227eb661385e9f2e0f3203ca
+    clientSecret: 1efcbc37f7d7e2f9f8cf009b91c95b2b7b913b89d36a21a05da1e3cb396ed1ab0e596e2b649e9407367e40d852ac4d0abfcfc1c4227eb661385e9f2e0f3203ca
     salt: 321
     accessTTL: 5
     refreshTTL: 15
