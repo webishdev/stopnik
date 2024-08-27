@@ -85,6 +85,7 @@ type Client struct {
 	ClientType              string   `yaml:"type"`
 	AccessTTL               int      `yaml:"accessTTL"`
 	RefreshTTL              int      `yaml:"refreshTTL"`
+	IdTTL                   int      `yaml:"idTTL"`
 	Introspect              bool     `yaml:"introspect"`
 	Revoke                  bool     `yaml:"revoke"`
 	Redirects               []string `yaml:"redirects"`
@@ -303,6 +304,10 @@ func (client *Client) GetAccessTTL() int {
 
 func (client *Client) GetRefreshTTL() int {
 	return GetOrDefaultInt(client.RefreshTTL, 0)
+}
+
+func (client *Client) GetIdTTL() int {
+	return GetOrDefaultInt(client.IdTTL, 0)
 }
 
 func (client *Client) GetIssuer(requestData *internalHttp.RequestData) string {

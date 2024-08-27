@@ -97,7 +97,7 @@ func (tokenManager *TokenManager) CreateAccessTokenResponse(r *http.Request, use
 	if client.Oidc {
 		user, userExists := tokenManager.config.GetUser(username)
 		if userExists {
-			idTokenDuration := time.Minute * time.Duration(client.GetAccessTTL())
+			idTokenDuration := time.Minute * time.Duration(client.GetIdTTL())
 			idTokenKey := tokenManager.generateIdToken(requestData, user, client, nonce, idTokenDuration)
 			accessTokenResponse.IdToken = idTokenKey
 		}
