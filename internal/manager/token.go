@@ -53,7 +53,7 @@ func (tokenManager *TokenManager) RevokeRefreshToken(refreshToken *oauth2.Refres
 	refreshTokenStore.Delete(refreshToken.Key)
 }
 
-func (tokenManager *TokenManager) CreateAccessTokenResponse(username string, client *config.Client, scopes []string) oauth2.AccessTokenResponse {
+func (tokenManager *TokenManager) CreateAccessTokenResponse(username string, client *config.Client, scopes []string, nonce string) oauth2.AccessTokenResponse {
 	log.Debug("Creating new access token for %s, access TTL %d, refresh TTL %d", client.Id, client.GetAccessTTL(), client.GetRefreshTTL())
 
 	accessTokenStore := *tokenManager.accessTokenStore
@@ -92,11 +92,13 @@ func (tokenManager *TokenManager) CreateAccessTokenResponse(username string, cli
 		accessTokenResponse.RefreshTokenKey = refreshTokenKey
 	}
 
-	if tokenManager.config.OIDC {
-		//user, userExists := tokenManager.config.GetUser(username)
-		//if userExists {
-		//	accessTokenResponse.IdToken
-		//}
+	if client.OIDC {
+		user, userExists := tokenManager.config.GetUser(username)
+		if userExists {
+			idTokenDuration := time.Minute * time.Duration(client.GetAccessTTL())
+			idTokenKey := tokenManager.generateIdToken(user, client, nonce, idTokenDuration)
+			accessTokenResponse.IdToken = idTokenKey
+		}
 	}
 
 	return accessTokenResponse
@@ -124,8 +126,9 @@ func (tokenManager *TokenManager) ValidateAccessToken(authorizationHeader string
 	return user, accessToken.Scopes, true
 }
 
-func (tokenManager *TokenManager) generateIdToken(username string, client *config.Client, duration time.Duration) string {
-	return ""
+func (tokenManager *TokenManager) generateIdToken(user *config.User, client *config.Client, nonce string, duration time.Duration) string {
+	idToken := generateIdToken(user, client, nonce, duration)
+	return tokenManager.generateJWTToken(client, idToken)
 }
 
 func (tokenManager *TokenManager) generateAccessToken(username string, client *config.Client, duration time.Duration) string {
@@ -182,6 +185,37 @@ func (tokenManager *TokenManager) generateJWTToken(client *config.Client, token 
 		return string(tokenString)
 	}
 
+}
+
+func generateIdToken(user *config.User, client *config.Client, nonce string, duration time.Duration) jwt.Token {
+	tokenId := uuid.New().String()
+	builder := jwt.NewBuilder().
+		Expiration(time.Now().Add(duration)). // https://www.rfc-editor.org/rfc/rfc7519.html#section-4.1.4
+		IssuedAt(time.Now())                  // https://www.rfc-editor.org/rfc/rfc7519.html#section-4.1.6
+
+	// https://www.rfc-editor.org/rfc/rfc7519.html#section-4.1.7
+	builder.JwtID(tokenId)
+
+	// https://www.rfc-editor.org/rfc/rfc7519.html#section-4.1.1
+	builder.Issuer(client.GetIssuer())
+
+	// https://www.rfc-editor.org/rfc/rfc7519.html#section-4.1.2
+	builder.Subject(user.Username)
+
+	// https://www.rfc-editor.org/rfc/rfc7519.html#section-4.1.3
+	audience := append(client.GetAudience(), client.Id)
+	builder.Audience(audience)
+
+	builder.Claim("azp", client.Id)
+	builder.Claim("nonce", nonce)
+
+	token, builderError := builder.Build()
+
+	if builderError != nil {
+		panic(builderError)
+	}
+
+	return token
 }
 
 func generateAccessToken(tokenId string, duration time.Duration, username string, client *config.Client) jwt.Token {

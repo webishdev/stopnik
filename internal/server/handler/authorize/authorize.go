@@ -7,6 +7,7 @@ import (
 	internalHttp "github.com/webishdev/stopnik/internal/http"
 	"github.com/webishdev/stopnik/internal/manager"
 	"github.com/webishdev/stopnik/internal/oauth2"
+	"github.com/webishdev/stopnik/internal/oidc"
 	"github.com/webishdev/stopnik/internal/pkce"
 	"github.com/webishdev/stopnik/internal/server/handler/error"
 	"github.com/webishdev/stopnik/internal/server/validation"
@@ -15,6 +16,7 @@ import (
 	"net/http"
 	"net/url"
 	"regexp"
+	"slices"
 	"strings"
 )
 
@@ -86,28 +88,33 @@ func (h *Handler) handleGetRequest(w http.ResponseWriter, r *http.Request) {
 
 	state := r.URL.Query().Get(oauth2.ParameterState)
 
+	responseTypes := []oauth2.ResponseType{}
 	responseTypeQueryParameter := r.URL.Query().Get(oauth2.ParameterResponseType)
-	responseType, valid := oauth2.ResponseTypeFromString(responseTypeQueryParameter)
-	if !valid {
-		log.Error("Invalid %s parameter with value %s for client %s", oauth2.ParameterResponseType, responseTypeQueryParameter, client.Id)
+	responseTypeQueryParameters := strings.Split(responseTypeQueryParameter, " ")
+	for _, currentQueryParameter := range responseTypeQueryParameters {
+		responseType, valid := oauth2.ResponseTypeFromString(currentQueryParameter)
+		if !valid {
+			log.Error("Invalid %s parameter with value %s for client %s", oauth2.ParameterResponseType, responseTypeQueryParameter, client.Id)
 
-		errorMessage := fmt.Sprintf("Invalid %s parameter value", oauth2.ParameterResponseType)
-		authorizeError := &oauth2.AuthorizationErrorResponseParameter{Error: oauth2.AuthorizationEtInvalidRequest, Description: errorMessage}
-		oauth2.AuthorizationErrorResponseHandler(w, redirectURL, state, authorizeError)
-		return
+			errorMessage := fmt.Sprintf("Invalid %s parameter value", oauth2.ParameterResponseType)
+			authorizeError := &oauth2.AuthorizationErrorResponseParameter{Error: oauth2.AuthorizationEtInvalidRequest, Description: errorMessage}
+			oauth2.AuthorizationErrorResponseHandler(w, redirectURL, state, authorizeError)
+			return
+		}
+		responseTypes = append(responseTypes, responseType)
 	}
 
 	scope := r.URL.Query().Get(oauth2.ParameterScope)
 
 	codeChallenge := ""
 	codeChallengeMethod := ""
-	if responseType == oauth2.RtCode {
+	if slices.Contains(responseTypes, oauth2.RtCode) {
 		codeChallenge = r.URL.Query().Get(pkce.ParameterCodeChallenge)
 		codeChallengeMethod = r.URL.Query().Get(pkce.ParameterCodeChallengeMethod)
 	}
 
 	if log.IsDebug() {
-		log.Debug("Response type: %s", responseType)
+		log.Debug("Response types: %v", responseTypes)
 		log.Debug("Redirect URI: %s", redirect)
 		log.Debug("State: %s", state)
 		log.Debug("Scope: %s", scope)
@@ -123,9 +130,21 @@ func (h *Handler) handleGetRequest(w http.ResponseWriter, r *http.Request) {
 		CodeChallenge:       codeChallenge,
 		CodeChallengeMethod: codeChallengeMethod,
 		ClientId:            clientId,
-		ResponseType:        string(responseType),
+		ResponseTypes:       responseTypes,
 		Scopes:              scopes,
 		State:               state,
+	}
+
+	if client.OIDC {
+		nonceQueryParameter := r.URL.Query().Get(oidc.ParameterNonce)
+		authSession.Nonce = nonceQueryParameter
+	} else {
+		nonceQueryParameter := r.URL.Query().Get(oidc.ParameterNonce)
+		if nonceQueryParameter != "" {
+			log.Error("Nonce used without OpenID Connect setting for client with id %s", client.Id)
+			oauth2.AuthorizationErrorResponseHandler(w, redirectURL, state, &oauth2.AuthorizationErrorResponseParameter{Error: oauth2.AuthorizationEtInvalidRequest})
+
+		}
 	}
 
 	h.sessionManager.StartSession(authSession)
@@ -137,13 +156,13 @@ func (h *Handler) handleGetRequest(w http.ResponseWriter, r *http.Request) {
 
 		query := redirectURL.Query()
 
-		if responseType == oauth2.RtToken {
-			accessTokenResponse := h.tokenManager.CreateAccessTokenResponse(user.Username, client, scopes)
+		if slices.Contains(responseTypes, oauth2.RtToken) {
+			accessTokenResponse := h.tokenManager.CreateAccessTokenResponse(user.Username, client, scopes, authSession.Nonce)
 			setImplicitGrantParameter(query, accessTokenResponse)
-		} else if responseType == oauth2.RtCode {
+		} else if slices.Contains(responseTypes, oauth2.RtCode) {
 			setAuthorizationGrantParameter(query, id.String())
 		} else {
-			log.Error("Invalid response type %s", responseType)
+			log.Error("Invalid response type %v", responseTypes)
 			oauth2.AuthorizationErrorResponseHandler(w, redirectURL, state, &oauth2.AuthorizationErrorResponseParameter{Error: oauth2.AuthorizationEtUnsupportedResponseType})
 			return
 		}
@@ -197,26 +216,18 @@ func (h *Handler) handlePostRequest(w http.ResponseWriter, r *http.Request, user
 
 	http.SetCookie(w, &cookie)
 
-	responseType, valid := oauth2.ResponseTypeFromString(authSession.ResponseType)
-	if !valid {
-		log.Error("Invalid %s parameter with value %s for client %s", oauth2.ParameterResponseType, authSession.ResponseType, authSession.ClientId)
-
-		errorMessage := fmt.Sprintf("Invalid %s parameter value", oauth2.ParameterResponseType)
-		authorizeError := &oauth2.AuthorizationErrorResponseParameter{Error: oauth2.AuthorizationEtInvalidRequest, Description: errorMessage}
-		oauth2.AuthorizationErrorResponseHandler(w, redirectURL, authSession.State, authorizeError)
-		return
-	}
+	responseTypes := authSession.ResponseTypes
 
 	query := redirectURL.Query()
-	if responseType == oauth2.RtToken {
+	if slices.Contains(responseTypes, oauth2.RtToken) {
 		client, exists := h.validator.ValidateClientId(authSession.ClientId)
 		if !exists {
 			h.errorHandler.InternalServerErrorHandler(w, r)
 			return
 		}
-		accessTokenResponse := h.tokenManager.CreateAccessTokenResponse(user.Username, client, authSession.Scopes)
+		accessTokenResponse := h.tokenManager.CreateAccessTokenResponse(user.Username, client, authSession.Scopes, authSession.Nonce)
 		setImplicitGrantParameter(query, accessTokenResponse)
-	} else if responseType == oauth2.RtCode {
+	} else if slices.Contains(responseTypes, oauth2.RtCode) {
 		setAuthorizationGrantParameter(query, authSession.Id)
 	} else {
 		oauth2.AuthorizationErrorResponseHandler(w, redirectURL, authSession.State, &oauth2.AuthorizationErrorResponseParameter{Error: oauth2.AuthorizationEtUnsupportedResponseType})

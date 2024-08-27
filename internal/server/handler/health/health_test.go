@@ -72,7 +72,7 @@ func Test_Health(t *testing.T) {
 			t.Error("client should exist")
 		}
 
-		tokenResponse := tokenManager.CreateAccessTokenResponse("foo", client, []string{"a:foo", "b:bar"})
+		tokenResponse := tokenManager.CreateAccessTokenResponse("foo", client, []string{"a:foo", "b:bar"}, "")
 
 		healthHandler := NewHealthHandler(tokenManager)
 

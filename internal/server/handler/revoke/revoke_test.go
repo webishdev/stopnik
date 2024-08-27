@@ -210,7 +210,7 @@ func testRevoke(t *testing.T, testConfig *config.Config, keyManager *manager.Key
 				CodeChallenge:       "",
 				CodeChallengeMethod: "",
 				ClientId:            client.Id,
-				ResponseType:        string(oauth2.RtCode),
+				ResponseTypes:       []oauth2.ResponseType{oauth2.RtCode},
 				Scopes:              scopes,
 				State:               "xyz",
 			}
@@ -219,7 +219,7 @@ func testRevoke(t *testing.T, testConfig *config.Config, keyManager *manager.Key
 			sessionManager := manager.NewSessionManager(testConfig)
 			tokenManager := manager.NewTokenManager(testConfig, manager.NewDefaultKeyLoader(testConfig, keyManager))
 			sessionManager.StartSession(authSession)
-			accessTokenResponse := tokenManager.CreateAccessTokenResponse(user.Username, client, scopes)
+			accessTokenResponse := tokenManager.CreateAccessTokenResponse(user.Username, client, scopes, "")
 
 			revokeHandler := NewRevokeHandler(testConfig, requestValidator, tokenManager)
 
@@ -287,7 +287,7 @@ func testRevokeWithoutHint(t *testing.T, testConfig *config.Config, keyManager *
 				CodeChallenge:       "",
 				CodeChallengeMethod: "",
 				ClientId:            client.Id,
-				ResponseType:        string(oauth2.RtCode),
+				ResponseTypes:       []oauth2.ResponseType{oauth2.RtCode},
 				Scopes:              scopes,
 				State:               "xyz",
 			}
@@ -296,7 +296,7 @@ func testRevokeWithoutHint(t *testing.T, testConfig *config.Config, keyManager *
 			sessionManager := manager.NewSessionManager(testConfig)
 			tokenManager := manager.NewTokenManager(testConfig, manager.NewDefaultKeyLoader(testConfig, keyManager))
 			sessionManager.StartSession(authSession)
-			accessTokenResponse := tokenManager.CreateAccessTokenResponse(user.Username, client, scopes)
+			accessTokenResponse := tokenManager.CreateAccessTokenResponse(user.Username, client, scopes, "")
 
 			revokeHandler := NewRevokeHandler(testConfig, requestValidator, tokenManager)
 
@@ -363,7 +363,7 @@ func testRevokeDisabled(t *testing.T, testConfig *config.Config, keyManager *man
 				CodeChallenge:       "",
 				CodeChallengeMethod: "",
 				ClientId:            client.Id,
-				ResponseType:        string(oauth2.RtCode),
+				ResponseTypes:       []oauth2.ResponseType{oauth2.RtCode},
 				Scopes:              scopes,
 				State:               "xyz",
 			}
@@ -372,7 +372,7 @@ func testRevokeDisabled(t *testing.T, testConfig *config.Config, keyManager *man
 			sessionManager := manager.NewSessionManager(testConfig)
 			tokenManager := manager.NewTokenManager(testConfig, manager.NewDefaultKeyLoader(testConfig, keyManager))
 			sessionManager.StartSession(authSession)
-			accessTokenResponse := tokenManager.CreateAccessTokenResponse(user.Username, client, scopes)
+			accessTokenResponse := tokenManager.CreateAccessTokenResponse(user.Username, client, scopes, "")
 
 			revokeHandler := NewRevokeHandler(testConfig, requestValidator, tokenManager)
 

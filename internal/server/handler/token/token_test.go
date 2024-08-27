@@ -196,7 +196,7 @@ func testTokenAuthorizationCodeGrantTypeInvalidPKCE(t *testing.T, testConfig *co
 			CodeChallenge:       pkceCodeChallenge,
 			CodeChallengeMethod: string(pkce.S256),
 			ClientId:            "foo",
-			ResponseType:        string(oauth2.RtCode),
+			ResponseTypes:       []oauth2.ResponseType{oauth2.RtCode},
 			Scopes:              []string{"foo:bar", "moo:abc"},
 			State:               "xyz",
 		}
@@ -268,7 +268,7 @@ func testTokenAuthorizationCodeGrantType(t *testing.T, testConfig *config.Config
 				CodeChallenge:       pkceCodeChallenge,
 				CodeChallengeMethod: pkceCodeChallengeMethod,
 				ClientId:            "foo",
-				ResponseType:        string(oauth2.RtCode),
+				ResponseTypes:       []oauth2.ResponseType{oauth2.RtCode},
 				Scopes:              []string{"foo:bar", "moo:abc"},
 				State:               test.state,
 			}
@@ -392,7 +392,7 @@ func testTokenRefreshTokenGrantType(t *testing.T, testConfig *config.Config, key
 			CodeChallenge:       "",
 			CodeChallengeMethod: "",
 			ClientId:            client.Id,
-			ResponseType:        string(oauth2.RtCode),
+			ResponseTypes:       []oauth2.ResponseType{oauth2.RtCode},
 			Scopes:              scopes,
 			State:               "xyz",
 		}
@@ -401,7 +401,7 @@ func testTokenRefreshTokenGrantType(t *testing.T, testConfig *config.Config, key
 		sessionManager := manager.NewSessionManager(testConfig)
 		tokenManager := manager.NewTokenManager(testConfig, manager.NewDefaultKeyLoader(testConfig, keyManager))
 		sessionManager.StartSession(authSession)
-		accessTokenResponse := tokenManager.CreateAccessTokenResponse(user.Username, client, scopes)
+		accessTokenResponse := tokenManager.CreateAccessTokenResponse(user.Username, client, scopes, "")
 
 		tokenHandler := NewTokenHandler(requestValidator, sessionManager, tokenManager)
 

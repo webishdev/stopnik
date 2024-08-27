@@ -6,7 +6,7 @@ server:
   #logoutRedirect: http://localhost:8080
   secret: WRYldij9ebtDZ5VJSsxNAfCZ
   privateKey: ./test_keys/rsa256key.pem
-  addr: :8080
+  addr: :8082
   tls:
     addr: :8081
     keys:
@@ -24,8 +24,11 @@ clients:
   accessTTL: 5
   refreshTTL: 15
   type: confidential
+  oidc: true
+  introspect: true
   redirects:
     - https://oauth.pstmn.io/v1/callback
+    - http://localhost:8080/session/callback
   claims:
     - name: foo
       value: bar

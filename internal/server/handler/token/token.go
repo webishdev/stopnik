@@ -59,6 +59,7 @@ func (h *Handler) handlePostRequest(w http.ResponseWriter, r *http.Request) {
 
 	var scopes []string
 	var username string
+	nonce := ""
 
 	if grantType == oauth2.GtAuthorizationCode {
 		// https://datatracker.ietf.org/doc/html/rfc6749#section-4.1.3
@@ -85,6 +86,7 @@ func (h *Handler) handlePostRequest(w http.ResponseWriter, r *http.Request) {
 
 		scopes = authSession.Scopes
 		username = authSession.Username
+		nonce = authSession.Nonce
 	} else if grantType == oauth2.GtPassword {
 		// https://datatracker.ietf.org/doc/html/rfc6749#section-4.3.2
 		usernameFrom := r.PostFormValue(oauth2.ParameterUsername)
@@ -127,7 +129,7 @@ func (h *Handler) handlePostRequest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	accessTokenResponse := h.tokenManager.CreateAccessTokenResponse(username, client, scopes)
+	accessTokenResponse := h.tokenManager.CreateAccessTokenResponse(username, client, scopes, nonce)
 
 	jsonError := internalHttp.SendJson(accessTokenResponse, w)
 	if jsonError != nil {

@@ -2,6 +2,7 @@ package manager
 
 import (
 	"github.com/webishdev/stopnik/internal/config"
+	"github.com/webishdev/stopnik/internal/oauth2"
 	"github.com/webishdev/stopnik/internal/store"
 )
 
@@ -11,11 +12,12 @@ type AuthSession struct {
 	AuthURI             string
 	CodeChallenge       string
 	CodeChallengeMethod string
-	ResponseType        string
+	ResponseTypes       []oauth2.ResponseType
 	Username            string
 	ClientId            string
 	Scopes              []string
 	State               string
+	Nonce               string // OpenId Connect
 }
 
 type SessionManager struct {

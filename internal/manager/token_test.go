@@ -33,7 +33,7 @@ func Test_Token(t *testing.T) {
 				t.Fatal("client does not exist")
 			}
 
-			accessTokenResponse := tokenManager.CreateAccessTokenResponse("foo", client, []string{"abc", "def"})
+			accessTokenResponse := tokenManager.CreateAccessTokenResponse("foo", client, []string{"abc", "def"}, "")
 
 			if accessTokenResponse.AccessTokenKey == "" {
 				t.Error("empty access token")
@@ -137,7 +137,7 @@ func Test_Token(t *testing.T) {
 			t.Fatal("client does not exist")
 		}
 
-		accessTokenResponse := tokenManager.CreateAccessTokenResponse("bar", client, []string{"abc", "def"})
+		accessTokenResponse := tokenManager.CreateAccessTokenResponse("bar", client, []string{"abc", "def"}, "")
 
 		_, _, valid := tokenManager.ValidateAccessToken(fmt.Sprintf("%s %s", internalHttp.AuthBearer, accessTokenResponse.AccessTokenKey))
 

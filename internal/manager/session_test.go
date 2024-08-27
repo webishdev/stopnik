@@ -2,6 +2,7 @@ package manager
 
 import (
 	"github.com/webishdev/stopnik/internal/config"
+	"github.com/webishdev/stopnik/internal/oauth2"
 	"reflect"
 	"testing"
 )
@@ -22,7 +23,7 @@ func Test_Session(t *testing.T) {
 			AuthURI:             "moo",
 			CodeChallenge:       "123",
 			CodeChallengeMethod: "S256",
-			ResponseType:        "token",
+			ResponseTypes:       []oauth2.ResponseType{oauth2.RtToken},
 			Username:            "alice",
 			ClientId:            "example",
 			Scopes:              []string{"abc", "def"},

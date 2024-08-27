@@ -20,5 +20,5 @@ type AccessTokenResponse struct {
 	TokenType       TokenType `json:"token_type,omitempty"`
 	ExpiresIn       int       `json:"expires_in,omitempty"` // seconds
 	RefreshTokenKey string    `json:"refresh_token,omitempty"`
-	IdToken         string    `json:"id_token,omitempty"`
+	IdToken         string    `json:"id_token,omitempty"` // https://openid.net/specs/openid-connect-core-1_0.html#IDToken
 }

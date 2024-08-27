@@ -80,6 +80,7 @@ type Client struct {
 	Id                      string   `yaml:"id"`
 	ClientSecret            string   `yaml:"clientSecret"`
 	Salt                    string   `yaml:"salt"`
+	OIDC                    bool     `yaml:"oidc"`
 	ClientType              string   `yaml:"type"`
 	AccessTTL               int      `yaml:"accessTTL"`
 	RefreshTTL              int      `yaml:"refreshTTL"`
@@ -106,7 +107,6 @@ type Config struct {
 	Clients         []Client `yaml:"clients"`
 	Users           []User   `yaml:"users"`
 	UI              UI       `yaml:"ui"`
-	OIDC            bool     `yaml:"oidc"`
 	generatedSecret string
 	userMap         map[string]*User
 	clientMap       map[string]*Client

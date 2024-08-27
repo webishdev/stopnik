@@ -227,7 +227,7 @@ func testIntrospect(t *testing.T, testConfig *config.Config, keyManger *manager.
 				CodeChallenge:       "",
 				CodeChallengeMethod: "",
 				ClientId:            client.Id,
-				ResponseType:        string(oauth2.RtCode),
+				ResponseTypes:       []oauth2.ResponseType{oauth2.RtCode},
 				Scopes:              scopes,
 				State:               "xyz",
 			}
@@ -236,7 +236,7 @@ func testIntrospect(t *testing.T, testConfig *config.Config, keyManger *manager.
 			sessionManager := manager.NewSessionManager(testConfig)
 			tokenManager := manager.NewTokenManager(testConfig, manager.NewDefaultKeyLoader(testConfig, keyManger))
 			sessionManager.StartSession(authSession)
-			accessTokenResponse := tokenManager.CreateAccessTokenResponse(user.Username, client, scopes)
+			accessTokenResponse := tokenManager.CreateAccessTokenResponse(user.Username, client, scopes, "")
 
 			introspectHandler := NewIntrospectHandler(testConfig, requestValidator, tokenManager)
 
@@ -299,7 +299,7 @@ func testIntrospectWithoutHint(t *testing.T, testConfig *config.Config, keyMange
 				CodeChallenge:       "",
 				CodeChallengeMethod: "",
 				ClientId:            client.Id,
-				ResponseType:        string(oauth2.RtCode),
+				ResponseTypes:       []oauth2.ResponseType{oauth2.RtCode},
 				Scopes:              scopes,
 				State:               "xyz",
 			}
@@ -308,7 +308,7 @@ func testIntrospectWithoutHint(t *testing.T, testConfig *config.Config, keyMange
 			sessionManager := manager.NewSessionManager(testConfig)
 			tokenManager := manager.NewTokenManager(testConfig, manager.NewDefaultKeyLoader(testConfig, keyManger))
 			sessionManager.StartSession(authSession)
-			accessTokenResponse := tokenManager.CreateAccessTokenResponse(user.Username, client, scopes)
+			accessTokenResponse := tokenManager.CreateAccessTokenResponse(user.Username, client, scopes, "")
 
 			introspectHandler := NewIntrospectHandler(testConfig, requestValidator, tokenManager)
 
@@ -370,7 +370,7 @@ func testIntrospectDisabled(t *testing.T, testConfig *config.Config, keyManger *
 				CodeChallenge:       "",
 				CodeChallengeMethod: "",
 				ClientId:            client.Id,
-				ResponseType:        string(oauth2.RtCode),
+				ResponseTypes:       []oauth2.ResponseType{oauth2.RtCode},
 				Scopes:              scopes,
 				State:               "xyz",
 			}
@@ -379,7 +379,7 @@ func testIntrospectDisabled(t *testing.T, testConfig *config.Config, keyManger *
 			sessionManager := manager.NewSessionManager(testConfig)
 			tokenManager := manager.NewTokenManager(testConfig, manager.NewDefaultKeyLoader(testConfig, keyManger))
 			sessionManager.StartSession(authSession)
-			accessTokenResponse := tokenManager.CreateAccessTokenResponse(user.Username, client, scopes)
+			accessTokenResponse := tokenManager.CreateAccessTokenResponse(user.Username, client, scopes, "")
 
 			introspectHandler := NewIntrospectHandler(testConfig, requestValidator, tokenManager)
 

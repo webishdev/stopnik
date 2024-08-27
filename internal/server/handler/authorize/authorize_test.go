@@ -381,7 +381,7 @@ func testAuthorizeValidLoginAuthorizationGrant(t *testing.T, testConfig *config.
 				CodeChallenge:       "",
 				CodeChallengeMethod: "",
 				ClientId:            client.Id,
-				ResponseType:        string(oauth2.RtCode),
+				ResponseTypes:       []oauth2.ResponseType{oauth2.RtCode},
 				Scopes:              []string{test.scope},
 				State:               test.state,
 			}
@@ -469,7 +469,7 @@ func testAuthorizeValidLoginImplicitGrant(t *testing.T, testConfig *config.Confi
 				CodeChallenge:       "",
 				CodeChallengeMethod: "",
 				ClientId:            client.Id,
-				ResponseType:        string(oauth2.RtToken),
+				ResponseTypes:       []oauth2.ResponseType{oauth2.RtToken},
 				Scopes:              []string{test.scope},
 				State:               test.state,
 			}
