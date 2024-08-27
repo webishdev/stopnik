@@ -122,7 +122,7 @@ func testKeysNotAllowedHttpMethods(t *testing.T, testConfig *config.Config) {
 	}
 
 	for _, method := range testInvalidIntrospectHttpMethods {
-		testMessage := fmt.Sprintf("Introspect with unsupported method %s", method)
+		testMessage := fmt.Sprintf("Keys with unsupported method %s", method)
 		t.Run(testMessage, func(t *testing.T) {
 			keyManger, keyManagerError := manager.NewKeyManger(testConfig)
 			if keyManagerError != nil {
