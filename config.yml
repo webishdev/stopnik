@@ -23,6 +23,7 @@ clients:
   salt: 123
   accessTTL: 5
   refreshTTL: 15
+  idTTL: 15
   type: confidential
   oidc: true
   introspect: true
@@ -54,3 +55,6 @@ users:
 - username: foo
   password: 695e6f39f5ffd36ae60e0ade727c892d725531455a19c6035cb739d099e8f20e63d3fdfd3241888e38de1d8db85532dd65f817b12fe33ac7cdcc358ef6c8ea23
   salt: moo
+  profile:
+    givenName: John
+    familyName: Doe

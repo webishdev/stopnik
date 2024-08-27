@@ -46,22 +46,23 @@ type UserAddress struct {
 }
 
 type UserProfile struct {
-	Subject           string `yaml:"subject"`
-	GivenName         string `yaml:"givenName"`
-	FamilyName        string `yaml:"familyName"`
-	Nickname          string `yaml:"nickname"`
-	PreferredUserName string `yaml:"preferredUserName"`
-	Email             string `yaml:"email"`
-	EmailVerified     bool   `yaml:"emailVerified"`
-	Gender            string `yaml:"gender"`
-	BirthDate         string `yaml:"birthDate"`
-	ZoneInfo          string `yaml:"zoneInfo"`
-	Locale            string `yaml:"locale"`
-	PhoneNumber       string `yaml:"phoneNumber"`
-	PhoneVerified     bool   `yaml:"phoneVerified"`
-	Website           string `yaml:"website"`
-	Profile           string `yaml:"profile"`
-	ProfilePicture    string `yaml:"profilePicture"`
+	Subject           string `json:"sub,omitempty"`
+	Name              string `json:"name,omitempty"`
+	GivenName         string `yaml:"givenName" json:"given_name,omitempty"`
+	FamilyName        string `yaml:"familyName" json:"family_name,omitempty"`
+	Nickname          string `yaml:"nickname" json:"nickname,omitempty"`
+	PreferredUserName string `yaml:"preferredUserName" json:"preferred_username,omitempty"`
+	Email             string `yaml:"email" json:"email,omitempty"`
+	EmailVerified     bool   `yaml:"emailVerified" json:"email_verified,omitempty"`
+	Gender            string `yaml:"gender" json:"gender,omitempty"`
+	BirthDate         string `yaml:"birthDate" json:"birth_date,omitempty"`
+	ZoneInfo          string `yaml:"zoneInfo" json:"zone_info,omitempty"`
+	Locale            string `yaml:"locale" json:"locale,omitempty"`
+	PhoneNumber       string `yaml:"phoneNumber" json:"phone_number,omitempty"`
+	PhoneVerified     bool   `yaml:"phoneVerified" json:"phone_verified,omitempty"`
+	Website           string `yaml:"website" json:"website,omitempty"`
+	Profile           string `yaml:"profile" json:"profile,omitempty"`
+	ProfilePicture    string `yaml:"profilePicture" json:"profile_picture,omitempty"`
 }
 
 type User struct {

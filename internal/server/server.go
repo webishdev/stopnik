@@ -198,10 +198,6 @@ func registerHandlers(config *config.Config, handle func(pattern string, handler
 	metadataHandler := metadata.NewMetadataHandler()
 	keysHandler := keys.NewKeysHandler(keyManger, config)
 
-	// Oidc 1.0 Core
-	discoveryHandler := oidc.NewOidcDiscoveryHandler()
-	userInfoHandler := oidc.NewOidcUserInfoHandler()
-
 	// Server
 	handle(endpoint.Health, healthHandler)
 	handle(endpoint.Account, accountHandler)
@@ -219,6 +215,9 @@ func registerHandlers(config *config.Config, handle func(pattern string, handler
 
 	// Oidc 1.0 Core
 	if config.GetOidc() {
+		discoveryHandler := oidc.NewOidcDiscoveryHandler()
+		userInfoHandler := oidc.NewOidcUserInfoHandler(tokenManager)
+
 		handle(endpoint.OidcDiscovery, discoveryHandler)
 		handle(endpoint.OidcUserInfo, userInfoHandler)
 	}
