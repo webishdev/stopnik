@@ -2,6 +2,7 @@ package config
 
 import (
 	"errors"
+	internalHttp "github.com/webishdev/stopnik/internal/http"
 	"reflect"
 	"testing"
 )
@@ -452,7 +453,7 @@ func assertClientValues(t *testing.T, config *Config, id string, expectedAccessT
 		t.Errorf("expected refresh TTL to be %d, got %d", expectedRefreshTTL, refreshTTL)
 	}
 
-	issuer := client.GetIssuer()
+	issuer := client.GetIssuer(&internalHttp.RequestData{})
 	if issuer != expectedIssuer {
 		t.Errorf("expected issuer to be '%s', got '%s'", expectedIssuer, issuer)
 	}

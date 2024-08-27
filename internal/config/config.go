@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"errors"
 	"fmt"
+	internalHttp "github.com/webishdev/stopnik/internal/http"
 	"github.com/webishdev/stopnik/log"
 	"math/big"
 )
@@ -80,7 +81,7 @@ type Client struct {
 	Id                      string   `yaml:"id"`
 	ClientSecret            string   `yaml:"clientSecret"`
 	Salt                    string   `yaml:"salt"`
-	OIDC                    bool     `yaml:"oidc"`
+	Oidc                    bool     `yaml:"oidc"`
 	ClientType              string   `yaml:"type"`
 	AccessTTL               int      `yaml:"accessTTL"`
 	RefreshTTL              int      `yaml:"refreshTTL"`
@@ -220,7 +221,7 @@ func (config *Config) Setup() error {
 			return errors.New(invalidClient)
 		}
 
-		config.oidc = config.oidc || client.OIDC
+		config.oidc = config.oidc || client.Oidc
 	}
 
 	config.userMap = setup[User](&config.Users, func(user User) string {
@@ -292,7 +293,7 @@ func (config *Config) GetFooterText() string {
 	return GetOrDefaultString(config.UI.FooterText, "STOPnik")
 }
 
-func (config *Config) GetOIDC() bool {
+func (config *Config) GetOidc() bool {
 	return config.oidc
 }
 
@@ -304,8 +305,11 @@ func (client *Client) GetRefreshTTL() int {
 	return GetOrDefaultInt(client.RefreshTTL, 0)
 }
 
-func (client *Client) GetIssuer() string {
-	return GetOrDefaultString(client.Issuer, "STOPnik")
+func (client *Client) GetIssuer(requestData *internalHttp.RequestData) string {
+	if requestData == nil || requestData.Host == "" || requestData.Scheme == "" {
+		return GetOrDefaultString(client.Issuer, "STOPnik")
+	}
+	return GetOrDefaultString(client.Issuer, requestData.IssuerString())
 }
 
 func (client *Client) GetAudience() []string {

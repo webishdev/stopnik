@@ -401,7 +401,9 @@ func testTokenRefreshTokenGrantType(t *testing.T, testConfig *config.Config, key
 		sessionManager := manager.NewSessionManager(testConfig)
 		tokenManager := manager.NewTokenManager(testConfig, manager.NewDefaultKeyLoader(testConfig, keyManager))
 		sessionManager.StartSession(authSession)
-		accessTokenResponse := tokenManager.CreateAccessTokenResponse(user.Username, client, scopes, "")
+
+		request := httptest.NewRequest(http.MethodPost, endpoint.Token, nil)
+		accessTokenResponse := tokenManager.CreateAccessTokenResponse(request, user.Username, client, scopes, "")
 
 		tokenHandler := NewTokenHandler(requestValidator, sessionManager, tokenManager)
 
@@ -413,7 +415,7 @@ func testTokenRefreshTokenGrantType(t *testing.T, testConfig *config.Config, key
 		)
 		body := strings.NewReader(bodyString)
 
-		request := httptest.NewRequest(http.MethodPost, endpoint.Token, body)
+		request = httptest.NewRequest(http.MethodPost, endpoint.Token, body)
 		request.Header.Add(internalHttp.Authorization, fmt.Sprintf("Basic %s", testTokenCreateBasicAuth("foo", "bar")))
 		request.Header.Add(internalHttp.ContentType, "application/x-www-form-urlencoded")
 

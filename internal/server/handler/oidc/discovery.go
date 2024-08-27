@@ -1,4 +1,4 @@
-package metadata
+package oidc
 
 import (
 	"github.com/lestrrat-go/jwx/v2/jwa"
@@ -16,6 +16,7 @@ type response struct {
 	AuthorizationEndpoint                              string                     `json:"authorization_endpoint"`
 	TokenEndpoint                                      string                     `json:"token_endpoint"`
 	JWKsUri                                            string                     `json:"jwks_uri,omitempty"`
+	UserInfoEndpoint                                   string                     `json:"userinfo_endpoint,omitempty"`
 	RegistrationEndpoint                               string                     `json:"registration_endpoint,omitempty"`
 	ScopesSupported                                    []string                   `json:"scopes_supported,omitempty"`
 	ResponseTypesSupported                             []oauth2.ResponseType      `json:"response_types_supported,omitempty"`
@@ -36,17 +37,17 @@ type response struct {
 	CodeChallengeMethodsSupported                      []pkce.CodeChallengeMethod `json:"code_challenge_methods_supported,omitempty"`
 }
 
-type Handler struct {
+type DiscoveryHandler struct {
 	errorHandler *errorHandler.Handler
 }
 
-func NewMetadataHandler() *Handler {
-	return &Handler{
+func NewOidcDiscoveryHandler() *DiscoveryHandler {
+	return &DiscoveryHandler{
 		errorHandler: errorHandler.NewErrorHandler(),
 	}
 }
 
-func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (h *DiscoveryHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	log.AccessLogRequest(r)
 	if r.Method == http.MethodGet {
 		requestData := internalHttp.NewRequestData(r)
@@ -64,6 +65,9 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		introspectEndpoint := urlFromRequest.JoinPath(endpoint.Introspect)
 		revokeEndpoint := urlFromRequest.JoinPath(endpoint.Revoke)
 		keysEndpoint := urlFromRequest.JoinPath(endpoint.Keys)
+
+		// OIDC 1.0 Core
+		userInfoEndpoint := urlFromRequest.JoinPath(endpoint.OidcUserInfo)
 
 		authMethodsSupported := []string{
 			"client_secret_basic",
@@ -85,6 +89,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			IntrospectionEndpoint: introspectEndpoint.String(),
 			RevocationEndpoint:    revokeEndpoint.String(),
 			JWKsUri:               keysEndpoint.String(),
+			UserInfoEndpoint:      userInfoEndpoint.String(),
 			ServiceDocumentation:  "https://stopnik.webish.dev",
 			CodeChallengeMethodsSupported: []pkce.CodeChallengeMethod{
 				pkce.PLAIN,

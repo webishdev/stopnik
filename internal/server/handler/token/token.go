@@ -129,7 +129,7 @@ func (h *Handler) handlePostRequest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	accessTokenResponse := h.tokenManager.CreateAccessTokenResponse(username, client, scopes, nonce)
+	accessTokenResponse := h.tokenManager.CreateAccessTokenResponse(r, username, client, scopes, nonce)
 
 	jsonError := internalHttp.SendJson(accessTokenResponse, w)
 	if jsonError != nil {

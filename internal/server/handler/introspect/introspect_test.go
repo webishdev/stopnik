@@ -236,7 +236,8 @@ func testIntrospect(t *testing.T, testConfig *config.Config, keyManger *manager.
 			sessionManager := manager.NewSessionManager(testConfig)
 			tokenManager := manager.NewTokenManager(testConfig, manager.NewDefaultKeyLoader(testConfig, keyManger))
 			sessionManager.StartSession(authSession)
-			accessTokenResponse := tokenManager.CreateAccessTokenResponse(user.Username, client, scopes, "")
+			request := httptest.NewRequest(http.MethodPost, endpoint.Token, nil)
+			accessTokenResponse := tokenManager.CreateAccessTokenResponse(request, user.Username, client, scopes, "")
 
 			introspectHandler := NewIntrospectHandler(testConfig, requestValidator, tokenManager)
 
@@ -253,7 +254,7 @@ func testIntrospect(t *testing.T, testConfig *config.Config, keyManger *manager.
 			)
 			body := strings.NewReader(bodyString)
 
-			request := httptest.NewRequest(http.MethodPost, endpoint.Introspect, body)
+			request = httptest.NewRequest(http.MethodPost, endpoint.Introspect, body)
 			request.Header.Add(internalHttp.Authorization, fmt.Sprintf("Basic %s", testTokenCreateBasicAuth("foo", "bar")))
 			request.Header.Add(internalHttp.ContentType, "application/x-www-form-urlencoded")
 
@@ -308,7 +309,8 @@ func testIntrospectWithoutHint(t *testing.T, testConfig *config.Config, keyMange
 			sessionManager := manager.NewSessionManager(testConfig)
 			tokenManager := manager.NewTokenManager(testConfig, manager.NewDefaultKeyLoader(testConfig, keyManger))
 			sessionManager.StartSession(authSession)
-			accessTokenResponse := tokenManager.CreateAccessTokenResponse(user.Username, client, scopes, "")
+			request := httptest.NewRequest(http.MethodPost, endpoint.Token, nil)
+			accessTokenResponse := tokenManager.CreateAccessTokenResponse(request, user.Username, client, scopes, "")
 
 			introspectHandler := NewIntrospectHandler(testConfig, requestValidator, tokenManager)
 
@@ -324,7 +326,7 @@ func testIntrospectWithoutHint(t *testing.T, testConfig *config.Config, keyMange
 			)
 			body := strings.NewReader(bodyString)
 
-			request := httptest.NewRequest(http.MethodPost, endpoint.Introspect, body)
+			request = httptest.NewRequest(http.MethodPost, endpoint.Introspect, body)
 			request.Header.Add(internalHttp.Authorization, fmt.Sprintf("Basic %s", testTokenCreateBasicAuth("foo", "bar")))
 			request.Header.Add(internalHttp.ContentType, "application/x-www-form-urlencoded")
 
@@ -379,7 +381,8 @@ func testIntrospectDisabled(t *testing.T, testConfig *config.Config, keyManger *
 			sessionManager := manager.NewSessionManager(testConfig)
 			tokenManager := manager.NewTokenManager(testConfig, manager.NewDefaultKeyLoader(testConfig, keyManger))
 			sessionManager.StartSession(authSession)
-			accessTokenResponse := tokenManager.CreateAccessTokenResponse(user.Username, client, scopes, "")
+			request := httptest.NewRequest(http.MethodPost, endpoint.Token, nil)
+			accessTokenResponse := tokenManager.CreateAccessTokenResponse(request, user.Username, client, scopes, "")
 
 			introspectHandler := NewIntrospectHandler(testConfig, requestValidator, tokenManager)
 
@@ -396,7 +399,7 @@ func testIntrospectDisabled(t *testing.T, testConfig *config.Config, keyManger *
 			)
 			body := strings.NewReader(bodyString)
 
-			request := httptest.NewRequest(http.MethodPost, endpoint.Introspect, body)
+			request = httptest.NewRequest(http.MethodPost, endpoint.Introspect, body)
 			request.Header.Add(internalHttp.Authorization, fmt.Sprintf("Basic %s", testTokenCreateBasicAuth("bar", "bar")))
 			request.Header.Add(internalHttp.ContentType, "application/x-www-form-urlencoded")
 

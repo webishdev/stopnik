@@ -219,7 +219,8 @@ func testRevoke(t *testing.T, testConfig *config.Config, keyManager *manager.Key
 			sessionManager := manager.NewSessionManager(testConfig)
 			tokenManager := manager.NewTokenManager(testConfig, manager.NewDefaultKeyLoader(testConfig, keyManager))
 			sessionManager.StartSession(authSession)
-			accessTokenResponse := tokenManager.CreateAccessTokenResponse(user.Username, client, scopes, "")
+			request := httptest.NewRequest(http.MethodPost, endpoint.Token, nil)
+			accessTokenResponse := tokenManager.CreateAccessTokenResponse(request, user.Username, client, scopes, "")
 
 			revokeHandler := NewRevokeHandler(testConfig, requestValidator, tokenManager)
 
@@ -236,7 +237,7 @@ func testRevoke(t *testing.T, testConfig *config.Config, keyManager *manager.Key
 			)
 			body := strings.NewReader(bodyString)
 
-			request := httptest.NewRequest(http.MethodPost, endpoint.Revoke, body)
+			request = httptest.NewRequest(http.MethodPost, endpoint.Revoke, body)
 			request.Header.Add(internalHttp.Authorization, fmt.Sprintf("Basic %s", testTokenCreateBasicAuth("foo", "bar")))
 			request.Header.Add(internalHttp.ContentType, "application/x-www-form-urlencoded")
 
@@ -296,7 +297,8 @@ func testRevokeWithoutHint(t *testing.T, testConfig *config.Config, keyManager *
 			sessionManager := manager.NewSessionManager(testConfig)
 			tokenManager := manager.NewTokenManager(testConfig, manager.NewDefaultKeyLoader(testConfig, keyManager))
 			sessionManager.StartSession(authSession)
-			accessTokenResponse := tokenManager.CreateAccessTokenResponse(user.Username, client, scopes, "")
+			request := httptest.NewRequest(http.MethodPost, endpoint.Token, nil)
+			accessTokenResponse := tokenManager.CreateAccessTokenResponse(request, user.Username, client, scopes, "")
 
 			revokeHandler := NewRevokeHandler(testConfig, requestValidator, tokenManager)
 
@@ -312,7 +314,7 @@ func testRevokeWithoutHint(t *testing.T, testConfig *config.Config, keyManager *
 			)
 			body := strings.NewReader(bodyString)
 
-			request := httptest.NewRequest(http.MethodPost, endpoint.Revoke, body)
+			request = httptest.NewRequest(http.MethodPost, endpoint.Revoke, body)
 			request.Header.Add(internalHttp.Authorization, fmt.Sprintf("Basic %s", testTokenCreateBasicAuth("foo", "bar")))
 			request.Header.Add(internalHttp.ContentType, "application/x-www-form-urlencoded")
 
@@ -372,7 +374,8 @@ func testRevokeDisabled(t *testing.T, testConfig *config.Config, keyManager *man
 			sessionManager := manager.NewSessionManager(testConfig)
 			tokenManager := manager.NewTokenManager(testConfig, manager.NewDefaultKeyLoader(testConfig, keyManager))
 			sessionManager.StartSession(authSession)
-			accessTokenResponse := tokenManager.CreateAccessTokenResponse(user.Username, client, scopes, "")
+			request := httptest.NewRequest(http.MethodPost, endpoint.Token, nil)
+			accessTokenResponse := tokenManager.CreateAccessTokenResponse(request, user.Username, client, scopes, "")
 
 			revokeHandler := NewRevokeHandler(testConfig, requestValidator, tokenManager)
 
@@ -389,7 +392,7 @@ func testRevokeDisabled(t *testing.T, testConfig *config.Config, keyManager *man
 			)
 			body := strings.NewReader(bodyString)
 
-			request := httptest.NewRequest(http.MethodPost, endpoint.Revoke, body)
+			request = httptest.NewRequest(http.MethodPost, endpoint.Revoke, body)
 			request.Header.Add(internalHttp.Authorization, fmt.Sprintf("Basic %s", testTokenCreateBasicAuth("bar", "bar")))
 			request.Header.Add(internalHttp.ContentType, "application/x-www-form-urlencoded")
 

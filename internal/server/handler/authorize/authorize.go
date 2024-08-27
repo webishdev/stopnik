@@ -135,7 +135,7 @@ func (h *Handler) handleGetRequest(w http.ResponseWriter, r *http.Request) {
 		State:               state,
 	}
 
-	if client.OIDC {
+	if client.Oidc {
 		nonceQueryParameter := r.URL.Query().Get(oidc.ParameterNonce)
 		authSession.Nonce = nonceQueryParameter
 	} else {
@@ -157,7 +157,7 @@ func (h *Handler) handleGetRequest(w http.ResponseWriter, r *http.Request) {
 		query := redirectURL.Query()
 
 		if slices.Contains(responseTypes, oauth2.RtToken) {
-			accessTokenResponse := h.tokenManager.CreateAccessTokenResponse(user.Username, client, scopes, authSession.Nonce)
+			accessTokenResponse := h.tokenManager.CreateAccessTokenResponse(r, user.Username, client, scopes, authSession.Nonce)
 			setImplicitGrantParameter(query, accessTokenResponse)
 		} else if slices.Contains(responseTypes, oauth2.RtCode) {
 			setAuthorizationGrantParameter(query, id.String())
@@ -225,7 +225,7 @@ func (h *Handler) handlePostRequest(w http.ResponseWriter, r *http.Request, user
 			h.errorHandler.InternalServerErrorHandler(w, r)
 			return
 		}
-		accessTokenResponse := h.tokenManager.CreateAccessTokenResponse(user.Username, client, authSession.Scopes, authSession.Nonce)
+		accessTokenResponse := h.tokenManager.CreateAccessTokenResponse(r, user.Username, client, authSession.Scopes, authSession.Nonce)
 		setImplicitGrantParameter(query, accessTokenResponse)
 	} else if slices.Contains(responseTypes, oauth2.RtCode) {
 		setAuthorizationGrantParameter(query, authSession.Id)

@@ -10,4 +10,6 @@ const (
 	Revoke        string = "/revoke"
 	Metadata      string = "/.well-known/oauth-authorization-server"
 	Keys          string = "/keys"
+	OidcDiscovery string = "/.well-known/openid-configuration"
+	OidcUserInfo  string = "/userinfo"
 )

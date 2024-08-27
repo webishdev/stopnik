@@ -69,7 +69,7 @@ func readConfiguration(configurationFile *string, configLoader *config.Loader) (
 	}
 	logger.SetLogLevel(currentConfig.Server.LogLevel)
 	logger.Info("Config loaded from %s", *configurationFile)
-	if currentConfig.GetOIDC() {
+	if currentConfig.GetOidc() {
 		logger.Info("OpenId Connect is enabled")
 	}
 

@@ -3,8 +3,11 @@ package manager
 import (
 	"fmt"
 	"github.com/webishdev/stopnik/internal/config"
+	"github.com/webishdev/stopnik/internal/endpoint"
 	internalHttp "github.com/webishdev/stopnik/internal/http"
 	"github.com/webishdev/stopnik/internal/oauth2"
+	"net/http"
+	"net/http/httptest"
 	"reflect"
 	"testing"
 )
@@ -33,7 +36,8 @@ func Test_Token(t *testing.T) {
 				t.Fatal("client does not exist")
 			}
 
-			accessTokenResponse := tokenManager.CreateAccessTokenResponse("foo", client, []string{"abc", "def"}, "")
+			request := httptest.NewRequest(http.MethodPost, endpoint.Token, nil)
+			accessTokenResponse := tokenManager.CreateAccessTokenResponse(request, "foo", client, []string{"abc", "def"}, "")
 
 			if accessTokenResponse.AccessTokenKey == "" {
 				t.Error("empty access token")
@@ -137,7 +141,8 @@ func Test_Token(t *testing.T) {
 			t.Fatal("client does not exist")
 		}
 
-		accessTokenResponse := tokenManager.CreateAccessTokenResponse("bar", client, []string{"abc", "def"}, "")
+		request := httptest.NewRequest(http.MethodPost, endpoint.Token, nil)
+		accessTokenResponse := tokenManager.CreateAccessTokenResponse(request, "bar", client, []string{"abc", "def"}, "")
 
 		_, _, valid := tokenManager.ValidateAccessToken(fmt.Sprintf("%s %s", internalHttp.AuthBearer, accessTokenResponse.AccessTokenKey))
 
