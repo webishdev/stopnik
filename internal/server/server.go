@@ -5,7 +5,7 @@ import (
 	"errors"
 	"github.com/webishdev/stopnik/internal/config"
 	"github.com/webishdev/stopnik/internal/endpoint"
-	internalHttp "github.com/webishdev/stopnik/internal/http"
+	"github.com/webishdev/stopnik/internal/manager"
 	"github.com/webishdev/stopnik/internal/server/handler/account"
 	"github.com/webishdev/stopnik/internal/server/handler/assets"
 	"github.com/webishdev/stopnik/internal/server/handler/authorize"
@@ -17,7 +17,6 @@ import (
 	"github.com/webishdev/stopnik/internal/server/handler/revoke"
 	"github.com/webishdev/stopnik/internal/server/handler/token"
 	"github.com/webishdev/stopnik/internal/server/validation"
-	"github.com/webishdev/stopnik/internal/store"
 	"github.com/webishdev/stopnik/internal/template"
 	"github.com/webishdev/stopnik/log"
 	"net"
@@ -172,14 +171,14 @@ func shutdownServer(server *http.Server) {
 }
 
 func registerHandlers(config *config.Config, handle func(pattern string, handler http.Handler)) {
-	keyManger, keyLoadingError := store.NewKeyManger(config)
+	keyManger, keyLoadingError := manager.NewKeyManger(config)
 	if keyLoadingError != nil {
 		log.Error("Failed to load private keys: %v", keyLoadingError)
 		os.Exit(1)
 	}
-	sessionManager := store.NewSessionManager(config)
-	tokenManager := store.NewTokenManager(config, store.NewDefaultKeyLoader(config, keyManger))
-	cookieManager := internalHttp.NewCookieManager(config)
+	sessionManager := manager.NewSessionManager(config)
+	tokenManager := manager.NewTokenManager(config, manager.NewDefaultKeyLoader(config, keyManger))
+	cookieManager := manager.NewCookieManager(config)
 	requestValidator := validation.NewRequestValidator(config)
 	templateManager := template.NewTemplateManager(config)
 

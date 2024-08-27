@@ -2,8 +2,8 @@ package health
 
 import (
 	internalHttp "github.com/webishdev/stopnik/internal/http"
+	"github.com/webishdev/stopnik/internal/manager"
 	"github.com/webishdev/stopnik/internal/server/handler/error"
-	"github.com/webishdev/stopnik/internal/store"
 	"github.com/webishdev/stopnik/log"
 	"net/http"
 )
@@ -15,11 +15,11 @@ type Health struct {
 }
 
 type Handler struct {
-	tokenManager *store.TokenManager
+	tokenManager *manager.TokenManager
 	errorHandler *error.Handler
 }
 
-func NewHealthHandler(tokenManager *store.TokenManager) *Handler {
+func NewHealthHandler(tokenManager *manager.TokenManager) *Handler {
 	return &Handler{
 		tokenManager: tokenManager,
 		errorHandler: error.NewErrorHandler(),

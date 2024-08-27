@@ -5,11 +5,11 @@ import (
 	"github.com/google/uuid"
 	"github.com/webishdev/stopnik/internal/config"
 	internalHttp "github.com/webishdev/stopnik/internal/http"
+	"github.com/webishdev/stopnik/internal/manager"
 	"github.com/webishdev/stopnik/internal/oauth2"
 	"github.com/webishdev/stopnik/internal/pkce"
 	"github.com/webishdev/stopnik/internal/server/handler/error"
 	"github.com/webishdev/stopnik/internal/server/validation"
-	"github.com/webishdev/stopnik/internal/store"
 	"github.com/webishdev/stopnik/internal/template"
 	"github.com/webishdev/stopnik/log"
 	"net/http"
@@ -20,18 +20,18 @@ import (
 
 type Handler struct {
 	validator       *validation.RequestValidator
-	cookieManager   *internalHttp.CookieManager
-	sessionManager  *store.SessionManager
-	tokenManager    *store.TokenManager
+	cookieManager   *manager.CookieManager
+	sessionManager  *manager.SessionManager
+	tokenManager    *manager.TokenManager
 	templateManager *template.Manager
 	errorHandler    *error.Handler
 }
 
 func NewAuthorizeHandler(
 	validator *validation.RequestValidator,
-	cookieManager *internalHttp.CookieManager,
-	sessionManager *store.SessionManager,
-	tokenManager *store.TokenManager,
+	cookieManager *manager.CookieManager,
+	sessionManager *manager.SessionManager,
+	tokenManager *manager.TokenManager,
 	templateManager *template.Manager) *Handler {
 	return &Handler{
 		validator:       validator,
@@ -116,7 +116,7 @@ func (h *Handler) handleGetRequest(w http.ResponseWriter, r *http.Request) {
 	scopes := strings.Split(scope, " ")
 
 	id := uuid.New()
-	authSession := &store.AuthSession{
+	authSession := &manager.AuthSession{
 		Id:                  id.String(),
 		Redirect:            redirect,
 		AuthURI:             r.URL.RequestURI(),

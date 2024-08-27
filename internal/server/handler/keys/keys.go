@@ -5,15 +5,15 @@ import (
 	"github.com/webishdev/stopnik/internal/config"
 	"github.com/webishdev/stopnik/internal/crypto"
 	http2 "github.com/webishdev/stopnik/internal/http"
+	"github.com/webishdev/stopnik/internal/manager"
 	errorHandler "github.com/webishdev/stopnik/internal/server/handler/error"
-	"github.com/webishdev/stopnik/internal/store"
 	"github.com/webishdev/stopnik/log"
 	"net/http"
 	"sync"
 )
 
 type Handler struct {
-	keyManager   *store.KeyManger
+	keyManager   *manager.KeyManger
 	config       *config.Config
 	errorHandler *errorHandler.Handler
 	keySet       jwk.Set
@@ -21,7 +21,7 @@ type Handler struct {
 	mux          *sync.RWMutex
 }
 
-func NewKeysHandler(keyManager *store.KeyManger, config *config.Config) *Handler {
+func NewKeysHandler(keyManager *manager.KeyManger, config *config.Config) *Handler {
 	return &Handler{
 		keyManager:   keyManager,
 		config:       config,

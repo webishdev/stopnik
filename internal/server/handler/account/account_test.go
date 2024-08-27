@@ -5,6 +5,7 @@ import (
 	"github.com/webishdev/stopnik/internal/config"
 	"github.com/webishdev/stopnik/internal/endpoint"
 	internalHttp "github.com/webishdev/stopnik/internal/http"
+	"github.com/webishdev/stopnik/internal/manager"
 	"github.com/webishdev/stopnik/internal/server/validation"
 	"github.com/webishdev/stopnik/internal/template"
 	"io"
@@ -49,7 +50,7 @@ func Test_Account(t *testing.T) {
 func testAccountWithoutCookie(t *testing.T, testConfig *config.Config) {
 	t.Run("Account without cookie", func(t *testing.T) {
 		requestValidator := validation.NewRequestValidator(testConfig)
-		cookieManager := internalHttp.NewCookieManager(testConfig)
+		cookieManager := manager.NewCookieManager(testConfig)
 		templateManager := template.NewTemplateManager(testConfig)
 
 		accountHandler := NewAccountHandler(requestValidator, cookieManager, templateManager)
@@ -84,7 +85,7 @@ func testAccountWithoutCookie(t *testing.T, testConfig *config.Config) {
 func testAccountWithCookie(t *testing.T, testConfig *config.Config) {
 	t.Run("Account cookie", func(t *testing.T) {
 		requestValidator := validation.NewRequestValidator(testConfig)
-		cookieManager := internalHttp.NewCookieManager(testConfig)
+		cookieManager := manager.NewCookieManager(testConfig)
 		templateManager := template.NewTemplateManager(testConfig)
 
 		user, _ := testConfig.GetUser("foo")
@@ -136,7 +137,7 @@ func testAccountLogin(t *testing.T, testConfig *config.Config) {
 
 		t.Run(testMessage, func(t *testing.T) {
 			requestValidator := validation.NewRequestValidator(testConfig)
-			cookieManager := internalHttp.NewCookieManager(testConfig)
+			cookieManager := manager.NewCookieManager(testConfig)
 			templateManager := template.NewTemplateManager(testConfig)
 
 			cookie, _ := cookieManager.CreateAuthCookie(test.username)
@@ -183,7 +184,7 @@ func testAccountNotAllowedHttpMethods(t *testing.T) {
 	for _, method := range testInvalidAccountHttpMethods {
 		testMessage := fmt.Sprintf("Account with unsupported method %s", method)
 		t.Run(testMessage, func(t *testing.T) {
-			accountHandler := NewAccountHandler(&validation.RequestValidator{}, &internalHttp.CookieManager{}, &template.Manager{})
+			accountHandler := NewAccountHandler(&validation.RequestValidator{}, &manager.CookieManager{}, &template.Manager{})
 
 			rr := httptest.NewRecorder()
 

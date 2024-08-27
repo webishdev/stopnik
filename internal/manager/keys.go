@@ -1,4 +1,4 @@
-package store
+package manager
 
 import (
 	"crypto/ecdsa"
@@ -10,10 +10,11 @@ import (
 	"github.com/lestrrat-go/jwx/v2/jwt"
 	"github.com/webishdev/stopnik/internal/config"
 	"github.com/webishdev/stopnik/internal/crypto"
+	"github.com/webishdev/stopnik/internal/store"
 )
 
 type KeyManger struct {
-	keyStore *Store[crypto.ManagedKey]
+	keyStore *store.Store[crypto.ManagedKey]
 }
 
 type DefaultKeyLoader struct {
@@ -42,7 +43,7 @@ func (defaultKeyLoader *DefaultKeyLoader) GetServerSecret() jwt.SignEncryptParse
 }
 
 func NewKeyManger(config *config.Config) (*KeyManger, error) {
-	newStore := NewStore[crypto.ManagedKey]()
+	newStore := store.NewStore[crypto.ManagedKey]()
 	keyManager := &KeyManger{
 		keyStore: &newStore,
 	}

@@ -3,10 +3,10 @@ package introspect
 import (
 	"github.com/webishdev/stopnik/internal/config"
 	internalHttp "github.com/webishdev/stopnik/internal/http"
+	"github.com/webishdev/stopnik/internal/manager"
 	"github.com/webishdev/stopnik/internal/oauth2"
 	"github.com/webishdev/stopnik/internal/server/handler/error"
 	"github.com/webishdev/stopnik/internal/server/validation"
-	"github.com/webishdev/stopnik/internal/store"
 	"github.com/webishdev/stopnik/log"
 	"net/http"
 	"slices"
@@ -25,11 +25,11 @@ type response struct {
 type Handler struct {
 	config       *config.Config
 	validator    *validation.RequestValidator
-	tokenManager *store.TokenManager
+	tokenManager *manager.TokenManager
 	errorHandler *error.Handler
 }
 
-func NewIntrospectHandler(config *config.Config, validator *validation.RequestValidator, tokenManager *store.TokenManager) *Handler {
+func NewIntrospectHandler(config *config.Config, validator *validation.RequestValidator, tokenManager *manager.TokenManager) *Handler {
 	return &Handler{
 		config:       config,
 		validator:    validator,

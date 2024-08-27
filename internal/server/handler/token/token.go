@@ -2,11 +2,11 @@ package token
 
 import (
 	internalHttp "github.com/webishdev/stopnik/internal/http"
+	"github.com/webishdev/stopnik/internal/manager"
 	"github.com/webishdev/stopnik/internal/oauth2"
 	"github.com/webishdev/stopnik/internal/pkce"
 	"github.com/webishdev/stopnik/internal/server/handler/error"
 	"github.com/webishdev/stopnik/internal/server/validation"
-	"github.com/webishdev/stopnik/internal/store"
 	"github.com/webishdev/stopnik/log"
 	"net/http"
 	"strings"
@@ -14,12 +14,12 @@ import (
 
 type Handler struct {
 	validator      *validation.RequestValidator
-	sessionManager *store.SessionManager
-	tokenManager   *store.TokenManager
+	sessionManager *manager.SessionManager
+	tokenManager   *manager.TokenManager
 	errorHandler   *error.Handler
 }
 
-func NewTokenHandler(validator *validation.RequestValidator, sessionManager *store.SessionManager, tokenManager *store.TokenManager) *Handler {
+func NewTokenHandler(validator *validation.RequestValidator, sessionManager *manager.SessionManager, tokenManager *manager.TokenManager) *Handler {
 	return &Handler{
 		validator:      validator,
 		sessionManager: sessionManager,

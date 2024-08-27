@@ -1,4 +1,4 @@
-package store
+package manager
 
 import (
 	"github.com/webishdev/stopnik/internal/config"

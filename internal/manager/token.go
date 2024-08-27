@@ -1,4 +1,4 @@
-package store
+package manager
 
 import (
 	"encoding/base64"
@@ -9,6 +9,7 @@ import (
 	"github.com/webishdev/stopnik/internal/crypto"
 	internalHttp "github.com/webishdev/stopnik/internal/http"
 	"github.com/webishdev/stopnik/internal/oauth2"
+	"github.com/webishdev/stopnik/internal/store"
 	"github.com/webishdev/stopnik/log"
 	"strings"
 	"time"
@@ -17,13 +18,13 @@ import (
 type TokenManager struct {
 	config            *config.Config
 	keyLoader         crypto.KeyLoader
-	accessTokenStore  *ExpiringStore[oauth2.AccessToken]
-	refreshTokenStore *ExpiringStore[oauth2.RefreshToken]
+	accessTokenStore  *store.ExpiringStore[oauth2.AccessToken]
+	refreshTokenStore *store.ExpiringStore[oauth2.RefreshToken]
 }
 
 func NewTokenManager(config *config.Config, keyLoader crypto.KeyLoader) *TokenManager {
-	accessTokenStore := NewDefaultTimedStore[oauth2.AccessToken]()
-	refreshTokenStore := NewDefaultTimedStore[oauth2.RefreshToken]()
+	accessTokenStore := store.NewDefaultTimedStore[oauth2.AccessToken]()
+	refreshTokenStore := store.NewDefaultTimedStore[oauth2.RefreshToken]()
 	return &TokenManager{
 		config:            config,
 		keyLoader:         keyLoader,

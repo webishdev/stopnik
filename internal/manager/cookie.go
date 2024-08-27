@@ -1,4 +1,4 @@
-package http
+package manager
 
 import (
 	"github.com/lestrrat-go/jwx/v2/jwt"

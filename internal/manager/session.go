@@ -1,7 +1,8 @@
-package store
+package manager
 
 import (
 	"github.com/webishdev/stopnik/internal/config"
+	"github.com/webishdev/stopnik/internal/store"
 )
 
 type AuthSession struct {
@@ -19,11 +20,11 @@ type AuthSession struct {
 
 type SessionManager struct {
 	config           *config.Config
-	authSessionStore *ExpiringStore[AuthSession]
+	authSessionStore *store.ExpiringStore[AuthSession]
 }
 
 func NewSessionManager(config *config.Config) *SessionManager {
-	authSessionStore := NewDefaultTimedStore[AuthSession]()
+	authSessionStore := store.NewDefaultTimedStore[AuthSession]()
 	return &SessionManager{
 		config:           config,
 		authSessionStore: &authSessionStore,
