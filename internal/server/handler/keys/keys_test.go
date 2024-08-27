@@ -3,12 +3,14 @@ package keys
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/lestrrat-go/jwx/v2/jwa"
 	"github.com/webishdev/stopnik/internal/config"
 	"github.com/webishdev/stopnik/internal/endpoint"
 	"github.com/webishdev/stopnik/internal/manager"
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"slices"
 	"testing"
 )
 
@@ -82,6 +84,30 @@ func testKeys(t *testing.T, testConfig *config.Config) {
 
 		if len(keys.Keys) != 3 {
 			t.Errorf("handler returned wrong number of keys: got %v want %v", len(keys.Keys), 3)
+		}
+
+		containsES512 := slices.ContainsFunc(keys.Keys, func(r responseKeys) bool {
+			return r.Alg == string(jwa.ES512)
+		})
+
+		if !containsES512 {
+			t.Error("key for ES512 was missing")
+		}
+
+		containsES256 := slices.ContainsFunc(keys.Keys, func(r responseKeys) bool {
+			return r.Alg == string(jwa.ES256)
+		})
+
+		if !containsES256 {
+			t.Error("key for ES256 was missing")
+		}
+
+		containsRSA256 := slices.ContainsFunc(keys.Keys, func(r responseKeys) bool {
+			return r.Alg == string(jwa.RS256)
+		})
+
+		if !containsRSA256 {
+			t.Error("key for RS256 was missing")
 		}
 	})
 }
