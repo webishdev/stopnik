@@ -88,7 +88,7 @@ func (h *Handler) handleGetRequest(w http.ResponseWriter, r *http.Request) {
 
 	state := r.URL.Query().Get(oauth2.ParameterState)
 
-	responseTypes := []oauth2.ResponseType{}
+	var responseTypes []oauth2.ResponseType
 	responseTypeQueryParameter := r.URL.Query().Get(oauth2.ParameterResponseType)
 	responseTypeQueryParameters := strings.Split(responseTypeQueryParameter, " ")
 	for _, currentQueryParameter := range responseTypeQueryParameters {
