@@ -17,6 +17,7 @@ import (
 type responseKeys struct {
 	Alg string `json:"alg"`
 	Kid string `json:"kid"`
+	Kty string `json:"kty"`
 }
 
 type response struct {
@@ -87,7 +88,7 @@ func testKeys(t *testing.T, testConfig *config.Config) {
 		}
 
 		containsES512 := slices.ContainsFunc(keys.Keys, func(r responseKeys) bool {
-			return r.Alg == string(jwa.ES512)
+			return r.Alg == string(jwa.ES512) && r.Kty == "EC"
 		})
 
 		if !containsES512 {
@@ -95,7 +96,7 @@ func testKeys(t *testing.T, testConfig *config.Config) {
 		}
 
 		containsES256 := slices.ContainsFunc(keys.Keys, func(r responseKeys) bool {
-			return r.Alg == string(jwa.ES256)
+			return r.Alg == string(jwa.ES256) && r.Kty == "EC"
 		})
 
 		if !containsES256 {
@@ -103,7 +104,7 @@ func testKeys(t *testing.T, testConfig *config.Config) {
 		}
 
 		containsRSA256 := slices.ContainsFunc(keys.Keys, func(r responseKeys) bool {
-			return r.Alg == string(jwa.RS256)
+			return r.Alg == string(jwa.RS256) && r.Kty == "RSA"
 		})
 
 		if !containsRSA256 {
