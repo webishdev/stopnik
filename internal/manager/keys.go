@@ -38,8 +38,8 @@ func (defaultKeyLoader *DefaultKeyLoader) LoadKeys(client *config.Client) (*cryp
 	return key, true
 }
 
-func (defaultKeyLoader *DefaultKeyLoader) GetServerSecret() jwt.SignEncryptParseOption {
-	return defaultKeyLoader.keyFallback.GetServerSecret()
+func (defaultKeyLoader *DefaultKeyLoader) GetServerKey() jwt.SignEncryptParseOption {
+	return defaultKeyLoader.keyFallback.GetServerKey()
 }
 
 func NewKeyManger(config *config.Config) (*KeyManger, error) {

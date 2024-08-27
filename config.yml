@@ -3,7 +3,7 @@ server:
   authCookieName: stopnik_auth
   #logoutRedirect: http://localhost:8080
   secret: WRYldij9ebtDZ5VJSsxNAfCZ
-  privateKey: rsa256key.pem
+  privateKey: ./test_keys/rsa256key.pem
   addr: :8080
   tls:
     addr: :8081
@@ -42,7 +42,7 @@ clients:
   accessTTL: 5
   refreshTTL: 15
   type: confidential
-  privateKey: ecdsa521key.pem
+  privateKey: ./test_keys/ecdsa521key.pem
   redirects:
     - https://oauth.pstmn.io/v1/callback
 users:

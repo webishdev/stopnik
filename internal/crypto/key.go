@@ -25,7 +25,7 @@ type ManagedKey struct {
 }
 
 type ServerSecretLoader interface {
-	GetServerSecret() jwt.SignEncryptParseOption
+	GetServerKey() jwt.SignEncryptParseOption
 }
 
 type serverSecret struct {
@@ -41,7 +41,7 @@ func NewServerSecretLoader(config *config.Config) ServerSecretLoader {
 	return &serverSecret{secret: config.GetServerSecret()}
 }
 
-func (s *serverSecret) GetServerSecret() jwt.SignEncryptParseOption {
+func (s *serverSecret) GetServerKey() jwt.SignEncryptParseOption {
 	return jwt.WithKey(jwa.HS256, []byte(s.secret))
 }
 
@@ -52,6 +52,9 @@ func LoadPrivateKey(name string) (*SigningPrivateKey, error) {
 	}
 
 	privatePem, _ := pem.Decode(privateKeyBytes) // we do not use the 2nd return value "rest"
+	if privatePem == nil {
+		return nil, errors.New("failed to decode private key")
+	}
 
 	parsedPKCS8, pkcs8Error := x509.ParsePKCS8PrivateKey(privatePem.Bytes)
 	if pkcs8Error == nil {
@@ -84,12 +87,14 @@ func LoadPrivateKey(name string) (*SigningPrivateKey, error) {
 		case "P-521":
 			signatureAlgorithm = jwa.ES512
 		default:
-			signatureAlgorithm = ""
+			break
 		}
-		return &SigningPrivateKey{
-			PrivateKey:         parsedEC,
-			SignatureAlgorithm: signatureAlgorithm,
-		}, nil
+		if signatureAlgorithm != "" {
+			return &SigningPrivateKey{
+				PrivateKey:         parsedEC,
+				SignatureAlgorithm: signatureAlgorithm,
+			}, nil
+		}
 	}
 
 	return nil, errors.New("invalid private key")

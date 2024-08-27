@@ -51,6 +51,11 @@ openssl ecparam -name secp384r1 -genkey -noout -out ecdsa384key.pem
 openssl ecparam -name secp521r1 -genkey -noout -out ecdsa521key.pem
 ```
 
+#### List elliptic curves
+```bash
+openssl ecparam -list_curves
+```
+
 ## OAuth 2.0 Endpoints
 
 ### [Authorization Endpoint](https://datatracker.ietf.org/doc/html/rfc6749#section-3.1)

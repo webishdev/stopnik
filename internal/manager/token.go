@@ -176,7 +176,7 @@ func (tokenManager *TokenManager) generateJWTToken(tokenId string, duration time
 	managedKey, keyExists := loader.LoadKeys(client)
 
 	if !keyExists {
-		options := loader.GetServerSecret()
+		options := loader.GetServerKey()
 		tokenString, tokenError := jwt.Sign(token, options)
 		if tokenError != nil {
 			panic(tokenError)

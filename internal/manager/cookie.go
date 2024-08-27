@@ -92,7 +92,7 @@ func (cookieManager *CookieManager) ValidateAuthCookie(r *http.Request) (*config
 }
 
 func (cookieManager *CookieManager) validateCookieValue(cookie *http.Cookie) (*config.User, bool) {
-	options := cookieManager.keyFallback.GetServerSecret()
+	options := cookieManager.keyFallback.GetServerKey()
 	token, err := jwt.Parse([]byte(cookie.Value), options)
 	if err != nil {
 		return &config.User{}, false
@@ -114,7 +114,7 @@ func (cookieManager *CookieManager) generateCookieValue(username string) (string
 		return "", builderError
 	}
 
-	options := cookieManager.keyFallback.GetServerSecret()
+	options := cookieManager.keyFallback.GetServerKey()
 	tokenString, tokenError := jwt.Sign(token, options)
 	if tokenError != nil {
 		return "", tokenError
