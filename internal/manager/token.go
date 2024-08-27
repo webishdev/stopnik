@@ -60,7 +60,7 @@ func (tokenManager *TokenManager) CreateAccessTokenResponse(username string, cli
 	refreshTokenStore := *tokenManager.refreshTokenStore
 
 	accessTokenDuration := time.Minute * time.Duration(client.GetAccessTTL())
-	accessTokenKey := tokenManager.generateToken(username, client, accessTokenDuration)
+	accessTokenKey := tokenManager.generateAccessToken(username, client, accessTokenDuration)
 	accessToken := &oauth2.AccessToken{
 		Key:       accessTokenKey,
 		TokenType: oauth2.TtBearer,
@@ -79,7 +79,7 @@ func (tokenManager *TokenManager) CreateAccessTokenResponse(username string, cli
 
 	if client.GetRefreshTTL() > 0 {
 		refreshTokenDuration := time.Minute * time.Duration(client.GetRefreshTTL())
-		refreshTokenKey := tokenManager.generateToken(username, client, refreshTokenDuration)
+		refreshTokenKey := tokenManager.generateAccessToken(username, client, refreshTokenDuration)
 		refreshToken := &oauth2.RefreshToken{
 			Key:      refreshTokenKey,
 			Username: username,
@@ -90,6 +90,13 @@ func (tokenManager *TokenManager) CreateAccessTokenResponse(username string, cli
 		refreshTokenStore.SetWithDuration(refreshTokenKey, refreshToken, refreshTokenDuration)
 
 		accessTokenResponse.RefreshTokenKey = refreshTokenKey
+	}
+
+	if tokenManager.config.OIDC {
+		//user, userExists := tokenManager.config.GetUser(username)
+		//if userExists {
+		//	accessTokenResponse.IdToken
+		//}
 	}
 
 	return accessTokenResponse
@@ -117,15 +124,20 @@ func (tokenManager *TokenManager) ValidateAccessToken(authorizationHeader string
 	return user, accessToken.Scopes, true
 }
 
-func (tokenManager *TokenManager) generateToken(username string, client *config.Client, duration time.Duration) string {
-	tokenId := uuid.New()
-	if client.OpaqueToken {
-		return tokenManager.generateOpaqueToken(tokenId.String())
-	}
-	return tokenManager.generateJWTToken(tokenId.String(), duration, username, client)
+func (tokenManager *TokenManager) generateIdToken(username string, client *config.Client, duration time.Duration) string {
+	return ""
 }
 
-func (tokenManager *TokenManager) generateOpaqueToken(tokenId string) string {
+func (tokenManager *TokenManager) generateAccessToken(username string, client *config.Client, duration time.Duration) string {
+	tokenId := uuid.New()
+	if client.OpaqueToken {
+		return tokenManager.generateOpaqueAccessToken(tokenId.String())
+	}
+	accessToken := generateAccessToken(tokenId.String(), duration, username, client)
+	return tokenManager.generateJWTToken(client, accessToken)
+}
+
+func (tokenManager *TokenManager) generateOpaqueAccessToken(tokenId string) string {
 	return base64.RawURLEncoding.EncodeToString([]byte(tokenId))
 }
 
@@ -144,7 +156,35 @@ func (tokenManager *TokenManager) generateOpaqueToken(tokenId string) string {
   "scope": "read write"
 }
 */
-func (tokenManager *TokenManager) generateJWTToken(tokenId string, duration time.Duration, username string, client *config.Client) string {
+func (tokenManager *TokenManager) generateJWTToken(client *config.Client, token jwt.Token) string {
+
+	loader := tokenManager.keyLoader
+	managedKey, keyExists := loader.LoadKeys(client)
+
+	if !keyExists {
+		options := loader.GetServerKey()
+		tokenString, tokenError := jwt.Sign(token, options)
+		if tokenError != nil {
+			panic(tokenError)
+		}
+
+		return string(tokenString)
+	} else {
+		key := *managedKey.Key
+
+		options := jwt.WithKey(key.Algorithm(), key)
+
+		tokenString, tokenError := jwt.Sign(token, options)
+		if tokenError != nil {
+			panic(tokenError)
+		}
+
+		return string(tokenString)
+	}
+
+}
+
+func generateAccessToken(tokenId string, duration time.Duration, username string, client *config.Client) jwt.Token {
 	builder := jwt.NewBuilder().
 		Expiration(time.Now().Add(duration)). // https://www.rfc-editor.org/rfc/rfc7519.html#section-4.1.4
 		IssuedAt(time.Now())                  // https://www.rfc-editor.org/rfc/rfc7519.html#section-4.1.6
@@ -172,30 +212,7 @@ func (tokenManager *TokenManager) generateJWTToken(tokenId string, duration time
 		panic(builderError)
 	}
 
-	loader := tokenManager.keyLoader
-	managedKey, keyExists := loader.LoadKeys(client)
-
-	if !keyExists {
-		options := loader.GetServerKey()
-		tokenString, tokenError := jwt.Sign(token, options)
-		if tokenError != nil {
-			panic(tokenError)
-		}
-
-		return string(tokenString)
-	} else {
-		key := *managedKey.Key
-
-		options := jwt.WithKey(key.Algorithm(), key)
-
-		tokenString, tokenError := jwt.Sign(token, options)
-		if tokenError != nil {
-			panic(tokenError)
-		}
-
-		return string(tokenString)
-	}
-
+	return token
 }
 
 func getAuthorizationHeaderValue(authorizationHeader string) *string {
