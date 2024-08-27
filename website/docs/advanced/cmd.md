@@ -24,7 +24,7 @@ The `-help` parameter will show the usage information.
 
 ## Version
 
-The `-version` parameter will show the usage information.
+The `-version` parameter will show the version information.
 
 ## Configuration file
 
