@@ -17,6 +17,7 @@ func Test_GrantTypeFromString(t *testing.T) {
 		{string(GtClientCredentials), true, "client_credentials"},
 		{string(GtPassword), true, "password"},
 		{string(GtRefreshToken), true, "refresh_token"},
+		{string(GtImplicit), true, "implicit"},
 		{"foo", false, ""},
 	}
 

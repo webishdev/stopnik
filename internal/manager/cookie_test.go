@@ -3,7 +3,9 @@ package manager
 import (
 	"fmt"
 	"github.com/webishdev/stopnik/internal/config"
+	"github.com/webishdev/stopnik/internal/endpoint"
 	"net/http"
+	"net/http/httptest"
 	"testing"
 	"time"
 )
@@ -25,7 +27,7 @@ func Test_Cookie(t *testing.T) {
 		t.Fatal(setupError)
 	}
 
-	t.Run("Create and validate Cookie", func(t *testing.T) {
+	t.Run("Create and validate auth cookie", func(t *testing.T) {
 		cookieManager := NewCookieManager(testConfig)
 
 		cookie, cookieError := cookieManager.CreateAuthCookie("foo")
@@ -34,7 +36,7 @@ func Test_Cookie(t *testing.T) {
 			t.Error(cookieError)
 		}
 
-		testCookieValues(t, cookie, 3600)
+		testAuthCookieValues(t, cookie, 3600)
 
 		httpRequest := &http.Request{
 			Header: http.Header{
@@ -45,11 +47,11 @@ func Test_Cookie(t *testing.T) {
 		_, userExists := cookieManager.ValidateAuthCookie(httpRequest)
 
 		if !userExists {
-			t.Error("Token in cookie is invalid")
+			t.Error("Token in auth cookie is invalid")
 		}
 	})
 
-	t.Run("Create and validate expired Cookie", func(t *testing.T) {
+	t.Run("Create and validate expired auth cookie", func(t *testing.T) {
 		cookieManager := newCookieManagerWithTime(testConfig, now)
 
 		cookie, cookieError := cookieManager.CreateAuthCookie("foo")
@@ -73,7 +75,7 @@ func Test_Cookie(t *testing.T) {
 		}
 	})
 
-	t.Run("Create and validate Cookie with wrong username", func(t *testing.T) {
+	t.Run("Create and validate auth cookie with wrong username", func(t *testing.T) {
 		cookieManager := NewCookieManager(testConfig)
 
 		cookie, cookieError := cookieManager.CreateAuthCookie("bar")
@@ -95,7 +97,7 @@ func Test_Cookie(t *testing.T) {
 		}
 	})
 
-	t.Run("Create and validate Cookie with invalid content", func(t *testing.T) {
+	t.Run("Create and validate auth cookie with invalid content", func(t *testing.T) {
 		cookieManager := NewCookieManager(testConfig)
 
 		cookie := fmt.Sprintf("%s=%s", testConfig.GetAuthCookieName(), "moo")
@@ -113,19 +115,50 @@ func Test_Cookie(t *testing.T) {
 		}
 	})
 
-	t.Run("Delete Cookie", func(t *testing.T) {
+	t.Run("Delete auth cookie", func(t *testing.T) {
 		cookieManager := NewCookieManager(testConfig)
 
 		deleteCookie := cookieManager.DeleteAuthCookie()
 
-		testCookieValues(t, deleteCookie, -1)
+		testAuthCookieValues(t, deleteCookie, -1)
+	})
+
+	t.Run("Create and read message cookie", func(t *testing.T) {
+		cookieManager := NewCookieManager(testConfig)
+
+		cookie := cookieManager.CreateMessageCookie("foo into bar")
+
+		if cookie.Value != "foo into bar" {
+			t.Errorf("Message cookie value did not match, expected foo into bar, got %v", cookie.Value)
+		}
+
+		httpRequest := httptest.NewRequest(http.MethodGet, endpoint.Account, nil)
+		httpRequest.AddCookie(&cookie)
+
+		cookieValue := cookieManager.GetMessageCookieValue(httpRequest)
+
+		if cookieValue != "foo into bar" {
+			t.Errorf("Message cookie value from request did not match, expected foo into bar, got %v", cookie.Value)
+		}
+	})
+
+	t.Run("No message cookie exists in request", func(t *testing.T) {
+		cookieManager := NewCookieManager(testConfig)
+
+		httpRequest := httptest.NewRequest(http.MethodGet, endpoint.Account, nil)
+
+		cookieValue := cookieManager.GetMessageCookieValue(httpRequest)
+
+		if cookieValue != "" {
+			t.Error("Message cookie value should not exists")
+		}
 	})
 
 }
 
-func testCookieValues(t *testing.T, cookie http.Cookie, maxAge int) {
+func testAuthCookieValues(t *testing.T, cookie http.Cookie, maxAge int) {
 	if cookie.Name != "stopnik_auth" {
-		t.Error("Cookie name is wrong")
+		t.Error("auth cookie name is wrong")
 	}
 
 	if !cookie.HttpOnly {
