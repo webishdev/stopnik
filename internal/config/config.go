@@ -78,7 +78,7 @@ type Claim struct {
 
 type Client struct {
 	Id                      string   `yaml:"id"`
-	Secret                  string   `yaml:"secret"`
+	ClientSecret            string   `yaml:"clientSecret"`
 	Salt                    string   `yaml:"salt"`
 	ClientType              string   `yaml:"type"`
 	AccessTTL               int      `yaml:"accessTTL"`
@@ -209,7 +209,7 @@ func (config *Config) Setup() error {
 	}
 
 	for clientIndex, client := range config.Clients {
-		if client.Id == "" || len(client.Secret) != 128 {
+		if client.Id == "" || len(client.ClientSecret) != 128 {
 			invalidClient := fmt.Sprintf("Client configuration invalid. Client %d %v", clientIndex, client)
 			return errors.New(invalidClient)
 		}

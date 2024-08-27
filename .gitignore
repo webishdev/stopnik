@@ -7,8 +7,6 @@ build/
 bin/
 .test_coverage/
 .lint_result/
-*.crt
-*.key
 dist/
 docs/static/
 

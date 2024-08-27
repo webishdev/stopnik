@@ -77,7 +77,7 @@ func (validator *RequestValidator) ValidateClientCredentials(r *http.Request) (*
 
 		secretHash := crypto.Sha512SaltedHash(clientSecret, client.Salt)
 
-		if secretHash != client.Secret {
+		if secretHash != client.ClientSecret {
 			return nil, usingFallback, false
 		}
 

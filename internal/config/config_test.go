@@ -335,23 +335,23 @@ func validClients(t *testing.T) {
 		*origin = Config{
 			Clients: []Client{
 				{
-					Id:        "foo",
-					Secret:    "d82c4eb5261cb9c8aa9855edd67d1bd10482f41529858d925094d173fa662aa91ff39bc5b188615273484021dfb16fd8284cf684ccf0fc795be3aa2fc1e6c181",
-					Redirects: []string{"http://localhost:8080/callback"},
+					Id:           "foo",
+					ClientSecret: "d82c4eb5261cb9c8aa9855edd67d1bd10482f41529858d925094d173fa662aa91ff39bc5b188615273484021dfb16fd8284cf684ccf0fc795be3aa2fc1e6c181",
+					Redirects:    []string{"http://localhost:8080/callback"},
 				},
 				{
-					Id:         "bar",
-					Secret:     "3c9909afec25354d551dae21590bb26e38d53f2173b8d3dc3eee4c047e7ab1c1eb8b85103e3be7ba613b31bb5c9c36214dc9f14a42fd7a2fdb84856bca5c44c2",
-					Redirects:  []string{"http://localhost:8080/callback", "https://example.com/callback"},
-					AccessTTL:  20,
-					RefreshTTL: 60,
-					Issuer:     "other",
-					Audience:   []string{"one", "two"},
+					Id:           "bar",
+					ClientSecret: "3c9909afec25354d551dae21590bb26e38d53f2173b8d3dc3eee4c047e7ab1c1eb8b85103e3be7ba613b31bb5c9c36214dc9f14a42fd7a2fdb84856bca5c44c2",
+					Redirects:    []string{"http://localhost:8080/callback", "https://example.com/callback"},
+					AccessTTL:    20,
+					RefreshTTL:   60,
+					Issuer:       "other",
+					Audience:     []string{"one", "two"},
 				},
 				{
-					Id:        "moo",
-					Secret:    "ddaf35a193617abacc417349ae20413112e6fa4e89a97ea20a9eeee64b55d39a2192992a274fc1a836ba3c23a3feebbd454d4423643ce80e2a9ac94fa54ca49f",
-					Redirects: []string{"http://localhost:8080/callback"},
+					Id:           "moo",
+					ClientSecret: "ddaf35a193617abacc417349ae20413112e6fa4e89a97ea20a9eeee64b55d39a2192992a274fc1a836ba3c23a3feebbd454d4423643ce80e2a9ac94fa54ca49f",
+					Redirects:    []string{"http://localhost:8080/callback"},
 				},
 			},
 		}
@@ -378,10 +378,10 @@ func validClients(t *testing.T) {
 
 func invalidClients(t *testing.T) {
 	var invalidClientParameters = []Client{
-		{Id: "wrong", Secret: "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"},
-		{Id: "empty", Secret: ""},
-		{Id: "", Secret: "d82c4eb5261cb9c8aa9855edd67d1bd10482f41529858d925094d173fa662aa91ff39bc5b188615273484021dfb16fd8284cf684ccf0fc795be3aa2fc1e6c181"},
-		{Id: "no_redirects", Secret: "3c9909afec25354d551dae21590bb26e38d53f2173b8d3dc3eee4c047e7ab1c1eb8b85103e3be7ba613b31bb5c9c36214dc9f14a42fd7a2fdb84856bca5c44c2"},
+		{Id: "wrong", ClientSecret: "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"},
+		{Id: "empty", ClientSecret: ""},
+		{Id: "", ClientSecret: "d82c4eb5261cb9c8aa9855edd67d1bd10482f41529858d925094d173fa662aa91ff39bc5b188615273484021dfb16fd8284cf684ccf0fc795be3aa2fc1e6c181"},
+		{Id: "no_redirects", ClientSecret: "3c9909afec25354d551dae21590bb26e38d53f2173b8d3dc3eee4c047e7ab1c1eb8b85103e3be7ba613b31bb5c9c36214dc9f14a42fd7a2fdb84856bca5c44c2"},
 	}
 
 	for _, client := range invalidClientParameters {
@@ -431,7 +431,7 @@ func assertClientExistsWithId(t *testing.T, id string, config *Config) {
 	if client.Id != id {
 		t.Error("expected correct id")
 	}
-	if client.Secret == "" {
+	if client.ClientSecret == "" {
 		t.Error("expected secret")
 	}
 }
