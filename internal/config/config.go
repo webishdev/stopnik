@@ -110,6 +110,7 @@ type Config struct {
 	generatedSecret string
 	userMap         map[string]*User
 	clientMap       map[string]*Client
+	oidc            bool
 }
 
 type ReadFile func(filename string) ([]byte, error)
@@ -218,6 +219,8 @@ func (config *Config) Setup() error {
 			invalidClient := fmt.Sprintf("Client is missing redirects. Client %d %v", clientIndex, client)
 			return errors.New(invalidClient)
 		}
+
+		config.oidc = config.oidc || client.OIDC
 	}
 
 	config.userMap = setup[User](&config.Users, func(user User) string {
@@ -287,6 +290,10 @@ func (config *Config) GetTitle() string {
 
 func (config *Config) GetFooterText() string {
 	return GetOrDefaultString(config.UI.FooterText, "STOPnik")
+}
+
+func (config *Config) GetOIDC() bool {
+	return config.oidc
 }
 
 func (client *Client) GetAccessTTL() int {
