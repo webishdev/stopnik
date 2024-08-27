@@ -144,9 +144,9 @@ func testIntrospectEmptyToken(t *testing.T, testConfig *config.Config, keyManger
 				t.Errorf("handler returned wrong status code: got %v want %v", rr.Code, http.StatusOK)
 			}
 
-			response := rr.Result()
+			requestResponse := rr.Result()
 
-			introspectResponse := testIntrospectParse(t, response)
+			introspectResponse := testIntrospectParse(t, requestResponse)
 
 			if introspectResponse.Active {
 				t.Errorf("Token should not be active")
@@ -191,9 +191,9 @@ func testIntrospectInvalidToken(t *testing.T, testConfig *config.Config, keyMang
 				t.Errorf("handler returned wrong status code: got %v want %v", rr.Code, http.StatusOK)
 			}
 
-			response := rr.Result()
+			requestResponse := rr.Result()
 
-			introspectResponse := testIntrospectParse(t, response)
+			introspectResponse := testIntrospectParse(t, requestResponse)
 
 			if introspectResponse.Active {
 				t.Errorf("Token should not be active")
@@ -263,9 +263,9 @@ func testIntrospect(t *testing.T, testConfig *config.Config, keyManger *manager.
 				t.Errorf("handler returned wrong status code: got %v want %v", rr.Code, http.StatusOK)
 			}
 
-			response := rr.Result()
+			requestResponse := rr.Result()
 
-			introspectResponse := testIntrospectParse(t, response)
+			introspectResponse := testIntrospectParse(t, requestResponse)
 
 			if !introspectResponse.Active {
 				t.Errorf("Token should be active")
@@ -334,9 +334,9 @@ func testIntrospectWithoutHint(t *testing.T, testConfig *config.Config, keyMange
 				t.Errorf("handler returned wrong status code: got %v want %v", rr.Code, http.StatusOK)
 			}
 
-			response := rr.Result()
+			requestResponse := rr.Result()
 
-			introspectResponse := testIntrospectParse(t, response)
+			introspectResponse := testIntrospectParse(t, requestResponse)
 
 			if !introspectResponse.Active {
 				t.Errorf("Token should be active")

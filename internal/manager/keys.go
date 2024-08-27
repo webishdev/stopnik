@@ -64,7 +64,7 @@ func NewKeyManger(config *config.Config) (*KeyManger, error) {
 func (km *KeyManger) getClientKey(c *config.Client) *crypto.ManagedKey {
 	var result *crypto.ManagedKey
 	for _, mangedKey := range km.GetAllKeys() {
-		if mangedKey.Server {
+		if result == nil && mangedKey.Server {
 			result = mangedKey
 		}
 		for _, client := range mangedKey.Clients {

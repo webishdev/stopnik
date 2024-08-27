@@ -731,8 +731,8 @@ func testAuthorizeAuthorizationGrant(t *testing.T, testConfig *config.Config) {
 	}
 }
 
-func testAuthorizeNoCookeExists(t *testing.T, testConfig *config.Config) bool {
-	return t.Run("No cookie exists", func(t *testing.T) {
+func testAuthorizeNoCookeExists(t *testing.T, testConfig *config.Config) {
+	t.Run("No cookie exists", func(t *testing.T) {
 		parsedUri := createUri(t, endpoint.Authorization, func(query url.Values) {
 			query.Set(oauth2.ParameterClientId, "foo")
 			query.Set(oauth2.ParameterRedirectUri, "https://example.com/callback")
@@ -773,8 +773,8 @@ func testAuthorizeNoCookeExists(t *testing.T, testConfig *config.Config) bool {
 	})
 }
 
-func testAuthorizeInvalidResponseType(t *testing.T, testConfig *config.Config) bool {
-	return t.Run("Invalid response type", func(t *testing.T) {
+func testAuthorizeInvalidResponseType(t *testing.T, testConfig *config.Config) {
+	t.Run("Invalid response type", func(t *testing.T) {
 		parsedUri := createUri(t, endpoint.Authorization, func(query url.Values) {
 			query.Set(oauth2.ParameterClientId, "foo")
 			query.Set(oauth2.ParameterRedirectUri, "https://example.com/callback")
@@ -847,8 +847,8 @@ func testAuthorizeInvalidRedirect(t *testing.T, testConfig *config.Config) {
 	}
 }
 
-func testAuthorizeInvalidClientId(t *testing.T, testConfig *config.Config) bool {
-	return t.Run("Invalid client id", func(t *testing.T) {
+func testAuthorizeInvalidClientId(t *testing.T, testConfig *config.Config) {
+	t.Run("Invalid client id", func(t *testing.T) {
 		parsedUri := createUri(t, endpoint.Authorization, func(query url.Values) {
 			query.Set(oauth2.ParameterClientId, "bar")
 		})
@@ -867,8 +867,8 @@ func testAuthorizeInvalidClientId(t *testing.T, testConfig *config.Config) bool 
 	})
 }
 
-func testAuthorizeNoClientId(t *testing.T, testConfig *config.Config) bool {
-	return t.Run("No client id provided", func(t *testing.T) {
+func testAuthorizeNoClientId(t *testing.T, testConfig *config.Config) {
+	t.Run("No client id provided", func(t *testing.T) {
 		requestValidator := validation.NewRequestValidator(testConfig)
 
 		authorizeHandler := NewAuthorizeHandler(requestValidator, &manager.CookieManager{}, &manager.SessionManager{}, &manager.TokenManager{}, &template.Manager{})
