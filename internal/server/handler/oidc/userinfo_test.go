@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/webishdev/stopnik/internal/config"
 	"github.com/webishdev/stopnik/internal/endpoint"
+	internalHttp "github.com/webishdev/stopnik/internal/http"
 	"github.com/webishdev/stopnik/internal/manager"
 	"net/http"
 	"net/http/httptest"
@@ -38,10 +39,43 @@ func Test_UserInfo(t *testing.T) {
 		t.Error(keyLoadingError)
 	}
 
+	testOidcUserInfo(t, testConfig, keyManger)
+
 	testOidcUserInfoNotAllowedHttpMethods(t, testConfig, keyManger)
 }
 
-func testOidcUserInfoNotAllowedHttpMethods(t *testing.T, testConfig *config.Config, keyManger *manager.KeyManger) {
+func testOidcUserInfo(t *testing.T, testConfig *config.Config, keyManager *manager.KeyManger) {
+	t.Run("OIDC UserInfo", func(t *testing.T) {
+		tokenManager := manager.NewTokenManager(testConfig, manager.NewDefaultKeyLoader(testConfig, keyManager))
+
+		client, clientExists := testConfig.GetClient("foo")
+		if !clientExists {
+			t.Error("client should exist")
+		}
+
+		request := httptest.NewRequest(http.MethodPost, endpoint.Token, nil)
+		tokenResponse := tokenManager.CreateAccessTokenResponse(request, "foo", client, []string{"a:foo", "b:bar"}, "")
+
+		oidcDiscoveryHandler := NewOidcUserInfoHandler(tokenManager)
+
+		httpRequest := &http.Request{
+			Method: http.MethodGet,
+			Header: http.Header{
+				internalHttp.Authorization: []string{"Bearer " + tokenResponse.AccessTokenKey},
+			},
+		}
+		rr := httptest.NewRecorder()
+
+		oidcDiscoveryHandler.ServeHTTP(rr, httpRequest)
+
+		if rr.Code != http.StatusOK {
+			t.Errorf("handler returned wrong status code: got %v want %v", rr.Code, http.StatusOK)
+		}
+
+	})
+}
+
+func testOidcUserInfoNotAllowedHttpMethods(t *testing.T, testConfig *config.Config, keyManager *manager.KeyManger) {
 	var testInvalidOidcUserInfoHttpMethods = []string{
 		http.MethodPost,
 		http.MethodPut,
@@ -52,7 +86,7 @@ func testOidcUserInfoNotAllowedHttpMethods(t *testing.T, testConfig *config.Conf
 	for _, method := range testInvalidOidcUserInfoHttpMethods {
 		testMessage := fmt.Sprintf("OIDC configuration with unsupported method %s", method)
 		t.Run(testMessage, func(t *testing.T) {
-			tokenManager := manager.NewTokenManager(testConfig, manager.NewDefaultKeyLoader(testConfig, keyManger))
+			tokenManager := manager.NewTokenManager(testConfig, manager.NewDefaultKeyLoader(testConfig, keyManager))
 			oidcDiscoveryHandler := NewOidcUserInfoHandler(tokenManager)
 
 			rr := httptest.NewRecorder()
