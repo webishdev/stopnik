@@ -71,10 +71,11 @@ type UserProfile struct {
 }
 
 type User struct {
-	Username string      `yaml:"username"`
-	Password string      `yaml:"password"`
-	Salt     string      `yaml:"salt"`
-	Profile  UserProfile `yaml:"profile"`
+	Username string              `yaml:"username"`
+	Password string              `yaml:"password"`
+	Salt     string              `yaml:"salt"`
+	Profile  UserProfile         `yaml:"profile"`
+	Roles    map[string][]string `yaml:"roles"`
 }
 
 type Claim struct {
@@ -99,6 +100,7 @@ type Client struct {
 	Issuer                  string   `yaml:"issuer"`
 	Audience                []string `yaml:"audience"`
 	PrivateKey              string   `yaml:"privateKey"`
+	RolesClaim              string   `yaml:"rolesClaim"`
 }
 
 type UI struct {
@@ -307,6 +309,10 @@ func (config *Config) GetOidc() bool {
 	return config.oidc
 }
 
+func (client *Client) GetRolesClaim() string {
+	return GetOrDefaultString(client.RolesClaim, "roles")
+}
+
 func (client *Client) GetAccessTTL() int {
 	return GetOrDefaultInt(client.AccessTTL, 5)
 }
@@ -354,4 +360,8 @@ func (user *User) GetFormattedAddress() string {
 		sb.WriteString("\n")
 	}
 	return sb.String()
+}
+
+func (user *User) GetRoles(clientId string) []string {
+	return user.Roles[clientId]
 }

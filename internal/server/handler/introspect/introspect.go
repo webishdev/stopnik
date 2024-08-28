@@ -49,8 +49,8 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 			// Fall back to access token with scopes
 			authorizationHeader := r.Header.Get(internalHttp.Authorization)
-			_, scopes, userExists := h.tokenManager.ValidateAccessToken(authorizationHeader)
-			if !userExists {
+			_, _, scopes, valid := h.tokenManager.ValidateAccessToken(authorizationHeader)
+			if !valid {
 				oauth2.TokenErrorStatusResponseHandler(w, http.StatusUnauthorized, &oauth2.TokenErrorResponseParameter{Error: oauth2.TokenEtInvalidRequest})
 				return
 			}

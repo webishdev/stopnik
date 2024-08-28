@@ -9,6 +9,7 @@ import (
 	"github.com/webishdev/stopnik/internal/crypto"
 	internalHttp "github.com/webishdev/stopnik/internal/http"
 	"github.com/webishdev/stopnik/internal/oauth2"
+	"github.com/webishdev/stopnik/internal/oidc"
 	"github.com/webishdev/stopnik/internal/store"
 	"github.com/webishdev/stopnik/log"
 	"net/http"
@@ -106,26 +107,33 @@ func (tokenManager *TokenManager) CreateAccessTokenResponse(r *http.Request, use
 	return accessTokenResponse
 }
 
-func (tokenManager *TokenManager) ValidateAccessToken(authorizationHeader string) (*config.User, []string, bool) {
+func (tokenManager *TokenManager) ValidateAccessToken(authorizationHeader string) (*config.User, *config.Client, []string, bool) {
 	log.Debug("Validating access token")
 	accessTokenStore := *tokenManager.accessTokenStore
 	headerValue := getAuthorizationHeaderValue(authorizationHeader)
 	if headerValue == nil {
-		return nil, []string{}, false
+		return nil, nil, []string{}, false
 	}
 	accessToken, authorizationHeaderExists := accessTokenStore.Get(*headerValue)
 	if !authorizationHeaderExists {
-		return nil, []string{}, false
+		return nil, nil, []string{}, false
 	}
 
 	username := accessToken.Username
 	user, userExists := tokenManager.config.GetUser(username)
 
 	if !userExists {
-		return nil, []string{}, false
+		return nil, nil, []string{}, false
 	}
 
-	return user, accessToken.Scopes, true
+	clientId := accessToken.ClientId
+	client, clientExists := tokenManager.config.GetClient(clientId)
+
+	if !clientExists {
+		return nil, nil, []string{}, false
+	}
+
+	return user, client, accessToken.Scopes, true
 }
 
 func (tokenManager *TokenManager) generateIdToken(requestData *internalHttp.RequestData, user *config.User, client *config.Client, nonce string, duration time.Duration) string {
@@ -208,8 +216,12 @@ func generateIdToken(requestData *internalHttp.RequestData, user *config.User, c
 	audience := append(client.GetAudience(), client.Id)
 	builder.Audience(audience)
 
-	builder.Claim("azp", client.Id)
-	builder.Claim("nonce", nonce)
+	builder.Claim(oidc.ClaimAuthorizedParty, client.Id)
+	builder.Claim(oidc.ClaimNonce, nonce)
+	roles := user.GetRoles(client.Id)
+	if len(roles) != 0 {
+		builder.Claim(client.GetRolesClaim(), roles)
+	}
 
 	token, builderError := builder.Build()
 

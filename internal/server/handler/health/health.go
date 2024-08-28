@@ -33,8 +33,8 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		healthResponse := Health{Ping: "pong"}
 
 		authorizationHeader := r.Header.Get(internalHttp.Authorization)
-		user, scopes, userExists := h.tokenManager.ValidateAccessToken(authorizationHeader)
-		if userExists {
+		user, _, scopes, valid := h.tokenManager.ValidateAccessToken(authorizationHeader)
+		if valid {
 			healthResponse.Username = user.Username
 			healthResponse.Scopes = scopes
 		}

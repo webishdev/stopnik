@@ -57,8 +57,8 @@ func Test_Token(t *testing.T) {
 
 			authorizationHeader := fmt.Sprintf("%s %s", internalHttp.AuthBearer, accessTokenResponse.AccessTokenKey)
 
-			user, scopes, userExists := tokenManager.ValidateAccessToken(authorizationHeader)
-			if !userExists {
+			user, _, scopes, valid := tokenManager.ValidateAccessToken(authorizationHeader)
+			if !valid {
 				t.Error("user does not exist")
 			}
 
@@ -113,7 +113,7 @@ func Test_Token(t *testing.T) {
 		keyManager := createTestKeyManager(t, testConfig)
 		tokenManager := NewTokenManager(testConfig, NewDefaultKeyLoader(testConfig, keyManager))
 
-		_, _, valid := tokenManager.ValidateAccessToken("foooo")
+		_, _, _, valid := tokenManager.ValidateAccessToken("foooo")
 
 		if valid {
 			t.Error("should not be valid")
@@ -125,7 +125,7 @@ func Test_Token(t *testing.T) {
 		keyManager := createTestKeyManager(t, testConfig)
 		tokenManager := NewTokenManager(testConfig, NewDefaultKeyLoader(testConfig, keyManager))
 
-		_, _, valid := tokenManager.ValidateAccessToken(fmt.Sprintf("%s %s", internalHttp.AuthBearer, "foo"))
+		_, _, _, valid := tokenManager.ValidateAccessToken(fmt.Sprintf("%s %s", internalHttp.AuthBearer, "foo"))
 
 		if valid {
 			t.Error("should not be valid")
@@ -144,7 +144,7 @@ func Test_Token(t *testing.T) {
 		request := httptest.NewRequest(http.MethodPost, endpoint.Token, nil)
 		accessTokenResponse := tokenManager.CreateAccessTokenResponse(request, "bar", client, []string{"abc", "def"}, "")
 
-		_, _, valid := tokenManager.ValidateAccessToken(fmt.Sprintf("%s %s", internalHttp.AuthBearer, accessTokenResponse.AccessTokenKey))
+		_, _, _, valid := tokenManager.ValidateAccessToken(fmt.Sprintf("%s %s", internalHttp.AuthBearer, accessTokenResponse.AccessTokenKey))
 
 		if valid {
 			t.Error("should not be valid")
