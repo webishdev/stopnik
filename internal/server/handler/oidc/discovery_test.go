@@ -86,22 +86,22 @@ func testOidcConfigurationNotAllowedHttpMethods(t *testing.T) {
 	}
 }
 
-func testOidcConfigurationParse(t *testing.T, r *http.Response) response {
+func testOidcConfigurationParse(t *testing.T, r *http.Response) oidcConfigurationResponse {
 	responseBody, bodyReadErr := io.ReadAll(r.Body)
 
 	if bodyReadErr != nil {
-		t.Errorf("could not read response body: %v", bodyReadErr)
+		t.Errorf("could not read oidcConfigurationResponse body: %v", bodyReadErr)
 	}
 
 	if responseBody == nil {
-		t.Errorf("response body was nil")
+		t.Errorf("oidcConfigurationResponse body was nil")
 	}
 
-	keysResponse := response{}
-	jsonParseError := json.Unmarshal(responseBody, &keysResponse)
+	oidcConfigurationResponse := oidcConfigurationResponse{}
+	jsonParseError := json.Unmarshal(responseBody, &oidcConfigurationResponse)
 	if jsonParseError != nil {
-		t.Errorf("could not parse response body: %v", jsonParseError)
+		t.Errorf("could not parse oidcConfigurationResponse body: %v", jsonParseError)
 	}
 
-	return keysResponse
+	return oidcConfigurationResponse
 }

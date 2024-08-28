@@ -97,11 +97,11 @@ func testMetadataParse(t *testing.T, r *http.Response) response {
 		t.Errorf("response body was nil")
 	}
 
-	keysResponse := response{}
-	jsonParseError := json.Unmarshal(responseBody, &keysResponse)
+	metadataResponse := response{}
+	jsonParseError := json.Unmarshal(responseBody, &metadataResponse)
 	if jsonParseError != nil {
 		t.Errorf("could not parse response body: %v", jsonParseError)
 	}
 
-	return keysResponse
+	return metadataResponse
 }

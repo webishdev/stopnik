@@ -11,7 +11,7 @@ import (
 	"net/http"
 )
 
-type response struct {
+type oidcConfigurationResponse struct {
 	Issuer                                             string                     `json:"issuer"`
 	AuthorizationEndpoint                              string                     `json:"authorization_endpoint"`
 	TokenEndpoint                                      string                     `json:"token_endpoint"`
@@ -101,7 +101,7 @@ func (h *DiscoveryHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			jwa.HS256,
 		}
 
-		metadataResponse := &response{
+		metadataResponse := &oidcConfigurationResponse{
 			Issuer:                requestData.IssuerString(),
 			AuthorizationEndpoint: authorizationEndpoint.String(),
 			TokenEndpoint:         tokenEndpoint.String(),
