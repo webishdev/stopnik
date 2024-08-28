@@ -25,7 +25,7 @@ const sidebars: SidebarsConfig = {
     {
       type: 'category',
       label: 'Advanced Topics',
-      items: ['advanced/cmd', 'advanced/endpoints'],
+      items: ['advanced/cmd', 'advanced/endpoints', 'advanced/build'],
     },
   ],
 };

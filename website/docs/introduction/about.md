@@ -1,6 +1,3 @@
----
-sidebar_position: 1
----
 # About
  
 **STOPnik** is a small, fast and secure authorization server with an minimal amount of dependencies.

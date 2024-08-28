@@ -1,6 +1,3 @@
----
-sidebar_position: 1
----
 # Command line
 
 **STOPnik** provides multiple parameters which can be used when starting from command line.

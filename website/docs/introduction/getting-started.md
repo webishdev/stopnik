@@ -1,7 +1,4 @@
----
-sidebar_position: 2
-title: Getting started
----
+
 
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
@@ -10,7 +7,7 @@ import TabItem from '@theme/TabItem';
 
 Multiple ways exists to start **STOPnik**.
 
-It can be started within a container and also from a downloaded binary.
+It can be started within a container and from a downloaded or [built](../advanced/build.md) binary.
 
 Starting within a container is the recommended way so far.
 

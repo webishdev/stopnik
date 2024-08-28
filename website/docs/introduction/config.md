@@ -1,6 +1,3 @@
----
-sidebar_position: 3
----
 # Configuration
 
 **STOPnik** configuration is a simple YAML file.
@@ -93,7 +90,7 @@ Each entry may contain the following options
 | Property                  | Description                                             |
 |---------------------------|---------------------------------------------------------|
 | `id`                      | The id of the client                                    |
-| `secret`                  | SHA512 hashed secret                                    |
+| `clientSecret`            | SHA512 hashed secret                                    |
 | `salt`                    | Optional salt for secret to avoid identical hash values |
 | `accessTTL`               | Access token time to live                               |
 | `refreshTTL`              | Refresh token time to live                              |
@@ -110,6 +107,8 @@ Each entry may contain the following options
 | `privateKey`              | RSA or EC private key to sign tokens                    |
 | `rolesClaim`              | Name for the claim used to provide roles                |
 
+
+For `clientSecret` and `salt` see, [Command line - Password](../advanced/cmd.md#password)
 
 #### Claims
 
@@ -139,6 +138,8 @@ Each entry may contain the following options
 | `salt`     | Optional salt for password to avoid identical hash values          |
 | `profile`  | User profile which will be used for OpenId Connect UserInfo        |
 | `roles`    | YAML map for roles, key of the map is the id of the related client |
+
+For `password` and `salt` see, [Command line - Password](../advanced/cmd.md#password)
 
 #### User profile
 
