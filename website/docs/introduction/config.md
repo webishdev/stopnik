@@ -24,15 +24,19 @@ The configuration file (e.g. `config.yml`) may contain different root options wh
 
 Root entry named `server`
 
-| Property         | Description                                                                       |
-|------------------|-----------------------------------------------------------------------------------|
-| `logLevel`       | Log level                                                                         |
-| `authCookieName` | Name of the cookie which will be used                                             |
-| `logoutRedirect` | Where to redirect user after logout                                               |
-| `addr`           | Go like address, may contain IP and port                                          |
-| `secret`         | Server secret                                                                     |
-| `privateKey`     | General RSA or EC private key (can be overwritten for each client) to sign tokens |
-| `tls`            | Configuration for TLS                                                             |
+| Property                | Description                                                                       |
+|-------------------------|-----------------------------------------------------------------------------------|
+| `logLevel`              | Log level                                                                         |
+| `cookies`               | Configuration related to cookie names                                             |
+| `addr`                  | [Go like address](https://pkg.go.dev/net#Dial), may contain IP and port           |
+| `secret`                | Server secret                                                                     |
+| `privateKey`            | General RSA or EC private key (can be overwritten for each client) to sign tokens |
+| `tls`                   | Configuration for TLS                                                             |
+| `logoutRedirect`        | Where to redirect user after logout                                               |
+| `introspectScope`       | Scope which allows token introspection                                            |
+| `revokeScopeScope`      | Scope which allows token revocation                                               |
+| `sessionTimeoutSeconds` | Seconds until session will end                                                    |
+
 
 #### TLS
 
@@ -40,10 +44,10 @@ Public and private keys to sign tokens
 
 Entry `server.tls`
 
-| Property | Description                              |
-|----------|------------------------------------------|
-| `addr`   | Go like address, may contain IP and port |
-| `keys`   | Public and private keys for TLS          |
+| Property | Description                                                             |
+|----------|-------------------------------------------------------------------------|
+| `addr`   | [Go like address](https://pkg.go.dev/net#Dial), may contain IP and port |
+| `keys`   | Public and private keys for TLS                                         |
 
 ##### TLS keys
 
@@ -56,6 +60,16 @@ Entry `server.tls.keys`
 | `cert`   | Certificate file |
 | `key`    | Key file         |
 
+#### Cookies
+
+Public and private keys to sign tokens
+
+Entry `server.cookies`
+
+| Property      | Description                      |
+|---------------|----------------------------------|
+| `authName`    | Name of the authorization cookie |
+| `messageName` | Name of internal message cookie  |
 
 ### User interface configuration
 
@@ -93,11 +107,12 @@ Each entry may contain the following options
 | `issuer`                  | Issuer                                                  |
 | `audience`                | Audience                                                |
 | `privateKey`              | RSA or EC private key to sign tokens                    |
-| `sessionTimeoutSeconds`   | Session timeout in seconds                              |
+| `rolesClaim`              | Name for the claim used to provide roles                |
+
 
 #### Claims
 
-List of claims
+List of client claims
 
 Entry `clients[n].calims`
 
@@ -116,11 +131,57 @@ Root entry `users`
 
 Each entry may contain the following options
 
-| Property   | Description                                               |
-|------------|-----------------------------------------------------------|
-| `username` | Username                                                  |
-| `password` | SHA512 hashed password                                    |
-| `salt`     | Optional salt for password to avoid identical hash values |
+| Property   | Description                                                        |
+|------------|--------------------------------------------------------------------|
+| `username` | Username                                                           |
+| `password` | SHA512 hashed password                                             |
+| `salt`     | Optional salt for password to avoid identical hash values          |
+| `profile`  | User profile which will be used for OpenId Connect UserInfo        |
+| `roles`    | YAML map for roles, key of the map is the id of the related client |
+
+#### User profile
+
+User profile which will be used for OpenId Connect UserInfo
+
+Entry `users[n].profile`
+
+Each entry may contain the following options
+
+| Property            | Description                      |
+|---------------------|----------------------------------|
+| `givenName`         | Given name                       |
+| `familyName`        | Family name                      |
+| `nickname`          | Nickname                         |
+| `preferredUserName` | Preferred username               |
+| `email`             | E-Mail address                   |
+| `emailVerified`     | E-Mail address verification flag |
+| `gender`            | Gender                           |
+| `birthDate`         | Birthdate                        |
+| `zoneInfo`          | Zone information                 |
+| `locale`            | locale                           |
+| `phoneNumber`       | Phone number                     |
+| `phoneVerified`     | Phone number verficiation flag   |
+| `website`           | Website URL                      |
+| `profile`           | Profile URL                      |
+| `profilePicture`    | Profile picture URL              |
+| `address`           | User address                     |
+
+#### User address
+
+User address which will be used for OpenId Connect UserInfo
+
+Entry `users[n].profile.address`
+
+Each entry may contain the following options
+
+| Property     | Description |
+|--------------|-------------|
+| `street`     | Street      |
+| `city`       | City        |
+| `postalCode` | Postal code |
+| `region`     | Region      |
+| `country`    | Country     |
+
 
 ## Examples
 

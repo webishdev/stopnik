@@ -344,6 +344,14 @@ func (client *Client) GetClientType() oauth2.ClientType {
 	}
 }
 
+func (user *User) GetPreferredUsername() string {
+	if user.Profile.PreferredUserName == "" {
+		return user.Username
+	} else {
+		return user.Profile.PreferredUserName
+	}
+}
+
 func (user *User) GetFormattedAddress() string {
 	userAddress := user.Profile.Address
 	var sb strings.Builder

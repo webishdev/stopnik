@@ -31,7 +31,7 @@ func (h *UserInfoHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		if valid {
 			userInfoResponse = &user.Profile
 			userInfoResponse.Subject = user.Username
-			userInfoResponse.PreferredUserName = user.Username
+			userInfoResponse.PreferredUserName = user.GetPreferredUsername()
 			userInfoResponse.Name = userInfoResponse.GivenName + " " + userInfoResponse.FamilyName
 			userInfoResponse.Address.Formatted = user.GetFormattedAddress()
 		} else {
