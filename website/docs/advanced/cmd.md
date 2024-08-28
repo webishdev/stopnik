@@ -35,3 +35,10 @@ otherwise **STOPnik** will try to read the `config.yml` from the working directo
 
 The `-password` parameter will prompt for password/secret and an optional salt.
 The result can be used in the configuration file for client secret and user password.
+
+:::warning
+
+The password and salt will be asked and shown using `stdin` and `stdout`,
+someone standing next to you can see them in your terminal application!
+
+:::
