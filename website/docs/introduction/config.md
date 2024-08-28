@@ -95,9 +95,10 @@ Each entry may contain the following options
 | `id`                      | The id of the client                                    |
 | `secret`                  | SHA512 hashed secret                                    |
 | `salt`                    | Optional salt for secret to avoid identical hash values |
-| `type`                    | TODO                                                    |
 | `accessTTL`               | Access token time to live                               |
 | `refreshTTL`              | Refresh token time to live                              |
+| `idTTL`                   | OpenId Connect ID token time to live                    |
+| `oidc`                    | Flag to allow an client to handle OpenId Connect        |
 | `introspect`              | Introspection scope                                     |
 | `revoke`                  | Revocation scope                                        |
 | `redirects`               | List of redirects URIs                                  |
