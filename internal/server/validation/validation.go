@@ -55,18 +55,26 @@ func (validator *RequestValidator) ValidateClientCredentials(r *http.Request) (*
 		usingFallback := false
 		if !ok {
 			// Check usingFallback
-			log.Warn("Invalid or missing HTTP Basic authentication, using NOT RECOMMENDED usingFallback")
 			clientId = r.PostFormValue(oauth2.ParameterClientId)
 			clientSecret = r.PostFormValue(oauth2.ParameterClientSecret)
-			usingFallback = true
+			if clientId != "" {
+				log.Warn("Invalid or missing HTTP Basic authentication, using NOT RECOMMENDED POST from values")
+				usingFallback = true
+			}
 		}
 
-		if clientId == "" || clientSecret == "" {
+		if clientId == "" {
 			return nil, usingFallback, false
 		}
 
 		client, clientExists := validator.ValidateClientId(clientId)
 		if !clientExists {
+			return nil, usingFallback, false
+		}
+
+		if client.GetClientType() == oauth2.CtPublic && clientSecret == "" {
+			return client, usingFallback, true
+		} else if client.GetClientType() == oauth2.CtPublic && clientSecret != "" {
 			return nil, usingFallback, false
 		}
 

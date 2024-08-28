@@ -1,5 +1,5 @@
 server:
-  #logLevel: error
+  # logLevel: debug
   cookies:
     authName: stopnik_auth
     messageName: stopnik_message
@@ -24,12 +24,12 @@ clients:
   accessTTL: 5
   refreshTTL: 15
   idTTL: 15
-  type: confidential
   oidc: true
   introspect: true
   redirects:
     - https://oauth.pstmn.io/v1/callback
     - http://localhost:8080/session/callback
+    - http://localhost:5173/reporting/oidc-callback*
   claims:
     - name: foo
       value: bar
@@ -39,7 +39,6 @@ clients:
   accessTTL: 5
   refreshTTL: 15
   opaqueToken: true
-  type: confidential
   redirects:
     - https://oauth.pstmn.io/v1/callback
 - id: testclient3
@@ -47,7 +46,6 @@ clients:
   salt: 321
   accessTTL: 5
   refreshTTL: 15
-  type: confidential
   privateKey: ./test_keys/ecdsa521key.pem
   redirects:
     - https://oauth.pstmn.io/v1/callback
@@ -58,3 +56,8 @@ users:
   profile:
     givenName: John
     familyName: Doe
+    address:
+      street: Mainstreet 1
+      city: Sometown
+      postalCode: 12345
+      country: Boom

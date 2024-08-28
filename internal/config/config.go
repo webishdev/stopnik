@@ -5,8 +5,10 @@ import (
 	"errors"
 	"fmt"
 	internalHttp "github.com/webishdev/stopnik/internal/http"
+	"github.com/webishdev/stopnik/internal/oauth2"
 	"github.com/webishdev/stopnik/log"
 	"math/big"
+	"strings"
 )
 
 type Keys struct {
@@ -38,31 +40,34 @@ type Server struct {
 }
 
 type UserAddress struct {
-	Street     string `yaml:"street"`
-	City       string `yaml:"city"`
-	PostalCode string `yaml:"postalCode"`
-	Region     string `yaml:"region"`
-	Country    string `yaml:"country"`
+	Formatted  string `json:"formatted,omitempty"`
+	Street     string `yaml:"street" json:"street_address,omitempty"`
+	City       string `yaml:"city" json:"locality,omitempty"`
+	PostalCode string `yaml:"postalCode" json:"postal_code,omitempty"`
+	Region     string `yaml:"region" json:"region,omitempty"`
+	Country    string `yaml:"country" json:"country,omitempty"`
 }
 
 type UserProfile struct {
-	Subject           string `json:"sub,omitempty"`
-	Name              string `json:"name,omitempty"`
-	GivenName         string `yaml:"givenName" json:"given_name,omitempty"`
-	FamilyName        string `yaml:"familyName" json:"family_name,omitempty"`
-	Nickname          string `yaml:"nickname" json:"nickname,omitempty"`
-	PreferredUserName string `yaml:"preferredUserName" json:"preferred_username,omitempty"`
-	Email             string `yaml:"email" json:"email,omitempty"`
-	EmailVerified     bool   `yaml:"emailVerified" json:"email_verified,omitempty"`
-	Gender            string `yaml:"gender" json:"gender,omitempty"`
-	BirthDate         string `yaml:"birthDate" json:"birth_date,omitempty"`
-	ZoneInfo          string `yaml:"zoneInfo" json:"zone_info,omitempty"`
-	Locale            string `yaml:"locale" json:"locale,omitempty"`
-	PhoneNumber       string `yaml:"phoneNumber" json:"phone_number,omitempty"`
-	PhoneVerified     bool   `yaml:"phoneVerified" json:"phone_verified,omitempty"`
-	Website           string `yaml:"website" json:"website,omitempty"`
-	Profile           string `yaml:"profile" json:"profile,omitempty"`
-	ProfilePicture    string `yaml:"profilePicture" json:"profile_picture,omitempty"`
+	Subject           string      `json:"sub,omitempty"`
+	Name              string      `json:"name,omitempty"`
+	GivenName         string      `yaml:"givenName" json:"given_name,omitempty"`
+	FamilyName        string      `yaml:"familyName" json:"family_name,omitempty"`
+	Nickname          string      `yaml:"nickname" json:"nickname,omitempty"`
+	PreferredUserName string      `yaml:"preferredUserName" json:"preferred_username,omitempty"`
+	Email             string      `yaml:"email" json:"email,omitempty"`
+	EmailVerified     bool        `yaml:"emailVerified" json:"email_verified,omitempty"`
+	Gender            string      `yaml:"gender" json:"gender,omitempty"`
+	BirthDate         string      `yaml:"birthDate" json:"birth_date,omitempty"`
+	ZoneInfo          string      `yaml:"zoneInfo" json:"zone_info,omitempty"`
+	Locale            string      `yaml:"locale" json:"locale,omitempty"`
+	PhoneNumber       string      `yaml:"phoneNumber" json:"phone_number,omitempty"`
+	PhoneVerified     bool        `yaml:"phoneVerified" json:"phone_verified,omitempty"`
+	Website           string      `yaml:"website" json:"website,omitempty"`
+	Profile           string      `yaml:"profile" json:"profile,omitempty"`
+	ProfilePicture    string      `yaml:"profilePicture" json:"profile_picture,omitempty"`
+	Address           UserAddress `yaml:"address" json:"address,omitempty"`
+	UpdatedAt         string      `json:"updated_at,omitempty"`
 }
 
 type User struct {
@@ -70,7 +75,6 @@ type User struct {
 	Password string      `yaml:"password"`
 	Salt     string      `yaml:"salt"`
 	Profile  UserProfile `yaml:"profile"`
-	Address  UserAddress `yaml:"address"`
 }
 
 type Claim struct {
@@ -83,7 +87,6 @@ type Client struct {
 	ClientSecret            string   `yaml:"clientSecret"`
 	Salt                    string   `yaml:"salt"`
 	Oidc                    bool     `yaml:"oidc"`
-	ClientType              string   `yaml:"type"`
 	AccessTTL               int      `yaml:"accessTTL"`
 	RefreshTTL              int      `yaml:"refreshTTL"`
 	IdTTL                   int      `yaml:"idTTL"`
@@ -213,13 +216,18 @@ func (config *Config) Setup() error {
 	}
 
 	for clientIndex, client := range config.Clients {
-		if client.Id == "" || len(client.ClientSecret) != 128 {
-			invalidClient := fmt.Sprintf("Client configuration invalid. Client %d %v", clientIndex, client)
+		if client.Id == "" {
+			invalidClient := fmt.Sprintf("Client configuration invalid. Client %d is missing an client id, %v", clientIndex, client)
+			return errors.New(invalidClient)
+		}
+
+		if client.GetClientType() == oauth2.CtConfidential && len(client.ClientSecret) != 128 {
+			invalidClient := fmt.Sprintf("Client configuration invalid. Confidential client %d with id %s missing client secret, %v", clientIndex, client.Id, client)
 			return errors.New(invalidClient)
 		}
 
 		if len(client.Redirects) == 0 {
-			invalidClient := fmt.Sprintf("Client is missing redirects. Client %d %v", clientIndex, client)
+			invalidClient := fmt.Sprintf("Client is missing redirects. Client %d with id %s, %v", clientIndex, client.Id, client)
 			return errors.New(invalidClient)
 		}
 
@@ -320,4 +328,30 @@ func (client *Client) GetIssuer(requestData *internalHttp.RequestData) string {
 
 func (client *Client) GetAudience() []string {
 	return GetOrDefaultStringSlice(client.Audience, []string{"all"})
+}
+
+func (client *Client) GetClientType() oauth2.ClientType {
+	if client.ClientSecret == "" {
+		return oauth2.CtPublic
+	} else {
+		return oauth2.CtConfidential
+	}
+}
+
+func (user *User) GetFormattedAddress() string {
+	userAddress := user.Profile.Address
+	var sb strings.Builder
+	if userAddress.Street != "" {
+		sb.WriteString(userAddress.Street)
+		sb.WriteString("\n")
+	}
+	if userAddress.PostalCode != "" {
+		sb.WriteString(userAddress.PostalCode)
+		sb.WriteString("\n")
+	}
+	if userAddress.City != "" {
+		sb.WriteString(userAddress.City)
+		sb.WriteString("\n")
+	}
+	return sb.String()
 }

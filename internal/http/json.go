@@ -16,6 +16,7 @@ func SendJsonWithStatus(value any, w http.ResponseWriter, statusCode int) error 
 	}
 
 	w.Header().Set(ContentType, ContentTypeJSON)
+	w.Header().Set(AccessControlAllowOrigin, "*")
 	w.WriteHeader(statusCode)
 	_, writeError := w.Write(bytes)
 	if writeError != nil {

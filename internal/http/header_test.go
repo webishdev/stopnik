@@ -14,6 +14,7 @@ func Test_HTTPHeaders(t *testing.T) {
 	var headerParameters = []headerParameter{
 		{Location, "Location"},
 		{ContentType, "Content-Type"},
+		{AccessControlAllowOrigin, "Access-Control-Allow-Origin"},
 		{Authorization, "Authorization"},
 		{AuthBasic, "Basic"},
 		{AuthBearer, "Bearer"},

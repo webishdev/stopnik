@@ -29,6 +29,11 @@ func Test_Token(t *testing.T) {
 				Redirects:    []string{"https://example.com/callback"},
 				RefreshTTL:   100,
 			},
+			{
+				Id:         "bar",
+				Redirects:  []string{"https://example.com/callback"},
+				RefreshTTL: 100,
+			},
 		},
 		Users: []config.User{
 			{
@@ -72,7 +77,7 @@ func Test_Token(t *testing.T) {
 }
 
 func testTokenMissingClientCredentials(t *testing.T, testConfig *config.Config, keyManager *manager.KeyManger) {
-	t.Run("Missing client credentials", func(t *testing.T) {
+	t.Run("Missing client credentials for confidential client", func(t *testing.T) {
 		requestValidator := validation.NewRequestValidator(testConfig)
 		sessionManager := manager.NewSessionManager(testConfig)
 		tokenManager := manager.NewTokenManager(testConfig, manager.NewDefaultKeyLoader(testConfig, keyManager))
@@ -83,8 +88,8 @@ func testTokenMissingClientCredentials(t *testing.T, testConfig *config.Config, 
 
 		tokenHandler.ServeHTTP(rr, httptest.NewRequest(http.MethodPost, endpoint.Token, nil))
 
-		if rr.Code != http.StatusBadRequest {
-			t.Errorf("handler returned wrong status code: got %v want %v", rr.Code, http.StatusBadRequest)
+		if rr.Code != http.StatusUnauthorized {
+			t.Errorf("handler returned wrong status code: got %v want %v", rr.Code, http.StatusUnauthorized)
 		}
 	})
 }
