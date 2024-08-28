@@ -54,3 +54,18 @@ User details are only provided when the health endpoint is called with a valid a
 
 - `/.well-known/oauth-authorization-server`
 - `/keys`
+
+## OpenId Connect
+
+### OpenID Connect Discovery 1.0
+
+[OpenID Connect Discovery 1.0](https://openid.net/specs/openid-connect-discovery-1_0.html)
+
+- `/.well-known/openid-configuration`
+- `/keys`
+
+### OpenID Connect Core 1.0
+
+[OpenID Connect Core 1.0](https://openid.net/specs/openid-connect-core-1_0.html)
+
+- `/userinfo`

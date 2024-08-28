@@ -54,6 +54,8 @@ They add features like persistence and access to user directories like LDAP.
 | [OAuth 2.0 Authorization Server Issuer Identification](https://datatracker.ietf.org/doc/html/rfc9207)                               |    Planned     |
 | [OpenID Connect Core 1.0](https://openid.net/specs/openid-connect-core-1_0.html)                                                    |    Planned     |
 | [OpenID Connect Discovery 1.0](https://openid.net/specs/openid-connect-discovery-1_0.html)                                          |    Planned     |
+| [OpenID Connect Session Management 1.0](https://openid.net/specs/openid-connect-session-1_0.html)                                   |    Planned     |
+| [OpenID Connect Front-Channel Logout 1.0](https://openid.net/specs/openid-connect-frontchannel-1_0.html)                            |    Planned     |
 
 ## Documentation
 
