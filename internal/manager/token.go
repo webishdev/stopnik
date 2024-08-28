@@ -95,7 +95,7 @@ func (tokenManager *TokenManager) CreateAccessTokenResponse(r *http.Request, use
 		accessTokenResponse.RefreshTokenKey = refreshTokenKey
 	}
 
-	if client.Oidc {
+	if client.Oidc && oidc.HasOidcScope(scopes) {
 		user, userExists := tokenManager.config.GetUser(username)
 		if userExists {
 			idTokenDuration := time.Minute * time.Duration(client.GetIdTTL())
