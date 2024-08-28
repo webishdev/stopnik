@@ -15,13 +15,32 @@ type response struct {
 	Issuer                                             string                     `json:"issuer"`
 	AuthorizationEndpoint                              string                     `json:"authorization_endpoint"`
 	TokenEndpoint                                      string                     `json:"token_endpoint"`
-	JWKsUri                                            string                     `json:"jwks_uri,omitempty"`
 	UserInfoEndpoint                                   string                     `json:"userinfo_endpoint,omitempty"`
+	JWKsUri                                            string                     `json:"jwks_uri,omitempty"`
 	RegistrationEndpoint                               string                     `json:"registration_endpoint,omitempty"`
 	ScopesSupported                                    []string                   `json:"scopes_supported,omitempty"`
 	ResponseTypesSupported                             []oauth2.ResponseType      `json:"response_types_supported,omitempty"`
 	ResponseModesSupported                             []string                   `json:"response_modes_supported,omitempty"`
 	GrantTypesSupported                                []oauth2.GrantType         `json:"grant_types_supported,omitempty"`
+	AcrValuesSupported                                 []string                   `json:"acr_values_supported,omitempty"`
+	SubjectTypesSupported                              []string                   `json:"subject_types_supported,omitempty"`
+	IdTokenSigningAlgValuesSupported                   []string                   `json:"id_token_signing_alg_values_supported,omitempty"`
+	IdTokenEncryptionAlgValuesSupported                []string                   `json:"id_token_encryption_alg_values_supported,omitempty"`
+	IdTokenEncryptionEncValuesSupported                []string                   `json:"id_token_encryption_enc_values_supported,omitempty"`
+	UserInfoSigningAlgValuesSupported                  []string                   `json:"userinfo_signing_alg_values_supported,omitempty"`
+	UserInfoEncryptionAlgValuesSupported               []string                   `json:"userinfo_encryption_alg_values_supported,omitempty"`
+	UserInfoEncryptionEncValuesSupported               []string                   `json:"userinfo_encryption_enc_values_supported,omitempty"`
+	RequestObjectSigningAlgValuesSupported             []string                   `json:"request_object_signing_alg_values_supported,omitempty"`
+	RequestObjectEncryptionAlgValuesSupported          []string                   `json:"request_object_encryption_alg_values_supported,omitempty"`
+	RequestObjectEncryptionEncValuesSupported          []string                   `json:"request_object_encryption_enc_values_supported,omitempty"`
+	DisplayValuesSupported                             []string                   `json:"display_values_supported,omitempty"`
+	ClaimTypesSupported                                []string                   `json:"claim_types_supported,omitempty"`
+	ClaimsSupported                                    []string                   `json:"claims_supported,omitempty"`
+	ClaimsLocalesSupported                             []string                   `json:"claims_locales_supported,omitempty"`
+	ClaimsParameterSupported                           []string                   `json:"claims_parameter_supported,omitempty"`
+	RequestParameterSupported                          []string                   `json:"request_parameter_supported,omitempty"`
+	RequestUriParameterSupported                       []string                   `json:"request_uri_parameter_supported,omitempty"`
+	RequireRequestUriRegistration                      []string                   `json:"require_request_uri_registration,omitempty"`
 	TokenEndpointAuthMethodsSupported                  []string                   `json:"token_endpoint_auth_methods_supported,omitempty"`
 	TokenEndpointAuthSigningAlgValuesSupported         []jwa.SignatureAlgorithm   `json:"token_endpoint_auth_signing_alg_values_supported,omitempty"`
 	ServiceDocumentation                               string                     `json:"service_documentation,omitempty"`
