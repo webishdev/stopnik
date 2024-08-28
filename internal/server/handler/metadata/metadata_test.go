@@ -63,14 +63,14 @@ func testMetadata(t *testing.T) {
 }
 
 func testMetadataNotAllowedHttpMethods(t *testing.T) {
-	var testInvalidIntrospectHttpMethods = []string{
+	var testInvalidMetadataHttpMethods = []string{
 		http.MethodPost,
 		http.MethodPut,
 		http.MethodPatch,
 		http.MethodDelete,
 	}
 
-	for _, method := range testInvalidIntrospectHttpMethods {
+	for _, method := range testInvalidMetadataHttpMethods {
 		testMessage := fmt.Sprintf("Metadata with unsupported method %s", method)
 		t.Run(testMessage, func(t *testing.T) {
 			metadataHandler := NewMetadataHandler()
