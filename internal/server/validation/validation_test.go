@@ -57,7 +57,7 @@ func Test_Validation(t *testing.T) {
 			},
 		},
 	}
-	setupError := testConfig.Setup()
+	setupError := testConfig.Initialize()
 	if setupError != nil {
 		t.Fatal(setupError)
 	}

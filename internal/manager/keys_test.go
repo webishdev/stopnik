@@ -18,7 +18,7 @@ func Test_Keys(t *testing.T) {
 
 func testEmptyConfigKeyManager(t *testing.T) {
 	testConfig := &config.Config{}
-	err := testConfig.Setup()
+	err := testConfig.Initialize()
 	if err != nil {
 		t.Error(err)
 	}
@@ -42,7 +42,7 @@ func testServerKeyConfigKeyManager(t *testing.T) {
 			PrivateKey: "../../test_keys/rsa256key.pem",
 		},
 	}
-	err := testConfig.Setup()
+	err := testConfig.Initialize()
 	if err != nil {
 		t.Error(err)
 	}
@@ -130,7 +130,7 @@ func testSetupTestConfig(t *testing.T) {
 		},
 	}
 
-	err := testConfig.Setup()
+	err := testConfig.Initialize()
 	if err != nil {
 		t.Error(err)
 	}

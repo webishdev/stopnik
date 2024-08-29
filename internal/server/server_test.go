@@ -55,7 +55,7 @@ func Test_Server(t *testing.T) {
 
 	t.Run("Register handlers", func(t *testing.T) {
 		emptyConfig := &config.Config{}
-		err := emptyConfig.Setup()
+		err := emptyConfig.Initialize()
 		if err != nil {
 			t.Error(err)
 		}
@@ -87,7 +87,7 @@ func Test_Server(t *testing.T) {
 	})
 
 	for _, test := range testConfigParameters {
-		err := test.config.Setup()
+		err := test.config.Initialize()
 		if err != nil {
 			t.Error(err)
 		}
@@ -123,7 +123,7 @@ func Test_Server(t *testing.T) {
 	}
 
 	t.Run("Start server", func(t *testing.T) {
-		err := testConfigBoth.Setup()
+		err := testConfigBoth.Initialize()
 		if err != nil {
 			t.Error(err)
 		}

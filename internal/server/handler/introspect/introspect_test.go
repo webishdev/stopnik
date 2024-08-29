@@ -45,7 +45,7 @@ func Test_Introspect(t *testing.T) {
 		},
 	}
 
-	err := testConfig.Setup()
+	err := testConfig.Initialize()
 	if err != nil {
 		t.Error(err)
 	}
@@ -421,7 +421,7 @@ func testIntrospectNotAllowedHttpMethods(t *testing.T) {
 	}
 
 	testConfig := &config.Config{}
-	err := testConfig.Setup()
+	err := testConfig.Initialize()
 	if err != nil {
 		t.Error(err)
 	}

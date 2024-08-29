@@ -9,7 +9,7 @@ import (
 
 func Test_Session(t *testing.T) {
 	testConfig := &config.Config{}
-	setupError := testConfig.Setup()
+	setupError := testConfig.Initialize()
 	if setupError != nil {
 		t.Fatal(setupError)
 	}

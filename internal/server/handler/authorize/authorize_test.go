@@ -39,7 +39,7 @@ func Test_Authorize(t *testing.T) {
 		},
 	}
 
-	err := testConfig.Setup()
+	err := testConfig.Initialize()
 	if err != nil {
 		t.Error(err)
 	}

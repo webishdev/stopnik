@@ -27,9 +27,9 @@ func (loader *Loader) LoadConfig(name string) error {
 		return parseError
 	}
 
-	setupError := config.Setup()
-	if setupError != nil {
-		return setupError
+	initializationError := config.Initialize()
+	if initializationError != nil {
+		return initializationError
 	}
 
 	return nil

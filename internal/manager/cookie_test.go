@@ -22,7 +22,7 @@ func Test_Cookie(t *testing.T) {
 			{Username: "foo", Password: "d82c4eb5261cb9c8aa9855edd67d1bd10482f41529858d925094d173fa662aa91ff39bc5b188615273484021dfb16fd8284cf684ccf0fc795be3aa2fc1e6c181"},
 		},
 	}
-	setupError := testConfig.Setup()
+	setupError := testConfig.Initialize()
 	if setupError != nil {
 		t.Fatal(setupError)
 	}

@@ -27,7 +27,7 @@ func Test_Health(t *testing.T) {
 			},
 		},
 	}
-	setupError := testConfig.Setup()
+	setupError := testConfig.Initialize()
 	if setupError != nil {
 		t.Fatal(setupError)
 	}
