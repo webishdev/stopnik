@@ -17,14 +17,15 @@ type CookieManager struct {
 	now         Now
 }
 
-func NewCookieManager(config *config.Config) *CookieManager {
-	return newCookieManagerWithTime(config, time.Now)
+func NewCookieManager() *CookieManager {
+	return newCookieManagerWithTime(time.Now)
 }
 
-func newCookieManagerWithTime(config *config.Config, now Now) *CookieManager {
+func newCookieManagerWithTime(now Now) *CookieManager {
+	configInstance := config.GetConfigInstance()
 	return &CookieManager{
-		config:      config,
-		keyFallback: crypto.NewServerSecretLoader(config),
+		config:      configInstance,
+		keyFallback: crypto.NewServerSecretLoader(configInstance),
 		now:         now,
 	}
 }

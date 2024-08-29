@@ -103,7 +103,7 @@ func testAuthorizeInvalidLogin(t *testing.T, testConfig *config.Config) {
 					query.Set(oauth2.ParameterScope, test.scope)
 				}
 			})
-			cookieManager := manager.NewCookieManager(testConfig)
+			cookieManager := manager.NewCookieManager()
 			requestValidator := validation.NewRequestValidator(testConfig)
 
 			authorizeHandler := NewAuthorizeHandler(requestValidator, cookieManager, &manager.SessionManager{}, &manager.TokenManager{}, &template.Manager{})
@@ -190,7 +190,7 @@ func testAuthorizeEmptyLogin(t *testing.T, testConfig *config.Config) {
 					query.Set(oauth2.ParameterScope, test.scope)
 				}
 			})
-			cookieManager := manager.NewCookieManager(testConfig)
+			cookieManager := manager.NewCookieManager()
 			requestValidator := validation.NewRequestValidator(testConfig)
 
 			authorizeHandler := NewAuthorizeHandler(requestValidator, cookieManager, &manager.SessionManager{}, &manager.TokenManager{}, &template.Manager{})
@@ -277,7 +277,7 @@ func testAuthorizeValidLoginNoSession(t *testing.T, testConfig *config.Config, k
 			})
 			requestValidator := validation.NewRequestValidator(testConfig)
 			sessionManager := manager.NewSessionManager(testConfig)
-			cookieManager := manager.NewCookieManager(testConfig)
+			cookieManager := manager.NewCookieManager()
 			tokenManager := manager.NewTokenManager(testConfig, manager.NewDefaultKeyLoader(testConfig, keyManager))
 
 			authorizeHandler := NewAuthorizeHandler(requestValidator, cookieManager, sessionManager, tokenManager, &template.Manager{})
@@ -388,7 +388,7 @@ func testAuthorizeValidLoginAuthorizationGrant(t *testing.T, testConfig *config.
 
 			requestValidator := validation.NewRequestValidator(testConfig)
 			sessionManager := manager.NewSessionManager(testConfig)
-			cookieManager := manager.NewCookieManager(testConfig)
+			cookieManager := manager.NewCookieManager()
 			tokenManager := manager.NewTokenManager(testConfig, manager.NewDefaultKeyLoader(testConfig, keyManager))
 			sessionManager.StartSession(authSession)
 
@@ -476,7 +476,7 @@ func testAuthorizeValidLoginImplicitGrant(t *testing.T, testConfig *config.Confi
 
 			requestValidator := validation.NewRequestValidator(testConfig)
 			sessionManager := manager.NewSessionManager(testConfig)
-			cookieManager := manager.NewCookieManager(testConfig)
+			cookieManager := manager.NewCookieManager()
 			tokenManager := manager.NewTokenManager(testConfig, manager.NewDefaultKeyLoader(testConfig, keyManager))
 			sessionManager.StartSession(authSession)
 
@@ -585,7 +585,7 @@ func testAuthorizeImplicitGrant(t *testing.T, testConfig *config.Config, keyMana
 			})
 			requestValidator := validation.NewRequestValidator(testConfig)
 			sessionManager := manager.NewSessionManager(testConfig)
-			cookieManager := manager.NewCookieManager(testConfig)
+			cookieManager := manager.NewCookieManager()
 			tokenManager := manager.NewTokenManager(testConfig, manager.NewDefaultKeyLoader(testConfig, keyManager))
 
 			client, _ := testConfig.GetClient("foo")
@@ -678,7 +678,7 @@ func testAuthorizeAuthorizationGrant(t *testing.T, testConfig *config.Config, ke
 			})
 			requestValidator := validation.NewRequestValidator(testConfig)
 			sessionManager := manager.NewSessionManager(testConfig)
-			cookieManager := manager.NewCookieManager(testConfig)
+			cookieManager := manager.NewCookieManager()
 			tokenManager := manager.NewTokenManager(testConfig, manager.NewDefaultKeyLoader(testConfig, keyManager))
 
 			user, _ := testConfig.GetUser("foo")
@@ -741,7 +741,7 @@ func testAuthorizeNoCookeExists(t *testing.T, testConfig *config.Config) {
 		})
 		requestValidator := validation.NewRequestValidator(testConfig)
 		sessionManager := manager.NewSessionManager(testConfig)
-		cookieManager := manager.NewCookieManager(testConfig)
+		cookieManager := manager.NewCookieManager()
 		templateManager := template.NewTemplateManager(testConfig)
 
 		authorizeHandler := NewAuthorizeHandler(requestValidator, cookieManager, sessionManager, &manager.TokenManager{}, templateManager)

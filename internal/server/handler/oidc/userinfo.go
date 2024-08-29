@@ -41,11 +41,13 @@ func (h *UserInfoHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		var result interface{}
 		result = userInfoResponse
 
-		roles := user.GetRoles(client.Id)
-		if len(roles) != 0 {
-			updateResult, updateError := updateRoles(userInfoResponse, client.GetRolesClaim(), roles)
-			if updateError == nil {
-				result = updateResult
+		if valid {
+			roles := user.GetRoles(client.Id)
+			if len(roles) != 0 {
+				updateResult, updateError := updateRoles(userInfoResponse, client.GetRolesClaim(), roles)
+				if updateError == nil {
+					result = updateResult
+				}
 			}
 		}
 

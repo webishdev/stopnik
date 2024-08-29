@@ -2,16 +2,15 @@ package config
 
 import (
 	"bufio"
-	"crypto/rand"
 	"errors"
 	"fmt"
 	internalHttp "github.com/webishdev/stopnik/internal/http"
 	"github.com/webishdev/stopnik/internal/oauth2"
 	"github.com/webishdev/stopnik/log"
 	"io"
-	"math/big"
 	"os"
 	"strings"
+	"sync"
 )
 
 type Keys struct {
@@ -127,95 +126,22 @@ type Config struct {
 	logoImage       *[]byte
 }
 
-type ReadFile func(filename string) ([]byte, error)
-type Unmarshal func(in []byte, out interface{}) (err error)
+var lock = &sync.Mutex{}
+var configSingleton *Config
 
-type Loader struct {
-	fileReader  ReadFile
-	unmarshaler Unmarshal
-}
-
-func NewConfigLoader(fileReader ReadFile, unmarshaler Unmarshal) *Loader {
-	return &Loader{
-		fileReader:  fileReader,
-		unmarshaler: unmarshaler,
-	}
-}
-
-func (loader *Loader) LoadConfig(name string) (*Config, error) {
-	data, readError := loader.fileReader(name)
-	if readError != nil {
-		return nil, readError
+func GetConfigInstance() *Config {
+	lock.Lock()
+	defer lock.Unlock()
+	if configSingleton == nil {
+		return &Config{}
 	}
 
-	config := &Config{}
-	parseError := loader.unmarshaler(data, config)
-	if parseError != nil {
-		return nil, parseError
-	}
-
-	setupError := config.Setup()
-	if setupError != nil {
-		return nil, setupError
-	}
-
-	return config, nil
-}
-
-func generateRandomString(n int) (string, error) {
-	const letters = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz-"
-	ret := make([]byte, n)
-	for i := 0; i < n; i++ {
-		num, err := rand.Int(rand.Reader, big.NewInt(int64(len(letters))))
-		if err != nil {
-			return "", err
-		}
-		ret[i] = letters[num.Int64()]
-	}
-
-	return string(ret), nil
-}
-
-func setup[T any](values *[]T, accessor func(T) string) map[string]*T {
-	valueMap := make(map[string]*T)
-
-	for index := 0; index < len(*values); index += 1 {
-		value := (*values)[index]
-		key := accessor(value)
-		if key != "" {
-			valueMap[key] = &value
-		}
-
-	}
-
-	return valueMap
-}
-
-func GetOrDefaultString(value string, defaultValue string) string {
-	if value == "" {
-		return defaultValue
-	} else {
-		return value
-	}
-}
-
-func GetOrDefaultStringSlice(value []string, defaultValue []string) []string {
-	if len(value) == 0 {
-		return defaultValue
-	} else {
-		return value
-	}
-}
-
-func GetOrDefaultInt(value int, defaultValue int) int {
-	if value == 0 {
-		return defaultValue
-	} else {
-		return value
-	}
+	return configSingleton
 }
 
 func (config *Config) Setup() error {
+	lock.Lock()
+	defer lock.Unlock()
 	for userIndex, user := range config.Users {
 		if user.Username == "" || len(user.Password) != 128 {
 			invalidUser := fmt.Sprintf("User configuration invalid. User %d %v", userIndex, user)
@@ -284,6 +210,8 @@ func (config *Config) Setup() error {
 		log.Info("Own logo loaded from %s", config.UI.LogoImage)
 		config.logoImage = &bs
 	}
+
+	configSingleton = config
 
 	return nil
 }

@@ -28,7 +28,7 @@ func Test_Cookie(t *testing.T) {
 	}
 
 	t.Run("Create and validate auth cookie", func(t *testing.T) {
-		cookieManager := NewCookieManager(testConfig)
+		cookieManager := NewCookieManager()
 
 		cookie, cookieError := cookieManager.CreateAuthCookie("foo")
 
@@ -52,7 +52,7 @@ func Test_Cookie(t *testing.T) {
 	})
 
 	t.Run("Create and validate expired auth cookie", func(t *testing.T) {
-		cookieManager := newCookieManagerWithTime(testConfig, now)
+		cookieManager := newCookieManagerWithTime(now)
 
 		cookie, cookieError := cookieManager.CreateAuthCookie("foo")
 
@@ -76,7 +76,7 @@ func Test_Cookie(t *testing.T) {
 	})
 
 	t.Run("Create and validate auth cookie with wrong username", func(t *testing.T) {
-		cookieManager := NewCookieManager(testConfig)
+		cookieManager := NewCookieManager()
 
 		cookie, cookieError := cookieManager.CreateAuthCookie("bar")
 
@@ -98,7 +98,7 @@ func Test_Cookie(t *testing.T) {
 	})
 
 	t.Run("Create and validate auth cookie with invalid content", func(t *testing.T) {
-		cookieManager := NewCookieManager(testConfig)
+		cookieManager := NewCookieManager()
 
 		cookie := fmt.Sprintf("%s=%s", testConfig.GetAuthCookieName(), "moo")
 
@@ -116,7 +116,7 @@ func Test_Cookie(t *testing.T) {
 	})
 
 	t.Run("Delete auth cookie", func(t *testing.T) {
-		cookieManager := NewCookieManager(testConfig)
+		cookieManager := NewCookieManager()
 
 		deleteCookie := cookieManager.DeleteAuthCookie()
 
@@ -124,7 +124,7 @@ func Test_Cookie(t *testing.T) {
 	})
 
 	t.Run("Create and read message cookie", func(t *testing.T) {
-		cookieManager := NewCookieManager(testConfig)
+		cookieManager := NewCookieManager()
 
 		cookie := cookieManager.CreateMessageCookie("foo into bar")
 
@@ -143,7 +143,7 @@ func Test_Cookie(t *testing.T) {
 	})
 
 	t.Run("No message cookie exists in request", func(t *testing.T) {
-		cookieManager := NewCookieManager(testConfig)
+		cookieManager := NewCookieManager()
 
 		httpRequest := httptest.NewRequest(http.MethodGet, endpoint.Account, nil)
 
