@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"github.com/google/uuid"
 	"github.com/lestrrat-go/jwx/v2/jwt"
-	internalConfig "github.com/webishdev/stopnik/internal/config"
+	"github.com/webishdev/stopnik/internal/config"
 	"github.com/webishdev/stopnik/internal/crypto"
 	internalHttp "github.com/webishdev/stopnik/internal/http"
 	"github.com/webishdev/stopnik/internal/oauth2"
@@ -20,18 +20,18 @@ import (
 )
 
 type TokenManager struct {
-	config            *internalConfig.Config
+	config            *config.Config
 	keyLoader         crypto.KeyLoader
 	accessTokenStore  *store.ExpiringStore[oauth2.AccessToken]
 	refreshTokenStore *store.ExpiringStore[oauth2.RefreshToken]
 }
 
 func NewTokenManager(keyLoader crypto.KeyLoader) *TokenManager {
-	config := internalConfig.GetConfigInstance()
+	currentConfig := config.GetConfigInstance()
 	accessTokenStore := store.NewDefaultTimedStore[oauth2.AccessToken]()
 	refreshTokenStore := store.NewDefaultTimedStore[oauth2.RefreshToken]()
 	return &TokenManager{
-		config:            config,
+		config:            currentConfig,
 		keyLoader:         keyLoader,
 		accessTokenStore:  &accessTokenStore,
 		refreshTokenStore: &refreshTokenStore,
@@ -58,7 +58,7 @@ func (tokenManager *TokenManager) RevokeRefreshToken(refreshToken *oauth2.Refres
 	refreshTokenStore.Delete(refreshToken.Key)
 }
 
-func (tokenManager *TokenManager) CreateAccessTokenResponse(r *http.Request, username string, client *internalConfig.Client, scopes []string, nonce string) oauth2.AccessTokenResponse {
+func (tokenManager *TokenManager) CreateAccessTokenResponse(r *http.Request, username string, client *config.Client, scopes []string, nonce string) oauth2.AccessTokenResponse {
 	log.Debug("Creating new access token for %s, access TTL %d, refresh TTL %d", client.Id, client.GetAccessTTL(), client.GetRefreshTTL())
 
 	requestData := internalHttp.NewRequestData(r)
@@ -109,7 +109,7 @@ func (tokenManager *TokenManager) CreateAccessTokenResponse(r *http.Request, use
 	return accessTokenResponse
 }
 
-func (tokenManager *TokenManager) CreateIdToken(r *http.Request, username string, client *internalConfig.Client, scopes []string, nonce string, atHash string) string {
+func (tokenManager *TokenManager) CreateIdToken(r *http.Request, username string, client *config.Client, scopes []string, nonce string, atHash string) string {
 	if client.Oidc && oidc.HasOidcScope(scopes) {
 		requestData := internalHttp.NewRequestData(r)
 		user, userExists := tokenManager.config.GetUser(username)
@@ -121,12 +121,12 @@ func (tokenManager *TokenManager) CreateIdToken(r *http.Request, username string
 	return ""
 }
 
-func (tokenManager *TokenManager) CreateAccessToken(r *http.Request, username string, client *internalConfig.Client, accessTokenDuration time.Duration) string {
+func (tokenManager *TokenManager) CreateAccessToken(r *http.Request, username string, client *config.Client, accessTokenDuration time.Duration) string {
 	requestData := internalHttp.NewRequestData(r)
 	return tokenManager.generateAccessToken(requestData, username, client, accessTokenDuration)
 }
 
-func (tokenManager *TokenManager) CreateAccessTokenHash(client *internalConfig.Client, accessTokenKey string) string {
+func (tokenManager *TokenManager) CreateAccessTokenHash(client *config.Client, accessTokenKey string) string {
 	loader := tokenManager.keyLoader
 	managedKey, keyExists := loader.LoadKeys(client)
 	if !keyExists {
@@ -136,7 +136,7 @@ func (tokenManager *TokenManager) CreateAccessTokenHash(client *internalConfig.C
 	return hashToken(managedKey.HashAlgorithm, accessTokenKey)
 }
 
-func (tokenManager *TokenManager) ValidateAccessToken(authorizationHeader string) (*internalConfig.User, *internalConfig.Client, []string, bool) {
+func (tokenManager *TokenManager) ValidateAccessToken(authorizationHeader string) (*config.User, *config.Client, []string, bool) {
 	log.Debug("Validating access token")
 	accessTokenStore := *tokenManager.accessTokenStore
 	headerValue := getAuthorizationHeaderValue(authorizationHeader)
@@ -165,12 +165,12 @@ func (tokenManager *TokenManager) ValidateAccessToken(authorizationHeader string
 	return user, client, accessToken.Scopes, true
 }
 
-func (tokenManager *TokenManager) generateIdToken(requestData *internalHttp.RequestData, user *internalConfig.User, client *internalConfig.Client, nonce string, atHash string, duration time.Duration) string {
+func (tokenManager *TokenManager) generateIdToken(requestData *internalHttp.RequestData, user *config.User, client *config.Client, nonce string, atHash string, duration time.Duration) string {
 	idToken := generateIdToken(requestData, user, client, nonce, atHash, duration)
 	return tokenManager.generateJWTToken(client, idToken)
 }
 
-func (tokenManager *TokenManager) generateAccessToken(requestData *internalHttp.RequestData, username string, client *internalConfig.Client, duration time.Duration) string {
+func (tokenManager *TokenManager) generateAccessToken(requestData *internalHttp.RequestData, username string, client *config.Client, duration time.Duration) string {
 	tokenId := uuid.New()
 	if client.OpaqueToken {
 		return tokenManager.generateOpaqueAccessToken(tokenId.String())
@@ -198,7 +198,7 @@ func (tokenManager *TokenManager) generateOpaqueAccessToken(tokenId string) stri
   "scope": "read write"
 }
 */
-func (tokenManager *TokenManager) generateJWTToken(client *internalConfig.Client, token jwt.Token) string {
+func (tokenManager *TokenManager) generateJWTToken(client *config.Client, token jwt.Token) string {
 
 	loader := tokenManager.keyLoader
 	managedKey, keyExists := loader.LoadKeys(client)
@@ -226,7 +226,7 @@ func (tokenManager *TokenManager) generateJWTToken(client *internalConfig.Client
 
 }
 
-func generateIdToken(requestData *internalHttp.RequestData, user *internalConfig.User, client *internalConfig.Client, nonce string, atHash string, duration time.Duration) jwt.Token {
+func generateIdToken(requestData *internalHttp.RequestData, user *config.User, client *config.Client, nonce string, atHash string, duration time.Duration) jwt.Token {
 	tokenId := uuid.New().String()
 	builder := jwt.NewBuilder().
 		Expiration(time.Now().Add(duration)). // https://www.rfc-editor.org/rfc/rfc7519.html#section-4.1.4
@@ -262,7 +262,7 @@ func generateIdToken(requestData *internalHttp.RequestData, user *internalConfig
 	return token
 }
 
-func generateAccessToken(requestData *internalHttp.RequestData, tokenId string, duration time.Duration, username string, client *internalConfig.Client) jwt.Token {
+func generateAccessToken(requestData *internalHttp.RequestData, tokenId string, duration time.Duration, username string, client *config.Client) jwt.Token {
 	builder := jwt.NewBuilder().
 		Expiration(time.Now().Add(duration)). // https://www.rfc-editor.org/rfc/rfc7519.html#section-4.1.4
 		IssuedAt(time.Now())                  // https://www.rfc-editor.org/rfc/rfc7519.html#section-4.1.6

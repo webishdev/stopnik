@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"github.com/lestrrat-go/jwx/v2/jwk"
 	"github.com/lestrrat-go/jwx/v2/jwt"
-	internalConfig "github.com/webishdev/stopnik/internal/config"
+	"github.com/webishdev/stopnik/internal/config"
 	"github.com/webishdev/stopnik/internal/crypto"
 	"github.com/webishdev/stopnik/internal/store"
 )
@@ -29,7 +29,7 @@ func NewDefaultKeyLoader(keyManager *KeyManger) *DefaultKeyLoader {
 	}
 }
 
-func (defaultKeyLoader *DefaultKeyLoader) LoadKeys(client *internalConfig.Client) (*crypto.ManagedKey, bool) {
+func (defaultKeyLoader *DefaultKeyLoader) LoadKeys(client *config.Client) (*crypto.ManagedKey, bool) {
 	key := defaultKeyLoader.keyManager.getClientKey(client)
 	if key == nil {
 		return nil, false
@@ -43,18 +43,18 @@ func (defaultKeyLoader *DefaultKeyLoader) GetServerKey() jwt.SignEncryptParseOpt
 }
 
 func NewKeyManger() (*KeyManger, error) {
-	config := internalConfig.GetConfigInstance()
+	currentConfig := config.GetConfigInstance()
 	newStore := store.NewStore[crypto.ManagedKey]()
 	keyManager := &KeyManger{
 		keyStore: &newStore,
 	}
 
-	serverKeyError := keyManager.addSeverKey(config)
+	serverKeyError := keyManager.addSeverKey(currentConfig)
 	if serverKeyError != nil {
 		return nil, serverKeyError
 	}
 
-	clientKeyError := keyManager.addClientKeys(config)
+	clientKeyError := keyManager.addClientKeys(currentConfig)
 	if clientKeyError != nil {
 		return nil, clientKeyError
 	}
@@ -62,7 +62,7 @@ func NewKeyManger() (*KeyManger, error) {
 	return keyManager, nil
 }
 
-func (km *KeyManger) getClientKey(c *internalConfig.Client) *crypto.ManagedKey {
+func (km *KeyManger) getClientKey(c *config.Client) *crypto.ManagedKey {
 	var result *crypto.ManagedKey
 	for _, mangedKey := range km.GetAllKeys() {
 		if result == nil && mangedKey.Server {
@@ -84,7 +84,7 @@ func (km *KeyManger) GetAllKeys() []*crypto.ManagedKey {
 	return keyStore.GetValues()
 }
 
-func (km *KeyManger) addSeverKey(c *internalConfig.Config) error {
+func (km *KeyManger) addSeverKey(c *config.Config) error {
 	if c.Server.PrivateKey != "" {
 		privateKey, loadError := crypto.LoadPrivateKey(c.Server.PrivateKey)
 		if loadError != nil {
@@ -103,7 +103,7 @@ func (km *KeyManger) addSeverKey(c *internalConfig.Config) error {
 	return nil
 }
 
-func (km *KeyManger) addClientKeys(c *internalConfig.Config) error {
+func (km *KeyManger) addClientKeys(c *config.Config) error {
 
 	for _, client := range c.Clients {
 		if client.PrivateKey != "" {
@@ -116,7 +116,7 @@ func (km *KeyManger) addClientKeys(c *internalConfig.Config) error {
 				return convertError
 			}
 
-			managedKey.Clients = []*internalConfig.Client{&client}
+			managedKey.Clients = []*config.Client{&client}
 			km.addManagedKey(managedKey)
 		}
 	}
@@ -171,7 +171,7 @@ func (km *KeyManger) convert(signingPrivateKey *crypto.SigningPrivateKey) (*cryp
 		Id:            kid,
 		Key:           &key,
 		HashAlgorithm: signingPrivateKey.HashAlgorithm,
-		Clients:       []*internalConfig.Client{},
+		Clients:       []*config.Client{},
 	}
 
 	return managedKey, nil

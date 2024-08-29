@@ -1,7 +1,7 @@
 package manager
 
 import (
-	internalConfig "github.com/webishdev/stopnik/internal/config"
+	"github.com/webishdev/stopnik/internal/config"
 	"github.com/webishdev/stopnik/internal/oauth2"
 	"github.com/webishdev/stopnik/internal/store"
 )
@@ -21,15 +21,15 @@ type AuthSession struct {
 }
 
 type SessionManager struct {
-	config           *internalConfig.Config
+	config           *config.Config
 	authSessionStore *store.ExpiringStore[AuthSession]
 }
 
 func NewSessionManager() *SessionManager {
-	config := internalConfig.GetConfigInstance()
+	currentConfig := config.GetConfigInstance()
 	authSessionStore := store.NewDefaultTimedStore[AuthSession]()
 	return &SessionManager{
-		config:           config,
+		config:           currentConfig,
 		authSessionStore: &authSessionStore,
 	}
 }
