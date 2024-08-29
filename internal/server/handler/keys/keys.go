@@ -21,10 +21,11 @@ type Handler struct {
 	mux          *sync.RWMutex
 }
 
-func NewKeysHandler(keyManager *manager.KeyManger, config *config.Config) *Handler {
+func NewKeysHandler(keyManager *manager.KeyManger) *Handler {
+	currentConfig := config.GetConfigInstance()
 	return &Handler{
 		keyManager:   keyManager,
-		config:       config,
+		config:       currentConfig,
 		errorHandler: errorHandler.NewErrorHandler(),
 		keySet:       jwk.NewSet(),
 		loaded:       false,

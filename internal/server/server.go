@@ -197,7 +197,7 @@ func registerHandlers(config *config.Config, handle func(pattern string, handler
 	introspectHandler := introspect.NewIntrospectHandler(config, requestValidator, tokenManager)
 	revokeHandler := revoke.NewRevokeHandler(config, requestValidator, tokenManager)
 	metadataHandler := metadata.NewMetadataHandler()
-	keysHandler := keys.NewKeysHandler(keyManger, config)
+	keysHandler := keys.NewKeysHandler(keyManger)
 
 	// Server
 	handle(endpoint.Health, healthHandler)

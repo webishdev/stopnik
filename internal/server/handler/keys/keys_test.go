@@ -56,19 +56,19 @@ func Test_Keys(t *testing.T) {
 		t.Error(err)
 	}
 
-	testKeys(t, testConfig)
+	testKeys(t)
 
-	testKeysNotAllowedHttpMethods(t, testConfig)
+	testKeysNotAllowedHttpMethods(t)
 
 }
 
-func testKeys(t *testing.T, testConfig *config.Config) {
+func testKeys(t *testing.T) {
 	t.Run("Get keys", func(t *testing.T) {
 		keyManger, keyManagerError := manager.NewKeyManger()
 		if keyManagerError != nil {
 			t.Error(keyManagerError)
 		}
-		keysHandler := NewKeysHandler(keyManger, testConfig)
+		keysHandler := NewKeysHandler(keyManger)
 
 		rr := httptest.NewRecorder()
 		request := httptest.NewRequest(http.MethodGet, endpoint.Keys, nil)
@@ -113,7 +113,7 @@ func testKeys(t *testing.T, testConfig *config.Config) {
 	})
 }
 
-func testKeysNotAllowedHttpMethods(t *testing.T, testConfig *config.Config) {
+func testKeysNotAllowedHttpMethods(t *testing.T) {
 	var testInvalidIntrospectHttpMethods = []string{
 		http.MethodPost,
 		http.MethodPut,
@@ -128,7 +128,7 @@ func testKeysNotAllowedHttpMethods(t *testing.T, testConfig *config.Config) {
 			if keyManagerError != nil {
 				t.Error(keyManagerError)
 			}
-			keysHandler := NewKeysHandler(keyManger, testConfig)
+			keysHandler := NewKeysHandler(keyManger)
 
 			rr := httptest.NewRecorder()
 
