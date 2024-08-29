@@ -56,7 +56,7 @@ type StopnikServer struct {
 	rwMutex           *sync.RWMutex
 }
 
-func NewStopnikServer(config *config.Config) *StopnikServer {
+func NewStopnikServer() *StopnikServer {
 	rwMutex := &sync.RWMutex{}
 	listenAndServe := func(stopnikServer *StopnikServer, listener *net.Listener, server *http.Server) error {
 		rwMutex.Lock()
@@ -75,18 +75,19 @@ func NewStopnikServer(config *config.Config) *StopnikServer {
 		log.Info("Will accept TLS connections at %s", server.Addr)
 		return server.ServeTLS(*listener, stopnikServer.config.Server.TLS.Keys.Cert, stopnikServer.config.Server.TLS.Keys.Key)
 	}
-	return newStopnikServerWithServe(rwMutex, config, http.NewServeMux(), listenAndServe, listenAndServeTLS)
+	return newStopnikServerWithServe(rwMutex, http.NewServeMux(), listenAndServe, listenAndServeTLS)
 }
 
-func newStopnikServerWithServe(rwMutex *sync.RWMutex, config *config.Config, mux *http.ServeMux, serve ListenAndServe, serveTLS ListenAndServe) *StopnikServer {
-	registerHandlers(config, mux.Handle)
+func newStopnikServerWithServe(rwMutex *sync.RWMutex, mux *http.ServeMux, serve ListenAndServe, serveTLS ListenAndServe) *StopnikServer {
+	currentConfig := config.GetConfigInstance()
+	registerHandlers(currentConfig, mux.Handle)
 
 	middleware := &middlewareHandler{
 		next:   mux,
-		assets: assets.NewAssetHandler(config),
+		assets: assets.NewAssetHandler(currentConfig),
 	}
 	return &StopnikServer{
-		config:            config,
+		config:            currentConfig,
 		middleware:        middleware,
 		readHeaderTimeout: 15 * time.Second,
 		readTimeout:       15 * time.Second,

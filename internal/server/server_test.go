@@ -110,7 +110,7 @@ func Test_Server(t *testing.T) {
 				}
 				return nil
 			}
-			server := newStopnikServerWithServe(rwMutex, test.config, http.NewServeMux(), r, r)
+			server := newStopnikServerWithServe(rwMutex, http.NewServeMux(), r, r)
 
 			server.Start()
 
@@ -127,7 +127,7 @@ func Test_Server(t *testing.T) {
 		if err != nil {
 			t.Error(err)
 		}
-		server := NewStopnikServer(testConfigBoth)
+		server := NewStopnikServer()
 
 		if server == nil {
 			t.Error("Failed to start server")

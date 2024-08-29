@@ -39,7 +39,7 @@ func readPassword() {
 func start(configurationFile *string) error {
 	configLoader := config.NewConfigLoader(os.ReadFile, yaml.Unmarshal)
 
-	currentConfig, configError := readConfiguration(configurationFile, configLoader)
+	_, configError := readConfiguration(configurationFile, configLoader)
 	if configError != nil {
 		return configError
 	}
@@ -47,7 +47,7 @@ func start(configurationFile *string) error {
 	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
 
-	stopnikServer := server.NewStopnikServer(currentConfig)
+	stopnikServer := server.NewStopnikServer()
 
 	go func() {
 		sig := <-sigs
