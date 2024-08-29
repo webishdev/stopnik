@@ -12,8 +12,9 @@ type RequestValidator struct {
 	config *config.Config
 }
 
-func NewRequestValidator(config *config.Config) *RequestValidator {
-	return &RequestValidator{config: config}
+func NewRequestValidator() *RequestValidator {
+	currentConfig := config.GetConfigInstance()
+	return &RequestValidator{config: currentConfig}
 }
 
 func (validator *RequestValidator) ValidateFormLogin(r *http.Request) (*config.User, bool) {

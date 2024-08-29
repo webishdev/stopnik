@@ -26,8 +26,9 @@ type Manager struct {
 	config *config.Config
 }
 
-func NewTemplateManager(config *config.Config) *Manager {
-	return &Manager{config}
+func NewTemplateManager() *Manager {
+	currentConfig := config.GetConfigInstance()
+	return &Manager{currentConfig}
 }
 
 func addTemplates(main *template.Template) bytes.Buffer {

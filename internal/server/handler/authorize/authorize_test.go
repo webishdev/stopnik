@@ -49,15 +49,15 @@ func Test_Authorize(t *testing.T) {
 		t.Error(keyLoadingError)
 	}
 
-	testAuthorizeNoClientId(t, testConfig)
+	testAuthorizeNoClientId(t)
 
-	testAuthorizeInvalidClientId(t, testConfig)
+	testAuthorizeInvalidClientId(t)
 
-	testAuthorizeInvalidRedirect(t, testConfig)
+	testAuthorizeInvalidRedirect(t)
 
-	testAuthorizeInvalidResponseType(t, testConfig)
+	testAuthorizeInvalidResponseType(t)
 
-	testAuthorizeNoCookeExists(t, testConfig)
+	testAuthorizeNoCookeExists(t)
 
 	testAuthorizeAuthorizationGrant(t, testConfig, keyManager)
 
@@ -104,7 +104,7 @@ func testAuthorizeInvalidLogin(t *testing.T, testConfig *config.Config) {
 				}
 			})
 			cookieManager := manager.NewCookieManager()
-			requestValidator := validation.NewRequestValidator(testConfig)
+			requestValidator := validation.NewRequestValidator()
 
 			authorizeHandler := NewAuthorizeHandler(requestValidator, cookieManager, &manager.SessionManager{}, &manager.TokenManager{}, &template.Manager{})
 
@@ -191,7 +191,7 @@ func testAuthorizeEmptyLogin(t *testing.T, testConfig *config.Config) {
 				}
 			})
 			cookieManager := manager.NewCookieManager()
-			requestValidator := validation.NewRequestValidator(testConfig)
+			requestValidator := validation.NewRequestValidator()
 
 			authorizeHandler := NewAuthorizeHandler(requestValidator, cookieManager, &manager.SessionManager{}, &manager.TokenManager{}, &template.Manager{})
 
@@ -275,7 +275,7 @@ func testAuthorizeValidLoginNoSession(t *testing.T, testConfig *config.Config, k
 					query.Set(oauth2.ParameterScope, test.scope)
 				}
 			})
-			requestValidator := validation.NewRequestValidator(testConfig)
+			requestValidator := validation.NewRequestValidator()
 			sessionManager := manager.NewSessionManager()
 			cookieManager := manager.NewCookieManager()
 			tokenManager := manager.NewTokenManager(manager.NewDefaultKeyLoader(keyManager))
@@ -386,7 +386,7 @@ func testAuthorizeValidLoginAuthorizationGrant(t *testing.T, testConfig *config.
 				State:               test.state,
 			}
 
-			requestValidator := validation.NewRequestValidator(testConfig)
+			requestValidator := validation.NewRequestValidator()
 			sessionManager := manager.NewSessionManager()
 			cookieManager := manager.NewCookieManager()
 			tokenManager := manager.NewTokenManager(manager.NewDefaultKeyLoader(keyManager))
@@ -474,7 +474,7 @@ func testAuthorizeValidLoginImplicitGrant(t *testing.T, testConfig *config.Confi
 				State:               test.state,
 			}
 
-			requestValidator := validation.NewRequestValidator(testConfig)
+			requestValidator := validation.NewRequestValidator()
 			sessionManager := manager.NewSessionManager()
 			cookieManager := manager.NewCookieManager()
 			tokenManager := manager.NewTokenManager(manager.NewDefaultKeyLoader(keyManager))
@@ -583,7 +583,7 @@ func testAuthorizeImplicitGrant(t *testing.T, testConfig *config.Config, keyMana
 					query.Set(oauth2.ParameterScope, test.scope)
 				}
 			})
-			requestValidator := validation.NewRequestValidator(testConfig)
+			requestValidator := validation.NewRequestValidator()
 			sessionManager := manager.NewSessionManager()
 			cookieManager := manager.NewCookieManager()
 			tokenManager := manager.NewTokenManager(manager.NewDefaultKeyLoader(keyManager))
@@ -676,7 +676,7 @@ func testAuthorizeAuthorizationGrant(t *testing.T, testConfig *config.Config, ke
 					query.Set(pkce.ParameterCodeChallenge, pkceCodeChallenge)
 				}
 			})
-			requestValidator := validation.NewRequestValidator(testConfig)
+			requestValidator := validation.NewRequestValidator()
 			sessionManager := manager.NewSessionManager()
 			cookieManager := manager.NewCookieManager()
 			tokenManager := manager.NewTokenManager(manager.NewDefaultKeyLoader(keyManager))
@@ -732,17 +732,17 @@ func testAuthorizeAuthorizationGrant(t *testing.T, testConfig *config.Config, ke
 	}
 }
 
-func testAuthorizeNoCookeExists(t *testing.T, testConfig *config.Config) {
+func testAuthorizeNoCookeExists(t *testing.T) {
 	t.Run("No cookie exists", func(t *testing.T) {
 		parsedUri := createUri(t, endpoint.Authorization, func(query url.Values) {
 			query.Set(oauth2.ParameterClientId, "foo")
 			query.Set(oauth2.ParameterRedirectUri, "https://example.com/callback")
 			query.Set(oauth2.ParameterResponseType, oauth2.ParameterCode)
 		})
-		requestValidator := validation.NewRequestValidator(testConfig)
+		requestValidator := validation.NewRequestValidator()
 		sessionManager := manager.NewSessionManager()
 		cookieManager := manager.NewCookieManager()
-		templateManager := template.NewTemplateManager(testConfig)
+		templateManager := template.NewTemplateManager()
 
 		authorizeHandler := NewAuthorizeHandler(requestValidator, cookieManager, sessionManager, &manager.TokenManager{}, templateManager)
 
@@ -774,14 +774,14 @@ func testAuthorizeNoCookeExists(t *testing.T, testConfig *config.Config) {
 	})
 }
 
-func testAuthorizeInvalidResponseType(t *testing.T, testConfig *config.Config) {
+func testAuthorizeInvalidResponseType(t *testing.T) {
 	t.Run("Invalid response type", func(t *testing.T) {
 		parsedUri := createUri(t, endpoint.Authorization, func(query url.Values) {
 			query.Set(oauth2.ParameterClientId, "foo")
 			query.Set(oauth2.ParameterRedirectUri, "https://example.com/callback")
 			query.Set(oauth2.ParameterResponseType, "abc")
 		})
-		requestValidator := validation.NewRequestValidator(testConfig)
+		requestValidator := validation.NewRequestValidator()
 
 		authorizeHandler := NewAuthorizeHandler(requestValidator, &manager.CookieManager{}, &manager.SessionManager{}, &manager.TokenManager{}, &template.Manager{})
 
@@ -812,7 +812,7 @@ func testAuthorizeInvalidResponseType(t *testing.T, testConfig *config.Config) {
 	})
 }
 
-func testAuthorizeInvalidRedirect(t *testing.T, testConfig *config.Config) {
+func testAuthorizeInvalidRedirect(t *testing.T) {
 	type redirectTest struct {
 		redirect string
 		status   int
@@ -832,7 +832,7 @@ func testAuthorizeInvalidRedirect(t *testing.T, testConfig *config.Config) {
 				query.Set(oauth2.ParameterRedirectUri, test.redirect)
 			})
 
-			requestValidator := validation.NewRequestValidator(testConfig)
+			requestValidator := validation.NewRequestValidator()
 
 			authorizeHandler := NewAuthorizeHandler(requestValidator, &manager.CookieManager{}, &manager.SessionManager{}, &manager.TokenManager{}, &template.Manager{})
 
@@ -848,13 +848,13 @@ func testAuthorizeInvalidRedirect(t *testing.T, testConfig *config.Config) {
 	}
 }
 
-func testAuthorizeInvalidClientId(t *testing.T, testConfig *config.Config) {
+func testAuthorizeInvalidClientId(t *testing.T) {
 	t.Run("Invalid client id", func(t *testing.T) {
 		parsedUri := createUri(t, endpoint.Authorization, func(query url.Values) {
 			query.Set(oauth2.ParameterClientId, "bar")
 		})
 
-		requestValidator := validation.NewRequestValidator(testConfig)
+		requestValidator := validation.NewRequestValidator()
 
 		authorizeHandler := NewAuthorizeHandler(requestValidator, &manager.CookieManager{}, &manager.SessionManager{}, &manager.TokenManager{}, &template.Manager{})
 
@@ -868,9 +868,9 @@ func testAuthorizeInvalidClientId(t *testing.T, testConfig *config.Config) {
 	})
 }
 
-func testAuthorizeNoClientId(t *testing.T, testConfig *config.Config) {
+func testAuthorizeNoClientId(t *testing.T) {
 	t.Run("No client id provided", func(t *testing.T) {
-		requestValidator := validation.NewRequestValidator(testConfig)
+		requestValidator := validation.NewRequestValidator()
 
 		authorizeHandler := NewAuthorizeHandler(requestValidator, &manager.CookieManager{}, &manager.SessionManager{}, &manager.TokenManager{}, &template.Manager{})
 

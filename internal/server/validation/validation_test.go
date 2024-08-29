@@ -66,7 +66,7 @@ func Test_Validation(t *testing.T) {
 		testMessage := fmt.Sprintf("Valid user password %s %t", test.name, test.valid)
 		t.Run(testMessage, func(t *testing.T) {
 
-			requestValidator := NewRequestValidator(testConfig)
+			requestValidator := NewRequestValidator()
 
 			_, valid := requestValidator.ValidateUserPassword(test.name, test.password)
 
@@ -88,7 +88,7 @@ func Test_Validation(t *testing.T) {
 					},
 				}
 
-				requestValidator := NewRequestValidator(testConfig)
+				requestValidator := NewRequestValidator()
 
 				_, valid := requestValidator.ValidateFormLogin(httpRequest)
 
@@ -113,7 +113,7 @@ func Test_Validation(t *testing.T) {
 					},
 				}
 
-				requestValidator := NewRequestValidator(testConfig)
+				requestValidator := NewRequestValidator()
 
 				_, _, valid := requestValidator.ValidateClientCredentials(httpRequest)
 
@@ -135,7 +135,7 @@ func Test_Validation(t *testing.T) {
 			},
 		}
 
-		requestValidator := NewRequestValidator(testConfig)
+		requestValidator := NewRequestValidator()
 
 		_, _, valid := requestValidator.ValidateClientCredentials(httpRequest)
 
