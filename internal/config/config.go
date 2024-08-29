@@ -260,26 +260,24 @@ func (config *Config) Setup() error {
 	if config.UI.LogoImage != "" {
 		file, fileError := os.Open(config.UI.LogoImage)
 		if fileError != nil {
-			panic(fileError)
+			return fileError
 		}
 		defer func(file *os.File) {
-			err := file.Close()
-			if err != nil {
-				panic(err)
+			fileCloseError := file.Close()
+			if fileCloseError != nil {
+				panic(fileCloseError)
 			}
 		}(file)
 
-		// Get the file size
-		stat, err := file.Stat()
-		if err != nil {
-			panic(err)
+		stat, statError := file.Stat()
+		if statError != nil {
+			return statError
 		}
 
-		// Read the file into a byte slice
 		bs := make([]byte, stat.Size())
-		_, err = bufio.NewReader(file).Read(bs)
-		if err != nil && err != io.EOF {
-			panic(err)
+		_, bufferError := bufio.NewReader(file).Read(bs)
+		if bufferError != nil && bufferError != io.EOF {
+			return bufferError
 		}
 
 		log.Info("Own logo loaded from %s", config.UI.LogoImage)
