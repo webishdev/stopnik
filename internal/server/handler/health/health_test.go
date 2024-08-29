@@ -32,7 +32,7 @@ func Test_Health(t *testing.T) {
 		t.Fatal(setupError)
 	}
 
-	keyManger, keyLoadingError := manager.NewKeyManger(testConfig)
+	keyManger, keyLoadingError := manager.NewKeyManger()
 	if keyLoadingError != nil {
 		t.Error(keyLoadingError)
 		return

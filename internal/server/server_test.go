@@ -54,11 +54,16 @@ func Test_Server(t *testing.T) {
 	}
 
 	t.Run("Register handlers", func(t *testing.T) {
+		emptyConfig := &config.Config{}
+		err := emptyConfig.Setup()
+		if err != nil {
+			t.Error(err)
+		}
 		patterns := &[]string{}
 		reg := func(pattern string, handler http.Handler) {
 			*patterns = append(*patterns, pattern)
 		}
-		registerHandlers(&config.Config{}, reg)
+		registerHandlers(emptyConfig, reg)
 
 		expectedHandlers := 9
 		if len(*patterns) != expectedHandlers {
@@ -82,6 +87,10 @@ func Test_Server(t *testing.T) {
 	})
 
 	for _, test := range testConfigParameters {
+		err := test.config.Setup()
+		if err != nil {
+			t.Error(err)
+		}
 		testMessage := fmt.Sprintf("Start server with %s should start %d listeners", test.name, test.expectedCount)
 		t.Run(testMessage, func(t *testing.T) {
 			rwMutex := &sync.RWMutex{}
@@ -114,6 +123,10 @@ func Test_Server(t *testing.T) {
 	}
 
 	t.Run("Start server", func(t *testing.T) {
+		err := testConfigBoth.Setup()
+		if err != nil {
+			t.Error(err)
+		}
 		server := NewStopnikServer(testConfigBoth)
 
 		if server == nil {

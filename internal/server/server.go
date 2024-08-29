@@ -172,7 +172,7 @@ func shutdownServer(server *http.Server) {
 }
 
 func registerHandlers(config *config.Config, handle func(pattern string, handler http.Handler)) {
-	keyManger, keyLoadingError := manager.NewKeyManger(config)
+	keyManger, keyLoadingError := manager.NewKeyManger()
 	if keyLoadingError != nil {
 		log.Error("Failed to load private keys: %v", keyLoadingError)
 		os.Exit(1)

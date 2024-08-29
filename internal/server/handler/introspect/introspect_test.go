@@ -50,7 +50,7 @@ func Test_Introspect(t *testing.T) {
 		t.Error(err)
 	}
 
-	keyManager, keyLoadingError := manager.NewKeyManger(testConfig)
+	keyManager, keyLoadingError := manager.NewKeyManger()
 	if keyLoadingError != nil {
 		t.Error(keyLoadingError)
 	}

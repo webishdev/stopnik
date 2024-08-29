@@ -133,7 +133,7 @@ func GetConfigInstance() *Config {
 	configLock.Lock()
 	defer configLock.Unlock()
 	if configSingleton == nil {
-		return &Config{}
+		panic("config not initialized")
 	}
 
 	return configSingleton

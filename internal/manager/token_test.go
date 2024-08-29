@@ -30,7 +30,7 @@ func Test_Token(t *testing.T) {
 		testMessage := fmt.Sprintf("Valid token opaque %t refreshTTL %d", test.opaque, test.refreshTokenTTL)
 		t.Run(testMessage, func(t *testing.T) {
 			testConfig := createTestConfig(t, test.opaque, test.refreshTokenTTL)
-			keyManager := createTestKeyManager(t, testConfig)
+			keyManager := createTestKeyManager(t)
 			tokenManager := NewTokenManager(testConfig, NewDefaultKeyLoader(keyManager))
 			client, clientExists := testConfig.GetClient("foo")
 			if !clientExists {
@@ -111,7 +111,7 @@ func Test_Token(t *testing.T) {
 
 	t.Run("Invalid HTTP Authorization header", func(t *testing.T) {
 		testConfig := createTestConfig(t, false, 0)
-		keyManager := createTestKeyManager(t, testConfig)
+		keyManager := createTestKeyManager(t)
 		tokenManager := NewTokenManager(testConfig, NewDefaultKeyLoader(keyManager))
 
 		_, _, _, valid := tokenManager.ValidateAccessToken("foooo")
@@ -123,7 +123,7 @@ func Test_Token(t *testing.T) {
 
 	t.Run("Invalid Token value", func(t *testing.T) {
 		testConfig := createTestConfig(t, false, 0)
-		keyManager := createTestKeyManager(t, testConfig)
+		keyManager := createTestKeyManager(t)
 		tokenManager := NewTokenManager(testConfig, NewDefaultKeyLoader(keyManager))
 
 		_, _, _, valid := tokenManager.ValidateAccessToken(fmt.Sprintf("%s %s", internalHttp.AuthBearer, "foo"))
@@ -135,7 +135,7 @@ func Test_Token(t *testing.T) {
 
 	t.Run("Invalid User in token", func(t *testing.T) {
 		testConfig := createTestConfig(t, false, 0)
-		keyManager := createTestKeyManager(t, testConfig)
+		keyManager := createTestKeyManager(t)
 		tokenManager := NewTokenManager(testConfig, NewDefaultKeyLoader(keyManager))
 		client, clientExists := testConfig.GetClient("foo")
 		if !clientExists {
@@ -204,8 +204,8 @@ func createTestConfig(t *testing.T, opaque bool, refreshTokenTTL int) *config.Co
 	return testConfig
 }
 
-func createTestKeyManager(t *testing.T, testConfig *config.Config) *KeyManger {
-	keyManger, keyLoadingError := NewKeyManger(testConfig)
+func createTestKeyManager(t *testing.T) *KeyManger {
+	keyManger, keyLoadingError := NewKeyManger()
 	if keyLoadingError != nil {
 		t.Error(keyLoadingError)
 	}

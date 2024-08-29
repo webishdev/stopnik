@@ -44,7 +44,7 @@ func Test_Authorize(t *testing.T) {
 		t.Error(err)
 	}
 
-	keyManager, keyLoadingError := manager.NewKeyManger(testConfig)
+	keyManager, keyLoadingError := manager.NewKeyManger()
 	if keyLoadingError != nil {
 		t.Error(keyLoadingError)
 	}

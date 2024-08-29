@@ -52,7 +52,7 @@ func Test_UserInfo(t *testing.T) {
 		t.Error(err)
 	}
 
-	keyManger, keyLoadingError := manager.NewKeyManger(testConfig)
+	keyManger, keyLoadingError := manager.NewKeyManger()
 	if keyLoadingError != nil {
 		t.Error(keyLoadingError)
 	}
