@@ -39,9 +39,13 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		assetFSPath := getAssetFSPath(r.URL.Path)
 
 		var result []byte
+		contentType := mime.TypeByExtension(path.Ext(assetFSPath))
 		if assetFSPath == "resources/stopnik_250.png" && h.config.GetLogoImage() != nil {
 			logoImage := h.config.GetLogoImage()
 			result = *logoImage
+			if h.config.UI.LogoContentType != "" {
+				contentType = h.config.UI.LogoContentType
+			}
 		} else {
 			data, assetsFSError := assetsFS.ReadFile(assetFSPath)
 			if assetsFSError != nil {
@@ -50,8 +54,6 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			}
 			result = data
 		}
-
-		contentType := mime.TypeByExtension(path.Ext(assetFSPath))
 
 		w.Header().Set(internalHttp.ContentType, contentType)
 		w.WriteHeader(http.StatusOK)

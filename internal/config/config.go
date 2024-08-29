@@ -107,11 +107,12 @@ type Client struct {
 }
 
 type UI struct {
-	HideFooter bool   `yaml:"hideFooter"`
-	HideLogo   bool   `yaml:"hideLogo"`
-	Title      string `yaml:"title"`
-	FooterText string `yaml:"footerText"`
-	LogoImage  string `yaml:"logoImage"`
+	HideFooter      bool   `yaml:"hideFooter"`
+	HideLogo        bool   `yaml:"hideLogo"`
+	Title           string `yaml:"title"`
+	FooterText      string `yaml:"footerText"`
+	LogoImage       string `yaml:"logoImage"`
+	LogoContentType string `yaml:"logoContentType"`
 }
 
 type Config struct {

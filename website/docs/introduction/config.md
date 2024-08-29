@@ -72,13 +72,14 @@ Entry `server.cookies`
 
 Root entry named `ui`
 
-| Property     | Description                      |
-|--------------|----------------------------------|
-| `logoImage`  | Path of additional logo image    |
-| `hideFooter` | Will hide the **STOPnik** footer |
-| `hideMascot` | Will hide the **STOPnik** mascot |
-| `footerText` | The footer text                  |
-| `title`      | Title                            |
+| Property          | Description                                                                                                                                 |
+|-------------------|---------------------------------------------------------------------------------------------------------------------------------------------|
+| `logoImage`       | Path of additional logo image                                                                                                               |
+| `logoContentType` | [HTTP Mime type](https://developer.mozilla.org/en-US/docs/Web/HTTP/Basics_of_HTTP/MIME_types/Common_types) of logo image if not `image/png` |
+| `hideFooter`      | Will hide the **STOPnik** footer                                                                                                            |
+| `hideMascot`      | Will hide the **STOPnik** mascot                                                                                                            |
+| `footerText`      | The footer text                                                                                                                             |
+| `title`           | Title                                                                                                                                       |
 
 ### Clients
 
