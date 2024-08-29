@@ -75,7 +75,7 @@ func Test_Introspect(t *testing.T) {
 func testIntrospectMissingClientCredentials(t *testing.T, testConfig *config.Config, keyManager *manager.KeyManger) {
 	t.Run("Missing client credentials", func(t *testing.T) {
 		requestValidator := validation.NewRequestValidator(testConfig)
-		tokenManager := manager.NewTokenManager(testConfig, manager.NewDefaultKeyLoader(keyManager))
+		tokenManager := manager.NewTokenManager(manager.NewDefaultKeyLoader(keyManager))
 
 		introspectHandler := NewIntrospectHandler(testConfig, requestValidator, tokenManager)
 
@@ -92,7 +92,7 @@ func testIntrospectMissingClientCredentials(t *testing.T, testConfig *config.Con
 func testIntrospectInvalidClientCredentials(t *testing.T, testConfig *config.Config, keyManager *manager.KeyManger) {
 	t.Run("Invalid client credentials", func(t *testing.T) {
 		requestValidator := validation.NewRequestValidator(testConfig)
-		tokenManager := manager.NewTokenManager(testConfig, manager.NewDefaultKeyLoader(keyManager))
+		tokenManager := manager.NewTokenManager(manager.NewDefaultKeyLoader(keyManager))
 
 		introspectHandler := NewIntrospectHandler(testConfig, requestValidator, tokenManager)
 
@@ -123,7 +123,7 @@ func testIntrospectEmptyToken(t *testing.T, testConfig *config.Config, keyManage
 		testMessage := fmt.Sprintf("Introspect empty %v", test.tokenHint)
 		t.Run(testMessage, func(t *testing.T) {
 			requestValidator := validation.NewRequestValidator(testConfig)
-			tokenManager := manager.NewTokenManager(testConfig, manager.NewDefaultKeyLoader(keyManager))
+			tokenManager := manager.NewTokenManager(manager.NewDefaultKeyLoader(keyManager))
 
 			introspectHandler := NewIntrospectHandler(testConfig, requestValidator, tokenManager)
 
@@ -169,7 +169,7 @@ func testIntrospectInvalidToken(t *testing.T, testConfig *config.Config, keyMana
 		testMessage := fmt.Sprintf("Introspect invalid %v", test.tokenHint)
 		t.Run(testMessage, func(t *testing.T) {
 			requestValidator := validation.NewRequestValidator(testConfig)
-			tokenManager := manager.NewTokenManager(testConfig, manager.NewDefaultKeyLoader(keyManager))
+			tokenManager := manager.NewTokenManager(manager.NewDefaultKeyLoader(keyManager))
 
 			introspectHandler := NewIntrospectHandler(testConfig, requestValidator, tokenManager)
 
@@ -234,7 +234,7 @@ func testIntrospect(t *testing.T, testConfig *config.Config, keyManager *manager
 
 			requestValidator := validation.NewRequestValidator(testConfig)
 			sessionManager := manager.NewSessionManager()
-			tokenManager := manager.NewTokenManager(testConfig, manager.NewDefaultKeyLoader(keyManager))
+			tokenManager := manager.NewTokenManager(manager.NewDefaultKeyLoader(keyManager))
 			sessionManager.StartSession(authSession)
 			request := httptest.NewRequest(http.MethodPost, endpoint.Token, nil)
 			accessTokenResponse := tokenManager.CreateAccessTokenResponse(request, user.Username, client, scopes, "")
@@ -307,7 +307,7 @@ func testIntrospectWithoutHint(t *testing.T, testConfig *config.Config, keyManag
 
 			requestValidator := validation.NewRequestValidator(testConfig)
 			sessionManager := manager.NewSessionManager()
-			tokenManager := manager.NewTokenManager(testConfig, manager.NewDefaultKeyLoader(keyManager))
+			tokenManager := manager.NewTokenManager(manager.NewDefaultKeyLoader(keyManager))
 			sessionManager.StartSession(authSession)
 			request := httptest.NewRequest(http.MethodPost, endpoint.Token, nil)
 			accessTokenResponse := tokenManager.CreateAccessTokenResponse(request, user.Username, client, scopes, "")
@@ -379,7 +379,7 @@ func testIntrospectDisabled(t *testing.T, testConfig *config.Config, keyManager 
 
 			requestValidator := validation.NewRequestValidator(testConfig)
 			sessionManager := manager.NewSessionManager()
-			tokenManager := manager.NewTokenManager(testConfig, manager.NewDefaultKeyLoader(keyManager))
+			tokenManager := manager.NewTokenManager(manager.NewDefaultKeyLoader(keyManager))
 			sessionManager.StartSession(authSession)
 			request := httptest.NewRequest(http.MethodPost, endpoint.Token, nil)
 			accessTokenResponse := tokenManager.CreateAccessTokenResponse(request, user.Username, client, scopes, "")
