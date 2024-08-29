@@ -103,7 +103,7 @@ func testLoadClientKeys(t *testing.T, testConfig *config.Config) {
 		if err != nil {
 			t.Error(err)
 		}
-		defaultKeyLoader := NewDefaultKeyLoader(testConfig, keyManger)
+		defaultKeyLoader := NewDefaultKeyLoader(keyManger)
 
 		client, clientExists := testConfig.GetClient("foo")
 		if !clientExists {

@@ -47,8 +47,9 @@ type KeyLoader interface {
 	ServerSecretLoader
 }
 
-func NewServerSecretLoader(config *config.Config) ServerSecretLoader {
-	return &serverSecret{secret: config.GetServerSecret()}
+func NewServerSecretLoader() ServerSecretLoader {
+	c := config.GetConfigInstance()
+	return &serverSecret{secret: c.GetServerSecret()}
 }
 
 func (s *serverSecret) GetServerKey() jwt.SignEncryptParseOption {

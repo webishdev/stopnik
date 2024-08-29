@@ -39,7 +39,7 @@ func Test_Health(t *testing.T) {
 	}
 
 	t.Run("Health without token", func(t *testing.T) {
-		tokenManager := manager.NewTokenManager(testConfig, manager.NewDefaultKeyLoader(testConfig, keyManger))
+		tokenManager := manager.NewTokenManager(testConfig, manager.NewDefaultKeyLoader(keyManger))
 
 		healthHandler := NewHealthHandler(tokenManager)
 
@@ -65,7 +65,7 @@ func Test_Health(t *testing.T) {
 	})
 
 	t.Run("Health with token", func(t *testing.T) {
-		tokenManager := manager.NewTokenManager(testConfig, manager.NewDefaultKeyLoader(testConfig, keyManger))
+		tokenManager := manager.NewTokenManager(testConfig, manager.NewDefaultKeyLoader(keyManger))
 
 		client, clientExists := testConfig.GetClient("foo")
 		if !clientExists {

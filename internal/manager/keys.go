@@ -22,9 +22,9 @@ type DefaultKeyLoader struct {
 	keyManager  *KeyManger
 }
 
-func NewDefaultKeyLoader(config *config.Config, keyManager *KeyManger) *DefaultKeyLoader {
+func NewDefaultKeyLoader(keyManager *KeyManger) *DefaultKeyLoader {
 	return &DefaultKeyLoader{
-		keyFallback: crypto.NewServerSecretLoader(config),
+		keyFallback: crypto.NewServerSecretLoader(),
 		keyManager:  keyManager,
 	}
 }

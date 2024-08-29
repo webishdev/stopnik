@@ -25,7 +25,7 @@ func newCookieManagerWithTime(now Now) *CookieManager {
 	configInstance := config.GetConfigInstance()
 	return &CookieManager{
 		config:      configInstance,
-		keyFallback: crypto.NewServerSecretLoader(configInstance),
+		keyFallback: crypto.NewServerSecretLoader(),
 		now:         now,
 	}
 }

@@ -73,7 +73,7 @@ func Test_Revoke(t *testing.T) {
 func testRevokeMissingClientCredentials(t *testing.T, testConfig *config.Config, keyManager *manager.KeyManger) {
 	t.Run("Missing client credentials", func(t *testing.T) {
 		requestValidator := validation.NewRequestValidator(testConfig)
-		tokenManager := manager.NewTokenManager(testConfig, manager.NewDefaultKeyLoader(testConfig, keyManager))
+		tokenManager := manager.NewTokenManager(testConfig, manager.NewDefaultKeyLoader(keyManager))
 
 		revokeHandler := NewRevokeHandler(testConfig, requestValidator, tokenManager)
 
@@ -90,7 +90,7 @@ func testRevokeMissingClientCredentials(t *testing.T, testConfig *config.Config,
 func testRevokeInvalidClientCredentials(t *testing.T, testConfig *config.Config, keyManager *manager.KeyManger) {
 	t.Run("Invalid client credentials", func(t *testing.T) {
 		requestValidator := validation.NewRequestValidator(testConfig)
-		tokenManager := manager.NewTokenManager(testConfig, manager.NewDefaultKeyLoader(testConfig, keyManager))
+		tokenManager := manager.NewTokenManager(testConfig, manager.NewDefaultKeyLoader(keyManager))
 
 		revokeHandler := NewRevokeHandler(testConfig, requestValidator, tokenManager)
 
@@ -121,7 +121,7 @@ func testRevokeEmptyToken(t *testing.T, testConfig *config.Config, keyManager *m
 		testMessage := fmt.Sprintf("Revoke empty %v", test.tokenHint)
 		t.Run(testMessage, func(t *testing.T) {
 			requestValidator := validation.NewRequestValidator(testConfig)
-			tokenManager := manager.NewTokenManager(testConfig, manager.NewDefaultKeyLoader(testConfig, keyManager))
+			tokenManager := manager.NewTokenManager(testConfig, manager.NewDefaultKeyLoader(keyManager))
 
 			revokeHandler := NewRevokeHandler(testConfig, requestValidator, tokenManager)
 
@@ -160,7 +160,7 @@ func testRevokeInvalidToken(t *testing.T, testConfig *config.Config, keyManager 
 		testMessage := fmt.Sprintf("Revoke invalid %v", test.tokenHint)
 		t.Run(testMessage, func(t *testing.T) {
 			requestValidator := validation.NewRequestValidator(testConfig)
-			tokenManager := manager.NewTokenManager(testConfig, manager.NewDefaultKeyLoader(testConfig, keyManager))
+			tokenManager := manager.NewTokenManager(testConfig, manager.NewDefaultKeyLoader(keyManager))
 
 			revokeHandler := NewRevokeHandler(testConfig, requestValidator, tokenManager)
 
@@ -217,7 +217,7 @@ func testRevoke(t *testing.T, testConfig *config.Config, keyManager *manager.Key
 
 			requestValidator := validation.NewRequestValidator(testConfig)
 			sessionManager := manager.NewSessionManager(testConfig)
-			tokenManager := manager.NewTokenManager(testConfig, manager.NewDefaultKeyLoader(testConfig, keyManager))
+			tokenManager := manager.NewTokenManager(testConfig, manager.NewDefaultKeyLoader(keyManager))
 			sessionManager.StartSession(authSession)
 			request := httptest.NewRequest(http.MethodPost, endpoint.Token, nil)
 			accessTokenResponse := tokenManager.CreateAccessTokenResponse(request, user.Username, client, scopes, "")
@@ -295,7 +295,7 @@ func testRevokeWithoutHint(t *testing.T, testConfig *config.Config, keyManager *
 
 			requestValidator := validation.NewRequestValidator(testConfig)
 			sessionManager := manager.NewSessionManager(testConfig)
-			tokenManager := manager.NewTokenManager(testConfig, manager.NewDefaultKeyLoader(testConfig, keyManager))
+			tokenManager := manager.NewTokenManager(testConfig, manager.NewDefaultKeyLoader(keyManager))
 			sessionManager.StartSession(authSession)
 			request := httptest.NewRequest(http.MethodPost, endpoint.Token, nil)
 			accessTokenResponse := tokenManager.CreateAccessTokenResponse(request, user.Username, client, scopes, "")
@@ -372,7 +372,7 @@ func testRevokeDisabled(t *testing.T, testConfig *config.Config, keyManager *man
 
 			requestValidator := validation.NewRequestValidator(testConfig)
 			sessionManager := manager.NewSessionManager(testConfig)
-			tokenManager := manager.NewTokenManager(testConfig, manager.NewDefaultKeyLoader(testConfig, keyManager))
+			tokenManager := manager.NewTokenManager(testConfig, manager.NewDefaultKeyLoader(keyManager))
 			sessionManager.StartSession(authSession)
 			request := httptest.NewRequest(http.MethodPost, endpoint.Token, nil)
 			accessTokenResponse := tokenManager.CreateAccessTokenResponse(request, user.Username, client, scopes, "")

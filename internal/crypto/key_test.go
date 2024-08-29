@@ -19,7 +19,7 @@ func Test_Key(t *testing.T) {
 		t.Fatal(setupError)
 	}
 
-	testServerKeyLoader(t, testConfig)
+	testServerKeyLoader(t)
 
 	testLoadPrivateKey(t)
 
@@ -30,9 +30,9 @@ func Test_Key(t *testing.T) {
 	testLoadUnsupportedCurvePrivateKey(t)
 }
 
-func testServerKeyLoader(t *testing.T, testConfig *config.Config) {
+func testServerKeyLoader(t *testing.T) {
 	t.Run("Server key loader", func(t *testing.T) {
-		serverSecretLoader := NewServerSecretLoader(testConfig)
+		serverSecretLoader := NewServerSecretLoader()
 
 		key := serverSecretLoader.GetServerKey()
 
