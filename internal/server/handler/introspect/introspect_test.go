@@ -55,13 +55,13 @@ func Test_Introspect(t *testing.T) {
 		t.Error(keyLoadingError)
 	}
 
-	testIntrospectMissingClientCredentials(t, testConfig, keyManager)
+	testIntrospectMissingClientCredentials(t, keyManager)
 
-	testIntrospectInvalidClientCredentials(t, testConfig, keyManager)
+	testIntrospectInvalidClientCredentials(t, keyManager)
 
-	testIntrospectEmptyToken(t, testConfig, keyManager)
+	testIntrospectEmptyToken(t, keyManager)
 
-	testIntrospectInvalidToken(t, testConfig, keyManager)
+	testIntrospectInvalidToken(t, keyManager)
 
 	testIntrospect(t, testConfig, keyManager)
 
@@ -72,12 +72,12 @@ func Test_Introspect(t *testing.T) {
 	testIntrospectNotAllowedHttpMethods(t)
 }
 
-func testIntrospectMissingClientCredentials(t *testing.T, testConfig *config.Config, keyManager *manager.KeyManger) {
+func testIntrospectMissingClientCredentials(t *testing.T, keyManager *manager.KeyManger) {
 	t.Run("Missing client credentials", func(t *testing.T) {
 		requestValidator := validation.NewRequestValidator()
 		tokenManager := manager.NewTokenManager(manager.NewDefaultKeyLoader(keyManager))
 
-		introspectHandler := NewIntrospectHandler(testConfig, requestValidator, tokenManager)
+		introspectHandler := NewIntrospectHandler(requestValidator, tokenManager)
 
 		rr := httptest.NewRecorder()
 
@@ -89,12 +89,12 @@ func testIntrospectMissingClientCredentials(t *testing.T, testConfig *config.Con
 	})
 }
 
-func testIntrospectInvalidClientCredentials(t *testing.T, testConfig *config.Config, keyManager *manager.KeyManger) {
+func testIntrospectInvalidClientCredentials(t *testing.T, keyManager *manager.KeyManger) {
 	t.Run("Invalid client credentials", func(t *testing.T) {
 		requestValidator := validation.NewRequestValidator()
 		tokenManager := manager.NewTokenManager(manager.NewDefaultKeyLoader(keyManager))
 
-		introspectHandler := NewIntrospectHandler(testConfig, requestValidator, tokenManager)
+		introspectHandler := NewIntrospectHandler(requestValidator, tokenManager)
 
 		rr := httptest.NewRecorder()
 
@@ -109,7 +109,7 @@ func testIntrospectInvalidClientCredentials(t *testing.T, testConfig *config.Con
 	})
 }
 
-func testIntrospectEmptyToken(t *testing.T, testConfig *config.Config, keyManager *manager.KeyManger) {
+func testIntrospectEmptyToken(t *testing.T, keyManager *manager.KeyManger) {
 	type introspectParameter struct {
 		tokenHint oauth2.IntrospectTokenType
 	}
@@ -125,7 +125,7 @@ func testIntrospectEmptyToken(t *testing.T, testConfig *config.Config, keyManage
 			requestValidator := validation.NewRequestValidator()
 			tokenManager := manager.NewTokenManager(manager.NewDefaultKeyLoader(keyManager))
 
-			introspectHandler := NewIntrospectHandler(testConfig, requestValidator, tokenManager)
+			introspectHandler := NewIntrospectHandler(requestValidator, tokenManager)
 
 			rr := httptest.NewRecorder()
 
@@ -155,7 +155,7 @@ func testIntrospectEmptyToken(t *testing.T, testConfig *config.Config, keyManage
 	}
 }
 
-func testIntrospectInvalidToken(t *testing.T, testConfig *config.Config, keyManager *manager.KeyManger) {
+func testIntrospectInvalidToken(t *testing.T, keyManager *manager.KeyManger) {
 	type introspectParameter struct {
 		tokenHint oauth2.IntrospectTokenType
 	}
@@ -171,7 +171,7 @@ func testIntrospectInvalidToken(t *testing.T, testConfig *config.Config, keyMana
 			requestValidator := validation.NewRequestValidator()
 			tokenManager := manager.NewTokenManager(manager.NewDefaultKeyLoader(keyManager))
 
-			introspectHandler := NewIntrospectHandler(testConfig, requestValidator, tokenManager)
+			introspectHandler := NewIntrospectHandler(requestValidator, tokenManager)
 
 			rr := httptest.NewRecorder()
 
@@ -239,7 +239,7 @@ func testIntrospect(t *testing.T, testConfig *config.Config, keyManager *manager
 			request := httptest.NewRequest(http.MethodPost, endpoint.Token, nil)
 			accessTokenResponse := tokenManager.CreateAccessTokenResponse(request, user.Username, client, scopes, "")
 
-			introspectHandler := NewIntrospectHandler(testConfig, requestValidator, tokenManager)
+			introspectHandler := NewIntrospectHandler(requestValidator, tokenManager)
 
 			token := accessTokenResponse.AccessTokenKey
 			if test.tokenHint == oauth2.ItRefreshToken {
@@ -312,7 +312,7 @@ func testIntrospectWithoutHint(t *testing.T, testConfig *config.Config, keyManag
 			request := httptest.NewRequest(http.MethodPost, endpoint.Token, nil)
 			accessTokenResponse := tokenManager.CreateAccessTokenResponse(request, user.Username, client, scopes, "")
 
-			introspectHandler := NewIntrospectHandler(testConfig, requestValidator, tokenManager)
+			introspectHandler := NewIntrospectHandler(requestValidator, tokenManager)
 
 			token := accessTokenResponse.AccessTokenKey
 			if test.tokenType == oauth2.ItRefreshToken {
@@ -384,7 +384,7 @@ func testIntrospectDisabled(t *testing.T, testConfig *config.Config, keyManager 
 			request := httptest.NewRequest(http.MethodPost, endpoint.Token, nil)
 			accessTokenResponse := tokenManager.CreateAccessTokenResponse(request, user.Username, client, scopes, "")
 
-			introspectHandler := NewIntrospectHandler(testConfig, requestValidator, tokenManager)
+			introspectHandler := NewIntrospectHandler(requestValidator, tokenManager)
 
 			token := accessTokenResponse.AccessTokenKey
 			if test.tokenHint == oauth2.ItRefreshToken {
@@ -420,10 +420,16 @@ func testIntrospectNotAllowedHttpMethods(t *testing.T) {
 		http.MethodDelete,
 	}
 
+	testConfig := &config.Config{}
+	err := testConfig.Setup()
+	if err != nil {
+		t.Error(err)
+	}
+
 	for _, method := range testInvalidIntrospectHttpMethods {
 		testMessage := fmt.Sprintf("Introspect with unsupported method %s", method)
 		t.Run(testMessage, func(t *testing.T) {
-			introspectHandler := NewIntrospectHandler(&config.Config{}, &validation.RequestValidator{}, &manager.TokenManager{})
+			introspectHandler := NewIntrospectHandler(&validation.RequestValidator{}, &manager.TokenManager{})
 
 			rr := httptest.NewRecorder()
 

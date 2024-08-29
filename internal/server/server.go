@@ -194,8 +194,8 @@ func registerHandlers(config *config.Config, handle func(pattern string, handler
 	tokenHandler := token.NewTokenHandler(requestValidator, sessionManager, tokenManager)
 
 	// OAuth2 extensions
-	introspectHandler := introspect.NewIntrospectHandler(config, requestValidator, tokenManager)
-	revokeHandler := revoke.NewRevokeHandler(config, requestValidator, tokenManager)
+	introspectHandler := introspect.NewIntrospectHandler(requestValidator, tokenManager)
+	revokeHandler := revoke.NewRevokeHandler(requestValidator, tokenManager)
 	metadataHandler := metadata.NewMetadataHandler()
 	keysHandler := keys.NewKeysHandler(keyManger)
 

@@ -29,9 +29,10 @@ type Handler struct {
 	errorHandler *error.Handler
 }
 
-func NewIntrospectHandler(config *config.Config, validator *validation.RequestValidator, tokenManager *manager.TokenManager) *Handler {
+func NewIntrospectHandler(validator *validation.RequestValidator, tokenManager *manager.TokenManager) *Handler {
+	currentConfig := config.GetConfigInstance()
 	return &Handler{
-		config:       config,
+		config:       currentConfig,
 		validator:    validator,
 		tokenManager: tokenManager,
 		errorHandler: error.NewErrorHandler(),

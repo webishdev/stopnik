@@ -53,13 +53,13 @@ func Test_Revoke(t *testing.T) {
 		t.Error(keyLoadingError)
 	}
 
-	testRevokeMissingClientCredentials(t, testConfig, keyManger)
+	testRevokeMissingClientCredentials(t, keyManger)
 
-	testRevokeInvalidClientCredentials(t, testConfig, keyManger)
+	testRevokeInvalidClientCredentials(t, keyManger)
 
-	testRevokeEmptyToken(t, testConfig, keyManger)
+	testRevokeEmptyToken(t, keyManger)
 
-	testRevokeInvalidToken(t, testConfig, keyManger)
+	testRevokeInvalidToken(t, keyManger)
 
 	testRevoke(t, testConfig, keyManger)
 
@@ -70,12 +70,12 @@ func Test_Revoke(t *testing.T) {
 	testRevokeNotAllowedHttpMethods(t)
 }
 
-func testRevokeMissingClientCredentials(t *testing.T, testConfig *config.Config, keyManager *manager.KeyManger) {
+func testRevokeMissingClientCredentials(t *testing.T, keyManager *manager.KeyManger) {
 	t.Run("Missing client credentials", func(t *testing.T) {
 		requestValidator := validation.NewRequestValidator()
 		tokenManager := manager.NewTokenManager(manager.NewDefaultKeyLoader(keyManager))
 
-		revokeHandler := NewRevokeHandler(testConfig, requestValidator, tokenManager)
+		revokeHandler := NewRevokeHandler(requestValidator, tokenManager)
 
 		rr := httptest.NewRecorder()
 
@@ -87,12 +87,12 @@ func testRevokeMissingClientCredentials(t *testing.T, testConfig *config.Config,
 	})
 }
 
-func testRevokeInvalidClientCredentials(t *testing.T, testConfig *config.Config, keyManager *manager.KeyManger) {
+func testRevokeInvalidClientCredentials(t *testing.T, keyManager *manager.KeyManger) {
 	t.Run("Invalid client credentials", func(t *testing.T) {
 		requestValidator := validation.NewRequestValidator()
 		tokenManager := manager.NewTokenManager(manager.NewDefaultKeyLoader(keyManager))
 
-		revokeHandler := NewRevokeHandler(testConfig, requestValidator, tokenManager)
+		revokeHandler := NewRevokeHandler(requestValidator, tokenManager)
 
 		rr := httptest.NewRecorder()
 
@@ -107,7 +107,7 @@ func testRevokeInvalidClientCredentials(t *testing.T, testConfig *config.Config,
 	})
 }
 
-func testRevokeEmptyToken(t *testing.T, testConfig *config.Config, keyManager *manager.KeyManger) {
+func testRevokeEmptyToken(t *testing.T, keyManager *manager.KeyManger) {
 	type introspectParameter struct {
 		tokenHint oauth2.IntrospectTokenType
 	}
@@ -123,7 +123,7 @@ func testRevokeEmptyToken(t *testing.T, testConfig *config.Config, keyManager *m
 			requestValidator := validation.NewRequestValidator()
 			tokenManager := manager.NewTokenManager(manager.NewDefaultKeyLoader(keyManager))
 
-			revokeHandler := NewRevokeHandler(testConfig, requestValidator, tokenManager)
+			revokeHandler := NewRevokeHandler(requestValidator, tokenManager)
 
 			rr := httptest.NewRecorder()
 
@@ -146,7 +146,7 @@ func testRevokeEmptyToken(t *testing.T, testConfig *config.Config, keyManager *m
 	}
 }
 
-func testRevokeInvalidToken(t *testing.T, testConfig *config.Config, keyManager *manager.KeyManger) {
+func testRevokeInvalidToken(t *testing.T, keyManager *manager.KeyManger) {
 	type introspectParameter struct {
 		tokenHint oauth2.IntrospectTokenType
 	}
@@ -162,7 +162,7 @@ func testRevokeInvalidToken(t *testing.T, testConfig *config.Config, keyManager 
 			requestValidator := validation.NewRequestValidator()
 			tokenManager := manager.NewTokenManager(manager.NewDefaultKeyLoader(keyManager))
 
-			revokeHandler := NewRevokeHandler(testConfig, requestValidator, tokenManager)
+			revokeHandler := NewRevokeHandler(requestValidator, tokenManager)
 
 			rr := httptest.NewRecorder()
 
@@ -222,7 +222,7 @@ func testRevoke(t *testing.T, testConfig *config.Config, keyManager *manager.Key
 			request := httptest.NewRequest(http.MethodPost, endpoint.Token, nil)
 			accessTokenResponse := tokenManager.CreateAccessTokenResponse(request, user.Username, client, scopes, "")
 
-			revokeHandler := NewRevokeHandler(testConfig, requestValidator, tokenManager)
+			revokeHandler := NewRevokeHandler(requestValidator, tokenManager)
 
 			token := accessTokenResponse.AccessTokenKey
 			if test.tokenHint == oauth2.ItRefreshToken {
@@ -300,7 +300,7 @@ func testRevokeWithoutHint(t *testing.T, testConfig *config.Config, keyManager *
 			request := httptest.NewRequest(http.MethodPost, endpoint.Token, nil)
 			accessTokenResponse := tokenManager.CreateAccessTokenResponse(request, user.Username, client, scopes, "")
 
-			revokeHandler := NewRevokeHandler(testConfig, requestValidator, tokenManager)
+			revokeHandler := NewRevokeHandler(requestValidator, tokenManager)
 
 			token := accessTokenResponse.AccessTokenKey
 			if test.tokenHint == oauth2.ItRefreshToken {
@@ -377,7 +377,7 @@ func testRevokeDisabled(t *testing.T, testConfig *config.Config, keyManager *man
 			request := httptest.NewRequest(http.MethodPost, endpoint.Token, nil)
 			accessTokenResponse := tokenManager.CreateAccessTokenResponse(request, user.Username, client, scopes, "")
 
-			revokeHandler := NewRevokeHandler(testConfig, requestValidator, tokenManager)
+			revokeHandler := NewRevokeHandler(requestValidator, tokenManager)
 
 			token := accessTokenResponse.AccessTokenKey
 			if test.tokenHint == oauth2.ItRefreshToken {
@@ -414,10 +414,16 @@ func testRevokeNotAllowedHttpMethods(t *testing.T) {
 		http.MethodDelete,
 	}
 
+	testConfig := &config.Config{}
+	err := testConfig.Setup()
+	if err != nil {
+		t.Error(err)
+	}
+
 	for _, method := range testInvalidRevokeHttpMethods {
 		testMessage := fmt.Sprintf("Revoke with unsupported method %s", method)
 		t.Run(testMessage, func(t *testing.T) {
-			revokeHandler := NewRevokeHandler(&config.Config{}, &validation.RequestValidator{}, &manager.TokenManager{})
+			revokeHandler := NewRevokeHandler(&validation.RequestValidator{}, &manager.TokenManager{})
 
 			rr := httptest.NewRecorder()
 
