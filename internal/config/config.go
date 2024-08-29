@@ -1,13 +1,16 @@
 package config
 
 import (
+	"bytes"
 	"crypto/rand"
 	"errors"
 	"fmt"
 	internalHttp "github.com/webishdev/stopnik/internal/http"
 	"github.com/webishdev/stopnik/internal/oauth2"
 	"github.com/webishdev/stopnik/log"
+	"image/png"
 	"math/big"
+	"os"
 	"strings"
 )
 
@@ -105,9 +108,10 @@ type Client struct {
 
 type UI struct {
 	HideFooter bool   `yaml:"hideFooter"`
-	HideMascot bool   `yaml:"hideMascot"`
+	HideLogo   bool   `yaml:"hideLogo"`
 	Title      string `yaml:"title"`
 	FooterText string `yaml:"footerText"`
+	LogoImage  string `yaml:"logoImage"`
 }
 
 type Config struct {
@@ -119,6 +123,7 @@ type Config struct {
 	userMap         map[string]*User
 	clientMap       map[string]*Client
 	oidc            bool
+	logoImage       *[]byte
 }
 
 type ReadFile func(filename string) ([]byte, error)
@@ -252,6 +257,26 @@ func (config *Config) Setup() error {
 	generatedSecret := randomString
 	config.generatedSecret = generatedSecret
 
+	if config.UI.LogoImage != "" {
+		f, fileError := os.Open(config.UI.LogoImage)
+		if fileError != nil {
+			panic(fileError)
+		}
+		defer f.Close()
+		img, pngError := png.Decode(f)
+		if pngError != nil {
+			panic(pngError)
+		}
+		buf := new(bytes.Buffer)
+		pngEncodeError := png.Encode(buf, img)
+		if pngEncodeError != nil {
+			panic(pngEncodeError)
+		}
+		log.Info("Own logo loaded from %s", config.UI.LogoImage)
+		data := buf.Bytes()
+		config.logoImage = &data
+	}
+
 	return nil
 }
 
@@ -294,7 +319,7 @@ func (config *Config) GetHideFooter() bool {
 }
 
 func (config *Config) GetHideMascot() bool {
-	return config.UI.HideMascot
+	return config.UI.HideLogo
 }
 
 func (config *Config) GetTitle() string {
@@ -303,6 +328,10 @@ func (config *Config) GetTitle() string {
 
 func (config *Config) GetFooterText() string {
 	return GetOrDefaultString(config.UI.FooterText, "STOPnik")
+}
+
+func (config *Config) GetLogoImage() *[]byte {
+	return config.logoImage
 }
 
 func (config *Config) GetOidc() bool {

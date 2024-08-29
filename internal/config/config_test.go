@@ -238,7 +238,7 @@ func simpleUIConfiguration(t *testing.T) {
 		*origin = Config{
 			UI: UI{
 				HideFooter: true,
-				HideMascot: true,
+				HideLogo:   true,
 				Title:      "Oh my Foo!",
 				FooterText: "In the end",
 			},

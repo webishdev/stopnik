@@ -2,6 +2,7 @@ package assets
 
 import (
 	"fmt"
+	"github.com/webishdev/stopnik/internal/config"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -9,6 +10,29 @@ import (
 )
 
 func Test_Assets(t *testing.T) {
+	testConfig := &config.Config{
+		Clients: []config.Client{
+			{
+				Id:           "foo",
+				ClientSecret: "d82c4eb5261cb9c8aa9855edd67d1bd10482f41529858d925094d173fa662aa91ff39bc5b188615273484021dfb16fd8284cf684ccf0fc795be3aa2fc1e6c181",
+				Redirects:    []string{"https://example.com/callback"},
+			},
+		},
+		Users: []config.User{
+			{
+				Username: "foo",
+				Password: "d82c4eb5261cb9c8aa9855edd67d1bd10482f41529858d925094d173fa662aa91ff39bc5b188615273484021dfb16fd8284cf684ccf0fc795be3aa2fc1e6c181",
+			},
+		},
+	}
+
+	err := testConfig.Setup()
+	if err != nil {
+		t.Error(err)
+	}
+
+	assetsHandler := NewAssetHandler(testConfig)
+
 	var testAssetsHttpMethods = []string{
 		http.MethodPost,
 		http.MethodPut,
@@ -30,8 +54,6 @@ func Test_Assets(t *testing.T) {
 		{path: "/foo/bar.png", expectedCode: http.StatusNotFound, matches: false},
 		{path: "/abc/123.css", expectedCode: http.StatusNotFound, matches: false},
 	}
-
-	assetsHandler := &Handler{}
 
 	for _, test := range testAssetsHttpParameters {
 		testMessage := fmt.Sprintf("Access assets %s with result %d", test.path, test.expectedCode)

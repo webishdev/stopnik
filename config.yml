@@ -14,7 +14,7 @@ server:
       key: ./test_keys/server.key
 ui:
 #  hideFooter: true
-#  hideMascot: true
+#  hideLogo: true
 #  footerText: Some nice line!
 #  title: Test realm
 clients:

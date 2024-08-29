@@ -1,7 +1,9 @@
 package assets
 
 import (
-	"github.com/webishdev/stopnik/internal/server/handler/error"
+	"github.com/webishdev/stopnik/internal/config"
+	internalHttp "github.com/webishdev/stopnik/internal/http"
+	internalError "github.com/webishdev/stopnik/internal/server/handler/error"
 	"github.com/webishdev/stopnik/internal/template/assets"
 	"github.com/webishdev/stopnik/log"
 	"mime"
@@ -11,12 +13,14 @@ import (
 )
 
 type Handler struct {
-	errorHandler *error.Handler
+	config       *config.Config
+	errorHandler *internalError.Handler
 }
 
-func NewAssetHandler() *Handler {
+func NewAssetHandler(config *config.Config) *Handler {
 	return &Handler{
-		errorHandler: error.NewErrorHandler(),
+		config:       config,
+		errorHandler: internalError.NewErrorHandler(),
 	}
 }
 
@@ -32,19 +36,26 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 		assetsFS := assets.GetAssets()
 
-		assetFSPath := assetFSPath(r.URL.Path)
+		assetFSPath := getAssetFSPath(r.URL.Path)
 
-		data, assetsFSError := assetsFS.ReadFile(assetFSPath)
-		if assetsFSError != nil {
-			h.errorHandler.NotFoundHandler(w, r)
-			return
+		var result []byte
+		if assetFSPath == "resources/stopnik_250.png" && h.config.GetLogoImage() != nil {
+			logoImage := h.config.GetLogoImage()
+			result = *logoImage
+		} else {
+			data, assetsFSError := assetsFS.ReadFile(assetFSPath)
+			if assetsFSError != nil {
+				h.errorHandler.NotFoundHandler(w, r)
+				return
+			}
+			result = data
 		}
 
 		contentType := mime.TypeByExtension(path.Ext(assetFSPath))
 
-		w.Header().Set("Content-Type", contentType)
+		w.Header().Set(internalHttp.ContentType, contentType)
 		w.WriteHeader(http.StatusOK)
-		_, writeError := w.Write(data)
+		_, writeError := w.Write(result)
 		if writeError != nil {
 			log.Error("Could not send data: %v", writeError)
 		}
@@ -54,7 +65,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func assetFSPath(value string) string {
+func getAssetFSPath(value string) string {
 	currentPath, currentFile := path.Split(value)
 	currentPath = strings.TrimPrefix(currentPath, "/")
 	currentPath = strings.TrimSuffix(currentPath, "/")
