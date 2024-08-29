@@ -126,12 +126,12 @@ type Config struct {
 	logoImage       *[]byte
 }
 
-var lock = &sync.Mutex{}
+var configLock = &sync.Mutex{}
 var configSingleton *Config
 
 func GetConfigInstance() *Config {
-	lock.Lock()
-	defer lock.Unlock()
+	configLock.Lock()
+	defer configLock.Unlock()
 	if configSingleton == nil {
 		return &Config{}
 	}
@@ -140,8 +140,8 @@ func GetConfigInstance() *Config {
 }
 
 func (config *Config) Setup() error {
-	lock.Lock()
-	defer lock.Unlock()
+	configLock.Lock()
+	defer configLock.Unlock()
 	for userIndex, user := range config.Users {
 		if user.Username == "" || len(user.Password) != 128 {
 			invalidUser := fmt.Sprintf("User configuration invalid. User %d %v", userIndex, user)

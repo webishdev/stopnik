@@ -15,22 +15,22 @@ func NewConfigLoader(fileReader ReadFile, unmarshaler Unmarshal) *Loader {
 	}
 }
 
-func (loader *Loader) LoadConfig(name string) (*Config, error) {
+func (loader *Loader) LoadConfig(name string) error {
 	data, readError := loader.fileReader(name)
 	if readError != nil {
-		return nil, readError
+		return readError
 	}
 
 	config := &Config{}
 	parseError := loader.unmarshaler(data, config)
 	if parseError != nil {
-		return nil, parseError
+		return parseError
 	}
 
 	setupError := config.Setup()
 	if setupError != nil {
-		return nil, setupError
+		return setupError
 	}
 
-	return config, nil
+	return nil
 }

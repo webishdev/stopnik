@@ -69,7 +69,7 @@ func readError(t *testing.T) {
 		return nil, errors.New("test error")
 	}, nil)
 
-	_, err := configLoader.LoadConfig("foo.txt")
+	err := configLoader.LoadConfig("foo.txt")
 
 	if err == nil {
 		t.Error("expected error")
@@ -83,7 +83,7 @@ func unmarshalError(t *testing.T) {
 		return errors.New("test error")
 	})
 
-	_, err := configLoader.LoadConfig("foo.txt")
+	err := configLoader.LoadConfig("foo.txt")
 
 	if err == nil {
 		t.Error("expected error")
@@ -101,11 +101,13 @@ func emptyServerConfiguration(t *testing.T) {
 		return nil
 	})
 
-	config, err := configLoader.LoadConfig("foo.txt")
+	err := configLoader.LoadConfig("foo.txt")
 
 	if err != nil {
 		t.Error("did not expect error when loading config")
 	}
+
+	config := GetConfigInstance()
 
 	if config.generatedSecret == "" || len(config.generatedSecret) != 16 {
 		t.Error("expected generated secret to not be empty")
@@ -156,11 +158,13 @@ func simpleServerConfiguration(t *testing.T) {
 		return nil
 	})
 
-	config, err := configLoader.LoadConfig("foo.txt")
+	err := configLoader.LoadConfig("foo.txt")
 
 	if err != nil {
 		t.Error("did not expect error when loading config")
 	}
+
+	config := GetConfigInstance()
 
 	if config == nil || config.generatedSecret == "" {
 		t.Error("expected generated secret to not be empty")
@@ -203,11 +207,13 @@ func emptyUIConfiguration(t *testing.T) {
 		return nil
 	})
 
-	config, err := configLoader.LoadConfig("foo.txt")
+	err := configLoader.LoadConfig("foo.txt")
 
 	if err != nil {
 		t.Error("did not expect error when loading config")
 	}
+
+	config := GetConfigInstance()
 
 	footerText := config.GetFooterText()
 	if footerText != "STOPnik" {
@@ -246,11 +252,13 @@ func simpleUIConfiguration(t *testing.T) {
 		return nil
 	})
 
-	config, err := configLoader.LoadConfig("foo.txt")
+	err := configLoader.LoadConfig("foo.txt")
 
 	if err != nil {
 		t.Error("did not expect error when loading config")
 	}
+
+	config := GetConfigInstance()
 
 	footerText := config.GetFooterText()
 	if footerText != "In the end" {
@@ -288,11 +296,13 @@ func validUsers(t *testing.T) {
 		return nil
 	})
 
-	config, err := configLoader.LoadConfig("foo.txt")
+	err := configLoader.LoadConfig("foo.txt")
 
 	if err != nil {
 		t.Error("did not expect error when loading config")
 	}
+
+	config := GetConfigInstance()
 
 	if len(config.Users) != 3 {
 		t.Errorf("expected 3 users, got %d", len(config.Users))
@@ -320,7 +330,7 @@ func invalidUsers(t *testing.T) {
 			return nil
 		})
 
-		_, err := configLoader.LoadConfig("foo.txt")
+		err := configLoader.LoadConfig("foo.txt")
 
 		if err == nil {
 			t.Error("expected error when loading config")
@@ -359,11 +369,13 @@ func validClients(t *testing.T) {
 		return nil
 	})
 
-	config, err := configLoader.LoadConfig("foo.txt")
+	err := configLoader.LoadConfig("foo.txt")
 
 	if err != nil {
 		t.Error("did not expect error when loading config")
 	}
+
+	config := GetConfigInstance()
 
 	if len(config.Clients) != 3 {
 		t.Errorf("expected 3 clients, got %d", len(config.Clients))
@@ -396,7 +408,7 @@ func invalidClients(t *testing.T) {
 			return nil
 		})
 
-		_, err := configLoader.LoadConfig("foo.txt")
+		err := configLoader.LoadConfig("foo.txt")
 
 		if err == nil {
 			t.Error("expected error when loading config")

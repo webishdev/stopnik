@@ -61,12 +61,14 @@ func start(configurationFile *string) error {
 }
 
 func readConfiguration(configurationFile *string, configLoader *config.Loader) (*config.Config, error) {
-	currentConfig, configError := configLoader.LoadConfig(*configurationFile)
+	configError := configLoader.LoadConfig(*configurationFile)
 	if configError != nil {
 		fmt.Printf("STOPnik %s - %s\n\n", Version, GitHash)
 		fmt.Printf("%v", configError)
 		return nil, configError
 	}
+
+	currentConfig := config.GetConfigInstance()
 	logger.SetLogLevel(currentConfig.Server.LogLevel)
 	logger.Info("Config loaded from %s", *configurationFile)
 	if currentConfig.GetOidc() {
