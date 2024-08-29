@@ -216,7 +216,7 @@ func testRevoke(t *testing.T, testConfig *config.Config, keyManager *manager.Key
 			}
 
 			requestValidator := validation.NewRequestValidator(testConfig)
-			sessionManager := manager.NewSessionManager(testConfig)
+			sessionManager := manager.NewSessionManager()
 			tokenManager := manager.NewTokenManager(testConfig, manager.NewDefaultKeyLoader(keyManager))
 			sessionManager.StartSession(authSession)
 			request := httptest.NewRequest(http.MethodPost, endpoint.Token, nil)
@@ -294,7 +294,7 @@ func testRevokeWithoutHint(t *testing.T, testConfig *config.Config, keyManager *
 			}
 
 			requestValidator := validation.NewRequestValidator(testConfig)
-			sessionManager := manager.NewSessionManager(testConfig)
+			sessionManager := manager.NewSessionManager()
 			tokenManager := manager.NewTokenManager(testConfig, manager.NewDefaultKeyLoader(keyManager))
 			sessionManager.StartSession(authSession)
 			request := httptest.NewRequest(http.MethodPost, endpoint.Token, nil)
@@ -371,7 +371,7 @@ func testRevokeDisabled(t *testing.T, testConfig *config.Config, keyManager *man
 			}
 
 			requestValidator := validation.NewRequestValidator(testConfig)
-			sessionManager := manager.NewSessionManager(testConfig)
+			sessionManager := manager.NewSessionManager()
 			tokenManager := manager.NewTokenManager(testConfig, manager.NewDefaultKeyLoader(keyManager))
 			sessionManager.StartSession(authSession)
 			request := httptest.NewRequest(http.MethodPost, endpoint.Token, nil)
