@@ -31,7 +31,7 @@ func Test_Assets(t *testing.T) {
 		t.Error(err)
 	}
 
-	assetsHandler := NewAssetHandler(testConfig)
+	assetsHandler := NewAssetHandler()
 
 	var testAssetsHttpMethods = []string{
 		http.MethodPost,

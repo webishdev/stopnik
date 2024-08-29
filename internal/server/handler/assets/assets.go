@@ -17,9 +17,10 @@ type Handler struct {
 	errorHandler *internalError.Handler
 }
 
-func NewAssetHandler(config *config.Config) *Handler {
+func NewAssetHandler() *Handler {
+	currentConfig := config.GetConfigInstance()
 	return &Handler{
-		config:       config,
+		config:       currentConfig,
 		errorHandler: internalError.NewErrorHandler(),
 	}
 }
