@@ -262,7 +262,12 @@ func (config *Config) Setup() error {
 		if fileError != nil {
 			panic(fileError)
 		}
-		defer file.Close()
+		defer func(file *os.File) {
+			err := file.Close()
+			if err != nil {
+				panic(err)
+			}
+		}(file)
 
 		// Get the file size
 		stat, err := file.Stat()
