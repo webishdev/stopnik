@@ -1,27 +1,25 @@
 {{ template "header" . }}
 <main>
-    <div class="login">
-        {{ template "mascot" . }}
-        {{ if .ShowTitle }}
-        <div class="title">{{ .Title }}</div>
+    {{ template "mascot" . }}
+    {{ if .ShowTitle }}
+    <div class="title">{{ .Title }}</div>
+    {{ end }}
+    <form method="POST" action="{{ .Action }}">
+        <input type="hidden" name="stopnik_auth_session" value="{{ .Token }}" />
+        <div class="input">
+            <label for="stopnik_username">Username</label>
+            <input id="stopnik_username" type="text" name="stopnik_username" />
+        </div>
+        <div class="input">
+            <label for="stopnik_password">Password</label>
+            <input id="stopnik_password" type="password" name="stopnik_password" />
+        </div>
+        {{ if .ShowMessage }}
+        <div class="error-message">{{ .Message }}</div>
         {{ end }}
-        <form method="POST" action="{{ .Action }}">
-            <input type="hidden" name="stopnik_auth_session" value="{{ .Token }}" />
-            <div class="input">
-                <label for="stopnik_username">Username</label>
-                <input id="stopnik_username" type="text" name="stopnik_username" />
-            </div>
-            <div class="input">
-                <label for="stopnik_password">Password</label>
-                <input id="stopnik_password" type="password" name="stopnik_password" />
-            </div>
-            {{ if .ShowMessage }}
-            <div class="error-message">{{ .Message }}</div>
-            {{ end }}
-            <div class="input">
-                <button type="submit">Login</button>
-            </div>
-        </form>
-    </div>
+        <div class="input">
+            <button type="submit">Login</button>
+        </div>
+    </form>
 </main>
 {{ template "footer" . }}

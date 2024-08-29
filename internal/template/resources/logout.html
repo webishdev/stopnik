@@ -1,4 +1,4 @@
-{{ template "header" }}
+{{ template "header" . }}
 <main>
     <form method="POST" action="logout">
         <input type="hidden" name="stopnik_logout_redirect" value="{{ .RequestURI }}" />
@@ -15,4 +15,4 @@
         </div>
     </form>
 </main>
-{{ template "footer" }}
+{{ template "footer" . }}
