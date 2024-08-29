@@ -44,7 +44,7 @@ func Test_Authorize(t *testing.T) {
 		t.Error(err)
 	}
 
-	keyManger, keyLoadingError := manager.NewKeyManger(testConfig)
+	keyManager, keyLoadingError := manager.NewKeyManger(testConfig)
 	if keyLoadingError != nil {
 		t.Error(keyLoadingError)
 	}
@@ -59,19 +59,19 @@ func Test_Authorize(t *testing.T) {
 
 	testAuthorizeNoCookeExists(t, testConfig)
 
-	testAuthorizeAuthorizationGrant(t, testConfig)
+	testAuthorizeAuthorizationGrant(t, testConfig, keyManager)
 
-	testAuthorizeImplicitGrant(t, testConfig, keyManger)
+	testAuthorizeImplicitGrant(t, testConfig, keyManager)
 
 	testAuthorizeInvalidLogin(t, testConfig)
 
 	testAuthorizeEmptyLogin(t, testConfig)
 
-	testAuthorizeValidLoginNoSession(t, testConfig, keyManger)
+	testAuthorizeValidLoginNoSession(t, testConfig, keyManager)
 
-	testAuthorizeValidLoginAuthorizationGrant(t, testConfig, keyManger)
+	testAuthorizeValidLoginAuthorizationGrant(t, testConfig, keyManager)
 
-	testAuthorizeValidLoginImplicitGrant(t, testConfig, keyManger)
+	testAuthorizeValidLoginImplicitGrant(t, testConfig, keyManager)
 
 	testAuthorizeNotAllowedHttpMethods(t)
 
@@ -249,7 +249,7 @@ func testAuthorizeEmptyLogin(t *testing.T, testConfig *config.Config) {
 	}
 }
 
-func testAuthorizeValidLoginNoSession(t *testing.T, testConfig *config.Config, keyManger *manager.KeyManger) {
+func testAuthorizeValidLoginNoSession(t *testing.T, testConfig *config.Config, keyManager *manager.KeyManger) {
 	type validLoginParameter struct {
 		state string
 		scope string
@@ -278,7 +278,7 @@ func testAuthorizeValidLoginNoSession(t *testing.T, testConfig *config.Config, k
 			requestValidator := validation.NewRequestValidator(testConfig)
 			sessionManager := manager.NewSessionManager(testConfig)
 			cookieManager := manager.NewCookieManager(testConfig)
-			tokenManager := manager.NewTokenManager(testConfig, manager.NewDefaultKeyLoader(testConfig, keyManger))
+			tokenManager := manager.NewTokenManager(testConfig, manager.NewDefaultKeyLoader(testConfig, keyManager))
 
 			authorizeHandler := NewAuthorizeHandler(requestValidator, cookieManager, sessionManager, tokenManager, &template.Manager{})
 
@@ -344,7 +344,7 @@ func testAuthorizeValidLoginNoSession(t *testing.T, testConfig *config.Config, k
 	}
 }
 
-func testAuthorizeValidLoginAuthorizationGrant(t *testing.T, testConfig *config.Config, keyManger *manager.KeyManger) {
+func testAuthorizeValidLoginAuthorizationGrant(t *testing.T, testConfig *config.Config, keyManager *manager.KeyManger) {
 	type validLoginParameter struct {
 		state string
 		scope string
@@ -389,7 +389,7 @@ func testAuthorizeValidLoginAuthorizationGrant(t *testing.T, testConfig *config.
 			requestValidator := validation.NewRequestValidator(testConfig)
 			sessionManager := manager.NewSessionManager(testConfig)
 			cookieManager := manager.NewCookieManager(testConfig)
-			tokenManager := manager.NewTokenManager(testConfig, manager.NewDefaultKeyLoader(testConfig, keyManger))
+			tokenManager := manager.NewTokenManager(testConfig, manager.NewDefaultKeyLoader(testConfig, keyManager))
 			sessionManager.StartSession(authSession)
 
 			authorizeHandler := NewAuthorizeHandler(requestValidator, cookieManager, sessionManager, tokenManager, &template.Manager{})
@@ -432,7 +432,7 @@ func testAuthorizeValidLoginAuthorizationGrant(t *testing.T, testConfig *config.
 	}
 }
 
-func testAuthorizeValidLoginImplicitGrant(t *testing.T, testConfig *config.Config, keyManger *manager.KeyManger) {
+func testAuthorizeValidLoginImplicitGrant(t *testing.T, testConfig *config.Config, keyManager *manager.KeyManger) {
 	type validLoginParameter struct {
 		state string
 		scope string
@@ -477,7 +477,7 @@ func testAuthorizeValidLoginImplicitGrant(t *testing.T, testConfig *config.Confi
 			requestValidator := validation.NewRequestValidator(testConfig)
 			sessionManager := manager.NewSessionManager(testConfig)
 			cookieManager := manager.NewCookieManager(testConfig)
-			tokenManager := manager.NewTokenManager(testConfig, manager.NewDefaultKeyLoader(testConfig, keyManger))
+			tokenManager := manager.NewTokenManager(testConfig, manager.NewDefaultKeyLoader(testConfig, keyManager))
 			sessionManager.StartSession(authSession)
 
 			authorizeHandler := NewAuthorizeHandler(requestValidator, cookieManager, sessionManager, tokenManager, &template.Manager{})
@@ -556,7 +556,7 @@ func testAuthorizeNotAllowedHttpMethods(t *testing.T) {
 	}
 }
 
-func testAuthorizeImplicitGrant(t *testing.T, testConfig *config.Config, keyManger *manager.KeyManger) {
+func testAuthorizeImplicitGrant(t *testing.T, testConfig *config.Config, keyManager *manager.KeyManger) {
 	type implicitGrantParameter struct {
 		state string
 		scope string
@@ -586,7 +586,7 @@ func testAuthorizeImplicitGrant(t *testing.T, testConfig *config.Config, keyMang
 			requestValidator := validation.NewRequestValidator(testConfig)
 			sessionManager := manager.NewSessionManager(testConfig)
 			cookieManager := manager.NewCookieManager(testConfig)
-			tokenManager := manager.NewTokenManager(testConfig, manager.NewDefaultKeyLoader(testConfig, keyManger))
+			tokenManager := manager.NewTokenManager(testConfig, manager.NewDefaultKeyLoader(testConfig, keyManager))
 
 			client, _ := testConfig.GetClient("foo")
 			user, _ := testConfig.GetUser("foo")
@@ -637,7 +637,7 @@ func testAuthorizeImplicitGrant(t *testing.T, testConfig *config.Config, keyMang
 	}
 }
 
-func testAuthorizeAuthorizationGrant(t *testing.T, testConfig *config.Config) {
+func testAuthorizeAuthorizationGrant(t *testing.T, testConfig *config.Config, keyManager *manager.KeyManger) {
 	type authorizationGrantParameter struct {
 		state                   string
 		scope                   string
@@ -679,11 +679,12 @@ func testAuthorizeAuthorizationGrant(t *testing.T, testConfig *config.Config) {
 			requestValidator := validation.NewRequestValidator(testConfig)
 			sessionManager := manager.NewSessionManager(testConfig)
 			cookieManager := manager.NewCookieManager(testConfig)
+			tokenManager := manager.NewTokenManager(testConfig, manager.NewDefaultKeyLoader(testConfig, keyManager))
 
 			user, _ := testConfig.GetUser("foo")
 			cookie, _ := cookieManager.CreateAuthCookie(user.Username)
 
-			authorizeHandler := NewAuthorizeHandler(requestValidator, cookieManager, sessionManager, &manager.TokenManager{}, &template.Manager{})
+			authorizeHandler := NewAuthorizeHandler(requestValidator, cookieManager, sessionManager, tokenManager, &template.Manager{})
 
 			rr := httptest.NewRecorder()
 			request := httptest.NewRequest(http.MethodGet, parsedUri.String(), nil)

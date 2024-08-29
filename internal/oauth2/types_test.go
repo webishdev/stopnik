@@ -43,6 +43,7 @@ func Test_ResponseTypeFromString(t *testing.T) {
 		{string(RtToken), true, "token"},
 		{string(RtPassword), true, "password"},
 		{string(RtClientCredentials), true, "client_credentials"},
+		{string(RtIdToken), true, "id_token"},
 		{"foo", false, ""},
 	}
 

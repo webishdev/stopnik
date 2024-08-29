@@ -33,6 +33,7 @@ const (
 	RtToken             ResponseType = "token"
 	RtPassword          ResponseType = "password" // aka "implicit" grant
 	RtClientCredentials ResponseType = "client_credentials"
+	RtIdToken           ResponseType = "id_token"
 )
 
 var responseTypeMap = map[string]ResponseType{
@@ -40,6 +41,7 @@ var responseTypeMap = map[string]ResponseType{
 	"token":              RtToken,
 	"password":           RtPassword,
 	"client_credentials": RtClientCredentials,
+	"id_token":           RtIdToken,
 }
 
 // ClientType as described in https://datatracker.ietf.org/doc/html/rfc6749#section-2.1

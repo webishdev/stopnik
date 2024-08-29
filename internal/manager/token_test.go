@@ -3,6 +3,7 @@ package manager
 import (
 	"fmt"
 	"github.com/webishdev/stopnik/internal/config"
+	"github.com/webishdev/stopnik/internal/crypto"
 	"github.com/webishdev/stopnik/internal/endpoint"
 	internalHttp "github.com/webishdev/stopnik/internal/http"
 	"github.com/webishdev/stopnik/internal/oauth2"
@@ -150,6 +151,31 @@ func Test_Token(t *testing.T) {
 			t.Error("should not be valid")
 		}
 	})
+}
+
+func Test_HashToken(t *testing.T) {
+	type hashTokenParameter struct {
+		token         string
+		hashAlgorithm crypto.HashAlgorithm
+		expectedHash  string
+	}
+
+	var hashTokenParameters = []hashTokenParameter{
+		{"dNZX1hEZ9wBCzNL40Upu646bdzQA", crypto.SHA256, "wfgvmE9VxjAudsl9lc6TqA"},
+		{"rvArgQKPbBDJkeTHwoIAOQVkV8J0_i8PhrRKyLDaKkk.iY6nzJoIb2dRXBoqHAa3Yb6gkHveTXbnM6PGtmoKXvo", crypto.SHA256, "glbC70G_oVT5IyHiFg6v1Q"},
+	}
+
+	for _, test := range hashTokenParameters {
+		testMessage := fmt.Sprintf("Hash access token %s with %v", test.token, test.hashAlgorithm)
+		t.Run(testMessage, func(t *testing.T) {
+			hashedToken := hashToken(test.hashAlgorithm, test.token)
+
+			if hashedToken != test.expectedHash {
+				t.Errorf("hashed token does not match, %v != %v", hashedToken, test.expectedHash)
+			}
+		})
+	}
+
 }
 
 func createTestConfig(t *testing.T, opaque bool, refreshTokenTTL int) *config.Config {

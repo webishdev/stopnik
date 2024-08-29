@@ -106,11 +106,14 @@ func (h *Handler) handleGetRequest(w http.ResponseWriter, r *http.Request) {
 
 	scope := r.URL.Query().Get(oauth2.ParameterScope)
 
-	codeChallenge := ""
-	codeChallengeMethod := ""
-	if slices.Contains(responseTypes, oauth2.RtCode) {
-		codeChallenge = r.URL.Query().Get(pkce.ParameterCodeChallenge)
-		codeChallengeMethod = r.URL.Query().Get(pkce.ParameterCodeChallengeMethod)
+	codeChallenge := r.URL.Query().Get(pkce.ParameterCodeChallenge)
+	codeChallengeMethod := r.URL.Query().Get(pkce.ParameterCodeChallengeMethod)
+
+	if !slices.Contains(responseTypes, oauth2.RtCode) && codeChallenge != "" && codeChallengeMethod != "" {
+		errorMessage := fmt.Sprintf("Code challenge should only be used for response type %s", oauth2.RtCode)
+		authorizeError := &oauth2.AuthorizationErrorResponseParameter{Error: oauth2.AuthorizationEtInvalidRequest, Description: errorMessage}
+		oauth2.AuthorizationErrorResponseHandler(w, redirectURL, state, authorizeError)
+		return
 	}
 
 	if log.IsDebug() {
@@ -135,7 +138,7 @@ func (h *Handler) handleGetRequest(w http.ResponseWriter, r *http.Request) {
 		State:               state,
 	}
 
-	if client.Oidc {
+	if client.Oidc && oidc.HasOidcScope(scopes) {
 		nonceQueryParameter := r.URL.Query().Get(oidc.ParameterNonce)
 		authSession.Nonce = nonceQueryParameter
 	} else {
@@ -147,7 +150,11 @@ func (h *Handler) handleGetRequest(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	h.sessionManager.StartSession(authSession)
+	idTokenRequest := slices.Contains(responseTypes, oauth2.RtIdToken) && len(responseTypes) == 1
+
+	if !idTokenRequest {
+		h.sessionManager.StartSession(authSession)
+	}
 
 	user, validCookie := h.cookieManager.ValidateAuthCookie(r)
 
@@ -156,11 +163,15 @@ func (h *Handler) handleGetRequest(w http.ResponseWriter, r *http.Request) {
 
 		query := redirectURL.Query()
 
+		var idToken string
+		accessTokenResponse := h.tokenManager.CreateAccessTokenResponse(r, user.Username, client, scopes, authSession.Nonce)
 		if slices.Contains(responseTypes, oauth2.RtToken) {
-			accessTokenResponse := h.tokenManager.CreateAccessTokenResponse(r, user.Username, client, scopes, authSession.Nonce)
 			setImplicitGrantParameter(query, accessTokenResponse)
 		} else if slices.Contains(responseTypes, oauth2.RtCode) {
 			setAuthorizationGrantParameter(query, id.String())
+		} else if idTokenRequest {
+			accessTokenHash := h.tokenManager.CreateAccessTokenHash(client, accessTokenResponse.AccessTokenKey)
+			idToken = h.tokenManager.CreateIdToken(r, user.Username, client, scopes, authSession.Nonce, accessTokenHash)
 		} else {
 			log.Error("Invalid response type %v", responseTypes)
 			oauth2.AuthorizationErrorResponseHandler(w, redirectURL, state, &oauth2.AuthorizationErrorResponseParameter{Error: oauth2.AuthorizationEtUnsupportedResponseType})
@@ -169,6 +180,10 @@ func (h *Handler) handleGetRequest(w http.ResponseWriter, r *http.Request) {
 
 		if state != "" {
 			query.Set(oauth2.ParameterState, state)
+		}
+
+		if idToken != "" {
+			setIdTokenParameter(query, idToken)
 		}
 
 		sendFound(w, redirectURL, query)
@@ -298,6 +313,10 @@ func setImplicitGrantParameter(query url.Values, accessTokenResponse oauth2.Acce
 	query.Set(oauth2.ParameterExpiresIn, fmt.Sprintf("%d", accessTokenResponse.ExpiresIn))
 	// https://datatracker.ietf.org/doc/html/rfc6749#section-4.2.2
 	// The authorization server MUST NOT issue a refresh token.
+}
+
+func setIdTokenParameter(query url.Values, idToken string) {
+	query.Set(oidc.ParameterIdToken, idToken)
 }
 
 func (h *Handler) sendRetryLocation(w http.ResponseWriter, r *http.Request, message string) {

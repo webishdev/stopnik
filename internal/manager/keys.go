@@ -167,9 +167,10 @@ func (km *KeyManger) convert(signingPrivateKey *crypto.SigningPrivateKey) (*cryp
 	}
 
 	managedKey := &crypto.ManagedKey{
-		Id:      kid,
-		Key:     &key,
-		Clients: []*config.Client{},
+		Id:            kid,
+		Key:           &key,
+		HashAlgorithm: signingPrivateKey.HashAlgorithm,
+		Clients:       []*config.Client{},
 	}
 
 	return managedKey, nil

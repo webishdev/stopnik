@@ -1,6 +1,8 @@
 package manager
 
 import (
+	"crypto/sha256"
+	"crypto/sha512"
 	"encoding/base64"
 	"fmt"
 	"github.com/google/uuid"
@@ -63,7 +65,7 @@ func (tokenManager *TokenManager) CreateAccessTokenResponse(r *http.Request, use
 	refreshTokenStore := *tokenManager.refreshTokenStore
 
 	accessTokenDuration := time.Minute * time.Duration(client.GetAccessTTL())
-	accessTokenKey := tokenManager.generateAccessToken(requestData, username, client, accessTokenDuration)
+	accessTokenKey := tokenManager.CreateAccessToken(r, username, client, accessTokenDuration)
 	accessToken := &oauth2.AccessToken{
 		Key:       accessTokenKey,
 		TokenType: oauth2.TtBearer,
@@ -72,10 +74,10 @@ func (tokenManager *TokenManager) CreateAccessTokenResponse(r *http.Request, use
 		Scopes:    scopes,
 	}
 
-	accessTokenStore.SetWithDuration(accessTokenKey, accessToken, accessTokenDuration)
+	accessTokenStore.SetWithDuration(accessToken.Key, accessToken, accessTokenDuration)
 
 	accessTokenResponse := oauth2.AccessTokenResponse{
-		AccessTokenKey: accessTokenKey,
+		AccessTokenKey: accessToken.Key,
 		TokenType:      oauth2.TtBearer,
 		ExpiresIn:      int(accessTokenDuration / time.Second),
 	}
@@ -90,21 +92,47 @@ func (tokenManager *TokenManager) CreateAccessTokenResponse(r *http.Request, use
 			Scopes:   scopes,
 		}
 
-		refreshTokenStore.SetWithDuration(refreshTokenKey, refreshToken, refreshTokenDuration)
+		refreshTokenStore.SetWithDuration(refreshToken.Key, refreshToken, refreshTokenDuration)
 
-		accessTokenResponse.RefreshTokenKey = refreshTokenKey
+		accessTokenResponse.RefreshTokenKey = refreshToken.Key
 	}
 
 	if client.Oidc && oidc.HasOidcScope(scopes) {
 		user, userExists := tokenManager.config.GetUser(username)
 		if userExists {
-			idTokenDuration := time.Minute * time.Duration(client.GetIdTTL())
-			idTokenKey := tokenManager.generateIdToken(requestData, user, client, nonce, idTokenDuration)
-			accessTokenResponse.IdToken = idTokenKey
+			accessTokenHash := tokenManager.CreateAccessTokenHash(client, accessToken.Key)
+			accessTokenResponse.IdToken = tokenManager.CreateIdToken(r, user.Username, client, scopes, nonce, accessTokenHash)
 		}
 	}
 
 	return accessTokenResponse
+}
+
+func (tokenManager *TokenManager) CreateIdToken(r *http.Request, username string, client *config.Client, scopes []string, nonce string, atHash string) string {
+	if client.Oidc && oidc.HasOidcScope(scopes) {
+		requestData := internalHttp.NewRequestData(r)
+		user, userExists := tokenManager.config.GetUser(username)
+		if userExists {
+			idTokenDuration := time.Minute * time.Duration(client.GetIdTTL())
+			return tokenManager.generateIdToken(requestData, user, client, nonce, atHash, idTokenDuration)
+		}
+	}
+	return ""
+}
+
+func (tokenManager *TokenManager) CreateAccessToken(r *http.Request, username string, client *config.Client, accessTokenDuration time.Duration) string {
+	requestData := internalHttp.NewRequestData(r)
+	return tokenManager.generateAccessToken(requestData, username, client, accessTokenDuration)
+}
+
+func (tokenManager *TokenManager) CreateAccessTokenHash(client *config.Client, accessTokenKey string) string {
+	loader := tokenManager.keyLoader
+	managedKey, keyExists := loader.LoadKeys(client)
+	if !keyExists {
+		return ""
+	}
+
+	return hashToken(managedKey.HashAlgorithm, accessTokenKey)
 }
 
 func (tokenManager *TokenManager) ValidateAccessToken(authorizationHeader string) (*config.User, *config.Client, []string, bool) {
@@ -136,8 +164,8 @@ func (tokenManager *TokenManager) ValidateAccessToken(authorizationHeader string
 	return user, client, accessToken.Scopes, true
 }
 
-func (tokenManager *TokenManager) generateIdToken(requestData *internalHttp.RequestData, user *config.User, client *config.Client, nonce string, duration time.Duration) string {
-	idToken := generateIdToken(requestData, user, client, nonce, duration)
+func (tokenManager *TokenManager) generateIdToken(requestData *internalHttp.RequestData, user *config.User, client *config.Client, nonce string, atHash string, duration time.Duration) string {
+	idToken := generateIdToken(requestData, user, client, nonce, atHash, duration)
 	return tokenManager.generateJWTToken(client, idToken)
 }
 
@@ -197,7 +225,7 @@ func (tokenManager *TokenManager) generateJWTToken(client *config.Client, token 
 
 }
 
-func generateIdToken(requestData *internalHttp.RequestData, user *config.User, client *config.Client, nonce string, duration time.Duration) jwt.Token {
+func generateIdToken(requestData *internalHttp.RequestData, user *config.User, client *config.Client, nonce string, atHash string, duration time.Duration) jwt.Token {
 	tokenId := uuid.New().String()
 	builder := jwt.NewBuilder().
 		Expiration(time.Now().Add(duration)). // https://www.rfc-editor.org/rfc/rfc7519.html#section-4.1.4
@@ -216,8 +244,9 @@ func generateIdToken(requestData *internalHttp.RequestData, user *config.User, c
 	audience := append(client.GetAudience(), client.Id)
 	builder.Audience(audience)
 
-	builder.Claim(oidc.ClaimAuthorizedParty, client.Id)
-	builder.Claim(oidc.ClaimNonce, nonce)
+	addStringClaim(builder, oidc.ClaimAuthorizedParty, client.Id)
+	addStringClaim(builder, oidc.ClaimAtHash, atHash)
+	addStringClaim(builder, oidc.ClaimNonce, nonce)
 	roles := user.GetRoles(client.Id)
 	if len(roles) != 0 {
 		builder.Claim(client.GetRolesClaim(), roles)
@@ -239,7 +268,7 @@ func generateAccessToken(requestData *internalHttp.RequestData, tokenId string, 
 
 	for claimIndex := range client.Claims {
 		claim := client.Claims[claimIndex]
-		builder.Claim(claim.Name, claim.Value)
+		addStringClaim(builder, claim.Name, claim.Value)
 	}
 
 	// https://www.rfc-editor.org/rfc/rfc7519.html#section-4.1.7
@@ -271,4 +300,38 @@ func getAuthorizationHeaderValue(authorizationHeader string) *string {
 	replaceBearer := fmt.Sprintf("%s ", internalHttp.AuthBearer)
 	result := strings.Replace(authorizationHeader, replaceBearer, "", 1)
 	return &result
+}
+
+func addStringClaim(builder *jwt.Builder, claimName string, claimValue string) {
+	if claimValue != "" {
+		builder.Claim(claimName, claimValue)
+	}
+}
+
+func hashToken(algorithm crypto.HashAlgorithm, token string) string {
+	tokenBytes := []byte(token)
+
+	var hashedAccessKey []byte
+	hashAlgorithm := algorithm
+	switch hashAlgorithm {
+	case crypto.SHA256:
+		hashed := sha256.Sum256(tokenBytes)
+		hashedAccessKey = hashed[:]
+	case crypto.SHA512:
+		hashed := sha512.Sum384(tokenBytes)
+		hashedAccessKey = hashed[:]
+	case crypto.SHA384:
+		hashed := sha512.Sum512(tokenBytes)
+		hashedAccessKey = hashed[:]
+	default:
+		hashedAccessKey = make([]byte, 0)
+	}
+
+	if len(hashedAccessKey) >= 2 {
+		midpoint := len(hashedAccessKey) / 2
+		firstHalf := hashedAccessKey[:midpoint]
+		return base64.RawURLEncoding.EncodeToString(firstHalf)
+	}
+
+	return ""
 }

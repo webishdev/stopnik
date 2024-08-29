@@ -30,6 +30,7 @@ clients:
     - https://oauth.pstmn.io/v1/callback
     - http://localhost:8080/session/callback
     - http://localhost:5173/reporting/oidc-callback*
+    - http://localhost:8082/health
   claims:
     - name: foo
       value: bar

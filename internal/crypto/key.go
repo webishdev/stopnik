@@ -12,16 +12,26 @@ import (
 	"os"
 )
 
+type HashAlgorithm string
+
+const (
+	SHA256 HashAlgorithm = "SHA256"
+	SHA384 HashAlgorithm = "SHA384"
+	SHA512 HashAlgorithm = "SHA512"
+)
+
 type SigningPrivateKey struct {
 	PrivateKey         interface{}
 	SignatureAlgorithm jwa.SignatureAlgorithm
+	HashAlgorithm      HashAlgorithm
 }
 
 type ManagedKey struct {
-	Id      string
-	Clients []*config.Client
-	Server  bool
-	Key     *jwk.Key
+	Id            string
+	Clients       []*config.Client
+	Server        bool
+	Key           *jwk.Key
+	HashAlgorithm HashAlgorithm
 }
 
 type ServerSecretLoader interface {
@@ -61,6 +71,7 @@ func LoadPrivateKey(name string) (*SigningPrivateKey, error) {
 		return &SigningPrivateKey{
 			PrivateKey:         parsedPKCS8.(*rsa.PrivateKey),
 			SignatureAlgorithm: jwa.RS256,
+			HashAlgorithm:      SHA256,
 		}, nil
 	}
 
@@ -69,6 +80,7 @@ func LoadPrivateKey(name string) (*SigningPrivateKey, error) {
 		return &SigningPrivateKey{
 			PrivateKey:         parsedPKCS1,
 			SignatureAlgorithm: jwa.RS256,
+			HashAlgorithm:      SHA256,
 		}, nil
 	}
 
@@ -79,13 +91,17 @@ func LoadPrivateKey(name string) (*SigningPrivateKey, error) {
 			return nil, errors.New("invalid EC curve")
 		}
 		var signatureAlgorithm jwa.SignatureAlgorithm
+		var hashAlgorithm HashAlgorithm
 		switch curveParams.Name {
 		case "P-256":
 			signatureAlgorithm = jwa.ES256
+			hashAlgorithm = SHA256
 		case "P-384":
 			signatureAlgorithm = jwa.ES384
+			hashAlgorithm = SHA384
 		case "P-521":
 			signatureAlgorithm = jwa.ES512
+			hashAlgorithm = SHA512
 		default:
 			break
 		}
@@ -93,6 +109,7 @@ func LoadPrivateKey(name string) (*SigningPrivateKey, error) {
 			return &SigningPrivateKey{
 				PrivateKey:         parsedEC,
 				SignatureAlgorithm: signatureAlgorithm,
+				HashAlgorithm:      hashAlgorithm,
 			}, nil
 		}
 	}
