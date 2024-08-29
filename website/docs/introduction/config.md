@@ -74,7 +74,7 @@ Root entry named `ui`
 
 | Property     | Description                      |
 |--------------|----------------------------------|
-| `logoImage`  | Path of PNG logo image           |
+| `logoImage`  | Path of additional logo image    |
 | `hideFooter` | Will hide the **STOPnik** footer |
 | `hideMascot` | Will hide the **STOPnik** mascot |
 | `footerText` | The footer text                  |

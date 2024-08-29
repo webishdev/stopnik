@@ -1,14 +1,14 @@
 package config
 
 import (
-	"bytes"
+	"bufio"
 	"crypto/rand"
 	"errors"
 	"fmt"
 	internalHttp "github.com/webishdev/stopnik/internal/http"
 	"github.com/webishdev/stopnik/internal/oauth2"
 	"github.com/webishdev/stopnik/log"
-	"image/png"
+	"io"
 	"math/big"
 	"os"
 	"strings"
@@ -258,23 +258,27 @@ func (config *Config) Setup() error {
 	config.generatedSecret = generatedSecret
 
 	if config.UI.LogoImage != "" {
-		f, fileError := os.Open(config.UI.LogoImage)
+		file, fileError := os.Open(config.UI.LogoImage)
 		if fileError != nil {
 			panic(fileError)
 		}
-		defer f.Close()
-		img, pngError := png.Decode(f)
-		if pngError != nil {
-			panic(pngError)
+		defer file.Close()
+
+		// Get the file size
+		stat, err := file.Stat()
+		if err != nil {
+			panic(err)
 		}
-		buf := new(bytes.Buffer)
-		pngEncodeError := png.Encode(buf, img)
-		if pngEncodeError != nil {
-			panic(pngEncodeError)
+
+		// Read the file into a byte slice
+		bs := make([]byte, stat.Size())
+		_, err = bufio.NewReader(file).Read(bs)
+		if err != nil && err != io.EOF {
+			panic(err)
 		}
+
 		log.Info("Own logo loaded from %s", config.UI.LogoImage)
-		data := buf.Bytes()
-		config.logoImage = &data
+		config.logoImage = &bs
 	}
 
 	return nil
