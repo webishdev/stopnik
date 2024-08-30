@@ -30,8 +30,8 @@ func Test_Token(t *testing.T) {
 		testMessage := fmt.Sprintf("Valid token opaque %t refreshTTL %d", test.opaque, test.refreshTokenTTL)
 		t.Run(testMessage, func(t *testing.T) {
 			testConfig := createTestConfig(t, test.opaque, test.refreshTokenTTL)
-			keyManager := createTestKeyManager(t)
-			tokenManager := NewTokenManager(NewDefaultKeyLoader(keyManager))
+			keyLoader := GetDefaultKeyLoaderInstance()
+			tokenManager := NewTokenManager(keyLoader)
 			client, clientExists := testConfig.GetClient("foo")
 			if !clientExists {
 				t.Fatal("client does not exist")
@@ -111,8 +111,8 @@ func Test_Token(t *testing.T) {
 
 	t.Run("Invalid HTTP Authorization header", func(t *testing.T) {
 		createTestConfig(t, false, 0)
-		keyManager := createTestKeyManager(t)
-		tokenManager := NewTokenManager(NewDefaultKeyLoader(keyManager))
+		keyLoader := GetDefaultKeyLoaderInstance()
+		tokenManager := NewTokenManager(keyLoader)
 
 		_, _, _, valid := tokenManager.ValidateAccessToken("foooo")
 
@@ -123,8 +123,8 @@ func Test_Token(t *testing.T) {
 
 	t.Run("Invalid Token value", func(t *testing.T) {
 		createTestConfig(t, false, 0)
-		keyManager := createTestKeyManager(t)
-		tokenManager := NewTokenManager(NewDefaultKeyLoader(keyManager))
+		keyLoader := GetDefaultKeyLoaderInstance()
+		tokenManager := NewTokenManager(keyLoader)
 
 		_, _, _, valid := tokenManager.ValidateAccessToken(fmt.Sprintf("%s %s", internalHttp.AuthBearer, "foo"))
 
@@ -135,8 +135,8 @@ func Test_Token(t *testing.T) {
 
 	t.Run("Invalid User in token", func(t *testing.T) {
 		testConfig := createTestConfig(t, false, 0)
-		keyManager := createTestKeyManager(t)
-		tokenManager := NewTokenManager(NewDefaultKeyLoader(keyManager))
+		keyLoader := GetDefaultKeyLoaderInstance()
+		tokenManager := NewTokenManager(keyLoader)
 		client, clientExists := testConfig.GetClient("foo")
 		if !clientExists {
 			t.Fatal("client does not exist")
@@ -202,8 +202,4 @@ func createTestConfig(t *testing.T, opaque bool, refreshTokenTTL int) *config.Co
 	}
 
 	return testConfig
-}
-
-func createTestKeyManager(t *testing.T) *KeyManger {
-	return GetKeyMangerInstance()
 }

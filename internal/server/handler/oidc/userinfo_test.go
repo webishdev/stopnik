@@ -56,12 +56,13 @@ func Test_UserInfo(t *testing.T) {
 
 	testOidcUserInfo(t, testConfig, keyManger)
 
-	testOidcUserInfoNotAllowedHttpMethods(t, testConfig, keyManger)
+	testOidcUserInfoNotAllowedHttpMethods(t)
 }
 
 func testOidcUserInfo(t *testing.T, testConfig *config.Config, keyManager *manager.KeyManger) {
 	t.Run("OIDC UserInfo", func(t *testing.T) {
-		tokenManager := manager.NewTokenManager(manager.NewDefaultKeyLoader(keyManager))
+		keyLoader := manager.GetDefaultKeyLoaderInstance()
+		tokenManager := manager.NewTokenManager(keyLoader)
 
 		client, clientExists := testConfig.GetClient("foo")
 		if !clientExists {
@@ -149,7 +150,7 @@ func testOidcUserInfo(t *testing.T, testConfig *config.Config, keyManager *manag
 	})
 }
 
-func testOidcUserInfoNotAllowedHttpMethods(t *testing.T, testConfig *config.Config, keyManager *manager.KeyManger) {
+func testOidcUserInfoNotAllowedHttpMethods(t *testing.T) {
 	var testInvalidOidcUserInfoHttpMethods = []string{
 		http.MethodPost,
 		http.MethodPut,
@@ -160,7 +161,8 @@ func testOidcUserInfoNotAllowedHttpMethods(t *testing.T, testConfig *config.Conf
 	for _, method := range testInvalidOidcUserInfoHttpMethods {
 		testMessage := fmt.Sprintf("OIDC configuration with unsupported method %s", method)
 		t.Run(testMessage, func(t *testing.T) {
-			tokenManager := manager.NewTokenManager(manager.NewDefaultKeyLoader(keyManager))
+			keyLoader := manager.GetDefaultKeyLoaderInstance()
+			tokenManager := manager.NewTokenManager(keyLoader)
 			oidcDiscoveryHandler := NewOidcUserInfoHandler(tokenManager)
 
 			rr := httptest.NewRecorder()

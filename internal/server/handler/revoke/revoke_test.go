@@ -48,29 +48,28 @@ func Test_Revoke(t *testing.T) {
 		t.Fatal(initializationError)
 	}
 
-	keyManger := manager.GetKeyMangerInstance()
+	testRevokeMissingClientCredentials(t)
 
-	testRevokeMissingClientCredentials(t, keyManger)
+	testRevokeInvalidClientCredentials(t)
 
-	testRevokeInvalidClientCredentials(t, keyManger)
+	testRevokeEmptyToken(t)
 
-	testRevokeEmptyToken(t, keyManger)
+	testRevokeInvalidToken(t)
 
-	testRevokeInvalidToken(t, keyManger)
+	testRevoke(t, testConfig)
 
-	testRevoke(t, testConfig, keyManger)
+	testRevokeWithoutHint(t, testConfig)
 
-	testRevokeWithoutHint(t, testConfig, keyManger)
-
-	testRevokeDisabled(t, testConfig, keyManger)
+	testRevokeDisabled(t, testConfig)
 
 	testRevokeNotAllowedHttpMethods(t)
 }
 
-func testRevokeMissingClientCredentials(t *testing.T, keyManager *manager.KeyManger) {
+func testRevokeMissingClientCredentials(t *testing.T) {
 	t.Run("Missing client credentials", func(t *testing.T) {
 		requestValidator := validation.NewRequestValidator()
-		tokenManager := manager.NewTokenManager(manager.NewDefaultKeyLoader(keyManager))
+		keyLoader := manager.GetDefaultKeyLoaderInstance()
+		tokenManager := manager.NewTokenManager(keyLoader)
 
 		revokeHandler := NewRevokeHandler(requestValidator, tokenManager)
 
@@ -84,10 +83,11 @@ func testRevokeMissingClientCredentials(t *testing.T, keyManager *manager.KeyMan
 	})
 }
 
-func testRevokeInvalidClientCredentials(t *testing.T, keyManager *manager.KeyManger) {
+func testRevokeInvalidClientCredentials(t *testing.T) {
 	t.Run("Invalid client credentials", func(t *testing.T) {
 		requestValidator := validation.NewRequestValidator()
-		tokenManager := manager.NewTokenManager(manager.NewDefaultKeyLoader(keyManager))
+		keyLoader := manager.GetDefaultKeyLoaderInstance()
+		tokenManager := manager.NewTokenManager(keyLoader)
 
 		revokeHandler := NewRevokeHandler(requestValidator, tokenManager)
 
@@ -104,7 +104,7 @@ func testRevokeInvalidClientCredentials(t *testing.T, keyManager *manager.KeyMan
 	})
 }
 
-func testRevokeEmptyToken(t *testing.T, keyManager *manager.KeyManger) {
+func testRevokeEmptyToken(t *testing.T) {
 	type introspectParameter struct {
 		tokenHint oauth2.IntrospectTokenType
 	}
@@ -118,7 +118,8 @@ func testRevokeEmptyToken(t *testing.T, keyManager *manager.KeyManger) {
 		testMessage := fmt.Sprintf("Revoke empty %v", test.tokenHint)
 		t.Run(testMessage, func(t *testing.T) {
 			requestValidator := validation.NewRequestValidator()
-			tokenManager := manager.NewTokenManager(manager.NewDefaultKeyLoader(keyManager))
+			keyLoader := manager.GetDefaultKeyLoaderInstance()
+			tokenManager := manager.NewTokenManager(keyLoader)
 
 			revokeHandler := NewRevokeHandler(requestValidator, tokenManager)
 
@@ -143,7 +144,7 @@ func testRevokeEmptyToken(t *testing.T, keyManager *manager.KeyManger) {
 	}
 }
 
-func testRevokeInvalidToken(t *testing.T, keyManager *manager.KeyManger) {
+func testRevokeInvalidToken(t *testing.T) {
 	type introspectParameter struct {
 		tokenHint oauth2.IntrospectTokenType
 	}
@@ -157,7 +158,8 @@ func testRevokeInvalidToken(t *testing.T, keyManager *manager.KeyManger) {
 		testMessage := fmt.Sprintf("Revoke invalid %v", test.tokenHint)
 		t.Run(testMessage, func(t *testing.T) {
 			requestValidator := validation.NewRequestValidator()
-			tokenManager := manager.NewTokenManager(manager.NewDefaultKeyLoader(keyManager))
+			keyLoader := manager.GetDefaultKeyLoaderInstance()
+			tokenManager := manager.NewTokenManager(keyLoader)
 
 			revokeHandler := NewRevokeHandler(requestValidator, tokenManager)
 
@@ -182,7 +184,7 @@ func testRevokeInvalidToken(t *testing.T, keyManager *manager.KeyManger) {
 	}
 }
 
-func testRevoke(t *testing.T, testConfig *config.Config, keyManager *manager.KeyManger) {
+func testRevoke(t *testing.T, testConfig *config.Config) {
 	type revokeParameter struct {
 		tokenHint oauth2.IntrospectTokenType
 	}
@@ -214,7 +216,8 @@ func testRevoke(t *testing.T, testConfig *config.Config, keyManager *manager.Key
 
 			requestValidator := validation.NewRequestValidator()
 			sessionManager := manager.GetSessionManagerInstance()
-			tokenManager := manager.NewTokenManager(manager.NewDefaultKeyLoader(keyManager))
+			keyLoader := manager.GetDefaultKeyLoaderInstance()
+			tokenManager := manager.NewTokenManager(keyLoader)
 			sessionManager.StartSession(authSession)
 			request := httptest.NewRequest(http.MethodPost, endpoint.Token, nil)
 			accessTokenResponse := tokenManager.CreateAccessTokenResponse(request, user.Username, client, scopes, "")
@@ -260,7 +263,7 @@ func testRevoke(t *testing.T, testConfig *config.Config, keyManager *manager.Key
 	}
 }
 
-func testRevokeWithoutHint(t *testing.T, testConfig *config.Config, keyManager *manager.KeyManger) {
+func testRevokeWithoutHint(t *testing.T, testConfig *config.Config) {
 	type revokeParameter struct {
 		tokenHint oauth2.IntrospectTokenType
 	}
@@ -292,7 +295,8 @@ func testRevokeWithoutHint(t *testing.T, testConfig *config.Config, keyManager *
 
 			requestValidator := validation.NewRequestValidator()
 			sessionManager := manager.GetSessionManagerInstance()
-			tokenManager := manager.NewTokenManager(manager.NewDefaultKeyLoader(keyManager))
+			keyLoader := manager.GetDefaultKeyLoaderInstance()
+			tokenManager := manager.NewTokenManager(keyLoader)
 			sessionManager.StartSession(authSession)
 			request := httptest.NewRequest(http.MethodPost, endpoint.Token, nil)
 			accessTokenResponse := tokenManager.CreateAccessTokenResponse(request, user.Username, client, scopes, "")
@@ -337,7 +341,7 @@ func testRevokeWithoutHint(t *testing.T, testConfig *config.Config, keyManager *
 	}
 }
 
-func testRevokeDisabled(t *testing.T, testConfig *config.Config, keyManager *manager.KeyManger) {
+func testRevokeDisabled(t *testing.T, testConfig *config.Config) {
 	type revokeParameter struct {
 		tokenHint oauth2.IntrospectTokenType
 	}
@@ -369,7 +373,8 @@ func testRevokeDisabled(t *testing.T, testConfig *config.Config, keyManager *man
 
 			requestValidator := validation.NewRequestValidator()
 			sessionManager := manager.GetSessionManagerInstance()
-			tokenManager := manager.NewTokenManager(manager.NewDefaultKeyLoader(keyManager))
+			keyLoader := manager.GetDefaultKeyLoaderInstance()
+			tokenManager := manager.NewTokenManager(keyLoader)
 			sessionManager.StartSession(authSession)
 			request := httptest.NewRequest(http.MethodPost, endpoint.Token, nil)
 			accessTokenResponse := tokenManager.CreateAccessTokenResponse(request, user.Username, client, scopes, "")

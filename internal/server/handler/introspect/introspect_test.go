@@ -50,29 +50,28 @@ func Test_Introspect(t *testing.T) {
 		t.Fatal(initializationError)
 	}
 
-	keyManager := manager.GetKeyMangerInstance()
+	testIntrospectMissingClientCredentials(t)
 
-	testIntrospectMissingClientCredentials(t, keyManager)
+	testIntrospectInvalidClientCredentials(t)
 
-	testIntrospectInvalidClientCredentials(t, keyManager)
+	testIntrospectEmptyToken(t)
 
-	testIntrospectEmptyToken(t, keyManager)
+	testIntrospectInvalidToken(t)
 
-	testIntrospectInvalidToken(t, keyManager)
+	testIntrospect(t, testConfig)
 
-	testIntrospect(t, testConfig, keyManager)
+	testIntrospectWithoutHint(t, testConfig)
 
-	testIntrospectWithoutHint(t, testConfig, keyManager)
-
-	testIntrospectDisabled(t, testConfig, keyManager)
+	testIntrospectDisabled(t, testConfig)
 
 	testIntrospectNotAllowedHttpMethods(t)
 }
 
-func testIntrospectMissingClientCredentials(t *testing.T, keyManager *manager.KeyManger) {
+func testIntrospectMissingClientCredentials(t *testing.T) {
 	t.Run("Missing client credentials", func(t *testing.T) {
 		requestValidator := validation.NewRequestValidator()
-		tokenManager := manager.NewTokenManager(manager.NewDefaultKeyLoader(keyManager))
+		keyLoader := manager.GetDefaultKeyLoaderInstance()
+		tokenManager := manager.NewTokenManager(keyLoader)
 
 		introspectHandler := NewIntrospectHandler(requestValidator, tokenManager)
 
@@ -86,10 +85,11 @@ func testIntrospectMissingClientCredentials(t *testing.T, keyManager *manager.Ke
 	})
 }
 
-func testIntrospectInvalidClientCredentials(t *testing.T, keyManager *manager.KeyManger) {
+func testIntrospectInvalidClientCredentials(t *testing.T) {
 	t.Run("Invalid client credentials", func(t *testing.T) {
 		requestValidator := validation.NewRequestValidator()
-		tokenManager := manager.NewTokenManager(manager.NewDefaultKeyLoader(keyManager))
+		keyLoader := manager.GetDefaultKeyLoaderInstance()
+		tokenManager := manager.NewTokenManager(keyLoader)
 
 		introspectHandler := NewIntrospectHandler(requestValidator, tokenManager)
 
@@ -106,7 +106,7 @@ func testIntrospectInvalidClientCredentials(t *testing.T, keyManager *manager.Ke
 	})
 }
 
-func testIntrospectEmptyToken(t *testing.T, keyManager *manager.KeyManger) {
+func testIntrospectEmptyToken(t *testing.T) {
 	type introspectParameter struct {
 		tokenHint oauth2.IntrospectTokenType
 	}
@@ -120,7 +120,8 @@ func testIntrospectEmptyToken(t *testing.T, keyManager *manager.KeyManger) {
 		testMessage := fmt.Sprintf("Introspect empty %v", test.tokenHint)
 		t.Run(testMessage, func(t *testing.T) {
 			requestValidator := validation.NewRequestValidator()
-			tokenManager := manager.NewTokenManager(manager.NewDefaultKeyLoader(keyManager))
+			keyLoader := manager.GetDefaultKeyLoaderInstance()
+			tokenManager := manager.NewTokenManager(keyLoader)
 
 			introspectHandler := NewIntrospectHandler(requestValidator, tokenManager)
 
@@ -152,7 +153,7 @@ func testIntrospectEmptyToken(t *testing.T, keyManager *manager.KeyManger) {
 	}
 }
 
-func testIntrospectInvalidToken(t *testing.T, keyManager *manager.KeyManger) {
+func testIntrospectInvalidToken(t *testing.T) {
 	type introspectParameter struct {
 		tokenHint oauth2.IntrospectTokenType
 	}
@@ -166,7 +167,8 @@ func testIntrospectInvalidToken(t *testing.T, keyManager *manager.KeyManger) {
 		testMessage := fmt.Sprintf("Introspect invalid %v", test.tokenHint)
 		t.Run(testMessage, func(t *testing.T) {
 			requestValidator := validation.NewRequestValidator()
-			tokenManager := manager.NewTokenManager(manager.NewDefaultKeyLoader(keyManager))
+			keyLoader := manager.GetDefaultKeyLoaderInstance()
+			tokenManager := manager.NewTokenManager(keyLoader)
 
 			introspectHandler := NewIntrospectHandler(requestValidator, tokenManager)
 
@@ -199,7 +201,7 @@ func testIntrospectInvalidToken(t *testing.T, keyManager *manager.KeyManger) {
 	}
 }
 
-func testIntrospect(t *testing.T, testConfig *config.Config, keyManager *manager.KeyManger) {
+func testIntrospect(t *testing.T, testConfig *config.Config) {
 	type introspectParameter struct {
 		tokenHint oauth2.IntrospectTokenType
 	}
@@ -231,7 +233,8 @@ func testIntrospect(t *testing.T, testConfig *config.Config, keyManager *manager
 
 			requestValidator := validation.NewRequestValidator()
 			sessionManager := manager.GetSessionManagerInstance()
-			tokenManager := manager.NewTokenManager(manager.NewDefaultKeyLoader(keyManager))
+			keyLoader := manager.GetDefaultKeyLoaderInstance()
+			tokenManager := manager.NewTokenManager(keyLoader)
 			sessionManager.StartSession(authSession)
 			request := httptest.NewRequest(http.MethodPost, endpoint.Token, nil)
 			accessTokenResponse := tokenManager.CreateAccessTokenResponse(request, user.Username, client, scopes, "")
@@ -272,7 +275,7 @@ func testIntrospect(t *testing.T, testConfig *config.Config, keyManager *manager
 	}
 }
 
-func testIntrospectWithoutHint(t *testing.T, testConfig *config.Config, keyManager *manager.KeyManger) {
+func testIntrospectWithoutHint(t *testing.T, testConfig *config.Config) {
 	type introspectParameter struct {
 		tokenType oauth2.IntrospectTokenType
 	}
@@ -304,7 +307,8 @@ func testIntrospectWithoutHint(t *testing.T, testConfig *config.Config, keyManag
 
 			requestValidator := validation.NewRequestValidator()
 			sessionManager := manager.GetSessionManagerInstance()
-			tokenManager := manager.NewTokenManager(manager.NewDefaultKeyLoader(keyManager))
+			keyLoader := manager.GetDefaultKeyLoaderInstance()
+			tokenManager := manager.NewTokenManager(keyLoader)
 			sessionManager.StartSession(authSession)
 			request := httptest.NewRequest(http.MethodPost, endpoint.Token, nil)
 			accessTokenResponse := tokenManager.CreateAccessTokenResponse(request, user.Username, client, scopes, "")
@@ -344,7 +348,7 @@ func testIntrospectWithoutHint(t *testing.T, testConfig *config.Config, keyManag
 	}
 }
 
-func testIntrospectDisabled(t *testing.T, testConfig *config.Config, keyManager *manager.KeyManger) {
+func testIntrospectDisabled(t *testing.T, testConfig *config.Config) {
 	type introspectParameter struct {
 		tokenHint oauth2.IntrospectTokenType
 	}
@@ -376,7 +380,8 @@ func testIntrospectDisabled(t *testing.T, testConfig *config.Config, keyManager 
 
 			requestValidator := validation.NewRequestValidator()
 			sessionManager := manager.GetSessionManagerInstance()
-			tokenManager := manager.NewTokenManager(manager.NewDefaultKeyLoader(keyManager))
+			keyLoader := manager.GetDefaultKeyLoaderInstance()
+			tokenManager := manager.NewTokenManager(keyLoader)
 			sessionManager.StartSession(authSession)
 			request := httptest.NewRequest(http.MethodPost, endpoint.Token, nil)
 			accessTokenResponse := tokenManager.CreateAccessTokenResponse(request, user.Username, client, scopes, "")

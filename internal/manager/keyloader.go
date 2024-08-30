@@ -15,7 +15,7 @@ type DefaultKeyLoader struct {
 var keyLoaderLock = &sync.Mutex{}
 var keyLoaderSingleton *DefaultKeyLoader
 
-func NewDefaultKeyLoader(keyManager *KeyManger) *DefaultKeyLoader {
+func GetDefaultKeyLoaderInstance() *DefaultKeyLoader {
 	keyLoaderLock.Lock()
 	defer keyLoaderLock.Unlock()
 	if keyLoaderSingleton == nil {

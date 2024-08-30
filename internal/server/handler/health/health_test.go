@@ -32,10 +32,9 @@ func Test_Health(t *testing.T) {
 		t.Fatal(initializationError)
 	}
 
-	keyManger := manager.GetKeyMangerInstance()
-
 	t.Run("Health without token", func(t *testing.T) {
-		tokenManager := manager.NewTokenManager(manager.NewDefaultKeyLoader(keyManger))
+		keyLoader := manager.GetDefaultKeyLoaderInstance()
+		tokenManager := manager.NewTokenManager(keyLoader)
 
 		healthHandler := NewHealthHandler(tokenManager)
 
@@ -61,7 +60,8 @@ func Test_Health(t *testing.T) {
 	})
 
 	t.Run("Health with token", func(t *testing.T) {
-		tokenManager := manager.NewTokenManager(manager.NewDefaultKeyLoader(keyManger))
+		keyLoader := manager.GetDefaultKeyLoaderInstance()
+		tokenManager := manager.NewTokenManager(keyLoader)
 
 		client, clientExists := testConfig.GetClient("foo")
 		if !clientExists {

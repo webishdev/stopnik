@@ -75,9 +75,7 @@ func testLoadClientKeys(t *testing.T) {
 	testConfig := config.GetConfigInstance()
 	t.Run("Load specific client key", func(t *testing.T) {
 		resetKeyManager()
-		keyManger := GetKeyMangerInstance()
-
-		defaultKeyLoader := NewDefaultKeyLoader(keyManger)
+		defaultKeyLoader := GetDefaultKeyLoaderInstance()
 
 		client, clientExists := testConfig.GetClient("foo")
 		if !clientExists {
