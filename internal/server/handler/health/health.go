@@ -15,11 +15,11 @@ type Health struct {
 }
 
 type Handler struct {
-	tokenManager *token.TokenManager
+	tokenManager *token.Manager
 	errorHandler *error.Handler
 }
 
-func NewHealthHandler(tokenManager *token.TokenManager) *Handler {
+func NewHealthHandler(tokenManager *token.Manager) *Handler {
 	return &Handler{
 		tokenManager: tokenManager,
 		errorHandler: error.NewErrorHandler(),

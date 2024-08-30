@@ -25,11 +25,11 @@ type response struct {
 type Handler struct {
 	config       *config.Config
 	validator    *validation.RequestValidator
-	tokenManager *token.TokenManager
+	tokenManager *token.Manager
 	errorHandler *error.Handler
 }
 
-func NewIntrospectHandler(validator *validation.RequestValidator, tokenManager *token.TokenManager) *Handler {
+func NewIntrospectHandler(validator *validation.RequestValidator, tokenManager *token.Manager) *Handler {
 	currentConfig := config.GetConfigInstance()
 	return &Handler{
 		config:       currentConfig,

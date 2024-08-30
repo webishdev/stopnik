@@ -60,7 +60,7 @@ func Test_UserInfo(t *testing.T) {
 	testOidcUserInfoNotAllowedHttpMethods(t)
 }
 
-func testOidcUserInfo(t *testing.T, testConfig *config.Config, keyManager *key.KeyManger) {
+func testOidcUserInfo(t *testing.T, testConfig *config.Config, keyManager *key.Manger) {
 	t.Run("OIDC UserInfo", func(t *testing.T) {
 		tokenManager := token.GetTokenManagerInstance()
 

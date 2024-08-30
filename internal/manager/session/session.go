@@ -21,21 +21,21 @@ type AuthSession struct {
 	Nonce               string // OpenId Connect
 }
 
-type SessionManager struct {
+type Manager struct {
 	config           *config.Config
 	authSessionStore *store.ExpiringStore[AuthSession]
 }
 
 var sessionManagerLock = &sync.Mutex{}
-var sessionManagerSingleton *SessionManager
+var sessionManagerSingleton *Manager
 
-func GetSessionManagerInstance() *SessionManager {
+func GetSessionManagerInstance() *Manager {
 	sessionManagerLock.Lock()
 	defer sessionManagerLock.Unlock()
 	if sessionManagerSingleton == nil {
 		currentConfig := config.GetConfigInstance()
 		authSessionStore := store.NewDefaultTimedStore[AuthSession]()
-		sessionManagerSingleton = &SessionManager{
+		sessionManagerSingleton = &Manager{
 			config:           currentConfig,
 			authSessionStore: &authSessionStore,
 		}
@@ -43,12 +43,12 @@ func GetSessionManagerInstance() *SessionManager {
 	return sessionManagerSingleton
 }
 
-func (sessionManager *SessionManager) StartSession(authSession *AuthSession) {
+func (sessionManager *Manager) StartSession(authSession *AuthSession) {
 	authSessionStore := *sessionManager.authSessionStore
 	authSessionStore.Set(authSession.Id, authSession)
 }
 
-func (sessionManager *SessionManager) GetSession(id string) (*AuthSession, bool) {
+func (sessionManager *Manager) GetSession(id string) (*AuthSession, bool) {
 	authSessionStore := *sessionManager.authSessionStore
 	return authSessionStore.Get(id)
 }

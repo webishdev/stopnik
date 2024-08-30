@@ -419,7 +419,7 @@ func testRevokeNotAllowedHttpMethods(t *testing.T) {
 	for _, method := range testInvalidRevokeHttpMethods {
 		testMessage := fmt.Sprintf("Revoke with unsupported method %s", method)
 		t.Run(testMessage, func(t *testing.T) {
-			revokeHandler := NewRevokeHandler(&validation.RequestValidator{}, &token.TokenManager{})
+			revokeHandler := NewRevokeHandler(&validation.RequestValidator{}, &token.Manager{})
 
 			rr := httptest.NewRecorder()
 

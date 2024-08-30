@@ -443,7 +443,7 @@ func testTokenNotAllowedHttpMethods(t *testing.T) {
 	for _, method := range testInvalidTokenHttpMethods {
 		testMessage := fmt.Sprintf("Token with unsupported method %s", method)
 		t.Run(testMessage, func(t *testing.T) {
-			tokenHandler := NewTokenHandler(&validation.RequestValidator{}, &session.SessionManager{}, &token.TokenManager{})
+			tokenHandler := NewTokenHandler(&validation.RequestValidator{}, &session.Manager{}, &token.Manager{})
 
 			rr := httptest.NewRecorder()
 
@@ -461,7 +461,7 @@ func testTokenCreateBasicAuth(username string, password string) string {
 	return base64.StdEncoding.EncodeToString([]byte(auth))
 }
 
-func testTokenValidate(t *testing.T, tokenManager *token.TokenManager, response *http.Response) {
+func testTokenValidate(t *testing.T, tokenManager *token.Manager, response *http.Response) {
 	responseBody, bodyReadErr := io.ReadAll(response.Body)
 
 	if bodyReadErr != nil {

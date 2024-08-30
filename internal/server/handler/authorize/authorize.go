@@ -24,18 +24,18 @@ import (
 
 type Handler struct {
 	validator       *validation.RequestValidator
-	cookieManager   *cookie.CookieManager
-	sessionManager  *session.SessionManager
-	tokenManager    *token.TokenManager
+	cookieManager   *cookie.Manager
+	sessionManager  *session.Manager
+	tokenManager    *token.Manager
 	templateManager *template.Manager
 	errorHandler    *error.Handler
 }
 
 func NewAuthorizeHandler(
 	validator *validation.RequestValidator,
-	cookieManager *cookie.CookieManager,
-	sessionManager *session.SessionManager,
-	tokenManager *token.TokenManager,
+	cookieManager *cookie.Manager,
+	sessionManager *session.Manager,
+	tokenManager *token.Manager,
 	templateManager *template.Manager) *Handler {
 	return &Handler{
 		validator:       validator,

@@ -105,7 +105,7 @@ func Test_Health(t *testing.T) {
 	for _, method := range testInvalidHealthHttpMethods {
 		testMessage := fmt.Sprintf("Health with unsupported method %s", method)
 		t.Run(testMessage, func(t *testing.T) {
-			healthHandler := NewHealthHandler(&token.TokenManager{})
+			healthHandler := NewHealthHandler(&token.Manager{})
 
 			rr := httptest.NewRecorder()
 

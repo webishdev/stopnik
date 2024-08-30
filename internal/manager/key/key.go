@@ -14,20 +14,20 @@ import (
 	"sync"
 )
 
-type KeyManger struct {
+type Manger struct {
 	keyStore *store.Store[crypto.ManagedKey]
 }
 
 var keyManagerLock = &sync.Mutex{}
-var keyManagerSingleton *KeyManger
+var keyManagerSingleton *Manger
 
-func GetKeyMangerInstance() *KeyManger {
+func GetKeyMangerInstance() *Manger {
 	keyManagerLock.Lock()
 	defer keyManagerLock.Unlock()
 	if keyManagerSingleton == nil {
 		currentConfig := config.GetConfigInstance()
 		newStore := store.NewStore[crypto.ManagedKey]()
-		keyManager := &KeyManger{
+		keyManager := &Manger{
 			keyStore: &newStore,
 		}
 
@@ -48,7 +48,7 @@ func GetKeyMangerInstance() *KeyManger {
 	return keyManagerSingleton
 }
 
-func (km *KeyManger) getClientKey(c *config.Client) *crypto.ManagedKey {
+func (km *Manger) getClientKey(c *config.Client) *crypto.ManagedKey {
 	var result *crypto.ManagedKey
 	for _, mangedKey := range km.GetAllKeys() {
 		if result == nil && mangedKey.Server {
@@ -65,12 +65,12 @@ func (km *KeyManger) getClientKey(c *config.Client) *crypto.ManagedKey {
 	return result
 }
 
-func (km *KeyManger) GetAllKeys() []*crypto.ManagedKey {
+func (km *Manger) GetAllKeys() []*crypto.ManagedKey {
 	keyStore := *km.keyStore
 	return keyStore.GetValues()
 }
 
-func (km *KeyManger) addSeverKey(c *config.Config) error {
+func (km *Manger) addSeverKey(c *config.Config) error {
 	if c.Server.PrivateKey != "" {
 		privateKey, loadError := crypto.LoadPrivateKey(c.Server.PrivateKey)
 		if loadError != nil {
@@ -89,7 +89,7 @@ func (km *KeyManger) addSeverKey(c *config.Config) error {
 	return nil
 }
 
-func (km *KeyManger) addClientKeys(c *config.Config) error {
+func (km *Manger) addClientKeys(c *config.Config) error {
 
 	for _, client := range c.Clients {
 		if client.PrivateKey != "" {
@@ -110,7 +110,7 @@ func (km *KeyManger) addClientKeys(c *config.Config) error {
 	return nil
 }
 
-func (km *KeyManger) addManagedKey(managedKey *crypto.ManagedKey) {
+func (km *Manger) addManagedKey(managedKey *crypto.ManagedKey) {
 	keyStore := *km.keyStore
 	existingKey, exists := keyStore.Get(managedKey.Id)
 	if exists {
@@ -126,7 +126,7 @@ func (km *KeyManger) addManagedKey(managedKey *crypto.ManagedKey) {
 	}
 }
 
-func (km *KeyManger) convert(signingPrivateKey *crypto.SigningPrivateKey) (*crypto.ManagedKey, error) {
+func (km *Manger) convert(signingPrivateKey *crypto.SigningPrivateKey) (*crypto.ManagedKey, error) {
 	keyAsBytes, loadError := km.getBytes(signingPrivateKey.PrivateKey)
 	if loadError != nil {
 		return nil, loadError
@@ -163,7 +163,7 @@ func (km *KeyManger) convert(signingPrivateKey *crypto.SigningPrivateKey) (*cryp
 	return managedKey, nil
 }
 
-func (km *KeyManger) getBytes(key interface{}) ([]byte, error) {
+func (km *Manger) getBytes(key interface{}) ([]byte, error) {
 	switch key := key.(type) {
 	case *rsa.PrivateKey:
 		return x509.MarshalPKCS8PrivateKey(key)

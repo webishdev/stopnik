@@ -11,11 +11,11 @@ import (
 )
 
 type UserInfoHandler struct {
-	tokenManager *token.TokenManager
+	tokenManager *token.Manager
 	errorHandler *errorHandler.Handler
 }
 
-func NewOidcUserInfoHandler(tokenManager *token.TokenManager) *UserInfoHandler {
+func NewOidcUserInfoHandler(tokenManager *token.Manager) *UserInfoHandler {
 	return &UserInfoHandler{
 		tokenManager: tokenManager,
 		errorHandler: errorHandler.NewErrorHandler(),

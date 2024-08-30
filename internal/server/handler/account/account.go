@@ -13,14 +13,14 @@ import (
 
 type Handler struct {
 	validator       *validation.RequestValidator
-	cookieManager   *cookie.CookieManager
+	cookieManager   *cookie.Manager
 	templateManager *template.Manager
 	errorHandler    *error.Handler
 }
 
 func NewAccountHandler(
 	validator *validation.RequestValidator,
-	cookieManager *cookie.CookieManager,
+	cookieManager *cookie.Manager,
 	templateManager *template.Manager,
 ) *Handler {
 	return &Handler{

@@ -13,7 +13,7 @@ import (
 )
 
 type Handler struct {
-	keyManager   *key.KeyManger
+	keyManager   *key.Manger
 	config       *config.Config
 	errorHandler *errorHandler.Handler
 	keySet       jwk.Set
@@ -21,7 +21,7 @@ type Handler struct {
 	mux          *sync.RWMutex
 }
 
-func NewKeysHandler(keyManager *key.KeyManger) *Handler {
+func NewKeysHandler(keyManager *key.Manger) *Handler {
 	currentConfig := config.GetConfigInstance()
 	return &Handler{
 		keyManager:   keyManager,

@@ -184,7 +184,7 @@ func testAccountNotAllowedHttpMethods(t *testing.T) {
 	for _, method := range testInvalidAccountHttpMethods {
 		testMessage := fmt.Sprintf("Account with unsupported method %s", method)
 		t.Run(testMessage, func(t *testing.T) {
-			accountHandler := NewAccountHandler(&validation.RequestValidator{}, &cookie.CookieManager{}, &template.Manager{})
+			accountHandler := NewAccountHandler(&validation.RequestValidator{}, &cookie.Manager{}, &template.Manager{})
 
 			rr := httptest.NewRecorder()
 

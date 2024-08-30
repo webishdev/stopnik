@@ -15,12 +15,12 @@ import (
 
 type Handler struct {
 	validator      *validation.RequestValidator
-	sessionManager *session.SessionManager
-	tokenManager   *token.TokenManager
+	sessionManager *session.Manager
+	tokenManager   *token.Manager
 	errorHandler   *error.Handler
 }
 
-func NewTokenHandler(validator *validation.RequestValidator, sessionManager *session.SessionManager, tokenManager *token.TokenManager) *Handler {
+func NewTokenHandler(validator *validation.RequestValidator, sessionManager *session.Manager, tokenManager *token.Manager) *Handler {
 	return &Handler{
 		validator:      validator,
 		sessionManager: sessionManager,

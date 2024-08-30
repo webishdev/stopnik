@@ -9,7 +9,7 @@ import (
 
 type defaultKeyLoader struct {
 	keyFallback crypto.ServerSecretLoader
-	keyManager  *KeyManger
+	keyManager  *Manger
 }
 
 var keyLoaderLock = &sync.Mutex{}

@@ -12,16 +12,16 @@ import (
 
 type Now func() time.Time
 
-type CookieManager struct {
+type Manager struct {
 	config      *config.Config
 	keyFallback crypto.ServerSecretLoader
 	now         Now
 }
 
 var cookieManagerLock = &sync.Mutex{}
-var cookieManagerSingleton *CookieManager
+var cookieManagerSingleton *Manager
 
-func GetCookieManagerInstance() *CookieManager {
+func GetCookieManagerInstance() *Manager {
 	cookieManagerLock.Lock()
 	defer cookieManagerLock.Unlock()
 	if cookieManagerSingleton == nil {
@@ -30,16 +30,16 @@ func GetCookieManagerInstance() *CookieManager {
 	return cookieManagerSingleton
 }
 
-func newCookieManagerWithTime(now Now) *CookieManager {
+func newCookieManagerWithTime(now Now) *Manager {
 	configInstance := config.GetConfigInstance()
-	return &CookieManager{
+	return &Manager{
 		config:      configInstance,
 		keyFallback: crypto.NewServerSecretLoader(),
 		now:         now,
 	}
 }
 
-func (cookieManager *CookieManager) CreateMessageCookie(message string) http.Cookie {
+func (cookieManager *Manager) CreateMessageCookie(message string) http.Cookie {
 	messageCookieName := cookieManager.config.GetMessageCookieName()
 	log.Debug("Creating %s message cookie", message)
 	return http.Cookie{
@@ -52,7 +52,7 @@ func (cookieManager *CookieManager) CreateMessageCookie(message string) http.Coo
 	}
 }
 
-func (cookieManager *CookieManager) GetMessageCookieValue(r *http.Request) string {
+func (cookieManager *Manager) GetMessageCookieValue(r *http.Request) string {
 	messageCookieName := cookieManager.config.GetMessageCookieName()
 	cookie, cookieError := r.Cookie(messageCookieName)
 	if cookieError != nil {
@@ -61,7 +61,7 @@ func (cookieManager *CookieManager) GetMessageCookieValue(r *http.Request) strin
 	return cookie.Value
 }
 
-func (cookieManager *CookieManager) DeleteAuthCookie() http.Cookie {
+func (cookieManager *Manager) DeleteAuthCookie() http.Cookie {
 	authCookieName := cookieManager.config.GetAuthCookieName()
 	return http.Cookie{
 		Name:     authCookieName,
@@ -73,7 +73,7 @@ func (cookieManager *CookieManager) DeleteAuthCookie() http.Cookie {
 	}
 }
 
-func (cookieManager *CookieManager) CreateAuthCookie(username string) (http.Cookie, error) {
+func (cookieManager *Manager) CreateAuthCookie(username string) (http.Cookie, error) {
 	authCookieName := cookieManager.config.GetAuthCookieName()
 	log.Debug("Creating %s auth cookie", authCookieName)
 	value, err := cookieManager.generateCookieValue(username)
@@ -90,7 +90,7 @@ func (cookieManager *CookieManager) CreateAuthCookie(username string) (http.Cook
 	}, nil
 }
 
-func (cookieManager *CookieManager) ValidateAuthCookie(r *http.Request) (*config.User, bool) {
+func (cookieManager *Manager) ValidateAuthCookie(r *http.Request) (*config.User, bool) {
 	authCookieName := cookieManager.config.GetAuthCookieName()
 	log.Debug("Validating %s cookie", authCookieName)
 	cookie, cookieError := r.Cookie(authCookieName)
@@ -101,7 +101,7 @@ func (cookieManager *CookieManager) ValidateAuthCookie(r *http.Request) (*config
 	}
 }
 
-func (cookieManager *CookieManager) validateCookieValue(cookie *http.Cookie) (*config.User, bool) {
+func (cookieManager *Manager) validateCookieValue(cookie *http.Cookie) (*config.User, bool) {
 	options := cookieManager.keyFallback.GetServerKey()
 	token, err := jwt.Parse([]byte(cookie.Value), options)
 	if err != nil {
@@ -114,7 +114,7 @@ func (cookieManager *CookieManager) validateCookieValue(cookie *http.Cookie) (*c
 	return user, userExists
 }
 
-func (cookieManager *CookieManager) generateCookieValue(username string) (string, error) {
+func (cookieManager *Manager) generateCookieValue(username string) (string, error) {
 	sessionTimeout := cookieManager.config.GetSessionTimeoutSeconds()
 	token, builderError := jwt.NewBuilder().
 		Subject(username).

@@ -21,7 +21,7 @@ import (
 	"time"
 )
 
-type TokenManager struct {
+type Manager struct {
 	config            *config.Config
 	keyLoader         crypto.KeyLoader
 	accessTokenStore  *store.ExpiringStore[oauth2.AccessToken]
@@ -29,9 +29,9 @@ type TokenManager struct {
 }
 
 var tokenManagerLock = &sync.Mutex{}
-var tokenManagerSingleton *TokenManager
+var tokenManagerSingleton *Manager
 
-func GetTokenManagerInstance() *TokenManager {
+func GetTokenManagerInstance() *Manager {
 	tokenManagerLock.Lock()
 	defer tokenManagerLock.Unlock()
 	if tokenManagerSingleton == nil {
@@ -39,7 +39,7 @@ func GetTokenManagerInstance() *TokenManager {
 		keyLoader := key.GetDefaultKeyLoaderInstance()
 		accessTokenStore := store.NewDefaultTimedStore[oauth2.AccessToken]()
 		refreshTokenStore := store.NewDefaultTimedStore[oauth2.RefreshToken]()
-		tokenManagerSingleton = &TokenManager{
+		tokenManagerSingleton = &Manager{
 			config:            currentConfig,
 			keyLoader:         keyLoader,
 			accessTokenStore:  &accessTokenStore,
@@ -49,27 +49,27 @@ func GetTokenManagerInstance() *TokenManager {
 	return tokenManagerSingleton
 }
 
-func (tokenManager *TokenManager) GetAccessToken(token string) (*oauth2.AccessToken, bool) {
+func (tokenManager *Manager) GetAccessToken(token string) (*oauth2.AccessToken, bool) {
 	accessTokenStore := *tokenManager.accessTokenStore
 	return accessTokenStore.Get(token)
 }
 
-func (tokenManager *TokenManager) RevokeAccessToken(accessToken *oauth2.AccessToken) {
+func (tokenManager *Manager) RevokeAccessToken(accessToken *oauth2.AccessToken) {
 	accessTokenStore := *tokenManager.accessTokenStore
 	accessTokenStore.Delete(accessToken.Key)
 }
 
-func (tokenManager *TokenManager) GetRefreshToken(token string) (*oauth2.RefreshToken, bool) {
+func (tokenManager *Manager) GetRefreshToken(token string) (*oauth2.RefreshToken, bool) {
 	refreshTokenStore := *tokenManager.refreshTokenStore
 	return refreshTokenStore.Get(token)
 }
 
-func (tokenManager *TokenManager) RevokeRefreshToken(refreshToken *oauth2.RefreshToken) {
+func (tokenManager *Manager) RevokeRefreshToken(refreshToken *oauth2.RefreshToken) {
 	refreshTokenStore := *tokenManager.refreshTokenStore
 	refreshTokenStore.Delete(refreshToken.Key)
 }
 
-func (tokenManager *TokenManager) CreateAccessTokenResponse(r *http.Request, username string, client *config.Client, scopes []string, nonce string) oauth2.AccessTokenResponse {
+func (tokenManager *Manager) CreateAccessTokenResponse(r *http.Request, username string, client *config.Client, scopes []string, nonce string) oauth2.AccessTokenResponse {
 	log.Debug("Creating new access token for %s, access TTL %d, refresh TTL %d", client.Id, client.GetAccessTTL(), client.GetRefreshTTL())
 
 	requestData := internalHttp.NewRequestData(r)
@@ -120,7 +120,7 @@ func (tokenManager *TokenManager) CreateAccessTokenResponse(r *http.Request, use
 	return accessTokenResponse
 }
 
-func (tokenManager *TokenManager) CreateIdToken(r *http.Request, username string, client *config.Client, scopes []string, nonce string, atHash string) string {
+func (tokenManager *Manager) CreateIdToken(r *http.Request, username string, client *config.Client, scopes []string, nonce string, atHash string) string {
 	if client.Oidc && oidc.HasOidcScope(scopes) {
 		requestData := internalHttp.NewRequestData(r)
 		user, userExists := tokenManager.config.GetUser(username)
@@ -132,12 +132,12 @@ func (tokenManager *TokenManager) CreateIdToken(r *http.Request, username string
 	return ""
 }
 
-func (tokenManager *TokenManager) CreateAccessToken(r *http.Request, username string, client *config.Client, accessTokenDuration time.Duration) string {
+func (tokenManager *Manager) CreateAccessToken(r *http.Request, username string, client *config.Client, accessTokenDuration time.Duration) string {
 	requestData := internalHttp.NewRequestData(r)
 	return tokenManager.generateAccessToken(requestData, username, client, accessTokenDuration)
 }
 
-func (tokenManager *TokenManager) CreateAccessTokenHash(client *config.Client, accessTokenKey string) string {
+func (tokenManager *Manager) CreateAccessTokenHash(client *config.Client, accessTokenKey string) string {
 	loader := tokenManager.keyLoader
 	managedKey, keyExists := loader.LoadKeys(client)
 	if !keyExists {
@@ -147,7 +147,7 @@ func (tokenManager *TokenManager) CreateAccessTokenHash(client *config.Client, a
 	return hashToken(managedKey.HashAlgorithm, accessTokenKey)
 }
 
-func (tokenManager *TokenManager) ValidateAccessToken(authorizationHeader string) (*config.User, *config.Client, []string, bool) {
+func (tokenManager *Manager) ValidateAccessToken(authorizationHeader string) (*config.User, *config.Client, []string, bool) {
 	log.Debug("Validating access token")
 	accessTokenStore := *tokenManager.accessTokenStore
 	headerValue := getAuthorizationHeaderValue(authorizationHeader)
@@ -176,12 +176,12 @@ func (tokenManager *TokenManager) ValidateAccessToken(authorizationHeader string
 	return user, client, accessToken.Scopes, true
 }
 
-func (tokenManager *TokenManager) generateIdToken(requestData *internalHttp.RequestData, user *config.User, client *config.Client, nonce string, atHash string, duration time.Duration) string {
+func (tokenManager *Manager) generateIdToken(requestData *internalHttp.RequestData, user *config.User, client *config.Client, nonce string, atHash string, duration time.Duration) string {
 	idToken := generateIdToken(requestData, user, client, nonce, atHash, duration)
 	return tokenManager.generateJWTToken(client, idToken)
 }
 
-func (tokenManager *TokenManager) generateAccessToken(requestData *internalHttp.RequestData, username string, client *config.Client, duration time.Duration) string {
+func (tokenManager *Manager) generateAccessToken(requestData *internalHttp.RequestData, username string, client *config.Client, duration time.Duration) string {
 	tokenId := uuid.New()
 	if client.OpaqueToken {
 		return tokenManager.generateOpaqueAccessToken(tokenId.String())
@@ -190,7 +190,7 @@ func (tokenManager *TokenManager) generateAccessToken(requestData *internalHttp.
 	return tokenManager.generateJWTToken(client, accessToken)
 }
 
-func (tokenManager *TokenManager) generateOpaqueAccessToken(tokenId string) string {
+func (tokenManager *Manager) generateOpaqueAccessToken(tokenId string) string {
 	return base64.RawURLEncoding.EncodeToString([]byte(tokenId))
 }
 
@@ -209,7 +209,7 @@ func (tokenManager *TokenManager) generateOpaqueAccessToken(tokenId string) stri
   "scope": "read write"
 }
 */
-func (tokenManager *TokenManager) generateJWTToken(client *config.Client, token jwt.Token) string {
+func (tokenManager *Manager) generateJWTToken(client *config.Client, token jwt.Token) string {
 
 	loader := tokenManager.keyLoader
 	managedKey, keyExists := loader.LoadKeys(client)

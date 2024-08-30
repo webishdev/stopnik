@@ -425,7 +425,7 @@ func testIntrospectNotAllowedHttpMethods(t *testing.T) {
 	for _, method := range testInvalidIntrospectHttpMethods {
 		testMessage := fmt.Sprintf("Introspect with unsupported method %s", method)
 		t.Run(testMessage, func(t *testing.T) {
-			introspectHandler := NewIntrospectHandler(&validation.RequestValidator{}, &token.TokenManager{})
+			introspectHandler := NewIntrospectHandler(&validation.RequestValidator{}, &token.Manager{})
 
 			rr := httptest.NewRecorder()
 
