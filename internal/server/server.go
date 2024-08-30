@@ -180,7 +180,7 @@ func registerHandlers(config *config.Config, handle func(pattern string, handler
 	tokenManager := token2.GetTokenManagerInstance()
 	cookieManager := cookie.GetCookieManagerInstance()
 	requestValidator := validation.NewRequestValidator()
-	templateManager := template.NewTemplateManager()
+	templateManager := template.GetTemplateManagerInstance()
 
 	// Own
 	healthHandler := health.NewHealthHandler(tokenManager)

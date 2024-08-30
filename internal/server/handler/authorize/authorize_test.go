@@ -739,7 +739,7 @@ func testAuthorizeNoCookeExists(t *testing.T) {
 		requestValidator := validation.NewRequestValidator()
 		sessionManager := session.GetSessionManagerInstance()
 		cookieManager := cookie.GetCookieManagerInstance()
-		templateManager := template.NewTemplateManager()
+		templateManager := template.GetTemplateManagerInstance()
 
 		authorizeHandler := NewAuthorizeHandler(requestValidator, cookieManager, sessionManager, &token.Manager{}, templateManager)
 

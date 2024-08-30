@@ -5,6 +5,7 @@ import (
 	_ "embed"
 	"github.com/webishdev/stopnik/internal/config"
 	"html/template"
+	"sync"
 )
 
 //go:embed resources/header.html
@@ -26,9 +27,18 @@ type Manager struct {
 	config *config.Config
 }
 
-func NewTemplateManager() *Manager {
-	currentConfig := config.GetConfigInstance()
-	return &Manager{currentConfig}
+var templateManagerLock = &sync.Mutex{}
+var templateManagerSingleton *Manager
+
+func GetTemplateManagerInstance() *Manager {
+	templateManagerLock.Lock()
+	defer templateManagerLock.Unlock()
+	if templateManagerSingleton == nil {
+		currentConfig := config.GetConfigInstance()
+		templateManagerSingleton = &Manager{currentConfig}
+	}
+
+	return templateManagerSingleton
 }
 
 func addTemplates(main *template.Template) bytes.Buffer {

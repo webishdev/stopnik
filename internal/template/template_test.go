@@ -28,7 +28,7 @@ func Test_Template(t *testing.T) {
 		t.Fatal(initializationError)
 	}
 
-	templateManager := NewTemplateManager()
+	templateManager := GetTemplateManagerInstance()
 
 	t.Run("Login", func(t *testing.T) {
 		loginTemplateBuffer := templateManager.LoginTemplate("foo", "/some/post", "")
