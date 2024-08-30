@@ -16,6 +16,7 @@ import (
 	"github.com/webishdev/stopnik/log"
 	"net/http"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -26,16 +27,25 @@ type TokenManager struct {
 	refreshTokenStore *store.ExpiringStore[oauth2.RefreshToken]
 }
 
-func NewTokenManager(keyLoader crypto.KeyLoader) *TokenManager {
-	currentConfig := config.GetConfigInstance()
-	accessTokenStore := store.NewDefaultTimedStore[oauth2.AccessToken]()
-	refreshTokenStore := store.NewDefaultTimedStore[oauth2.RefreshToken]()
-	return &TokenManager{
-		config:            currentConfig,
-		keyLoader:         keyLoader,
-		accessTokenStore:  &accessTokenStore,
-		refreshTokenStore: &refreshTokenStore,
+var tokenManagerLock = &sync.Mutex{}
+var tokenManagerSingleton *TokenManager
+
+func GetTokenManagerInstance() *TokenManager {
+	tokenManagerLock.Lock()
+	defer tokenManagerLock.Unlock()
+	if tokenManagerSingleton == nil {
+		currentConfig := config.GetConfigInstance()
+		keyLoader := GetDefaultKeyLoaderInstance()
+		accessTokenStore := store.NewDefaultTimedStore[oauth2.AccessToken]()
+		refreshTokenStore := store.NewDefaultTimedStore[oauth2.RefreshToken]()
+		tokenManagerSingleton = &TokenManager{
+			config:            currentConfig,
+			keyLoader:         keyLoader,
+			accessTokenStore:  &accessTokenStore,
+			refreshTokenStore: &refreshTokenStore,
+		}
 	}
+	return tokenManagerSingleton
 }
 
 func (tokenManager *TokenManager) GetAccessToken(token string) (*oauth2.AccessToken, bool) {
