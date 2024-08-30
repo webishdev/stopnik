@@ -12,6 +12,8 @@ var signalLock = &sync.Mutex{}
 var sigs chan os.Signal
 var signalSingleton *byte
 
+var exitFunc = os.Exit
+
 func GetSignalChannel() chan os.Signal {
 	signalLock.Lock()
 	defer signalLock.Unlock()
@@ -26,7 +28,7 @@ func CriticalError(err error) {
 	if err != nil {
 		errorMessage := fmt.Sprintf("An critical error occurred: %v", err)
 		println(errorMessage)
-		os.Exit(1)
+		exitFunc(1)
 	}
 }
 
