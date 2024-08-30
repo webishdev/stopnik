@@ -14,7 +14,7 @@ const FeatureList: FeatureItem[] = [
     Svg: require('@site/static/img/undraw_safe_re_kiil.svg').default,
     description: (
       <>
-        STOPNik was primarily designed to be a straightforward and fast authorization server, minimizing code and infrastructure dependencies.
+        STOPnik was primarily designed to be a straightforward and fast authorization server, minimizing code and infrastructure dependencies.
       </>
     ),
   },
@@ -23,7 +23,7 @@ const FeatureList: FeatureItem[] = [
     Svg: require('@site/static/img/undraw_stars_re_6je7.svg').default,
     description: (
       <>
-        STOPNik was created to learn OAuth2, OpenId Connect and Go. It leverages the built-in HTTP stack and Go channels.
+        STOPnik was created to learn OAuth2, OpenId Connect and Go. It leverages the built-in HTTP stack and Go channels.
       </>
     ),
   },
@@ -32,7 +32,7 @@ const FeatureList: FeatureItem[] = [
     Svg: require('@site/static/img/undraw_playful_cat_re_ac9g.svg').default,
     description: (
       <>
-          STOPNik was developed with a cat in the room, which might be considered a significant endorsement of its quality.
+          STOPnik was developed with a cat in the room, which might be considered a significant endorsement of its quality.
       </>
     ),
   },
