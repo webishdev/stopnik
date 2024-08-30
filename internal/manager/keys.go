@@ -11,6 +11,8 @@ import (
 	"github.com/webishdev/stopnik/internal/config"
 	"github.com/webishdev/stopnik/internal/crypto"
 	"github.com/webishdev/stopnik/internal/store"
+	"github.com/webishdev/stopnik/log"
+	"sync"
 )
 
 type KeyManger struct {
@@ -42,24 +44,35 @@ func (defaultKeyLoader *DefaultKeyLoader) GetServerKey() jwt.SignEncryptParseOpt
 	return defaultKeyLoader.keyFallback.GetServerKey()
 }
 
-func NewKeyManger() (*KeyManger, error) {
-	currentConfig := config.GetConfigInstance()
-	newStore := store.NewStore[crypto.ManagedKey]()
-	keyManager := &KeyManger{
-		keyStore: &newStore,
+var keyManagerLock = &sync.Mutex{}
+var keyManagerSingleton *KeyManger
+
+func NewKeyManger() *KeyManger {
+	keyManagerLock.Lock()
+	defer keyManagerLock.Unlock()
+	if keyManagerSingleton == nil {
+		log.Info("Init KEY MANAGER!!!")
+		currentConfig := config.GetConfigInstance()
+		newStore := store.NewStore[crypto.ManagedKey]()
+		keyManager := &KeyManger{
+			keyStore: &newStore,
+		}
+
+		serverKeyError := keyManager.addSeverKey(currentConfig)
+		if serverKeyError != nil {
+			panic(serverKeyError)
+		}
+
+		clientKeyError := keyManager.addClientKeys(currentConfig)
+		if clientKeyError != nil {
+			panic(clientKeyError)
+		}
+
+		keyManagerSingleton = keyManager
+		log.Info("Init KEY MANAGER ENDS!!!")
 	}
 
-	serverKeyError := keyManager.addSeverKey(currentConfig)
-	if serverKeyError != nil {
-		return nil, serverKeyError
-	}
-
-	clientKeyError := keyManager.addClientKeys(currentConfig)
-	if clientKeyError != nil {
-		return nil, clientKeyError
-	}
-
-	return keyManager, nil
+	return keyManagerSingleton
 }
 
 func (km *KeyManger) getClientKey(c *config.Client) *crypto.ManagedKey {

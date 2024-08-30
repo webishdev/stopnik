@@ -23,11 +23,8 @@ func testEmptyConfigKeyManager(t *testing.T) {
 		t.Error(err)
 	}
 	t.Run("No keys from empty config", func(t *testing.T) {
-		keyManger, err := NewKeyManger()
-		if err != nil {
-			t.Error(err)
-		}
-
+		resetKeyManager()
+		keyManger := NewKeyManger()
 		keys := keyManger.GetAllKeys()
 
 		if len(keys) != 0 {
@@ -48,10 +45,8 @@ func testServerKeyConfigKeyManager(t *testing.T) {
 	}
 
 	t.Run("Server key exists", func(t *testing.T) {
-		keyManger, err := NewKeyManger()
-		if err != nil {
-			t.Error(err)
-		}
+		resetKeyManager()
+		keyManger := NewKeyManger()
 
 		keys := keyManger.GetAllKeys()
 
@@ -64,10 +59,8 @@ func testServerKeyConfigKeyManager(t *testing.T) {
 func testServerAndClientKeyConfigKeyManager(t *testing.T) {
 	testSetupTestConfig(t)
 	t.Run("Server and client keys exists", func(t *testing.T) {
-		keyManger, err := NewKeyManger()
-		if err != nil {
-			t.Error(err)
-		}
+		resetKeyManager()
+		keyManger := NewKeyManger()
 
 		keys := keyManger.GetAllKeys()
 
@@ -81,10 +74,9 @@ func testLoadClientKeys(t *testing.T) {
 	testSetupTestConfig(t)
 	testConfig := config.GetConfigInstance()
 	t.Run("Load specific client key", func(t *testing.T) {
-		keyManger, err := NewKeyManger()
-		if err != nil {
-			t.Error(err)
-		}
+		resetKeyManager()
+		keyManger := NewKeyManger()
+
 		defaultKeyLoader := NewDefaultKeyLoader(keyManger)
 
 		client, clientExists := testConfig.GetClient("foo")
@@ -134,4 +126,10 @@ func testSetupTestConfig(t *testing.T) {
 	if initializationError != nil {
 		t.Fatal(initializationError)
 	}
+}
+
+func resetKeyManager() {
+	keyManagerLock.Lock()
+	defer keyManagerLock.Unlock()
+	keyManagerSingleton = nil
 }

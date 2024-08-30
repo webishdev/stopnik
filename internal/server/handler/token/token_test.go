@@ -48,10 +48,7 @@ func Test_Token(t *testing.T) {
 		t.Fatal(initializationError)
 	}
 
-	keyManger, keyLoadingError := manager.NewKeyManger()
-	if keyLoadingError != nil {
-		t.Error(keyLoadingError)
-	}
+	keyManger := manager.NewKeyManger()
 
 	testTokenMissingClientCredentials(t, keyManger)
 

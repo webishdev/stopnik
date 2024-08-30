@@ -22,7 +22,6 @@ import (
 	"github.com/webishdev/stopnik/log"
 	"net"
 	"net/http"
-	"os"
 	"sync"
 	"time"
 )
@@ -173,13 +172,10 @@ func shutdownServer(server *http.Server) {
 }
 
 func registerHandlers(config *config.Config, handle func(pattern string, handler http.Handler)) {
-	keyManger, keyLoadingError := manager.NewKeyManger()
-	if keyLoadingError != nil {
-		log.Error("Failed to load private keys: %v", keyLoadingError)
-		os.Exit(1)
-	}
+	keyManger := manager.NewKeyManger()
+	keyLoader := manager.NewDefaultKeyLoader(keyManger)
 	sessionManager := manager.GetSessionManagerInstance()
-	tokenManager := manager.NewTokenManager(manager.NewDefaultKeyLoader(keyManger))
+	tokenManager := manager.NewTokenManager(keyLoader)
 	cookieManager := manager.GetCookieManagerInstance()
 	requestValidator := validation.NewRequestValidator()
 	templateManager := template.NewTemplateManager()

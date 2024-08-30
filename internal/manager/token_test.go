@@ -205,10 +205,5 @@ func createTestConfig(t *testing.T, opaque bool, refreshTokenTTL int) *config.Co
 }
 
 func createTestKeyManager(t *testing.T) *KeyManger {
-	keyManger, keyLoadingError := NewKeyManger()
-	if keyLoadingError != nil {
-		t.Error(keyLoadingError)
-	}
-
-	return keyManger
+	return NewKeyManger()
 }

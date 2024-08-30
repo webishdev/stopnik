@@ -32,11 +32,7 @@ func Test_Health(t *testing.T) {
 		t.Fatal(initializationError)
 	}
 
-	keyManger, keyLoadingError := manager.NewKeyManger()
-	if keyLoadingError != nil {
-		t.Error(keyLoadingError)
-		return
-	}
+	keyManger := manager.NewKeyManger()
 
 	t.Run("Health without token", func(t *testing.T) {
 		tokenManager := manager.NewTokenManager(manager.NewDefaultKeyLoader(keyManger))

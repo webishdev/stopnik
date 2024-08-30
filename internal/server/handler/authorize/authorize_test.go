@@ -44,10 +44,7 @@ func Test_Authorize(t *testing.T) {
 		t.Fatal(initializationError)
 	}
 
-	keyManager, keyLoadingError := manager.NewKeyManger()
-	if keyLoadingError != nil {
-		t.Error(keyLoadingError)
-	}
+	keyManager := manager.NewKeyManger()
 
 	testAuthorizeNoClientId(t)
 
