@@ -180,7 +180,7 @@ func registerHandlers(config *config.Config, handle func(pattern string, handler
 	}
 	sessionManager := manager.NewSessionManager()
 	tokenManager := manager.NewTokenManager(manager.NewDefaultKeyLoader(keyManger))
-	cookieManager := manager.NewCookieManager()
+	cookieManager := manager.GetCookieManagerInstance()
 	requestValidator := validation.NewRequestValidator()
 	templateManager := template.NewTemplateManager()
 

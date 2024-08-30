@@ -6,6 +6,7 @@ import (
 	"github.com/webishdev/stopnik/internal/crypto"
 	"github.com/webishdev/stopnik/log"
 	"net/http"
+	"sync"
 	"time"
 )
 
@@ -17,8 +18,16 @@ type CookieManager struct {
 	now         Now
 }
 
-func NewCookieManager() *CookieManager {
-	return newCookieManagerWithTime(time.Now)
+var cookieManagerLock = &sync.Mutex{}
+var cookieManagerSingleton *CookieManager
+
+func GetCookieManagerInstance() *CookieManager {
+	cookieManagerLock.Lock()
+	defer cookieManagerLock.Unlock()
+	if cookieManagerSingleton == nil {
+		cookieManagerSingleton = newCookieManagerWithTime(time.Now)
+	}
+	return cookieManagerSingleton
 }
 
 func newCookieManagerWithTime(now Now) *CookieManager {

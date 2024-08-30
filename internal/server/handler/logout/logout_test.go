@@ -44,7 +44,7 @@ func Test_Logout(t *testing.T) {
 
 func testInvalidCookies(t *testing.T, testConfig *config.Config) {
 	t.Run("Logout with invalid cookie", func(t *testing.T) {
-		cookieManager := manager.NewCookieManager()
+		cookieManager := manager.GetCookieManagerInstance()
 
 		cookie := http.Cookie{
 			Name:     testConfig.GetAuthCookieName(),
@@ -85,7 +85,7 @@ func testLogout(t *testing.T, testConfig *config.Config) {
 	for _, test := range logoutParameters {
 		testMessage := fmt.Sprintf("Logout handler redirect %v, form redirect %v", test.handlerRedirect, test.formRedirect)
 		t.Run(testMessage, func(t *testing.T) {
-			cookieManager := manager.NewCookieManager()
+			cookieManager := manager.GetCookieManagerInstance()
 
 			user, _ := testConfig.GetUser("foo")
 			cookie, _ := cookieManager.CreateAuthCookie(user.Username)
