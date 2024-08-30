@@ -3,9 +3,9 @@ package logout
 import (
 	"fmt"
 	"github.com/webishdev/stopnik/internal/config"
-	"github.com/webishdev/stopnik/internal/cookie"
 	"github.com/webishdev/stopnik/internal/endpoint"
 	internalHttp "github.com/webishdev/stopnik/internal/http"
+	"github.com/webishdev/stopnik/internal/manager/cookie"
 	"net/http"
 	"net/http/httptest"
 	"strings"

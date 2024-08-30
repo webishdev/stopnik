@@ -2,8 +2,8 @@ package account
 
 import (
 	"github.com/google/uuid"
-	"github.com/webishdev/stopnik/internal/cookie"
 	internalHttp "github.com/webishdev/stopnik/internal/http"
+	"github.com/webishdev/stopnik/internal/manager/cookie"
 	"github.com/webishdev/stopnik/internal/server/handler/error"
 	"github.com/webishdev/stopnik/internal/server/validation"
 	"github.com/webishdev/stopnik/internal/template"

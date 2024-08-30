@@ -1,8 +1,8 @@
 package logout
 
 import (
-	"github.com/webishdev/stopnik/internal/cookie"
 	internalHttp "github.com/webishdev/stopnik/internal/http"
+	"github.com/webishdev/stopnik/internal/manager/cookie"
 	"github.com/webishdev/stopnik/internal/server/handler/error"
 	"github.com/webishdev/stopnik/log"
 	"net/http"
