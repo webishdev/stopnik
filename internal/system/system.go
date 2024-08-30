@@ -20,6 +20,7 @@ func GetSignalChannel() chan os.Signal {
 	if signalSingleton == nil {
 		sigs = make(chan os.Signal, 1)
 		signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
+		signalSingleton = new(byte)
 	}
 	return sigs
 }
