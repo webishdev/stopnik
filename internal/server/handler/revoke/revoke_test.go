@@ -8,6 +8,7 @@ import (
 	"github.com/webishdev/stopnik/internal/endpoint"
 	internalHttp "github.com/webishdev/stopnik/internal/http"
 	"github.com/webishdev/stopnik/internal/manager"
+	"github.com/webishdev/stopnik/internal/manager/session"
 	"github.com/webishdev/stopnik/internal/oauth2"
 	"github.com/webishdev/stopnik/internal/server/validation"
 	"net/http"
@@ -198,7 +199,7 @@ func testRevoke(t *testing.T, testConfig *config.Config) {
 			scopes := []string{"foo:bar", "moo:abc"}
 
 			id := uuid.New()
-			authSession := &manager.AuthSession{
+			authSession := &session.AuthSession{
 				Id:                  id.String(),
 				Redirect:            "https://example.com/callback",
 				AuthURI:             "https://example.com/auth",
@@ -211,7 +212,7 @@ func testRevoke(t *testing.T, testConfig *config.Config) {
 			}
 
 			requestValidator := validation.NewRequestValidator()
-			sessionManager := manager.GetSessionManagerInstance()
+			sessionManager := session.GetSessionManagerInstance()
 			tokenManager := manager.GetTokenManagerInstance()
 			sessionManager.StartSession(authSession)
 			request := httptest.NewRequest(http.MethodPost, endpoint.Token, nil)
@@ -276,7 +277,7 @@ func testRevokeWithoutHint(t *testing.T, testConfig *config.Config) {
 			scopes := []string{"foo:bar", "moo:abc"}
 
 			id := uuid.New()
-			authSession := &manager.AuthSession{
+			authSession := &session.AuthSession{
 				Id:                  id.String(),
 				Redirect:            "https://example.com/callback",
 				AuthURI:             "https://example.com/auth",
@@ -289,7 +290,7 @@ func testRevokeWithoutHint(t *testing.T, testConfig *config.Config) {
 			}
 
 			requestValidator := validation.NewRequestValidator()
-			sessionManager := manager.GetSessionManagerInstance()
+			sessionManager := session.GetSessionManagerInstance()
 			tokenManager := manager.GetTokenManagerInstance()
 			sessionManager.StartSession(authSession)
 			request := httptest.NewRequest(http.MethodPost, endpoint.Token, nil)
@@ -353,7 +354,7 @@ func testRevokeDisabled(t *testing.T, testConfig *config.Config) {
 			scopes := []string{"foo:bar", "moo:abc"}
 
 			id := uuid.New()
-			authSession := &manager.AuthSession{
+			authSession := &session.AuthSession{
 				Id:                  id.String(),
 				Redirect:            "https://example.com/callback",
 				AuthURI:             "https://example.com/auth",
@@ -366,7 +367,7 @@ func testRevokeDisabled(t *testing.T, testConfig *config.Config) {
 			}
 
 			requestValidator := validation.NewRequestValidator()
-			sessionManager := manager.GetSessionManagerInstance()
+			sessionManager := session.GetSessionManagerInstance()
 			tokenManager := manager.GetTokenManagerInstance()
 			sessionManager.StartSession(authSession)
 			request := httptest.NewRequest(http.MethodPost, endpoint.Token, nil)

@@ -9,6 +9,7 @@ import (
 	"github.com/webishdev/stopnik/internal/endpoint"
 	internalHttp "github.com/webishdev/stopnik/internal/http"
 	"github.com/webishdev/stopnik/internal/manager"
+	"github.com/webishdev/stopnik/internal/manager/session"
 	"github.com/webishdev/stopnik/internal/oauth2"
 	"github.com/webishdev/stopnik/internal/pkce"
 	"github.com/webishdev/stopnik/internal/server/validation"
@@ -74,7 +75,7 @@ func Test_Token(t *testing.T) {
 func testTokenMissingClientCredentials(t *testing.T) {
 	t.Run("Missing client credentials for confidential client", func(t *testing.T) {
 		requestValidator := validation.NewRequestValidator()
-		sessionManager := manager.GetSessionManagerInstance()
+		sessionManager := session.GetSessionManagerInstance()
 		tokenManager := manager.GetTokenManagerInstance()
 
 		tokenHandler := NewTokenHandler(requestValidator, sessionManager, tokenManager)
@@ -92,7 +93,7 @@ func testTokenMissingClientCredentials(t *testing.T) {
 func testTokenInvalidClientCredentials(t *testing.T) {
 	t.Run("Invalid client credentials", func(t *testing.T) {
 		requestValidator := validation.NewRequestValidator()
-		sessionManager := manager.GetSessionManagerInstance()
+		sessionManager := session.GetSessionManagerInstance()
 		tokenManager := manager.GetTokenManagerInstance()
 
 		tokenHandler := NewTokenHandler(requestValidator, sessionManager, tokenManager)
@@ -113,7 +114,7 @@ func testTokenInvalidClientCredentials(t *testing.T) {
 func testTokenMissingGrandType(t *testing.T) {
 	t.Run("Missing grant type", func(t *testing.T) {
 		requestValidator := validation.NewRequestValidator()
-		sessionManager := manager.GetSessionManagerInstance()
+		sessionManager := session.GetSessionManagerInstance()
 		tokenManager := manager.GetTokenManagerInstance()
 
 		tokenHandler := NewTokenHandler(requestValidator, sessionManager, tokenManager)
@@ -134,7 +135,7 @@ func testTokenMissingGrandType(t *testing.T) {
 func testTokenInvalidGrandType(t *testing.T) {
 	t.Run("Invalid grant type", func(t *testing.T) {
 		requestValidator := validation.NewRequestValidator()
-		sessionManager := manager.GetSessionManagerInstance()
+		sessionManager := session.GetSessionManagerInstance()
 		tokenManager := manager.GetTokenManagerInstance()
 
 		tokenHandler := NewTokenHandler(requestValidator, sessionManager, tokenManager)
@@ -161,7 +162,7 @@ func testTokenInvalidGrandType(t *testing.T) {
 func testTokenAuthorizationCodeGrantTypeMissingCodeParameter(t *testing.T) {
 	t.Run("Authorization code grant type, missing code parameter", func(t *testing.T) {
 		requestValidator := validation.NewRequestValidator()
-		sessionManager := manager.GetSessionManagerInstance()
+		sessionManager := session.GetSessionManagerInstance()
 		tokenManager := manager.GetTokenManagerInstance()
 
 		tokenHandler := NewTokenHandler(requestValidator, sessionManager, tokenManager)
@@ -189,7 +190,7 @@ func testTokenAuthorizationCodeGrantTypeInvalidPKCE(t *testing.T) {
 	t.Run("Authorization code grant type with invalid PKCE", func(t *testing.T) {
 		id := uuid.New()
 		pkceCodeChallenge := pkce.CalculatePKCE(pkce.S256, "foobar")
-		authSession := &manager.AuthSession{
+		authSession := &session.AuthSession{
 			Id:                  id.String(),
 			Redirect:            "https://example.com/callback",
 			AuthURI:             "https://example.com/auth",
@@ -202,7 +203,7 @@ func testTokenAuthorizationCodeGrantTypeInvalidPKCE(t *testing.T) {
 		}
 
 		requestValidator := validation.NewRequestValidator()
-		sessionManager := manager.GetSessionManagerInstance()
+		sessionManager := session.GetSessionManagerInstance()
 		tokenManager := manager.GetTokenManagerInstance()
 		sessionManager.StartSession(authSession)
 
@@ -261,7 +262,7 @@ func testTokenAuthorizationCodeGrantType(t *testing.T) {
 		testMessage := fmt.Sprintf("Authorization code grant type state %v scope %v code challenge %v method %v", test.state, test.scope, pkceCodeChallenge, pkceCodeChallengeMethod)
 		t.Run(testMessage, func(t *testing.T) {
 			id := uuid.New()
-			authSession := &manager.AuthSession{
+			authSession := &session.AuthSession{
 				Id:                  id.String(),
 				Redirect:            "https://example.com/callback",
 				AuthURI:             "https://example.com/auth",
@@ -274,7 +275,7 @@ func testTokenAuthorizationCodeGrantType(t *testing.T) {
 			}
 
 			requestValidator := validation.NewRequestValidator()
-			sessionManager := manager.GetSessionManagerInstance()
+			sessionManager := session.GetSessionManagerInstance()
 			tokenManager := manager.GetTokenManagerInstance()
 			sessionManager.StartSession(authSession)
 
@@ -315,7 +316,7 @@ func testTokenAuthorizationCodeGrantType(t *testing.T) {
 func testTokenPasswordGrantType(t *testing.T) {
 	t.Run("Password grant type", func(t *testing.T) {
 		requestValidator := validation.NewRequestValidator()
-		sessionManager := manager.GetSessionManagerInstance()
+		sessionManager := session.GetSessionManagerInstance()
 		tokenManager := manager.GetTokenManagerInstance()
 
 		tokenHandler := NewTokenHandler(requestValidator, sessionManager, tokenManager)
@@ -349,7 +350,7 @@ func testTokenPasswordGrantType(t *testing.T) {
 func testTokenClientCredentialsGrantType(t *testing.T) {
 	t.Run("Client credentials grant type", func(t *testing.T) {
 		requestValidator := validation.NewRequestValidator()
-		sessionManager := manager.GetSessionManagerInstance()
+		sessionManager := session.GetSessionManagerInstance()
 		tokenManager := manager.GetTokenManagerInstance()
 
 		tokenHandler := NewTokenHandler(requestValidator, sessionManager, tokenManager)
@@ -385,7 +386,7 @@ func testTokenRefreshTokenGrantType(t *testing.T, testConfig *config.Config) {
 		scopes := []string{"foo:bar", "moo:abc"}
 
 		id := uuid.New()
-		authSession := &manager.AuthSession{
+		authSession := &session.AuthSession{
 			Id:                  id.String(),
 			Redirect:            "https://example.com/callback",
 			AuthURI:             "https://example.com/auth",
@@ -398,7 +399,7 @@ func testTokenRefreshTokenGrantType(t *testing.T, testConfig *config.Config) {
 		}
 
 		requestValidator := validation.NewRequestValidator()
-		sessionManager := manager.GetSessionManagerInstance()
+		sessionManager := session.GetSessionManagerInstance()
 		tokenManager := manager.GetTokenManagerInstance()
 		sessionManager.StartSession(authSession)
 
@@ -442,7 +443,7 @@ func testTokenNotAllowedHttpMethods(t *testing.T) {
 	for _, method := range testInvalidTokenHttpMethods {
 		testMessage := fmt.Sprintf("Token with unsupported method %s", method)
 		t.Run(testMessage, func(t *testing.T) {
-			tokenHandler := NewTokenHandler(&validation.RequestValidator{}, &manager.SessionManager{}, &manager.TokenManager{})
+			tokenHandler := NewTokenHandler(&validation.RequestValidator{}, &session.SessionManager{}, &manager.TokenManager{})
 
 			rr := httptest.NewRecorder()
 

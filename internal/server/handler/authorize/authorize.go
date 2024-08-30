@@ -7,6 +7,7 @@ import (
 	internalHttp "github.com/webishdev/stopnik/internal/http"
 	"github.com/webishdev/stopnik/internal/manager"
 	"github.com/webishdev/stopnik/internal/manager/cookie"
+	"github.com/webishdev/stopnik/internal/manager/session"
 	"github.com/webishdev/stopnik/internal/oauth2"
 	"github.com/webishdev/stopnik/internal/oidc"
 	"github.com/webishdev/stopnik/internal/pkce"
@@ -24,7 +25,7 @@ import (
 type Handler struct {
 	validator       *validation.RequestValidator
 	cookieManager   *cookie.CookieManager
-	sessionManager  *manager.SessionManager
+	sessionManager  *session.SessionManager
 	tokenManager    *manager.TokenManager
 	templateManager *template.Manager
 	errorHandler    *error.Handler
@@ -33,7 +34,7 @@ type Handler struct {
 func NewAuthorizeHandler(
 	validator *validation.RequestValidator,
 	cookieManager *cookie.CookieManager,
-	sessionManager *manager.SessionManager,
+	sessionManager *session.SessionManager,
 	tokenManager *manager.TokenManager,
 	templateManager *template.Manager) *Handler {
 	return &Handler{
@@ -127,7 +128,7 @@ func (h *Handler) handleGetRequest(w http.ResponseWriter, r *http.Request) {
 	scopes := strings.Split(scope, " ")
 
 	id := uuid.New()
-	authSession := &manager.AuthSession{
+	authSession := &session.AuthSession{
 		Id:                  id.String(),
 		Redirect:            redirect,
 		AuthURI:             r.URL.RequestURI(),

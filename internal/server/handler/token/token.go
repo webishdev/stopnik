@@ -3,6 +3,7 @@ package token
 import (
 	internalHttp "github.com/webishdev/stopnik/internal/http"
 	"github.com/webishdev/stopnik/internal/manager"
+	"github.com/webishdev/stopnik/internal/manager/session"
 	"github.com/webishdev/stopnik/internal/oauth2"
 	"github.com/webishdev/stopnik/internal/pkce"
 	"github.com/webishdev/stopnik/internal/server/handler/error"
@@ -14,12 +15,12 @@ import (
 
 type Handler struct {
 	validator      *validation.RequestValidator
-	sessionManager *manager.SessionManager
+	sessionManager *session.SessionManager
 	tokenManager   *manager.TokenManager
 	errorHandler   *error.Handler
 }
 
-func NewTokenHandler(validator *validation.RequestValidator, sessionManager *manager.SessionManager, tokenManager *manager.TokenManager) *Handler {
+func NewTokenHandler(validator *validation.RequestValidator, sessionManager *session.SessionManager, tokenManager *manager.TokenManager) *Handler {
 	return &Handler{
 		validator:      validator,
 		sessionManager: sessionManager,
