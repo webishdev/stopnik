@@ -6,6 +6,7 @@ import (
 	"fmt"
 	internalHttp "github.com/webishdev/stopnik/internal/http"
 	"github.com/webishdev/stopnik/internal/oauth2"
+	"github.com/webishdev/stopnik/internal/system"
 	"github.com/webishdev/stopnik/log"
 	"io"
 	"os"
@@ -133,7 +134,7 @@ func GetConfigInstance() *Config {
 	configLock.Lock()
 	defer configLock.Unlock()
 	if configSingleton == nil {
-		panic("config not initialized")
+		system.CriticalError(errors.New("config not initialized"))
 	}
 
 	return configSingleton
@@ -192,7 +193,7 @@ func Initialize(config *Config) error {
 		defer func(file *os.File) {
 			fileCloseError := file.Close()
 			if fileCloseError != nil {
-				panic(fileCloseError)
+				system.CriticalError(fileCloseError)
 			}
 		}(file)
 

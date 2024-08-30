@@ -7,11 +7,10 @@ import (
 	"github.com/webishdev/stopnik/internal/config"
 	"github.com/webishdev/stopnik/internal/crypto"
 	"github.com/webishdev/stopnik/internal/server"
+	"github.com/webishdev/stopnik/internal/system"
 	logger "github.com/webishdev/stopnik/log"
 	"gopkg.in/yaml.v3"
 	"os"
-	"os/signal"
-	"syscall"
 )
 
 func printVersion(version string, gitHash string) {
@@ -44,13 +43,10 @@ func start(configurationFile *string) error {
 		return configError
 	}
 
-	sigs := make(chan os.Signal, 1)
-	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
-
 	stopnikServer := server.NewStopnikServer()
 
 	go func() {
-		sig := <-sigs
+		sig := <-system.GetSignalChannel()
 		logger.Debug("Received signal %s", sig)
 		stopnikServer.Shutdown()
 	}()

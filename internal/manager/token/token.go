@@ -14,6 +14,7 @@ import (
 	"github.com/webishdev/stopnik/internal/oauth2"
 	"github.com/webishdev/stopnik/internal/oidc"
 	"github.com/webishdev/stopnik/internal/store"
+	"github.com/webishdev/stopnik/internal/system"
 	"github.com/webishdev/stopnik/log"
 	"net/http"
 	"strings"
@@ -218,18 +219,18 @@ func (tokenManager *Manager) generateJWTToken(client *config.Client, token jwt.T
 		options := loader.GetServerKey()
 		tokenString, tokenError := jwt.Sign(token, options)
 		if tokenError != nil {
-			panic(tokenError)
+			system.Error(tokenError)
 		}
 
 		return string(tokenString)
 	} else {
-		key := *managedKey.Key
+		currentKey := *managedKey.Key
 
-		options := jwt.WithKey(key.Algorithm(), key)
+		options := jwt.WithKey(currentKey.Algorithm(), currentKey)
 
 		tokenString, tokenError := jwt.Sign(token, options)
 		if tokenError != nil {
-			panic(tokenError)
+			system.Error(tokenError)
 		}
 
 		return string(tokenString)
@@ -267,7 +268,7 @@ func generateIdToken(requestData *internalHttp.RequestData, user *config.User, c
 	token, builderError := builder.Build()
 
 	if builderError != nil {
-		panic(builderError)
+		system.Error(builderError)
 	}
 
 	return token
@@ -298,7 +299,7 @@ func generateAccessToken(requestData *internalHttp.RequestData, tokenId string, 
 	token, builderError := builder.Build()
 
 	if builderError != nil {
-		panic(builderError)
+		system.Error(builderError)
 	}
 
 	return token

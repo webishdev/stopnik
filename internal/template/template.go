@@ -4,6 +4,7 @@ import (
 	"bytes"
 	_ "embed"
 	"github.com/webishdev/stopnik/internal/config"
+	"github.com/webishdev/stopnik/internal/system"
 	"html/template"
 	"sync"
 )
@@ -46,17 +47,17 @@ func addTemplates(main *template.Template) bytes.Buffer {
 
 	_, headerParseError := main.New("header").Parse(string(headerHtml))
 	if headerParseError != nil {
-		panic(headerParseError)
+		system.Error(headerParseError)
 	}
 
 	_, mascotParseError := main.New("mascot").Parse(string(mascotHtml))
 	if mascotParseError != nil {
-		panic(mascotParseError)
+		system.Error(mascotParseError)
 	}
 
 	_, footerParseError := main.New("footer").Parse(string(footerHtml))
 	if footerParseError != nil {
-		panic(footerParseError)
+		system.Error(footerParseError)
 	}
 
 	return tpl
@@ -67,7 +68,7 @@ func (templateManager *Manager) LoginTemplate(id string, action string, message 
 
 	loginTemplate, loginParseError := template.New("login").Parse(string(loginHtml))
 	if loginParseError != nil {
-		panic(loginParseError)
+		system.Error(loginParseError)
 	}
 
 	addTemplates(loginTemplate)
@@ -96,7 +97,7 @@ func (templateManager *Manager) LoginTemplate(id string, action string, message 
 
 	templateExecuteError := loginTemplate.Execute(&tpl, data)
 	if templateExecuteError != nil {
-		panic(templateExecuteError)
+		system.Error(templateExecuteError)
 	}
 
 	return tpl
@@ -107,7 +108,7 @@ func (templateManager *Manager) LogoutTemplate(username string, requestURI strin
 
 	logoutTemplate, loginParseError := template.New("logout").Parse(string(logoutHtml))
 	if loginParseError != nil {
-		panic(loginParseError)
+		system.Error(loginParseError)
 	}
 
 	addTemplates(logoutTemplate)
@@ -132,7 +133,7 @@ func (templateManager *Manager) LogoutTemplate(username string, requestURI strin
 
 	templateExecuteError := logoutTemplate.Execute(&tpl, data)
 	if templateExecuteError != nil {
-		panic(templateExecuteError)
+		system.Error(templateExecuteError)
 	}
 
 	return tpl

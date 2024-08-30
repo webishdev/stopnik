@@ -10,7 +10,7 @@ import (
 	"github.com/webishdev/stopnik/internal/config"
 	"github.com/webishdev/stopnik/internal/crypto"
 	"github.com/webishdev/stopnik/internal/store"
-	"github.com/webishdev/stopnik/log"
+	"github.com/webishdev/stopnik/internal/system"
 	"sync"
 )
 
@@ -33,13 +33,12 @@ func GetKeyMangerInstance() *Manger {
 
 		serverKeyError := keyManager.addSeverKey(currentConfig)
 		if serverKeyError != nil {
-			log.Error(serverKeyError.Error())
-			panic(serverKeyError)
+			system.Error(serverKeyError)
 		}
 
 		clientKeyError := keyManager.addClientKeys(currentConfig)
 		if clientKeyError != nil {
-			panic(clientKeyError)
+			system.Error(clientKeyError)
 		}
 
 		keyManagerSingleton = keyManager
