@@ -64,7 +64,7 @@ func Test_Keys(t *testing.T) {
 
 func testKeys(t *testing.T) {
 	t.Run("Get keys", func(t *testing.T) {
-		keyManger := manager.NewKeyManger()
+		keyManger := manager.GetKeyMangerInstance()
 
 		keysHandler := NewKeysHandler(keyManger)
 
@@ -122,7 +122,7 @@ func testKeysNotAllowedHttpMethods(t *testing.T) {
 	for _, method := range testInvalidIntrospectHttpMethods {
 		testMessage := fmt.Sprintf("Keys with unsupported method %s", method)
 		t.Run(testMessage, func(t *testing.T) {
-			keyManger := manager.NewKeyManger()
+			keyManger := manager.GetKeyMangerInstance()
 
 			keysHandler := NewKeysHandler(keyManger)
 

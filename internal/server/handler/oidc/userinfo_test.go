@@ -52,7 +52,7 @@ func Test_UserInfo(t *testing.T) {
 		t.Fatal(initializationError)
 	}
 
-	keyManger := manager.NewKeyManger()
+	keyManger := manager.GetKeyMangerInstance()
 
 	testOidcUserInfo(t, testConfig, keyManger)
 

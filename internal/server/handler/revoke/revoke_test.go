@@ -48,7 +48,7 @@ func Test_Revoke(t *testing.T) {
 		t.Fatal(initializationError)
 	}
 
-	keyManger := manager.NewKeyManger()
+	keyManger := manager.GetKeyMangerInstance()
 
 	testRevokeMissingClientCredentials(t, keyManger)
 

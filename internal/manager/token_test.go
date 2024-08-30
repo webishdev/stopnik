@@ -205,5 +205,5 @@ func createTestConfig(t *testing.T, opaque bool, refreshTokenTTL int) *config.Co
 }
 
 func createTestKeyManager(t *testing.T) *KeyManger {
-	return NewKeyManger()
+	return GetKeyMangerInstance()
 }

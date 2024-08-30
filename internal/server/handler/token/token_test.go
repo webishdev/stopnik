@@ -48,7 +48,7 @@ func Test_Token(t *testing.T) {
 		t.Fatal(initializationError)
 	}
 
-	keyManger := manager.NewKeyManger()
+	keyManger := manager.GetKeyMangerInstance()
 
 	testTokenMissingClientCredentials(t, keyManger)
 

@@ -24,7 +24,7 @@ func testEmptyConfigKeyManager(t *testing.T) {
 	}
 	t.Run("No keys from empty config", func(t *testing.T) {
 		resetKeyManager()
-		keyManger := NewKeyManger()
+		keyManger := GetKeyMangerInstance()
 		keys := keyManger.GetAllKeys()
 
 		if len(keys) != 0 {
@@ -46,7 +46,7 @@ func testServerKeyConfigKeyManager(t *testing.T) {
 
 	t.Run("Server key exists", func(t *testing.T) {
 		resetKeyManager()
-		keyManger := NewKeyManger()
+		keyManger := GetKeyMangerInstance()
 
 		keys := keyManger.GetAllKeys()
 
@@ -60,7 +60,7 @@ func testServerAndClientKeyConfigKeyManager(t *testing.T) {
 	testSetupTestConfig(t)
 	t.Run("Server and client keys exists", func(t *testing.T) {
 		resetKeyManager()
-		keyManger := NewKeyManger()
+		keyManger := GetKeyMangerInstance()
 
 		keys := keyManger.GetAllKeys()
 
@@ -75,7 +75,7 @@ func testLoadClientKeys(t *testing.T) {
 	testConfig := config.GetConfigInstance()
 	t.Run("Load specific client key", func(t *testing.T) {
 		resetKeyManager()
-		keyManger := NewKeyManger()
+		keyManger := GetKeyMangerInstance()
 
 		defaultKeyLoader := NewDefaultKeyLoader(keyManger)
 

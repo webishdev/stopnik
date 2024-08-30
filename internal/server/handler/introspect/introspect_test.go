@@ -50,7 +50,7 @@ func Test_Introspect(t *testing.T) {
 		t.Fatal(initializationError)
 	}
 
-	keyManager := manager.NewKeyManger()
+	keyManager := manager.GetKeyMangerInstance()
 
 	testIntrospectMissingClientCredentials(t, keyManager)
 

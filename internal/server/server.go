@@ -172,7 +172,7 @@ func shutdownServer(server *http.Server) {
 }
 
 func registerHandlers(config *config.Config, handle func(pattern string, handler http.Handler)) {
-	keyManger := manager.NewKeyManger()
+	keyManger := manager.GetKeyMangerInstance()
 	keyLoader := manager.NewDefaultKeyLoader(keyManger)
 	sessionManager := manager.GetSessionManagerInstance()
 	tokenManager := manager.NewTokenManager(keyLoader)

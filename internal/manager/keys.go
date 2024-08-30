@@ -7,7 +7,6 @@ import (
 	"encoding/base64"
 	"fmt"
 	"github.com/lestrrat-go/jwx/v2/jwk"
-	"github.com/lestrrat-go/jwx/v2/jwt"
 	"github.com/webishdev/stopnik/internal/config"
 	"github.com/webishdev/stopnik/internal/crypto"
 	"github.com/webishdev/stopnik/internal/store"
@@ -19,35 +18,10 @@ type KeyManger struct {
 	keyStore *store.Store[crypto.ManagedKey]
 }
 
-type DefaultKeyLoader struct {
-	keyFallback crypto.ServerSecretLoader
-	keyManager  *KeyManger
-}
-
-func NewDefaultKeyLoader(keyManager *KeyManger) *DefaultKeyLoader {
-	return &DefaultKeyLoader{
-		keyFallback: crypto.NewServerSecretLoader(),
-		keyManager:  keyManager,
-	}
-}
-
-func (defaultKeyLoader *DefaultKeyLoader) LoadKeys(client *config.Client) (*crypto.ManagedKey, bool) {
-	key := defaultKeyLoader.keyManager.getClientKey(client)
-	if key == nil {
-		return nil, false
-	}
-
-	return key, true
-}
-
-func (defaultKeyLoader *DefaultKeyLoader) GetServerKey() jwt.SignEncryptParseOption {
-	return defaultKeyLoader.keyFallback.GetServerKey()
-}
-
 var keyManagerLock = &sync.Mutex{}
 var keyManagerSingleton *KeyManger
 
-func NewKeyManger() *KeyManger {
+func GetKeyMangerInstance() *KeyManger {
 	keyManagerLock.Lock()
 	defer keyManagerLock.Unlock()
 	if keyManagerSingleton == nil {

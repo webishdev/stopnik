@@ -32,7 +32,7 @@ func Test_Health(t *testing.T) {
 		t.Fatal(initializationError)
 	}
 
-	keyManger := manager.NewKeyManger()
+	keyManger := manager.GetKeyMangerInstance()
 
 	t.Run("Health without token", func(t *testing.T) {
 		tokenManager := manager.NewTokenManager(manager.NewDefaultKeyLoader(keyManger))

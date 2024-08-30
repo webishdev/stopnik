@@ -44,7 +44,7 @@ func Test_Authorize(t *testing.T) {
 		t.Fatal(initializationError)
 	}
 
-	keyManager := manager.NewKeyManger()
+	keyManager := manager.GetKeyMangerInstance()
 
 	testAuthorizeNoClientId(t)
 
