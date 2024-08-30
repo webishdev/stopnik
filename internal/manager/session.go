@@ -4,6 +4,7 @@ import (
 	"github.com/webishdev/stopnik/internal/config"
 	"github.com/webishdev/stopnik/internal/oauth2"
 	"github.com/webishdev/stopnik/internal/store"
+	"sync"
 )
 
 type AuthSession struct {
@@ -25,13 +26,21 @@ type SessionManager struct {
 	authSessionStore *store.ExpiringStore[AuthSession]
 }
 
-func NewSessionManager() *SessionManager {
-	currentConfig := config.GetConfigInstance()
-	authSessionStore := store.NewDefaultTimedStore[AuthSession]()
-	return &SessionManager{
-		config:           currentConfig,
-		authSessionStore: &authSessionStore,
+var sessionManagerLock = &sync.Mutex{}
+var sessionManagerSingleton *SessionManager
+
+func GetSessionManagerInstance() *SessionManager {
+	sessionManagerLock.Lock()
+	defer sessionManagerLock.Unlock()
+	if sessionManagerSingleton == nil {
+		currentConfig := config.GetConfigInstance()
+		authSessionStore := store.NewDefaultTimedStore[AuthSession]()
+		sessionManagerSingleton = &SessionManager{
+			config:           currentConfig,
+			authSessionStore: &authSessionStore,
+		}
 	}
+	return sessionManagerSingleton
 }
 
 func (sessionManager *SessionManager) StartSession(authSession *AuthSession) {

@@ -178,7 +178,7 @@ func registerHandlers(config *config.Config, handle func(pattern string, handler
 		log.Error("Failed to load private keys: %v", keyLoadingError)
 		os.Exit(1)
 	}
-	sessionManager := manager.NewSessionManager()
+	sessionManager := manager.GetSessionManagerInstance()
 	tokenManager := manager.NewTokenManager(manager.NewDefaultKeyLoader(keyManger))
 	cookieManager := manager.GetCookieManagerInstance()
 	requestValidator := validation.NewRequestValidator()
