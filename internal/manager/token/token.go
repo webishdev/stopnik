@@ -1,4 +1,4 @@
-package manager
+package token
 
 import (
 	"crypto/sha256"
@@ -10,6 +10,7 @@ import (
 	"github.com/webishdev/stopnik/internal/config"
 	"github.com/webishdev/stopnik/internal/crypto"
 	internalHttp "github.com/webishdev/stopnik/internal/http"
+	"github.com/webishdev/stopnik/internal/manager"
 	"github.com/webishdev/stopnik/internal/oauth2"
 	"github.com/webishdev/stopnik/internal/oidc"
 	"github.com/webishdev/stopnik/internal/store"
@@ -35,7 +36,7 @@ func GetTokenManagerInstance() *TokenManager {
 	defer tokenManagerLock.Unlock()
 	if tokenManagerSingleton == nil {
 		currentConfig := config.GetConfigInstance()
-		keyLoader := GetDefaultKeyLoaderInstance()
+		keyLoader := manager.GetDefaultKeyLoaderInstance()
 		accessTokenStore := store.NewDefaultTimedStore[oauth2.AccessToken]()
 		refreshTokenStore := store.NewDefaultTimedStore[oauth2.RefreshToken]()
 		tokenManagerSingleton = &TokenManager{

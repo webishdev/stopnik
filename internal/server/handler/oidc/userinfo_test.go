@@ -7,6 +7,7 @@ import (
 	"github.com/webishdev/stopnik/internal/endpoint"
 	internalHttp "github.com/webishdev/stopnik/internal/http"
 	"github.com/webishdev/stopnik/internal/manager"
+	"github.com/webishdev/stopnik/internal/manager/token"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -61,7 +62,7 @@ func Test_UserInfo(t *testing.T) {
 
 func testOidcUserInfo(t *testing.T, testConfig *config.Config, keyManager *manager.KeyManger) {
 	t.Run("OIDC UserInfo", func(t *testing.T) {
-		tokenManager := manager.GetTokenManagerInstance()
+		tokenManager := token.GetTokenManagerInstance()
 
 		client, clientExists := testConfig.GetClient("foo")
 		if !clientExists {
@@ -160,7 +161,7 @@ func testOidcUserInfoNotAllowedHttpMethods(t *testing.T) {
 	for _, method := range testInvalidOidcUserInfoHttpMethods {
 		testMessage := fmt.Sprintf("OIDC configuration with unsupported method %s", method)
 		t.Run(testMessage, func(t *testing.T) {
-			tokenManager := manager.GetTokenManagerInstance()
+			tokenManager := token.GetTokenManagerInstance()
 			oidcDiscoveryHandler := NewOidcUserInfoHandler(tokenManager)
 
 			rr := httptest.NewRecorder()

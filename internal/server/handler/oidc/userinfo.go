@@ -4,18 +4,18 @@ import (
 	"encoding/json"
 	"github.com/webishdev/stopnik/internal/config"
 	internalHttp "github.com/webishdev/stopnik/internal/http"
-	"github.com/webishdev/stopnik/internal/manager"
+	"github.com/webishdev/stopnik/internal/manager/token"
 	errorHandler "github.com/webishdev/stopnik/internal/server/handler/error"
 	"github.com/webishdev/stopnik/log"
 	"net/http"
 )
 
 type UserInfoHandler struct {
-	tokenManager *manager.TokenManager
+	tokenManager *token.TokenManager
 	errorHandler *errorHandler.Handler
 }
 
-func NewOidcUserInfoHandler(tokenManager *manager.TokenManager) *UserInfoHandler {
+func NewOidcUserInfoHandler(tokenManager *token.TokenManager) *UserInfoHandler {
 	return &UserInfoHandler{
 		tokenManager: tokenManager,
 		errorHandler: errorHandler.NewErrorHandler(),

@@ -5,9 +5,9 @@ import (
 	"github.com/google/uuid"
 	"github.com/webishdev/stopnik/internal/config"
 	internalHttp "github.com/webishdev/stopnik/internal/http"
-	"github.com/webishdev/stopnik/internal/manager"
 	"github.com/webishdev/stopnik/internal/manager/cookie"
 	"github.com/webishdev/stopnik/internal/manager/session"
+	"github.com/webishdev/stopnik/internal/manager/token"
 	"github.com/webishdev/stopnik/internal/oauth2"
 	"github.com/webishdev/stopnik/internal/oidc"
 	"github.com/webishdev/stopnik/internal/pkce"
@@ -26,7 +26,7 @@ type Handler struct {
 	validator       *validation.RequestValidator
 	cookieManager   *cookie.CookieManager
 	sessionManager  *session.SessionManager
-	tokenManager    *manager.TokenManager
+	tokenManager    *token.TokenManager
 	templateManager *template.Manager
 	errorHandler    *error.Handler
 }
@@ -35,7 +35,7 @@ func NewAuthorizeHandler(
 	validator *validation.RequestValidator,
 	cookieManager *cookie.CookieManager,
 	sessionManager *session.SessionManager,
-	tokenManager *manager.TokenManager,
+	tokenManager *token.TokenManager,
 	templateManager *template.Manager) *Handler {
 	return &Handler{
 		validator:       validator,

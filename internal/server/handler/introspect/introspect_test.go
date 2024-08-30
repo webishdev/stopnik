@@ -8,8 +8,8 @@ import (
 	"github.com/webishdev/stopnik/internal/config"
 	"github.com/webishdev/stopnik/internal/endpoint"
 	internalHttp "github.com/webishdev/stopnik/internal/http"
-	"github.com/webishdev/stopnik/internal/manager"
 	"github.com/webishdev/stopnik/internal/manager/session"
+	"github.com/webishdev/stopnik/internal/manager/token"
 	"github.com/webishdev/stopnik/internal/oauth2"
 	"github.com/webishdev/stopnik/internal/server/validation"
 	"io"
@@ -71,7 +71,7 @@ func Test_Introspect(t *testing.T) {
 func testIntrospectMissingClientCredentials(t *testing.T) {
 	t.Run("Missing client credentials", func(t *testing.T) {
 		requestValidator := validation.NewRequestValidator()
-		tokenManager := manager.GetTokenManagerInstance()
+		tokenManager := token.GetTokenManagerInstance()
 
 		introspectHandler := NewIntrospectHandler(requestValidator, tokenManager)
 
@@ -88,7 +88,7 @@ func testIntrospectMissingClientCredentials(t *testing.T) {
 func testIntrospectInvalidClientCredentials(t *testing.T) {
 	t.Run("Invalid client credentials", func(t *testing.T) {
 		requestValidator := validation.NewRequestValidator()
-		tokenManager := manager.GetTokenManagerInstance()
+		tokenManager := token.GetTokenManagerInstance()
 
 		introspectHandler := NewIntrospectHandler(requestValidator, tokenManager)
 
@@ -119,7 +119,7 @@ func testIntrospectEmptyToken(t *testing.T) {
 		testMessage := fmt.Sprintf("Introspect empty %v", test.tokenHint)
 		t.Run(testMessage, func(t *testing.T) {
 			requestValidator := validation.NewRequestValidator()
-			tokenManager := manager.GetTokenManagerInstance()
+			tokenManager := token.GetTokenManagerInstance()
 
 			introspectHandler := NewIntrospectHandler(requestValidator, tokenManager)
 
@@ -165,7 +165,7 @@ func testIntrospectInvalidToken(t *testing.T) {
 		testMessage := fmt.Sprintf("Introspect invalid %v", test.tokenHint)
 		t.Run(testMessage, func(t *testing.T) {
 			requestValidator := validation.NewRequestValidator()
-			tokenManager := manager.GetTokenManagerInstance()
+			tokenManager := token.GetTokenManagerInstance()
 
 			introspectHandler := NewIntrospectHandler(requestValidator, tokenManager)
 
@@ -230,7 +230,7 @@ func testIntrospect(t *testing.T, testConfig *config.Config) {
 
 			requestValidator := validation.NewRequestValidator()
 			sessionManager := session.GetSessionManagerInstance()
-			tokenManager := manager.GetTokenManagerInstance()
+			tokenManager := token.GetTokenManagerInstance()
 			sessionManager.StartSession(authSession)
 			request := httptest.NewRequest(http.MethodPost, endpoint.Token, nil)
 			accessTokenResponse := tokenManager.CreateAccessTokenResponse(request, user.Username, client, scopes, "")
@@ -303,7 +303,7 @@ func testIntrospectWithoutHint(t *testing.T, testConfig *config.Config) {
 
 			requestValidator := validation.NewRequestValidator()
 			sessionManager := session.GetSessionManagerInstance()
-			tokenManager := manager.GetTokenManagerInstance()
+			tokenManager := token.GetTokenManagerInstance()
 			sessionManager.StartSession(authSession)
 			request := httptest.NewRequest(http.MethodPost, endpoint.Token, nil)
 			accessTokenResponse := tokenManager.CreateAccessTokenResponse(request, user.Username, client, scopes, "")
@@ -375,7 +375,7 @@ func testIntrospectDisabled(t *testing.T, testConfig *config.Config) {
 
 			requestValidator := validation.NewRequestValidator()
 			sessionManager := session.GetSessionManagerInstance()
-			tokenManager := manager.GetTokenManagerInstance()
+			tokenManager := token.GetTokenManagerInstance()
 			sessionManager.StartSession(authSession)
 			request := httptest.NewRequest(http.MethodPost, endpoint.Token, nil)
 			accessTokenResponse := tokenManager.CreateAccessTokenResponse(request, user.Username, client, scopes, "")
@@ -425,7 +425,7 @@ func testIntrospectNotAllowedHttpMethods(t *testing.T) {
 	for _, method := range testInvalidIntrospectHttpMethods {
 		testMessage := fmt.Sprintf("Introspect with unsupported method %s", method)
 		t.Run(testMessage, func(t *testing.T) {
-			introspectHandler := NewIntrospectHandler(&validation.RequestValidator{}, &manager.TokenManager{})
+			introspectHandler := NewIntrospectHandler(&validation.RequestValidator{}, &token.TokenManager{})
 
 			rr := httptest.NewRecorder()
 

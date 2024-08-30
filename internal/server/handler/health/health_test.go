@@ -5,7 +5,7 @@ import (
 	"github.com/webishdev/stopnik/internal/config"
 	"github.com/webishdev/stopnik/internal/endpoint"
 	internalHttp "github.com/webishdev/stopnik/internal/http"
-	"github.com/webishdev/stopnik/internal/manager"
+	"github.com/webishdev/stopnik/internal/manager/token"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -33,7 +33,7 @@ func Test_Health(t *testing.T) {
 	}
 
 	t.Run("Health without token", func(t *testing.T) {
-		tokenManager := manager.GetTokenManagerInstance()
+		tokenManager := token.GetTokenManagerInstance()
 
 		healthHandler := NewHealthHandler(tokenManager)
 
@@ -59,7 +59,7 @@ func Test_Health(t *testing.T) {
 	})
 
 	t.Run("Health with token", func(t *testing.T) {
-		tokenManager := manager.GetTokenManagerInstance()
+		tokenManager := token.GetTokenManagerInstance()
 
 		client, clientExists := testConfig.GetClient("foo")
 		if !clientExists {
@@ -105,7 +105,7 @@ func Test_Health(t *testing.T) {
 	for _, method := range testInvalidHealthHttpMethods {
 		testMessage := fmt.Sprintf("Health with unsupported method %s", method)
 		t.Run(testMessage, func(t *testing.T) {
-			healthHandler := NewHealthHandler(&manager.TokenManager{})
+			healthHandler := NewHealthHandler(&token.TokenManager{})
 
 			rr := httptest.NewRecorder()
 

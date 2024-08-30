@@ -8,6 +8,7 @@ import (
 	"github.com/webishdev/stopnik/internal/manager"
 	"github.com/webishdev/stopnik/internal/manager/cookie"
 	"github.com/webishdev/stopnik/internal/manager/session"
+	token2 "github.com/webishdev/stopnik/internal/manager/token"
 	"github.com/webishdev/stopnik/internal/server/handler/account"
 	"github.com/webishdev/stopnik/internal/server/handler/assets"
 	"github.com/webishdev/stopnik/internal/server/handler/authorize"
@@ -176,7 +177,7 @@ func shutdownServer(server *http.Server) {
 func registerHandlers(config *config.Config, handle func(pattern string, handler http.Handler)) {
 	keyManger := manager.GetKeyMangerInstance()
 	sessionManager := session.GetSessionManagerInstance()
-	tokenManager := manager.GetTokenManagerInstance()
+	tokenManager := token2.GetTokenManagerInstance()
 	cookieManager := cookie.GetCookieManagerInstance()
 	requestValidator := validation.NewRequestValidator()
 	templateManager := template.NewTemplateManager()

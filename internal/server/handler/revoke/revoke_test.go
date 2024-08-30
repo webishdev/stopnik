@@ -7,8 +7,8 @@ import (
 	"github.com/webishdev/stopnik/internal/config"
 	"github.com/webishdev/stopnik/internal/endpoint"
 	internalHttp "github.com/webishdev/stopnik/internal/http"
-	"github.com/webishdev/stopnik/internal/manager"
 	"github.com/webishdev/stopnik/internal/manager/session"
+	"github.com/webishdev/stopnik/internal/manager/token"
 	"github.com/webishdev/stopnik/internal/oauth2"
 	"github.com/webishdev/stopnik/internal/server/validation"
 	"net/http"
@@ -69,7 +69,7 @@ func Test_Revoke(t *testing.T) {
 func testRevokeMissingClientCredentials(t *testing.T) {
 	t.Run("Missing client credentials", func(t *testing.T) {
 		requestValidator := validation.NewRequestValidator()
-		tokenManager := manager.GetTokenManagerInstance()
+		tokenManager := token.GetTokenManagerInstance()
 
 		revokeHandler := NewRevokeHandler(requestValidator, tokenManager)
 
@@ -86,7 +86,7 @@ func testRevokeMissingClientCredentials(t *testing.T) {
 func testRevokeInvalidClientCredentials(t *testing.T) {
 	t.Run("Invalid client credentials", func(t *testing.T) {
 		requestValidator := validation.NewRequestValidator()
-		tokenManager := manager.GetTokenManagerInstance()
+		tokenManager := token.GetTokenManagerInstance()
 
 		revokeHandler := NewRevokeHandler(requestValidator, tokenManager)
 
@@ -117,7 +117,7 @@ func testRevokeEmptyToken(t *testing.T) {
 		testMessage := fmt.Sprintf("Revoke empty %v", test.tokenHint)
 		t.Run(testMessage, func(t *testing.T) {
 			requestValidator := validation.NewRequestValidator()
-			tokenManager := manager.GetTokenManagerInstance()
+			tokenManager := token.GetTokenManagerInstance()
 
 			revokeHandler := NewRevokeHandler(requestValidator, tokenManager)
 
@@ -156,7 +156,7 @@ func testRevokeInvalidToken(t *testing.T) {
 		testMessage := fmt.Sprintf("Revoke invalid %v", test.tokenHint)
 		t.Run(testMessage, func(t *testing.T) {
 			requestValidator := validation.NewRequestValidator()
-			tokenManager := manager.GetTokenManagerInstance()
+			tokenManager := token.GetTokenManagerInstance()
 
 			revokeHandler := NewRevokeHandler(requestValidator, tokenManager)
 
@@ -213,7 +213,7 @@ func testRevoke(t *testing.T, testConfig *config.Config) {
 
 			requestValidator := validation.NewRequestValidator()
 			sessionManager := session.GetSessionManagerInstance()
-			tokenManager := manager.GetTokenManagerInstance()
+			tokenManager := token.GetTokenManagerInstance()
 			sessionManager.StartSession(authSession)
 			request := httptest.NewRequest(http.MethodPost, endpoint.Token, nil)
 			accessTokenResponse := tokenManager.CreateAccessTokenResponse(request, user.Username, client, scopes, "")
@@ -291,7 +291,7 @@ func testRevokeWithoutHint(t *testing.T, testConfig *config.Config) {
 
 			requestValidator := validation.NewRequestValidator()
 			sessionManager := session.GetSessionManagerInstance()
-			tokenManager := manager.GetTokenManagerInstance()
+			tokenManager := token.GetTokenManagerInstance()
 			sessionManager.StartSession(authSession)
 			request := httptest.NewRequest(http.MethodPost, endpoint.Token, nil)
 			accessTokenResponse := tokenManager.CreateAccessTokenResponse(request, user.Username, client, scopes, "")
@@ -368,7 +368,7 @@ func testRevokeDisabled(t *testing.T, testConfig *config.Config) {
 
 			requestValidator := validation.NewRequestValidator()
 			sessionManager := session.GetSessionManagerInstance()
-			tokenManager := manager.GetTokenManagerInstance()
+			tokenManager := token.GetTokenManagerInstance()
 			sessionManager.StartSession(authSession)
 			request := httptest.NewRequest(http.MethodPost, endpoint.Token, nil)
 			accessTokenResponse := tokenManager.CreateAccessTokenResponse(request, user.Username, client, scopes, "")
@@ -419,7 +419,7 @@ func testRevokeNotAllowedHttpMethods(t *testing.T) {
 	for _, method := range testInvalidRevokeHttpMethods {
 		testMessage := fmt.Sprintf("Revoke with unsupported method %s", method)
 		t.Run(testMessage, func(t *testing.T) {
-			revokeHandler := NewRevokeHandler(&validation.RequestValidator{}, &manager.TokenManager{})
+			revokeHandler := NewRevokeHandler(&validation.RequestValidator{}, &token.TokenManager{})
 
 			rr := httptest.NewRecorder()
 
