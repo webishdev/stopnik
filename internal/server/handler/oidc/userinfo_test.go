@@ -6,7 +6,7 @@ import (
 	"github.com/webishdev/stopnik/internal/config"
 	"github.com/webishdev/stopnik/internal/endpoint"
 	internalHttp "github.com/webishdev/stopnik/internal/http"
-	"github.com/webishdev/stopnik/internal/manager"
+	"github.com/webishdev/stopnik/internal/manager/key"
 	"github.com/webishdev/stopnik/internal/manager/token"
 	"io"
 	"net/http"
@@ -53,14 +53,14 @@ func Test_UserInfo(t *testing.T) {
 		t.Fatal(initializationError)
 	}
 
-	keyManger := manager.GetKeyMangerInstance()
+	keyManger := key.GetKeyMangerInstance()
 
 	testOidcUserInfo(t, testConfig, keyManger)
 
 	testOidcUserInfoNotAllowedHttpMethods(t)
 }
 
-func testOidcUserInfo(t *testing.T, testConfig *config.Config, keyManager *manager.KeyManger) {
+func testOidcUserInfo(t *testing.T, testConfig *config.Config, keyManager *key.KeyManger) {
 	t.Run("OIDC UserInfo", func(t *testing.T) {
 		tokenManager := token.GetTokenManagerInstance()
 

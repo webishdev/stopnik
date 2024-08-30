@@ -1,4 +1,4 @@
-package manager
+package key
 
 import (
 	"crypto/ecdsa"
@@ -25,7 +25,6 @@ func GetKeyMangerInstance() *KeyManger {
 	keyManagerLock.Lock()
 	defer keyManagerLock.Unlock()
 	if keyManagerSingleton == nil {
-		log.Info("Init KEY MANAGER!!!")
 		currentConfig := config.GetConfigInstance()
 		newStore := store.NewStore[crypto.ManagedKey]()
 		keyManager := &KeyManger{
@@ -34,6 +33,7 @@ func GetKeyMangerInstance() *KeyManger {
 
 		serverKeyError := keyManager.addSeverKey(currentConfig)
 		if serverKeyError != nil {
+			log.Error(serverKeyError.Error())
 			panic(serverKeyError)
 		}
 
@@ -43,7 +43,6 @@ func GetKeyMangerInstance() *KeyManger {
 		}
 
 		keyManagerSingleton = keyManager
-		log.Info("Init KEY MANAGER ENDS!!!")
 	}
 
 	return keyManagerSingleton

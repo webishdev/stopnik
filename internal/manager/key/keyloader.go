@@ -1,4 +1,4 @@
-package manager
+package key
 
 import (
 	"github.com/lestrrat-go/jwx/v2/jwt"
