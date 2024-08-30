@@ -1,8 +1,8 @@
 package logout
 
 import (
+	"github.com/webishdev/stopnik/internal/cookie"
 	internalHttp "github.com/webishdev/stopnik/internal/http"
-	"github.com/webishdev/stopnik/internal/manager"
 	"github.com/webishdev/stopnik/internal/server/handler/error"
 	"github.com/webishdev/stopnik/log"
 	"net/http"
@@ -10,11 +10,11 @@ import (
 
 type Handler struct {
 	logoutRedirect string
-	cookieManager  *manager.CookieManager
+	cookieManager  *cookie.CookieManager
 	errorHandler   *error.Handler
 }
 
-func NewLogoutHandler(cookieManager *manager.CookieManager, logoutRedirect string) *Handler {
+func NewLogoutHandler(cookieManager *cookie.CookieManager, logoutRedirect string) *Handler {
 	return &Handler{
 		cookieManager:  cookieManager,
 		logoutRedirect: logoutRedirect,

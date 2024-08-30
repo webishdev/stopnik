@@ -2,8 +2,8 @@ package account
 
 import (
 	"github.com/google/uuid"
+	"github.com/webishdev/stopnik/internal/cookie"
 	internalHttp "github.com/webishdev/stopnik/internal/http"
-	"github.com/webishdev/stopnik/internal/manager"
 	"github.com/webishdev/stopnik/internal/server/handler/error"
 	"github.com/webishdev/stopnik/internal/server/validation"
 	"github.com/webishdev/stopnik/internal/template"
@@ -13,14 +13,14 @@ import (
 
 type Handler struct {
 	validator       *validation.RequestValidator
-	cookieManager   *manager.CookieManager
+	cookieManager   *cookie.CookieManager
 	templateManager *template.Manager
 	errorHandler    *error.Handler
 }
 
 func NewAccountHandler(
 	validator *validation.RequestValidator,
-	cookieManager *manager.CookieManager,
+	cookieManager *cookie.CookieManager,
 	templateManager *template.Manager,
 ) *Handler {
 	return &Handler{

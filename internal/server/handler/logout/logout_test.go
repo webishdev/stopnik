@@ -3,9 +3,9 @@ package logout
 import (
 	"fmt"
 	"github.com/webishdev/stopnik/internal/config"
+	"github.com/webishdev/stopnik/internal/cookie"
 	"github.com/webishdev/stopnik/internal/endpoint"
 	internalHttp "github.com/webishdev/stopnik/internal/http"
-	"github.com/webishdev/stopnik/internal/manager"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -44,7 +44,7 @@ func Test_Logout(t *testing.T) {
 
 func testInvalidCookies(t *testing.T, testConfig *config.Config) {
 	t.Run("Logout with invalid cookie", func(t *testing.T) {
-		cookieManager := manager.GetCookieManagerInstance()
+		cookieManager := cookie.GetCookieManagerInstance()
 
 		cookie := http.Cookie{
 			Name:     testConfig.GetAuthCookieName(),
@@ -85,7 +85,7 @@ func testLogout(t *testing.T, testConfig *config.Config) {
 	for _, test := range logoutParameters {
 		testMessage := fmt.Sprintf("Logout handler redirect %v, form redirect %v", test.handlerRedirect, test.formRedirect)
 		t.Run(testMessage, func(t *testing.T) {
-			cookieManager := manager.GetCookieManagerInstance()
+			cookieManager := cookie.GetCookieManagerInstance()
 
 			user, _ := testConfig.GetUser("foo")
 			cookie, _ := cookieManager.CreateAuthCookie(user.Username)
@@ -148,7 +148,7 @@ func testLogoutNotAllowedHttpMethods(t *testing.T) {
 	for _, method := range testInvalidLogoutHttpMethods {
 		testMessage := fmt.Sprintf("Logout with unsupported method %s", method)
 		t.Run(testMessage, func(t *testing.T) {
-			logoutHandler := NewLogoutHandler(&manager.CookieManager{}, "")
+			logoutHandler := NewLogoutHandler(&cookie.CookieManager{}, "")
 
 			rr := httptest.NewRecorder()
 

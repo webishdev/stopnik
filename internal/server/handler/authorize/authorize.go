@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/google/uuid"
 	"github.com/webishdev/stopnik/internal/config"
+	"github.com/webishdev/stopnik/internal/cookie"
 	internalHttp "github.com/webishdev/stopnik/internal/http"
 	"github.com/webishdev/stopnik/internal/manager"
 	"github.com/webishdev/stopnik/internal/oauth2"
@@ -22,7 +23,7 @@ import (
 
 type Handler struct {
 	validator       *validation.RequestValidator
-	cookieManager   *manager.CookieManager
+	cookieManager   *cookie.CookieManager
 	sessionManager  *manager.SessionManager
 	tokenManager    *manager.TokenManager
 	templateManager *template.Manager
@@ -31,7 +32,7 @@ type Handler struct {
 
 func NewAuthorizeHandler(
 	validator *validation.RequestValidator,
-	cookieManager *manager.CookieManager,
+	cookieManager *cookie.CookieManager,
 	sessionManager *manager.SessionManager,
 	tokenManager *manager.TokenManager,
 	templateManager *template.Manager) *Handler {

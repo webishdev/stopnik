@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"github.com/webishdev/stopnik/internal/config"
+	"github.com/webishdev/stopnik/internal/cookie"
 	"github.com/webishdev/stopnik/internal/endpoint"
 	"github.com/webishdev/stopnik/internal/manager"
 	"github.com/webishdev/stopnik/internal/server/handler/account"
@@ -175,7 +176,7 @@ func registerHandlers(config *config.Config, handle func(pattern string, handler
 	keyManger := manager.GetKeyMangerInstance()
 	sessionManager := manager.GetSessionManagerInstance()
 	tokenManager := manager.GetTokenManagerInstance()
-	cookieManager := manager.GetCookieManagerInstance()
+	cookieManager := cookie.GetCookieManagerInstance()
 	requestValidator := validation.NewRequestValidator()
 	templateManager := template.NewTemplateManager()
 
