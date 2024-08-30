@@ -45,9 +45,9 @@ func Test_Introspect(t *testing.T) {
 		},
 	}
 
-	err := testConfig.Initialize()
-	if err != nil {
-		t.Error(err)
+	initializationError := config.Initialize(testConfig)
+	if initializationError != nil {
+		t.Fatal(initializationError)
 	}
 
 	keyManager, keyLoadingError := manager.NewKeyManger()
@@ -421,9 +421,9 @@ func testIntrospectNotAllowedHttpMethods(t *testing.T) {
 	}
 
 	testConfig := &config.Config{}
-	err := testConfig.Initialize()
-	if err != nil {
-		t.Error(err)
+	initializationError := config.Initialize(testConfig)
+	if initializationError != nil {
+		t.Fatal(initializationError)
 	}
 
 	for _, method := range testInvalidIntrospectHttpMethods {

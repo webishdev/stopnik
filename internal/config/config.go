@@ -139,7 +139,7 @@ func GetConfigInstance() *Config {
 	return configSingleton
 }
 
-func (config *Config) Initialize() error {
+func Initialize(config *Config) error {
 	configLock.Lock()
 	defer configLock.Unlock()
 	for userIndex, user := range config.Users {

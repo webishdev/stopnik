@@ -14,9 +14,9 @@ func Test_Key(t *testing.T) {
 			Secret: "12345",
 		},
 	}
-	setupError := testConfig.Initialize()
-	if setupError != nil {
-		t.Fatal(setupError)
+	initializationError := config.Initialize(testConfig)
+	if initializationError != nil {
+		t.Fatal(initializationError)
 	}
 
 	testServerKeyLoader(t)

@@ -196,9 +196,9 @@ func createTestConfig(t *testing.T, opaque bool, refreshTokenTTL int) *config.Co
 			},
 		},
 	}
-	setupError := testConfig.Initialize()
-	if setupError != nil {
-		t.Fatal(setupError)
+	initializationError := config.Initialize(testConfig)
+	if initializationError != nil {
+		t.Fatal(initializationError)
 	}
 
 	return testConfig

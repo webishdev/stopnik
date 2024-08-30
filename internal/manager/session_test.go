@@ -9,9 +9,9 @@ import (
 
 func Test_Session(t *testing.T) {
 	testConfig := &config.Config{}
-	setupError := testConfig.Initialize()
-	if setupError != nil {
-		t.Fatal(setupError)
+	initializationError := config.Initialize(testConfig)
+	if initializationError != nil {
+		t.Fatal(initializationError)
 	}
 
 	t.Run("Session found", func(t *testing.T) {

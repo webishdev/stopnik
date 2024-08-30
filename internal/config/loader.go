@@ -27,7 +27,7 @@ func (loader *Loader) LoadConfig(name string) error {
 		return parseError
 	}
 
-	initializationError := config.Initialize()
+	initializationError := Initialize(config)
 	if initializationError != nil {
 		return initializationError
 	}

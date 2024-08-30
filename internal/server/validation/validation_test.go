@@ -57,9 +57,9 @@ func Test_Validation(t *testing.T) {
 			},
 		},
 	}
-	setupError := testConfig.Initialize()
-	if setupError != nil {
-		t.Fatal(setupError)
+	initializationError := config.Initialize(testConfig)
+	if initializationError != nil {
+		t.Fatal(initializationError)
 	}
 
 	for _, test := range userPasswordParameters {

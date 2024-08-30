@@ -26,9 +26,9 @@ func Test_Assets(t *testing.T) {
 		},
 	}
 
-	err := testConfig.Initialize()
-	if err != nil {
-		t.Error(err)
+	initializationError := config.Initialize(testConfig)
+	if initializationError != nil {
+		t.Fatal(initializationError)
 	}
 
 	assetsHandler := NewAssetHandler()
