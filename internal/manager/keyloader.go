@@ -7,27 +7,28 @@ import (
 	"sync"
 )
 
-type DefaultKeyLoader struct {
+type defaultKeyLoader struct {
 	keyFallback crypto.ServerSecretLoader
 	keyManager  *KeyManger
 }
 
 var keyLoaderLock = &sync.Mutex{}
-var keyLoaderSingleton *DefaultKeyLoader
+var keyLoaderSingleton crypto.KeyLoader
 
-func GetDefaultKeyLoaderInstance() *DefaultKeyLoader {
+func GetDefaultKeyLoaderInstance() crypto.KeyLoader {
 	keyLoaderLock.Lock()
 	defer keyLoaderLock.Unlock()
 	if keyLoaderSingleton == nil {
-		keyLoaderSingleton = &DefaultKeyLoader{
+		defaultKeyLoader := defaultKeyLoader{
 			keyFallback: crypto.NewServerSecretLoader(),
 			keyManager:  GetKeyMangerInstance(),
 		}
+		keyLoaderSingleton = &defaultKeyLoader
 	}
 	return keyLoaderSingleton
 }
 
-func (defaultKeyLoader *DefaultKeyLoader) LoadKeys(client *config.Client) (*crypto.ManagedKey, bool) {
+func (defaultKeyLoader *defaultKeyLoader) LoadKeys(client *config.Client) (*crypto.ManagedKey, bool) {
 	key := defaultKeyLoader.keyManager.getClientKey(client)
 	if key == nil {
 		return nil, false
@@ -36,6 +37,6 @@ func (defaultKeyLoader *DefaultKeyLoader) LoadKeys(client *config.Client) (*cryp
 	return key, true
 }
 
-func (defaultKeyLoader *DefaultKeyLoader) GetServerKey() jwt.SignEncryptParseOption {
+func (defaultKeyLoader *defaultKeyLoader) GetServerKey() jwt.SignEncryptParseOption {
 	return defaultKeyLoader.keyFallback.GetServerKey()
 }
