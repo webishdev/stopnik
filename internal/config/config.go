@@ -4,12 +4,14 @@ import (
 	"bufio"
 	"errors"
 	"fmt"
+	"github.com/google/uuid"
 	internalHttp "github.com/webishdev/stopnik/internal/http"
 	"github.com/webishdev/stopnik/internal/oauth2"
 	"github.com/webishdev/stopnik/internal/system"
 	"github.com/webishdev/stopnik/log"
 	"io"
 	"os"
+	"regexp"
 	"strings"
 	"sync"
 )
@@ -29,17 +31,23 @@ type Cookies struct {
 	MessageName string `yaml:"messageName"`
 }
 
+type ForwardAuth struct {
+	Endpoint    string `yaml:"endpoint"`
+	ExternalUrl string `yaml:"externalUrl"`
+}
+
 type Server struct {
-	LogLevel              string  `yaml:"logLevel"`
-	Addr                  string  `yaml:"addr"`
-	Cookies               Cookies `yaml:"cookies"`
-	Secret                string  `yaml:"secret"`
-	PrivateKey            string  `yaml:"privateKey"`
-	TLS                   TLS     `yaml:"tls"`
-	LogoutRedirect        string  `yaml:"logoutRedirect"`
-	IntrospectScope       string  `yaml:"introspectScope"`
-	RevokeScope           string  `yaml:"revokeScopeScope"`
-	SessionTimeoutSeconds int     `yaml:"sessionTimeoutSeconds"`
+	LogLevel              string      `yaml:"logLevel"`
+	Addr                  string      `yaml:"addr"`
+	Cookies               Cookies     `yaml:"cookies"`
+	Secret                string      `yaml:"secret"`
+	PrivateKey            string      `yaml:"privateKey"`
+	TLS                   TLS         `yaml:"tls"`
+	LogoutRedirect        string      `yaml:"logoutRedirect"`
+	IntrospectScope       string      `yaml:"introspectScope"`
+	RevokeScope           string      `yaml:"revokeScopeScope"`
+	SessionTimeoutSeconds int         `yaml:"sessionTimeoutSeconds"`
+	ForwardAuth           ForwardAuth `yaml:"forwardAuth"`
 }
 
 type UserAddress struct {
@@ -104,6 +112,7 @@ type Client struct {
 	Audience                []string `yaml:"audience"`
 	PrivateKey              string   `yaml:"privateKey"`
 	RolesClaim              string   `yaml:"rolesClaim"`
+	isForwardAuth           bool
 }
 
 type UI struct {
@@ -116,15 +125,16 @@ type UI struct {
 }
 
 type Config struct {
-	Server          Server   `yaml:"server"`
-	Clients         []Client `yaml:"clients"`
-	Users           []User   `yaml:"users"`
-	UI              UI       `yaml:"ui"`
-	generatedSecret string
-	userMap         map[string]*User
-	clientMap       map[string]*Client
-	oidc            bool
-	logoImage       *[]byte
+	Server            Server   `yaml:"server"`
+	Clients           []Client `yaml:"clients"`
+	Users             []User   `yaml:"users"`
+	UI                UI       `yaml:"ui"`
+	generatedSecret   string
+	userMap           map[string]*User
+	clientMap         map[string]*Client
+	oidc              bool
+	logoImage         *[]byte
+	forwardAuthClient *Client
 }
 
 var configLock = &sync.Mutex{}
@@ -212,6 +222,13 @@ func Initialize(config *Config) error {
 		config.logoImage = &bs
 	}
 
+	if config.Server.ForwardAuth.Endpoint != "" {
+		config.forwardAuthClient = &Client{
+			Id:            uuid.NewString(),
+			isForwardAuth: true,
+		}
+	}
+
 	configSingleton = config
 
 	return nil
@@ -224,6 +241,9 @@ func (config *Config) GetUser(name string) (*User, bool) {
 
 func (config *Config) GetClient(name string) (*Client, bool) {
 	value, exists := config.clientMap[name]
+	if !exists && config.forwardAuthClient != nil {
+		return config.forwardAuthClient, true
+	}
 	return value, exists
 }
 
@@ -275,6 +295,14 @@ func (config *Config) GetOidc() bool {
 	return config.oidc
 }
 
+func (config *Config) GetForwardAuthEnabled() bool {
+	return config.Server.ForwardAuth.ExternalUrl != ""
+}
+
+func (config *Config) GetForwardAuthEndpoint() string {
+	return GetOrDefaultString(config.Server.ForwardAuth.Endpoint, "/forward")
+}
+
 func (client *Client) GetRolesClaim() string {
 	return GetOrDefaultString(client.RolesClaim, "roles")
 }
@@ -307,6 +335,43 @@ func (client *Client) GetClientType() oauth2.ClientType {
 		return oauth2.CtPublic
 	} else {
 		return oauth2.CtConfidential
+	}
+}
+
+func (client *Client) ValidateRedirect(redirect string) (bool, error) {
+	if client.isForwardAuth {
+		return true, nil
+	}
+
+	if redirect == "" {
+		log.Error("Redirect provided for client %s was empty", client.Id)
+		return false, nil
+	}
+
+	redirectCount := len(client.Redirects)
+
+	if redirectCount > 0 {
+		matchesRedirect := false
+		for redirectIndex := range redirectCount {
+			clientRedirect := client.Redirects[redirectIndex]
+			endsWithWildcard := strings.HasSuffix(clientRedirect, "*")
+			if endsWithWildcard {
+				clientRedirect = strings.Replace(clientRedirect, "*", ".*", 1)
+			}
+			clientRedirect = fmt.Sprintf("^%s$", clientRedirect)
+			matched, regexError := regexp.MatchString(clientRedirect, redirect)
+			if regexError != nil {
+				log.Error("Cloud not match redirect URI %s for client %s", redirect, client.Id)
+				return false, regexError
+			}
+
+			matchesRedirect = matchesRedirect || matched
+		}
+
+		return matchesRedirect, nil
+	} else {
+		log.Error("Client %s has no redirect URI(s) configured!", client.Id)
+		return false, nil
 	}
 }
 

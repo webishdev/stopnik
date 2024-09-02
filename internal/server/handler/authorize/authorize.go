@@ -17,33 +17,32 @@ import (
 	"github.com/webishdev/stopnik/log"
 	"net/http"
 	"net/url"
-	"regexp"
 	"slices"
 	"strings"
 )
 
 type Handler struct {
-	validator       *validation.RequestValidator
-	cookieManager   *cookie.Manager
-	sessionManager  *session.Manager
-	tokenManager    *token.Manager
-	templateManager *template.Manager
-	errorHandler    *error.Handler
+	validator          *validation.RequestValidator
+	cookieManager      *cookie.Manager
+	authSessionManager session.Manager[session.AuthSession]
+	tokenManager       *token.Manager
+	templateManager    *template.Manager
+	errorHandler       *error.Handler
 }
 
 func NewAuthorizeHandler(
 	validator *validation.RequestValidator,
 	cookieManager *cookie.Manager,
-	sessionManager *session.Manager,
+	authSessionManager session.Manager[session.AuthSession],
 	tokenManager *token.Manager,
 	templateManager *template.Manager) *Handler {
 	return &Handler{
-		validator:       validator,
-		cookieManager:   cookieManager,
-		sessionManager:  sessionManager,
-		tokenManager:    tokenManager,
-		templateManager: templateManager,
-		errorHandler:    error.NewErrorHandler(),
+		validator:          validator,
+		cookieManager:      cookieManager,
+		authSessionManager: authSessionManager,
+		tokenManager:       tokenManager,
+		templateManager:    templateManager,
+		errorHandler:       error.NewErrorHandler(),
 	}
 }
 
@@ -155,7 +154,7 @@ func (h *Handler) handleGetRequest(w http.ResponseWriter, r *http.Request) {
 	idTokenRequest := slices.Contains(responseTypes, oauth2.RtIdToken) && len(responseTypes) == 1
 
 	if !idTokenRequest {
-		h.sessionManager.StartSession(authSession)
+		h.authSessionManager.StartSession(authSession)
 	}
 
 	user, validCookie := h.cookieManager.ValidateAuthCookie(r)
@@ -211,14 +210,14 @@ func (h *Handler) handleGetRequest(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) handlePostRequest(w http.ResponseWriter, r *http.Request, user *config.User) {
-	cookie, err := h.cookieManager.CreateAuthCookie(user.Username)
-	if err != nil {
+	authCookie, authCookieError := h.cookieManager.CreateAuthCookie(user.Username)
+	if authCookieError != nil {
 		h.errorHandler.InternalServerErrorHandler(w, r)
 		return
 	}
 
 	authSessionForm := r.PostFormValue("stopnik_auth_session")
-	authSession, exists := h.sessionManager.GetSession(authSessionForm)
+	authSession, exists := h.authSessionManager.GetSession(authSessionForm)
 	if !exists {
 		h.sendRetryLocation(w, r, "")
 		return
@@ -231,7 +230,7 @@ func (h *Handler) handlePostRequest(w http.ResponseWriter, r *http.Request, user
 		return
 	}
 
-	http.SetCookie(w, &cookie)
+	http.SetCookie(w, &authCookie)
 
 	responseTypes := authSession.ResponseTypes
 
@@ -269,37 +268,17 @@ func (h *Handler) validateLogin(w http.ResponseWriter, r *http.Request) (*config
 }
 
 func (h *Handler) validateRedirect(client *config.Client, redirect string) func(w http.ResponseWriter, r *http.Request) {
-	if redirect == "" {
-		log.Error("Redirect provided for client %s was empty", client.Id)
+	validRedirect, validationError := client.ValidateRedirect(redirect)
+	if validationError != nil {
+		return h.errorHandler.InternalServerErrorHandler
+	}
+
+	if !validRedirect {
 		return h.errorHandler.BadRequestHandler
 	}
-	redirectCount := len(client.Redirects)
+	if redirect == "" {
+		log.Error("Redirect provided for client %s was empty", client.Id)
 
-	if redirectCount > 0 {
-		matchesRedirect := false
-		for redirectIndex := range redirectCount {
-			clientRedirect := client.Redirects[redirectIndex]
-			endsWithWildcard := strings.HasSuffix(clientRedirect, "*")
-			if endsWithWildcard {
-				clientRedirect = strings.Replace(clientRedirect, "*", ".*", 1)
-			}
-			clientRedirect = fmt.Sprintf("^%s$", clientRedirect)
-			matched, regexError := regexp.MatchString(clientRedirect, redirect)
-			if regexError != nil {
-				log.Error("Cloud not match redirect URI %s for client %s", redirect, client.Id)
-				return h.errorHandler.InternalServerErrorHandler
-			}
-
-			matchesRedirect = matchesRedirect || matched
-		}
-
-		if !matchesRedirect {
-			log.Error("Configuration for client %s does not match the given redirect URI %s", client.Id, redirect)
-			return h.errorHandler.BadRequestHandler
-		}
-	} else {
-		log.Error("Client %s has no redirect URI(s) configured!", client.Id)
-		return h.errorHandler.BadRequestHandler
 	}
 
 	return nil

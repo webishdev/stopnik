@@ -229,7 +229,7 @@ func testIntrospect(t *testing.T, testConfig *config.Config) {
 			}
 
 			requestValidator := validation.NewRequestValidator()
-			sessionManager := session.GetSessionManagerInstance()
+			sessionManager := session.GetAuthSessionManagerInstance()
 			tokenManager := token.GetTokenManagerInstance()
 			sessionManager.StartSession(authSession)
 			request := httptest.NewRequest(http.MethodPost, endpoint.Token, nil)
@@ -302,7 +302,7 @@ func testIntrospectWithoutHint(t *testing.T, testConfig *config.Config) {
 			}
 
 			requestValidator := validation.NewRequestValidator()
-			sessionManager := session.GetSessionManagerInstance()
+			sessionManager := session.GetAuthSessionManagerInstance()
 			tokenManager := token.GetTokenManagerInstance()
 			sessionManager.StartSession(authSession)
 			request := httptest.NewRequest(http.MethodPost, endpoint.Token, nil)
@@ -374,7 +374,7 @@ func testIntrospectDisabled(t *testing.T, testConfig *config.Config) {
 			}
 
 			requestValidator := validation.NewRequestValidator()
-			sessionManager := session.GetSessionManagerInstance()
+			sessionManager := session.GetAuthSessionManagerInstance()
 			tokenManager := token.GetTokenManagerInstance()
 			sessionManager.StartSession(authSession)
 			request := httptest.NewRequest(http.MethodPost, endpoint.Token, nil)

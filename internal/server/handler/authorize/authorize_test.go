@@ -103,7 +103,7 @@ func testAuthorizeInvalidLogin(t *testing.T) {
 			cookieManager := cookie.GetCookieManagerInstance()
 			requestValidator := validation.NewRequestValidator()
 
-			authorizeHandler := NewAuthorizeHandler(requestValidator, cookieManager, &session.Manager{}, &token.Manager{}, &template.Manager{})
+			authorizeHandler := NewAuthorizeHandler(requestValidator, cookieManager, &session.AuthManager{}, &token.Manager{}, &template.Manager{})
 
 			rr := httptest.NewRecorder()
 
@@ -190,7 +190,7 @@ func testAuthorizeEmptyLogin(t *testing.T) {
 			cookieManager := cookie.GetCookieManagerInstance()
 			requestValidator := validation.NewRequestValidator()
 
-			authorizeHandler := NewAuthorizeHandler(requestValidator, cookieManager, &session.Manager{}, &token.Manager{}, &template.Manager{})
+			authorizeHandler := NewAuthorizeHandler(requestValidator, cookieManager, &session.AuthManager{}, &token.Manager{}, &template.Manager{})
 
 			rr := httptest.NewRecorder()
 
@@ -273,7 +273,7 @@ func testAuthorizeValidLoginNoSession(t *testing.T) {
 				}
 			})
 			requestValidator := validation.NewRequestValidator()
-			sessionManager := session.GetSessionManagerInstance()
+			sessionManager := session.GetAuthSessionManagerInstance()
 			cookieManager := cookie.GetCookieManagerInstance()
 			tokenManager := token.GetTokenManagerInstance()
 
@@ -384,7 +384,7 @@ func testAuthorizeValidLoginAuthorizationGrant(t *testing.T, testConfig *config.
 			}
 
 			requestValidator := validation.NewRequestValidator()
-			sessionManager := session.GetSessionManagerInstance()
+			sessionManager := session.GetAuthSessionManagerInstance()
 			cookieManager := cookie.GetCookieManagerInstance()
 			tokenManager := token.GetTokenManagerInstance()
 			sessionManager.StartSession(authSession)
@@ -472,7 +472,7 @@ func testAuthorizeValidLoginImplicitGrant(t *testing.T, testConfig *config.Confi
 			}
 
 			requestValidator := validation.NewRequestValidator()
-			sessionManager := session.GetSessionManagerInstance()
+			sessionManager := session.GetAuthSessionManagerInstance()
 			cookieManager := cookie.GetCookieManagerInstance()
 			tokenManager := token.GetTokenManagerInstance()
 			sessionManager.StartSession(authSession)
@@ -540,7 +540,7 @@ func testAuthorizeNotAllowedHttpMethods(t *testing.T) {
 	for _, method := range testInvalidAuthorizeHttpMethods {
 		testMessage := fmt.Sprintf("Authorize with unsupported method %s", method)
 		t.Run(testMessage, func(t *testing.T) {
-			authorizeHandler := NewAuthorizeHandler(&validation.RequestValidator{}, &cookie.Manager{}, &session.Manager{}, &token.Manager{}, &template.Manager{})
+			authorizeHandler := NewAuthorizeHandler(&validation.RequestValidator{}, &cookie.Manager{}, &session.AuthManager{}, &token.Manager{}, &template.Manager{})
 
 			rr := httptest.NewRecorder()
 
@@ -581,7 +581,7 @@ func testAuthorizeImplicitGrant(t *testing.T, testConfig *config.Config) {
 				}
 			})
 			requestValidator := validation.NewRequestValidator()
-			sessionManager := session.GetSessionManagerInstance()
+			sessionManager := session.GetAuthSessionManagerInstance()
 			cookieManager := cookie.GetCookieManagerInstance()
 			tokenManager := token.GetTokenManagerInstance()
 
@@ -674,7 +674,7 @@ func testAuthorizeAuthorizationGrant(t *testing.T, testConfig *config.Config) {
 				}
 			})
 			requestValidator := validation.NewRequestValidator()
-			sessionManager := session.GetSessionManagerInstance()
+			sessionManager := session.GetAuthSessionManagerInstance()
 			cookieManager := cookie.GetCookieManagerInstance()
 			tokenManager := token.GetTokenManagerInstance()
 
@@ -737,7 +737,7 @@ func testAuthorizeNoCookeExists(t *testing.T) {
 			query.Set(oauth2.ParameterResponseType, oauth2.ParameterCode)
 		})
 		requestValidator := validation.NewRequestValidator()
-		sessionManager := session.GetSessionManagerInstance()
+		sessionManager := session.GetAuthSessionManagerInstance()
 		cookieManager := cookie.GetCookieManagerInstance()
 		templateManager := template.GetTemplateManagerInstance()
 
@@ -780,7 +780,7 @@ func testAuthorizeInvalidResponseType(t *testing.T) {
 		})
 		requestValidator := validation.NewRequestValidator()
 
-		authorizeHandler := NewAuthorizeHandler(requestValidator, &cookie.Manager{}, &session.Manager{}, &token.Manager{}, &template.Manager{})
+		authorizeHandler := NewAuthorizeHandler(requestValidator, &cookie.Manager{}, &session.AuthManager{}, &token.Manager{}, &template.Manager{})
 
 		rr := httptest.NewRecorder()
 
@@ -831,7 +831,7 @@ func testAuthorizeInvalidRedirect(t *testing.T) {
 
 			requestValidator := validation.NewRequestValidator()
 
-			authorizeHandler := NewAuthorizeHandler(requestValidator, &cookie.Manager{}, &session.Manager{}, &token.Manager{}, &template.Manager{})
+			authorizeHandler := NewAuthorizeHandler(requestValidator, &cookie.Manager{}, &session.AuthManager{}, &token.Manager{}, &template.Manager{})
 
 			rr := httptest.NewRecorder()
 
@@ -853,7 +853,7 @@ func testAuthorizeInvalidClientId(t *testing.T) {
 
 		requestValidator := validation.NewRequestValidator()
 
-		authorizeHandler := NewAuthorizeHandler(requestValidator, &cookie.Manager{}, &session.Manager{}, &token.Manager{}, &template.Manager{})
+		authorizeHandler := NewAuthorizeHandler(requestValidator, &cookie.Manager{}, &session.AuthManager{}, &token.Manager{}, &template.Manager{})
 
 		rr := httptest.NewRecorder()
 
@@ -869,7 +869,7 @@ func testAuthorizeNoClientId(t *testing.T) {
 	t.Run("No client id provided", func(t *testing.T) {
 		requestValidator := validation.NewRequestValidator()
 
-		authorizeHandler := NewAuthorizeHandler(requestValidator, &cookie.Manager{}, &session.Manager{}, &token.Manager{}, &template.Manager{})
+		authorizeHandler := NewAuthorizeHandler(requestValidator, &cookie.Manager{}, &session.AuthManager{}, &token.Manager{}, &template.Manager{})
 
 		rr := httptest.NewRecorder()
 

@@ -4,6 +4,8 @@ server:
     authName: stopnik_auth
     messageName: stopnik_message
   #logoutRedirect: http://localhost:8080
+  forwardAuth:
+    externalUrl: http://stopnik.localhost:9090
   secret: WRYldij9ebtDZ5VJSsxNAfCZ
   privateKey: ./test_keys/rsa256key.pem
   addr: :8082

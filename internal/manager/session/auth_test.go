@@ -15,7 +15,7 @@ func Test_Session(t *testing.T) {
 	}
 
 	t.Run("Session found", func(t *testing.T) {
-		sessionManager := GetSessionManagerInstance()
+		sessionManager := GetAuthSessionManagerInstance()
 
 		authSession := &AuthSession{
 			Id:                  "foo",
@@ -43,7 +43,7 @@ func Test_Session(t *testing.T) {
 	})
 
 	t.Run("Session not found", func(t *testing.T) {
-		sessionManager := GetSessionManagerInstance()
+		sessionManager := GetAuthSessionManagerInstance()
 
 		authSession := &AuthSession{
 			Id:       "foo",

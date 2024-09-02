@@ -51,11 +51,11 @@ func IsDebug() bool {
 }
 
 func AccessLogRequest(r *http.Request) {
-	accessLogger.Printf("%s %s %s", r.RemoteAddr, r.Method, r.URL)
+	accessLogger.Printf("%s - %s - %s %s", r.RemoteAddr, r.Host, r.Method, r.URL)
 }
 
 func AccessLogResult(r *http.Request, status int, message string) {
-	accessLogger.Printf("%s %s %s - %d %s", r.RemoteAddr, r.Method, r.URL, status, message)
+	accessLogger.Printf("%s - %s - %s %s - %d %s", r.RemoteAddr, r.Host, r.Method, r.URL, status, message)
 }
 
 func getLogLevelFromString(level string) slog.Level {

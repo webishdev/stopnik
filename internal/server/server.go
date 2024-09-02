@@ -12,6 +12,7 @@ import (
 	"github.com/webishdev/stopnik/internal/server/handler/account"
 	"github.com/webishdev/stopnik/internal/server/handler/assets"
 	"github.com/webishdev/stopnik/internal/server/handler/authorize"
+	"github.com/webishdev/stopnik/internal/server/handler/forwardauth"
 	"github.com/webishdev/stopnik/internal/server/handler/health"
 	"github.com/webishdev/stopnik/internal/server/handler/introspect"
 	"github.com/webishdev/stopnik/internal/server/handler/keys"
@@ -176,7 +177,7 @@ func shutdownServer(server *http.Server) {
 
 func registerHandlers(config *config.Config, handle func(pattern string, handler http.Handler)) {
 	keyManger := key.GetKeyMangerInstance()
-	sessionManager := session.GetSessionManagerInstance()
+	authSessionManager := session.GetAuthSessionManagerInstance()
 	tokenManager := token2.GetTokenManagerInstance()
 	cookieManager := cookie.GetCookieManagerInstance()
 	requestValidator := validation.NewRequestValidator()
@@ -188,8 +189,8 @@ func registerHandlers(config *config.Config, handle func(pattern string, handler
 	logoutHandler := logout.NewLogoutHandler(cookieManager, config.Server.LogoutRedirect)
 
 	// OAuth2
-	authorizeHandler := authorize.NewAuthorizeHandler(requestValidator, cookieManager, sessionManager, tokenManager, templateManager)
-	tokenHandler := token.NewTokenHandler(requestValidator, sessionManager, tokenManager)
+	authorizeHandler := authorize.NewAuthorizeHandler(requestValidator, cookieManager, authSessionManager, tokenManager, templateManager)
+	tokenHandler := token.NewTokenHandler(requestValidator, authSessionManager, tokenManager)
 
 	// OAuth2 extensions
 	introspectHandler := introspect.NewIntrospectHandler(requestValidator, tokenManager)
@@ -201,6 +202,13 @@ func registerHandlers(config *config.Config, handle func(pattern string, handler
 	handle(endpoint.Health, healthHandler)
 	handle(endpoint.Account, accountHandler)
 	handle(endpoint.Logout, logoutHandler)
+
+	if config.GetForwardAuthEnabled() {
+		log.Info("ForwardAuth enabled with endpoint %s", config.GetForwardAuthEndpoint())
+		forwardSessionManager := session.GetForwardSessionManagerInstance()
+		forwardAuthHandler := forwardauth.NewForwardAuthHandler(cookieManager, authSessionManager, forwardSessionManager, templateManager)
+		handle(config.GetForwardAuthEndpoint(), forwardAuthHandler)
+	}
 
 	// OAuth2
 	handle(endpoint.Authorization, authorizeHandler)

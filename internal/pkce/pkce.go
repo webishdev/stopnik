@@ -6,9 +6,9 @@ import (
 	"github.com/webishdev/stopnik/log"
 )
 
-func ValidatePKCE(method CodeChallengeMethod, value string, verifier string) bool {
-	calculatePKCE := CalculatePKCE(method, verifier)
-	return calculatePKCE == value
+func ValidatePKCE(method CodeChallengeMethod, verifier string, value string) bool {
+	calculatePKCE := CalculatePKCE(method, value)
+	return calculatePKCE == verifier
 }
 
 func CalculatePKCE(method CodeChallengeMethod, value string) string {

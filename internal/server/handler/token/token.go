@@ -14,18 +14,18 @@ import (
 )
 
 type Handler struct {
-	validator      *validation.RequestValidator
-	sessionManager *session.Manager
-	tokenManager   *token.Manager
-	errorHandler   *error.Handler
+	validator          *validation.RequestValidator
+	authSessionManager session.Manager[session.AuthSession]
+	tokenManager       *token.Manager
+	errorHandler       *error.Handler
 }
 
-func NewTokenHandler(validator *validation.RequestValidator, sessionManager *session.Manager, tokenManager *token.Manager) *Handler {
+func NewTokenHandler(validator *validation.RequestValidator, authSessionManager session.Manager[session.AuthSession], tokenManager *token.Manager) *Handler {
 	return &Handler{
-		validator:      validator,
-		sessionManager: sessionManager,
-		tokenManager:   tokenManager,
-		errorHandler:   error.NewErrorHandler(),
+		validator:          validator,
+		authSessionManager: authSessionManager,
+		tokenManager:       tokenManager,
+		errorHandler:       error.NewErrorHandler(),
 	}
 }
 
@@ -65,7 +65,7 @@ func (h *Handler) handlePostRequest(w http.ResponseWriter, r *http.Request) {
 	if grantType == oauth2.GtAuthorizationCode {
 		// https://datatracker.ietf.org/doc/html/rfc6749#section-4.1.3
 		code := r.PostFormValue(oauth2.ParameterCode)
-		authSession, authSessionExists := h.sessionManager.GetSession(code)
+		authSession, authSessionExists := h.authSessionManager.GetSession(code)
 		if !authSessionExists {
 			oauth2.TokenErrorResponseHandler(w, &oauth2.TokenErrorResponseParameter{Error: oauth2.TokenEtInvalidRequest})
 			return
