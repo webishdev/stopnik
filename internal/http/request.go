@@ -20,6 +20,9 @@ func NewRequestData(r *http.Request) *RequestData {
 		scheme = "https"
 	}
 
+	host := r.Host
+	path := r.URL.RawPath
+
 	query := ""
 	if r.URL.RawQuery != "" {
 		query = "?" + r.URL.RawQuery
@@ -30,8 +33,8 @@ func NewRequestData(r *http.Request) *RequestData {
 	}
 	return &RequestData{
 		Scheme:   scheme,
-		Host:     r.Host,
-		Path:     r.URL.RawPath,
+		Host:     host,
+		Path:     path,
 		Query:    query,
 		Fragment: fragment,
 	}
