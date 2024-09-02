@@ -109,6 +109,10 @@ func emptyServerConfiguration(t *testing.T) {
 
 	config := GetConfigInstance()
 
+	if config == nil {
+		t.Fatal("config was nil")
+	}
+
 	if config.generatedSecret == "" || len(config.generatedSecret) != 16 {
 		t.Error("expected generated secret to not be empty")
 	}
@@ -121,6 +125,11 @@ func emptyServerConfiguration(t *testing.T) {
 	authCookieName := config.GetAuthCookieName()
 	if authCookieName != "stopnik_auth" {
 		t.Error("expected auth cookie name to be 'stopnik_auth'")
+	}
+
+	messageCookieName := config.GetMessageCookieName()
+	if messageCookieName != "stopnik_message" {
+		t.Error("expected message cookie name to be 'stopnik_message'")
 	}
 
 	introspectScope := config.GetIntrospectScope()
@@ -136,6 +145,21 @@ func emptyServerConfiguration(t *testing.T) {
 	sessionTimeout := config.GetSessionTimeoutSeconds()
 	if sessionTimeout != 3600 {
 		t.Error("expected session timeout to be 3600")
+	}
+
+	forwardAuthEnabled := config.GetForwardAuthEnabled()
+	if forwardAuthEnabled {
+		t.Error("expected forward auth enabled to be false")
+	}
+
+	forwardAuthEndpoint := config.GetForwardAuthEndpoint()
+	if forwardAuthEndpoint != "/forward" {
+		t.Error("expected forward auth endpoint to be '/forward'")
+	}
+
+	oidc := config.GetOidc()
+	if oidc {
+		t.Error("expected oidc enabled to be false")
 	}
 }
 
@@ -153,6 +177,10 @@ func simpleServerConfiguration(t *testing.T) {
 				IntrospectScope:       "i:a",
 				RevokeScope:           "r:b",
 				SessionTimeoutSeconds: 4200,
+				ForwardAuth: ForwardAuth{
+					Endpoint:    "/fa",
+					ExternalUrl: "http://forward.example.com",
+				},
 			},
 		}
 		return nil
@@ -166,7 +194,11 @@ func simpleServerConfiguration(t *testing.T) {
 
 	config := GetConfigInstance()
 
-	if config == nil || config.generatedSecret == "" {
+	if config == nil {
+		t.Fatal("config was nil")
+	}
+
+	if config.generatedSecret == "" {
 		t.Error("expected generated secret to not be empty")
 	}
 
@@ -194,6 +226,16 @@ func simpleServerConfiguration(t *testing.T) {
 	if sessionTimeout != 4200 {
 		t.Error("expected session timeout to be 4200")
 	}
+
+	forwardAuthEnabled := config.GetForwardAuthEnabled()
+	if !forwardAuthEnabled {
+		t.Error("expected forward auth enabled to be true")
+	}
+
+	forwardAuthEndpoint := config.GetForwardAuthEndpoint()
+	if forwardAuthEndpoint != "/fa" {
+		t.Error("expected forward auth endpoint to be '/fa'")
+	}
 }
 
 func emptyUIConfiguration(t *testing.T) {
@@ -215,6 +257,10 @@ func emptyUIConfiguration(t *testing.T) {
 
 	config := GetConfigInstance()
 
+	if config == nil {
+		t.Fatal("config was nil")
+	}
+
 	footerText := config.GetFooterText()
 	if footerText != "STOPnik" {
 		t.Error("expected footer text to be 'STOPnik")
@@ -234,6 +280,11 @@ func emptyUIConfiguration(t *testing.T) {
 	if hideFooter {
 		t.Error("expected hideFooter to be false")
 	}
+
+	logoImage := config.GetLogoImage()
+	if logoImage != nil {
+		t.Error("expected logo image to be nil")
+	}
 }
 
 func simpleUIConfiguration(t *testing.T) {
@@ -247,6 +298,7 @@ func simpleUIConfiguration(t *testing.T) {
 				HideLogo:   true,
 				Title:      "Oh my Foo!",
 				FooterText: "In the end",
+				LogoImage:  "../../.test_files/test_logo.png",
 			},
 		}
 		return nil
@@ -259,6 +311,10 @@ func simpleUIConfiguration(t *testing.T) {
 	}
 
 	config := GetConfigInstance()
+
+	if config == nil {
+		t.Fatal("config was nil")
+	}
 
 	footerText := config.GetFooterText()
 	if footerText != "In the end" {
@@ -278,6 +334,11 @@ func simpleUIConfiguration(t *testing.T) {
 	hideFooter := config.GetHideFooter()
 	if !hideFooter {
 		t.Error("expected hideFooter to be true")
+	}
+
+	logoImage := config.GetLogoImage()
+	if logoImage == nil {
+		t.Error("expected logo image to be non-nil")
 	}
 }
 
@@ -303,6 +364,10 @@ func validUsers(t *testing.T) {
 	}
 
 	config := GetConfigInstance()
+
+	if config == nil {
+		t.Fatal("config was nil")
+	}
 
 	if len(config.Users) != 3 {
 		t.Errorf("expected 3 users, got %d", len(config.Users))
@@ -376,6 +441,10 @@ func validClients(t *testing.T) {
 	}
 
 	config := GetConfigInstance()
+
+	if config == nil {
+		t.Fatal("config was nil")
+	}
 
 	if len(config.Clients) != 3 {
 		t.Errorf("expected 3 clients, got %d", len(config.Clients))

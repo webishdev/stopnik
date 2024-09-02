@@ -41,7 +41,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 		var result []byte
 		contentType := mime.TypeByExtension(path.Ext(assetFSPath))
-		if assetFSPath == "resources/stopnik_250.png" && h.config.GetLogoImage() != nil {
+		if assetFSPath == "resources/logo.png" && h.config.GetLogoImage() != nil {
 			logoImage := h.config.GetLogoImage()
 			result = *logoImage
 			if h.config.UI.LogoContentType != "" {

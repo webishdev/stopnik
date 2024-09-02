@@ -48,7 +48,7 @@ func Test_Assets(t *testing.T) {
 
 	var testAssetsHttpParameters = []assetHttpParameter{
 		{path: "/assets/styles.css", expectedCode: http.StatusOK, matches: true},
-		{path: "/assets/stopnik_250.png", expectedCode: http.StatusOK, matches: true},
+		{path: "/assets/logo.png", expectedCode: http.StatusOK, matches: true},
 		{path: "/assets/foo.css", expectedCode: http.StatusNotFound, matches: true},
 		{path: "/assets/bar.png", expectedCode: http.StatusNotFound, matches: true},
 		{path: "/foo/bar.png", expectedCode: http.StatusNotFound, matches: false},

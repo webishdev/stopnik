@@ -79,7 +79,7 @@ func testLoadPrivateKey(t *testing.T) {
 		testMessage := fmt.Sprintf("Load private key from file %v", test.fileName)
 		t.Run(testMessage, func(t *testing.T) {
 
-			serverSecretLoader, err := LoadPrivateKey("../../test_keys/" + test.fileName)
+			serverSecretLoader, err := LoadPrivateKey("../../.test_files/" + test.fileName)
 
 			if err != nil {
 				t.Fatal(err)
@@ -104,7 +104,7 @@ func testLoadNotExistingPrivateKey(t *testing.T) {
 
 func testLoadInvalidPrivateKey(t *testing.T) {
 	t.Run("Load private key from invalid file", func(t *testing.T) {
-		_, err := LoadPrivateKey("../../test_keys/invalidkey.pem")
+		_, err := LoadPrivateKey("../../.test_files/invalidkey.pem")
 
 		if err == nil {
 			t.Errorf("Loaded private key from invalid file")
@@ -114,7 +114,7 @@ func testLoadInvalidPrivateKey(t *testing.T) {
 
 func testLoadUnsupportedCurvePrivateKey(t *testing.T) {
 	t.Run("Load private key with unsupported curve", func(t *testing.T) {
-		_, err := LoadPrivateKey("../../test_keys/unsupportedcurvekey.pem")
+		_, err := LoadPrivateKey("../../.test_files/unsupportedcurvekey.pem")
 
 		if err == nil {
 			t.Errorf("Loaded private key from with unsupported curve")

@@ -7,13 +7,13 @@ server:
   forwardAuth:
     externalUrl: http://stopnik.localhost:9090
   secret: WRYldij9ebtDZ5VJSsxNAfCZ
-  privateKey: ./test_keys/rsa256key.pem
+  privateKey: ./.test_files/rsa256key.pem
   addr: :8082
   tls:
     addr: :8081
     keys:
-      cert: ./test_keys/server.crt
-      key: ./test_keys/server.key
+      cert: ./.test_files/server.crt
+      key: ./.test_files/server.key
 ui:
 #  hideFooter: true
 #  hideLogo: true
@@ -49,7 +49,7 @@ clients:
   salt: 321
   accessTTL: 5
   refreshTTL: 15
-  privateKey: ./test_keys/ecdsa521key.pem
+  privateKey: ./.test_files/ecdsa521key.pem
   redirects:
     - https://oauth.pstmn.io/v1/callback
 users:
