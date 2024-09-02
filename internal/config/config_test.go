@@ -7,6 +7,21 @@ import (
 	"testing"
 )
 
+type testExpectedClientValues struct {
+	id                 string
+	expectedAccessTTL  int
+	expectedRefreshTTL int
+	expectedIdTokenTTL int
+	expectedIssuer     string
+	expectedRolesClaim string
+	expectedAudience   []string
+}
+
+type testExpectedUserValues struct {
+	username                  string
+	expectedPreferredUserName string
+}
+
 func Test_Load(t *testing.T) {
 	t.Run("readError", readError)
 	t.Run("unmarshalError", unmarshalError)
@@ -349,9 +364,21 @@ func validUsers(t *testing.T) {
 		origin := out.(*Config)
 		*origin = Config{
 			Users: []User{
-				{Username: "foo", Password: "d82c4eb5261cb9c8aa9855edd67d1bd10482f41529858d925094d173fa662aa91ff39bc5b188615273484021dfb16fd8284cf684ccf0fc795be3aa2fc1e6c181"},
-				{Username: "bar", Password: "3c9909afec25354d551dae21590bb26e38d53f2173b8d3dc3eee4c047e7ab1c1eb8b85103e3be7ba613b31bb5c9c36214dc9f14a42fd7a2fdb84856bca5c44c2"},
-				{Username: "moo", Password: "ddaf35a193617abacc417349ae20413112e6fa4e89a97ea20a9eeee64b55d39a2192992a274fc1a836ba3c23a3feebbd454d4423643ce80e2a9ac94fa54ca49f"},
+				{
+					Username: "foo",
+					Password: "d82c4eb5261cb9c8aa9855edd67d1bd10482f41529858d925094d173fa662aa91ff39bc5b188615273484021dfb16fd8284cf684ccf0fc795be3aa2fc1e6c181",
+					Profile: UserProfile{
+						PreferredUserName: "foofoo",
+					},
+				},
+				{
+					Username: "bar",
+					Password: "3c9909afec25354d551dae21590bb26e38d53f2173b8d3dc3eee4c047e7ab1c1eb8b85103e3be7ba613b31bb5c9c36214dc9f14a42fd7a2fdb84856bca5c44c2",
+				},
+				{
+					Username: "moo",
+					Password: "ddaf35a193617abacc417349ae20413112e6fa4e89a97ea20a9eeee64b55d39a2192992a274fc1a836ba3c23a3feebbd454d4423643ce80e2a9ac94fa54ca49f",
+				},
 			},
 		}
 		return nil
@@ -376,6 +403,19 @@ func validUsers(t *testing.T) {
 	assertUserExistsWithName(t, "foo", config)
 	assertUserExistsWithName(t, "bar", config)
 	assertUserExistsWithName(t, "moo", config)
+
+	assertUserValues(t, config, testExpectedUserValues{
+		username:                  "foo",
+		expectedPreferredUserName: "foofoo",
+	})
+	assertUserValues(t, config, testExpectedUserValues{
+		username:                  "bar",
+		expectedPreferredUserName: "bar",
+	})
+	assertUserValues(t, config, testExpectedUserValues{
+		username:                  "moo",
+		expectedPreferredUserName: "moo",
+	})
 }
 
 func invalidUsers(t *testing.T) {
@@ -421,7 +461,9 @@ func validClients(t *testing.T) {
 					Redirects:    []string{"http://localhost:8080/callback", "https://example.com/callback"},
 					AccessTTL:    20,
 					RefreshTTL:   60,
+					IdTTL:        40,
 					Issuer:       "other",
+					RolesClaim:   "groups",
 					Audience:     []string{"one", "two"},
 				},
 				{
@@ -454,8 +496,24 @@ func validClients(t *testing.T) {
 	assertClientExistsWithId(t, "bar", config)
 	assertClientExistsWithId(t, "moo", config)
 
-	assertClientValues(t, config, "foo", 5, 0, "STOPnik", []string{"all"})
-	assertClientValues(t, config, "bar", 20, 60, "other", []string{"one", "two"})
+	assertClientValues(t, config, testExpectedClientValues{
+		id:                 "foo",
+		expectedAccessTTL:  5,
+		expectedRefreshTTL: 0,
+		expectedIdTokenTTL: 0,
+		expectedRolesClaim: "roles",
+		expectedIssuer:     "STOPnik",
+		expectedAudience:   []string{"all"},
+	})
+	assertClientValues(t, config, testExpectedClientValues{
+		id:                 "bar",
+		expectedAccessTTL:  20,
+		expectedRefreshTTL: 60,
+		expectedIdTokenTTL: 40,
+		expectedRolesClaim: "groups",
+		expectedIssuer:     "other",
+		expectedAudience:   []string{"one", "two"},
+	})
 }
 
 func invalidClients(t *testing.T) {
@@ -505,6 +563,22 @@ func assertUserExistsWithName(t *testing.T, username string, config *Config) {
 	}
 }
 
+func assertUserValues(t *testing.T, config *Config, expected testExpectedUserValues) {
+	user, exists := config.GetUser(expected.username)
+	if !exists {
+		t.Error("expected user")
+	}
+	if user.Username != expected.username {
+		t.Error("expected correct username")
+	}
+	if user.Password == "" {
+		t.Error("expected password")
+	}
+	if user.GetPreferredUsername() != expected.expectedPreferredUserName {
+		t.Error("expected correct preferred username")
+	}
+}
+
 func assertClientExistsWithId(t *testing.T, id string, config *Config) {
 	client, exists := config.GetClient(id)
 	if !exists {
@@ -518,29 +592,55 @@ func assertClientExistsWithId(t *testing.T, id string, config *Config) {
 	}
 }
 
-func assertClientValues(t *testing.T, config *Config, id string, expectedAccessTTL int, expectedRefreshTTL int, expectedIssuer string, expectedAudience []string) {
-	client, exits := config.GetClient(id)
+func assertClientValues(t *testing.T, config *Config, expected testExpectedClientValues) {
+	client, exits := config.GetClient(expected.id)
 	if !exits {
-		t.Errorf("expected client with id '%s' to exist", id)
+		t.Errorf("expected client with id '%s' to exist", expected.id)
 	}
 
 	accessTTL := client.GetAccessTTL()
-	if accessTTL != expectedAccessTTL {
-		t.Errorf("expected access TTL to be %d, got %d", expectedAccessTTL, accessTTL)
+	if accessTTL != expected.expectedAccessTTL {
+		t.Errorf("expected access TTL to be %d, got %d", expected.expectedAccessTTL, accessTTL)
 	}
 
 	refreshTTL := client.GetRefreshTTL()
-	if refreshTTL != expectedRefreshTTL {
-		t.Errorf("expected refresh TTL to be %d, got %d", expectedRefreshTTL, refreshTTL)
+	if refreshTTL != expected.expectedRefreshTTL {
+		t.Errorf("expected refresh TTL to be %d, got %d", expected.expectedRefreshTTL, refreshTTL)
+	}
+
+	idTokenTTL := client.GetIdTTL()
+	if idTokenTTL != expected.expectedIdTokenTTL {
+		t.Errorf("expected id token TTL to be %d, got %d", expected.expectedIdTokenTTL, idTokenTTL)
 	}
 
 	issuer := client.GetIssuer(&internalHttp.RequestData{})
-	if issuer != expectedIssuer {
-		t.Errorf("expected issuer to be '%s', got '%s'", expectedIssuer, issuer)
+	if issuer != expected.expectedIssuer {
+		t.Errorf("expected issuer to be '%s', got '%s'", expected.expectedIssuer, issuer)
 	}
 
 	audience := client.GetAudience()
-	if !reflect.DeepEqual(audience, expectedAudience) {
-		t.Errorf("expected audience to be '%s', got '%s'", expectedAudience, audience)
+	if !reflect.DeepEqual(audience, expected.expectedAudience) {
+		t.Errorf("expected audience to be '%s', got '%s'", expected.expectedAudience, audience)
+	}
+
+	rolesClaim := client.GetRolesClaim()
+	if rolesClaim != expected.expectedRolesClaim {
+		t.Errorf("expected roles claim to be '%s', got '%s'", expected.expectedRolesClaim, rolesClaim)
+	}
+
+	validRedirect, validRedirectError := client.ValidateRedirect("http://localhost:8080/callback")
+	if validRedirectError != nil {
+		t.Error("expected valid redirect not return an error")
+	}
+	if !validRedirect {
+		t.Error("expected valid redirect")
+	}
+
+	invalidRedirect, invalidRedirectError := client.ValidateRedirect("http://foo.com:8080/callback")
+	if invalidRedirectError != nil {
+		t.Error("expected invalid redirect not return an error")
+	}
+	if invalidRedirect {
+		t.Error("did not expect redirect to be valid")
 	}
 }
