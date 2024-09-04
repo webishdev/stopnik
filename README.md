@@ -79,6 +79,22 @@ And then start **STOPnik** with
 ./stopnik
 ```
 
+## Test
+
+Execute tests inside the repository root folder with
+
+```bash
+go test ./...
+```
+
+To get access to the HTML coverage report the following script can be executed
+
+```bash
+./test.sh html
+```
+
+The coverage report will be created in the `.test_coverage` folder
+
 ## License
 
 The project is licensed under the [Apache License, Version 2.0](LICENSE).
