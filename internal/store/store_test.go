@@ -159,4 +159,12 @@ func Test_Store(t *testing.T) {
 			t.Error("amount of values did not match")
 		}
 	})
+
+	t.Run("Create timer", func(t *testing.T) {
+		newTimer := NewTimer()
+
+		if newTimer == nil {
+			t.Error("timer was not created")
+		}
+	})
 }
