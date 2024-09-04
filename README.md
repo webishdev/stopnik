@@ -63,7 +63,7 @@ More details about **STOPnik** can be found at https://stopnik.webish.dev/
 
 ## Build
 
-Requires [Git](https://git-scm.com/) and [Go >=1.22](https://go.dev/) to be installed.
+Requires [Git](https://git-scm.com/) and [Go >=1.23](https://go.dev/) to be installed.
 
 To build **STOPnik** the repository should be cloned and the build command executed.
 
