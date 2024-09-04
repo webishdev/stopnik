@@ -2,6 +2,7 @@ package config
 
 import (
 	"errors"
+	"fmt"
 	internalHttp "github.com/webishdev/stopnik/internal/http"
 	"reflect"
 	"testing"
@@ -20,15 +21,11 @@ type testExpectedClientValues struct {
 type testExpectedUserValues struct {
 	username                  string
 	expectedPreferredUserName string
-}
-
-func Test_Load(t *testing.T) {
-	t.Run("readError", readError)
-	t.Run("unmarshalError", unmarshalError)
+	expectedRoles             []string
 }
 
 func Test_DefaultValues(t *testing.T) {
-	t.Run("string", func(t *testing.T) {
+	t.Run("Default value as string", func(t *testing.T) {
 		assertDefaultValues[string](t, "abc", "def", GetOrDefaultString, func(a string) bool {
 			return a == "abc"
 		})
@@ -38,7 +35,7 @@ func Test_DefaultValues(t *testing.T) {
 		})
 	})
 
-	t.Run("[]string", func(t *testing.T) {
+	t.Run("Default value as []string", func(t *testing.T) {
 		assertDefaultValues[[]string](t, []string{"abc", "def"}, []string{"ghi", "jkl"}, GetOrDefaultStringSlice, func(a []string) bool {
 			return reflect.DeepEqual(a, []string{"abc", "def"})
 		})
@@ -48,7 +45,7 @@ func Test_DefaultValues(t *testing.T) {
 		})
 	})
 
-	t.Run("int", func(t *testing.T) {
+	t.Run("Default value as int", func(t *testing.T) {
 		assertDefaultValues[int](t, 22, 23, GetOrDefaultInt, func(a int) bool {
 			return a == 22
 		})
@@ -59,27 +56,7 @@ func Test_DefaultValues(t *testing.T) {
 	})
 }
 
-func Test_Server(t *testing.T) {
-	t.Run("empty", emptyServerConfiguration)
-	t.Run("simple", simpleServerConfiguration)
-}
-
-func Test_UI(t *testing.T) {
-	t.Run("empty", emptyUIConfiguration)
-	t.Run("simple", simpleUIConfiguration)
-}
-
-func Test_Users(t *testing.T) {
-	t.Run("valid", validUsers)
-	t.Run("invalid", invalidUsers)
-}
-
-func Test_Clients(t *testing.T) {
-	t.Run("valid", validClients)
-	t.Run("invalid", invalidClients)
-}
-
-func readError(t *testing.T) {
+func Test_ReadError(t *testing.T) {
 	configLoader := NewConfigLoader(func(filename string) ([]byte, error) {
 		return nil, errors.New("test error")
 	}, nil)
@@ -91,7 +68,7 @@ func readError(t *testing.T) {
 	}
 }
 
-func unmarshalError(t *testing.T) {
+func Test_UnmarshalError(t *testing.T) {
 	configLoader := NewConfigLoader(func(filename string) ([]byte, error) {
 		return make([]byte, 10), nil
 	}, func(in []byte, out interface{}) (err error) {
@@ -105,7 +82,7 @@ func unmarshalError(t *testing.T) {
 	}
 }
 
-func emptyServerConfiguration(t *testing.T) {
+func Test_EmptyServerConfiguration(t *testing.T) {
 	configLoader := NewConfigLoader(func(filename string) ([]byte, error) {
 		return make([]byte, 10), nil
 	}, func(in []byte, out interface{}) (err error) {
@@ -178,7 +155,7 @@ func emptyServerConfiguration(t *testing.T) {
 	}
 }
 
-func simpleServerConfiguration(t *testing.T) {
+func Test_SimpleServerConfiguration(t *testing.T) {
 	configLoader := NewConfigLoader(func(filename string) ([]byte, error) {
 		return make([]byte, 10), nil
 	}, func(in []byte, out interface{}) (err error) {
@@ -253,7 +230,7 @@ func simpleServerConfiguration(t *testing.T) {
 	}
 }
 
-func emptyUIConfiguration(t *testing.T) {
+func Test_EmptyUIConfiguration(t *testing.T) {
 	configLoader := NewConfigLoader(func(filename string) ([]byte, error) {
 		return make([]byte, 10), nil
 	}, func(in []byte, out interface{}) (err error) {
@@ -302,7 +279,7 @@ func emptyUIConfiguration(t *testing.T) {
 	}
 }
 
-func simpleUIConfiguration(t *testing.T) {
+func Test_SimpleUIConfiguration(t *testing.T) {
 	configLoader := NewConfigLoader(func(filename string) ([]byte, error) {
 		return make([]byte, 10), nil
 	}, func(in []byte, out interface{}) (err error) {
@@ -357,7 +334,7 @@ func simpleUIConfiguration(t *testing.T) {
 	}
 }
 
-func validUsers(t *testing.T) {
+func Test_ValidUsers(t *testing.T) {
 	configLoader := NewConfigLoader(func(filename string) ([]byte, error) {
 		return make([]byte, 10), nil
 	}, func(in []byte, out interface{}) (err error) {
@@ -369,6 +346,9 @@ func validUsers(t *testing.T) {
 					Password: "d82c4eb5261cb9c8aa9855edd67d1bd10482f41529858d925094d173fa662aa91ff39bc5b188615273484021dfb16fd8284cf684ccf0fc795be3aa2fc1e6c181",
 					Profile: UserProfile{
 						PreferredUserName: "foofoo",
+					},
+					Roles: map[string][]string{
+						"foo": {"Admin", "User"},
 					},
 				},
 				{
@@ -404,21 +384,23 @@ func validUsers(t *testing.T) {
 	assertUserExistsWithName(t, "bar", config)
 	assertUserExistsWithName(t, "moo", config)
 
-	assertUserValues(t, config, testExpectedUserValues{
+	assertUserValues(t, config, "foo", testExpectedUserValues{
 		username:                  "foo",
 		expectedPreferredUserName: "foofoo",
+		expectedRoles:             []string{"Admin", "User"},
 	})
-	assertUserValues(t, config, testExpectedUserValues{
+	assertUserValues(t, config, "bar", testExpectedUserValues{
 		username:                  "bar",
 		expectedPreferredUserName: "bar",
 	})
-	assertUserValues(t, config, testExpectedUserValues{
+	assertUserValues(t, config, "", testExpectedUserValues{
 		username:                  "moo",
 		expectedPreferredUserName: "moo",
 	})
 }
 
-func invalidUsers(t *testing.T) {
+func Test_InvalidUsers(t *testing.T) {
+
 	var invalidUserParameters = []User{
 		{Username: "wrong", Password: "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"},
 		{Username: "empty", Password: ""},
@@ -443,7 +425,7 @@ func invalidUsers(t *testing.T) {
 	}
 }
 
-func validClients(t *testing.T) {
+func Test_ValidClients(t *testing.T) {
 	configLoader := NewConfigLoader(func(filename string) ([]byte, error) {
 		return make([]byte, 10), nil
 	}, func(in []byte, out interface{}) (err error) {
@@ -516,7 +498,7 @@ func validClients(t *testing.T) {
 	})
 }
 
-func invalidClients(t *testing.T) {
+func Test_InvalidClients(t *testing.T) {
 	var invalidClientParameters = []Client{
 		{Id: "wrong", ClientSecret: "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"},
 		{Id: "empty", ClientSecret: ""},
@@ -543,6 +525,57 @@ func invalidClients(t *testing.T) {
 	}
 }
 
+func Test_ValidateRedirects(t *testing.T) {
+	var validRedirects = []string{"http://foo.com/callback", "https://foo.com/callback", "https://foo.com/wildcard/*"}
+	type redirectParameter struct {
+		redirect       string
+		expectedResult bool
+	}
+
+	var redirectParameters = []redirectParameter{
+		{"http://foo.com/callback", true},
+		{"https://foo.com/callback", true},
+		{"https://foo.com/callback/more", false},
+		{"https://foo.com/wildcard", false},
+		{"https://foo.com/wildcard/", true},
+		{"https://foo.com/wildcard/more", true},
+	}
+
+	for index, test := range redirectParameters {
+		testMessage := fmt.Sprintf("Validate redirect %d %s", index, test.redirect)
+		t.Run(testMessage, func(t *testing.T) {
+			result, validationError := validateRedirect("fooId", validRedirects, test.redirect)
+			if validationError != nil {
+				t.Error("Validation should not return an error")
+			}
+			if result != test.expectedResult {
+				t.Error("Redirect validation did not match")
+			}
+		})
+	}
+}
+
+func Test_EmptyRedirect(t *testing.T) {
+	var validRedirects = []string{"http://foo.com/callback", "https://foo.com/callback", "https://foo.com/wildcard/*"}
+	result, validationError := validateRedirect("fooId", validRedirects, "")
+	if validationError != nil {
+		t.Error("Validation should not return an error")
+	}
+	if result {
+		t.Error("Redirect validation did not match")
+	}
+}
+
+func Test_NoRedirects(t *testing.T) {
+	result, validationError := validateRedirect("fooId", []string{}, "http://foo.com/callback")
+	if validationError != nil {
+		t.Error("Validation should not return an error")
+	}
+	if result {
+		t.Error("Redirect validation did not match")
+	}
+}
+
 func assertDefaultValues[T any](t *testing.T, value T, defaultValue T, ccc func(a T, b T) T, expect func(a T) bool) {
 	theValue := ccc(value, defaultValue)
 	if !expect(theValue) {
@@ -563,7 +596,7 @@ func assertUserExistsWithName(t *testing.T, username string, config *Config) {
 	}
 }
 
-func assertUserValues(t *testing.T, config *Config, expected testExpectedUserValues) {
+func assertUserValues(t *testing.T, config *Config, clientId string, expected testExpectedUserValues) {
 	user, exists := config.GetUser(expected.username)
 	if !exists {
 		t.Error("expected user")
@@ -576,6 +609,12 @@ func assertUserValues(t *testing.T, config *Config, expected testExpectedUserVal
 	}
 	if user.GetPreferredUsername() != expected.expectedPreferredUserName {
 		t.Error("expected correct preferred username")
+	}
+	if clientId != "" {
+		equal := reflect.DeepEqual(user.GetRoles(clientId), expected.expectedRoles)
+		if !equal {
+			t.Error("expected correct roles for user")
+		}
 	}
 }
 
@@ -625,7 +664,7 @@ func assertClientValues(t *testing.T, config *Config, expected testExpectedClien
 
 	rolesClaim := client.GetRolesClaim()
 	if rolesClaim != expected.expectedRolesClaim {
-		t.Errorf("expected roles claim to be '%s', got '%s'", expected.expectedRolesClaim, rolesClaim)
+		t.Errorf("expected expectedRoles claim to be '%s', got '%s'", expected.expectedRolesClaim, rolesClaim)
 	}
 
 	validRedirect, validRedirectError := client.ValidateRedirect("http://localhost:8080/callback")

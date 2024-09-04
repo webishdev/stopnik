@@ -7,14 +7,14 @@ import (
 	"testing"
 )
 
-func Test_Session(t *testing.T) {
+func Test_AuthSession(t *testing.T) {
 	testConfig := &config.Config{}
 	initializationError := config.Initialize(testConfig)
 	if initializationError != nil {
 		t.Fatal(initializationError)
 	}
 
-	t.Run("Session found", func(t *testing.T) {
+	t.Run("Auth session found", func(t *testing.T) {
 		sessionManager := GetAuthSessionManagerInstance()
 
 		authSession := &AuthSession{
@@ -34,7 +34,7 @@ func Test_Session(t *testing.T) {
 		session, sessionExits := sessionManager.GetSession("foo")
 
 		if !sessionExits {
-			t.Errorf("expected session to exists")
+			t.Errorf("expected auth session to exists")
 		}
 
 		if !reflect.DeepEqual(session, authSession) {
@@ -42,7 +42,7 @@ func Test_Session(t *testing.T) {
 		}
 	})
 
-	t.Run("Session not found", func(t *testing.T) {
+	t.Run("Auth session not found", func(t *testing.T) {
 		sessionManager := GetAuthSessionManagerInstance()
 
 		authSession := &AuthSession{
@@ -54,7 +54,7 @@ func Test_Session(t *testing.T) {
 		_, sessionExits := sessionManager.GetSession("bar")
 
 		if sessionExits {
-			t.Errorf("expected session not to exists")
+			t.Errorf("expected auth session not to exists")
 		}
 	})
 }

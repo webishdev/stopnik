@@ -18,13 +18,14 @@ func Test_RequestData(t *testing.T) {
 		expectedPath     string
 		expectedQuery    string
 		expectedFragment string
+		expectedIssuer   string
 	}
 	var httpParameters = []httpParameter{
-		{"https://moo.com", "", "", "https", "moo.com", "", "", ""},
-		{"http://moo.com", "", "", "http", "moo.com", "", "", ""},
-		{"http://foo.com/bar", "", "", "http", "foo.com", "/bar", "", ""},
-		{"http://foo.com/bar?hello=world", "hello=world", "", "http", "foo.com", "/bar", "?hello=world", ""},
-		{"http://foo.com/bar?hello=world#blabla", "hello=world", "blabla", "http", "foo.com", "/bar", "?hello=world", "#blabla"},
+		{"https://moo.com", "", "", "https", "moo.com", "", "", "", "https://moo.com"},
+		{"http://moo.com", "", "", "http", "moo.com", "", "", "", "http://moo.com"},
+		{"http://foo.com/bar", "", "", "http", "foo.com", "/bar", "", "", "http://foo.com"},
+		{"https://foo.com/bar?hello=world", "hello=world", "", "https", "foo.com", "/bar", "?hello=world", "", "https://foo.com"},
+		{"http://foo.com/bar?hello=world#blabla", "hello=world", "blabla", "http", "foo.com", "/bar", "?hello=world", "#blabla", "http://foo.com"},
 	}
 	for _, test := range httpParameters {
 		testMessage := fmt.Sprintf("Request data for %s", test.uri)
@@ -74,13 +75,13 @@ func Test_RequestData(t *testing.T) {
 				t.Errorf("Error parsing URL: %s", parseError.Error())
 			}
 
-			if parsedUrl.String() == "" {
-				t.Errorf("Parsed URL is empty")
+			if parsedUrl.String() != test.uri {
+				t.Errorf("URL mismatch. Expected: %s, got: %s", test.uri, parsedUrl.String())
 			}
 
 			issuer := requestData.IssuerString()
-			if issuer == "" {
-				t.Errorf("Issuer should not be empty")
+			if issuer != test.expectedIssuer {
+				t.Errorf("Issuer mismatch. Expected: %s, got: %s", test.expectedIssuer, issuer)
 			}
 		})
 	}

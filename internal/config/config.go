@@ -342,37 +342,7 @@ func (client *Client) ValidateRedirect(redirect string) (bool, error) {
 	if client.isForwardAuth {
 		return true, nil
 	}
-
-	if redirect == "" {
-		log.Error("Redirect provided for client %s was empty", client.Id)
-		return false, nil
-	}
-
-	redirectCount := len(client.Redirects)
-
-	if redirectCount > 0 {
-		matchesRedirect := false
-		for redirectIndex := range redirectCount {
-			clientRedirect := client.Redirects[redirectIndex]
-			endsWithWildcard := strings.HasSuffix(clientRedirect, "*")
-			if endsWithWildcard {
-				clientRedirect = strings.Replace(clientRedirect, "*", ".*", 1)
-			}
-			clientRedirect = fmt.Sprintf("^%s$", clientRedirect)
-			matched, regexError := regexp.MatchString(clientRedirect, redirect)
-			if regexError != nil {
-				log.Error("Cloud not match redirect URI %s for client %s", redirect, client.Id)
-				return false, regexError
-			}
-
-			matchesRedirect = matchesRedirect || matched
-		}
-
-		return matchesRedirect, nil
-	} else {
-		log.Error("Client %s has no redirect URI(s) configured!", client.Id)
-		return false, nil
-	}
+	return validateRedirect(client.Id, client.Redirects, redirect)
 }
 
 func (user *User) GetPreferredUsername() string {
@@ -403,4 +373,43 @@ func (user *User) GetFormattedAddress() string {
 
 func (user *User) GetRoles(clientId string) []string {
 	return user.Roles[clientId]
+}
+
+func validateRedirect(clientId string, redirects []string, redirect string) (bool, error) {
+	if redirect == "" {
+		log.Error("Redirect provided for client %s was empty", clientId)
+		return false, nil
+	}
+
+	redirectCount := len(redirects)
+
+	if redirectCount > 0 {
+		matchesRedirect := false
+		for redirectIndex := range redirectCount {
+			clientRedirect := redirects[redirectIndex]
+			clientRedirect = strings.Replace(clientRedirect, "/", "\\/", 1)
+			clientRedirect = strings.Replace(clientRedirect, ".", "\\.", 1)
+			clientRedirect = strings.Replace(clientRedirect, "?", "\\?", 1)
+			endsWithWildcard := strings.HasSuffix(clientRedirect, "*")
+			if endsWithWildcard {
+				clientRedirect = strings.Replace(clientRedirect[:len(clientRedirect)-1], "*", "\\*", 1)
+				clientRedirect = clientRedirect + ".*"
+			} else {
+				clientRedirect = strings.Replace(clientRedirect, "*", "\\*", 1)
+			}
+			clientRedirect = fmt.Sprintf("^%s$", clientRedirect)
+			matched, regexError := regexp.MatchString(clientRedirect, redirect)
+			if regexError != nil {
+				log.Error("Cloud not match redirect URI %s for client %s", redirect, clientId)
+				return false, regexError
+			}
+
+			matchesRedirect = matchesRedirect || matched
+		}
+
+		return matchesRedirect, nil
+	} else {
+		log.Error("Client %s has no redirect URI(s) configured!", clientId)
+		return false, nil
+	}
 }
