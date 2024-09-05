@@ -26,6 +26,8 @@ User details are only provided when the health endpoint is called with a valid a
 
 ### ForwardAuth
 
+**STOPnik** supports [Traefik ForwardAuth](https://doc.traefik.io/traefik/middlewares/http/forwardauth/) out of the box.
+
 This endpoint depends on the provided configuration and is only available when `server.forwardAuth.externalUrl` is set.
 
 - `/forward`
@@ -34,26 +36,26 @@ This endpoint depends on the provided configuration and is only available when `
 
 ### The OAuth 2.0 Authorization Framework
 
-[The OAuth 2.0 Authorization Framework](https://datatracker.ietf.org/doc/html/rfc6749)
+[RFC 6749](https://datatracker.ietf.org/doc/html/rfc6749)
 
 - `/authorize`
 - `/token`
 
 ### OAuth 2.0 Token Introspection
 
-[OAuth 2.0 Token Introspection](https://datatracker.ietf.org/doc/html/rfc7662)
+[RFC 7662](https://datatracker.ietf.org/doc/html/rfc7662)
 
 - `/introspect`
 
 ### OAuth 2.0 Token Revocation 
 
-[OAuth 2.0 Token Revocation](https://datatracker.ietf.org/doc/html/rfc7009)
+[RFC 7009](https://datatracker.ietf.org/doc/html/rfc7009)
 
 - `/revoke`
 
 ### OAuth 2.0 Authorization Server Metadata
 
-[OAuth 2.0 Authorization Server Metadata](https://datatracker.ietf.org/doc/html/rfc8414)
+[RFC 8414](https://datatracker.ietf.org/doc/html/rfc8414)
 
 - `/.well-known/oauth-authorization-server`
 - `/keys`

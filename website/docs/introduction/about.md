@@ -12,7 +12,7 @@ Currently, **STOPnik** only depends on
 
 ## Related specifications
 
-| RFC                                                                                                                                 | Implementation |
+| Specifications                                                                                                                      | Implementation |
 |:------------------------------------------------------------------------------------------------------------------------------------|:--------------:|
 | [The OAuth 2.0 Authorization Framework](https://datatracker.ietf.org/doc/html/rfc6749)                                              |      Yes       | 
 | [Proof Key for Code Exchange by OAuth Public Clients](https://datatracker.ietf.org/doc/html/rfc7636)                                |      Yes       |
@@ -20,12 +20,12 @@ Currently, **STOPnik** only depends on
 | [OAuth 2.0 Token Revocation](https://datatracker.ietf.org/doc/html/rfc7009)                                                         |      Yes       |
 | [JSON Web Token (JWT) Profile for OAuth 2.0 Client Authentication and Authorization Grants](https://www.rfc-editor.org/rfc/rfc7523) |      Yes       |
 | [JSON Web Token (JWT)](https://datatracker.ietf.org/doc/html/rfc7519)                                                               |   Dependency   |
-| [OAuth 2.0 Authorization Server Metadata](https://datatracker.ietf.org/doc/html/rfc8414)                                            |    Planned     |
+| [OAuth 2.0 Authorization Server Metadata](https://datatracker.ietf.org/doc/html/rfc8414)                                            |   Partially    |
 | [OAuth 2.0 Device Authorization Grant](https://datatracker.ietf.org/doc/html/rfc8628)                                               |    Planned     |
 | [Resource Indicators for OAuth 2.0](https://datatracker.ietf.org/doc/html/rfc8707)                                                  |    Planned     |
 | [OAuth 2.0 Authorization Server Issuer Identification](https://datatracker.ietf.org/doc/html/rfc9207)                               |    Planned     |
-| [OpenID Connect Core 1.0](https://openid.net/specs/openid-connect-core-1_0.html)                                                    |    Planned     |
-| [OpenID Connect Discovery 1.0](https://openid.net/specs/openid-connect-discovery-1_0.html)                                          |    Planned     |
+| [OpenID Connect Core 1.0](https://openid.net/specs/openid-connect-core-1_0.html)                                                    |   Partially    |
+| [OpenID Connect Discovery 1.0](https://openid.net/specs/openid-connect-discovery-1_0.html)                                          |   Partially    |
 | [OpenID Connect Session Management 1.0](https://openid.net/specs/openid-connect-session-1_0.html)                                   |    Planned     |
 | [OpenID Connect Front-Channel Logout 1.0](https://openid.net/specs/openid-connect-frontchannel-1_0.html)                            |    Planned     |
 

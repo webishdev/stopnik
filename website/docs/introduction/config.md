@@ -10,31 +10,31 @@ The possible configuration options are listed in the next section.
 
 The configuration file (e.g. `config.yml`) may contain different root options which are described here as followed
 
-| Property  | Description                  | Required |
-|-----------|------------------------------|----------|
-| `server`  | Server configuration         | Yes      |
-| `ui`      | User interface configuration | No       |
-| `clients` | List of clients              | Yes      |
-| `users`   | List of users                | Yes      |
+| Property                              | Description                  | Required |
+|---------------------------------------|------------------------------|----------|
+| [`server`](#server-configuration)     | Server configuration         | Yes      |
+| [`ui`](#user-interface-configuration) | User interface configuration | No       |
+| [`clients`](#clients)                 | List of clients              | Yes      |
+| [`users`](#users)                     | List of users                | Yes      |
 
 ### Server configuration
 
 Root entry named `server`
 
-| Property                | Description                                                                                       | Required |
-|-------------------------|---------------------------------------------------------------------------------------------------|----------|
-| `logLevel`              | Log level                                                                                         | No       |
-| `cookies`               | Configuration related to cookie names                                                             | No       |
-| `addr`                  | [Go like address](https://pkg.go.dev/net#Dial), may contain IP and port                           | Yes      |
-| `secret`                | Server secret                                                                                     | No       |
-| `privateKey`            | General RSA or EC private key (can be overwritten for each client) to sign tokens                 | No       |
-| `issuer`                | Issuer                                                                                            | No       |
-| `tls`                   | Configuration for TLS                                                                             | No       |
-| `logoutRedirect`        | Where to redirect user after logout                                                               | No       |
-| `introspectScope`       | Scope which allows token introspection                                                            | No       |
-| `revokeScopeScope`      | Scope which allows token revocation                                                               | No       |
-| `sessionTimeoutSeconds` | Seconds until session will end                                                                    | No       |
-| `forwardAuth`           | [Traefik ForwardAuth](https://doc.traefik.io/traefik/middlewares/http/forwardauth/) configuration | No       |
+| Property                      | Description                                                                                       | Required |
+|-------------------------------|---------------------------------------------------------------------------------------------------|----------|
+| `logLevel`                    | Log level                                                                                         | No       |
+| [`cookies`](#cookies)         | Configuration related to cookie names                                                             | No       |
+| `addr`                        | [Go like address](https://pkg.go.dev/net#Dial), may contain IP and port                           | Yes      |
+| `secret`                      | Server secret                                                                                     | No       |
+| `privateKey`                  | General RSA or EC private key (can be overwritten for each client) to sign tokens                 | No       |
+| `issuer`                      | Issuer                                                                                            | No       |
+| [`tls`](#tls)                 | Configuration for TLS                                                                             | No       |
+| `logoutRedirect`              | Where to redirect user after logout                                                               | No       |
+| `introspectScope`             | Scope which allows token introspection                                                            | No       |
+| `revokeScopeScope`            | Scope which allows token revocation                                                               | No       |
+| `sessionTimeoutSeconds`       | Seconds until session will end                                                                    | No       |
+| [`forwardAuth`](#forwardauth) | [Traefik ForwardAuth](https://doc.traefik.io/traefik/middlewares/http/forwardauth/) configuration | No       |
 
 #### TLS
 
@@ -116,7 +116,7 @@ Each entry may contain the following options
 | `redirects`               | List of redirects URIs                                  | No       |
 | `opaqueToken`             | Use opaque token                                        | No       |
 | `passwordFallbackAllowed` | Form auth allowed                                       | No       |
-| `claims`                  | List of claims                                          | No       |
+| [`claims`](#claims)       | List of claims                                          | No       |
 | `audience`                | Audience                                                | No       |
 | `privateKey`              | RSA or EC private key to sign tokens                    | No       |
 | `rolesClaim`              | Name for the claim used to provide roles                | No       |
@@ -144,13 +144,13 @@ Root entry `users`
 
 Each entry may contain the following options
 
-| Property   | Description                                                        | Required |
-|------------|--------------------------------------------------------------------|----------|
-| `username` | Username                                                           | Yes      |
-| `password` | SHA512 hashed password                                             | Yes      |
-| `salt`     | Optional salt for password to avoid identical hash values          | No       |
-| `profile`  | User profile which will be used for OpenId Connect UserInfo        | No       |
-| `roles`    | YAML map for roles, key of the map is the id of the related client | No       |
+| Property                   | Description                                                        | Required |
+|----------------------------|--------------------------------------------------------------------|----------|
+| `username`                 | Username                                                           | Yes      |
+| `password`                 | SHA512 hashed password                                             | Yes      |
+| `salt`                     | Optional salt for password to avoid identical hash values          | No       |
+| [`profile`](#user-profile) | User profile which will be used for OpenId Connect UserInfo        | No       |
+| `roles`                    | YAML map for roles, key of the map is the id of the related client | No       |
 
 For `password` and `salt` see, [Command line - Password](../advanced/cmd.md#password)
 
@@ -162,24 +162,24 @@ Entry `users[n].profile`
 
 Each entry may contain the following options
 
-| Property            | Description                      | Required |
-|---------------------|----------------------------------|----------|
-| `givenName`         | Given name                       | No       |
-| `familyName`        | Family name                      | No       |
-| `nickname`          | Nickname                         | No       |
-| `preferredUserName` | Preferred username               | No       |
-| `email`             | E-Mail address                   | No       |
-| `emailVerified`     | E-Mail address verification flag | No       |
-| `gender`            | Gender                           | No       |
-| `birthDate`         | Birthdate                        | No       |
-| `zoneInfo`          | Zone information                 | No       |
-| `locale`            | locale                           | No       |
-| `phoneNumber`       | Phone number                     | No       |
-| `phoneVerified`     | Phone number verification flag   | No       |
-| `website`           | Website URL                      | No       |
-| `profile`           | Profile URL                      | No       |
-| `profilePicture`    | Profile picture URL              | No       |
-| `address`           | User address                     | No       |
+| Property                   | Description                      | Required |
+|----------------------------|----------------------------------|----------|
+| `givenName`                | Given name                       | No       |
+| `familyName`               | Family name                      | No       |
+| `nickname`                 | Nickname                         | No       |
+| `preferredUserName`        | Preferred username               | No       |
+| `email`                    | E-Mail address                   | No       |
+| `emailVerified`            | E-Mail address verification flag | No       |
+| `gender`                   | Gender                           | No       |
+| `birthDate`                | Birthdate                        | No       |
+| `zoneInfo`                 | Zone information                 | No       |
+| `locale`                   | locale                           | No       |
+| `phoneNumber`              | Phone number                     | No       |
+| `phoneVerified`            | Phone number verification flag   | No       |
+| `website`                  | Website URL                      | No       |
+| `profile`                  | Profile URL                      | No       |
+| `profilePicture`           | Profile picture URL              | No       |
+| [`address`](#user-address) | User address                     | No       |
 
 #### User address
 
