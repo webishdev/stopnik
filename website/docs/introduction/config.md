@@ -105,7 +105,7 @@ Each entry may contain the following options
 | Property                  | Description                                             | Required |
 |---------------------------|---------------------------------------------------------|----------|
 | `id`                      | The id of the client                                    | Yes      |
-| `clientSecret`            | SHA512 hashed secret                                    | Yes      |
+| `clientSecret`            | SHA512 hashed secret                                    | No       |
 | `salt`                    | Optional salt for secret to avoid identical hash values | No       |
 | `accessTTL`               | Access token time to live                               | No       |
 | `refreshTTL`              | Refresh token time to live                              | No       |
@@ -122,6 +122,8 @@ Each entry may contain the following options
 | `rolesClaim`              | Name for the claim used to provide roles                | No       |
 
 For `clientSecret` and `salt` see, [Command line - Password](../advanced/cmd.md#password)
+
+If no `clientSecret` is provided, the client is handled as public client, otherwise it will become a confidential client.
 
 #### Claims
 
