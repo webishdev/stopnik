@@ -171,7 +171,7 @@ func (h *Handler) handleGetRequest(w http.ResponseWriter, r *http.Request) {
 		} else if slices.Contains(responseTypes, oauth2.RtCode) {
 			setAuthorizationGrantParameter(query, id.String())
 		} else if idTokenRequest {
-			accessTokenHash := h.tokenManager.CreateAccessTokenHash(client, accessTokenResponse.AccessTokenKey)
+			accessTokenHash := h.tokenManager.CreateAccessTokenHash(client, accessTokenResponse.AccessTokenValue)
 			idToken = h.tokenManager.CreateIdToken(r, user.Username, client, scopes, authSession.Nonce, accessTokenHash)
 		} else {
 			log.Error("Invalid response type %v", responseTypes)
@@ -289,7 +289,7 @@ func setAuthorizationGrantParameter(query url.Values, code string) {
 }
 
 func setImplicitGrantParameter(query url.Values, accessTokenResponse oauth2.AccessTokenResponse) {
-	query.Set(oauth2.ParameterAccessToken, accessTokenResponse.AccessTokenKey)
+	query.Set(oauth2.ParameterAccessToken, accessTokenResponse.AccessTokenValue)
 	query.Set(oauth2.ParameterTokenType, string(accessTokenResponse.TokenType))
 	query.Set(oauth2.ParameterExpiresIn, fmt.Sprintf("%d", accessTokenResponse.ExpiresIn))
 	// https://datatracker.ietf.org/doc/html/rfc6749#section-4.2.2

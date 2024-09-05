@@ -11,58 +11,51 @@ import (
 )
 
 func Test_Metadata(t *testing.T) {
-	testMetadata(t)
-	testMetadataNotAllowedHttpMethods(t)
+	metadataHandler := NewMetadataHandler()
+
+	rr := httptest.NewRecorder()
+	request := httptest.NewRequest(http.MethodGet, endpoint.Keys, nil)
+
+	metadataHandler.ServeHTTP(rr, request)
+
+	if rr.Code != http.StatusOK {
+		t.Errorf("handler returned wrong status code: got %v want %v", rr.Code, http.StatusOK)
+	}
+
+	requestResponse := rr.Result()
+
+	metadata := testMetadataParse(t, requestResponse)
+
+	if metadata.Issuer != "http://example.com" {
+		t.Error("metadata issuer did not match")
+	}
+
+	if metadata.AuthorizationEndpoint != "http://example.com/authorize" {
+		t.Error("metadata authorization_endpoint did not match")
+	}
+
+	if metadata.TokenEndpoint != "http://example.com/token" {
+		t.Error("metadata token_endpoint did not match")
+	}
+
+	if metadata.JWKsUri != "http://example.com/keys" {
+		t.Error("metadata jwks_uri did not match")
+	}
+
+	if metadata.IntrospectionEndpoint != "http://example.com/introspect" {
+		t.Error("metadata introspection_endpoint did not match")
+	}
+
+	if metadata.RevocationEndpoint != "http://example.com/revoke" {
+		t.Error("metadata revocation_endpoint did not match")
+	}
+
+	if metadata.ServiceDocumentation != "https://stopnik.webish.dev" {
+		t.Error("metadata service_documentation did not match")
+	}
 }
 
-func testMetadata(t *testing.T) {
-	t.Run("Get metadata", func(t *testing.T) {
-		metadataHandler := NewMetadataHandler()
-
-		rr := httptest.NewRecorder()
-		request := httptest.NewRequest(http.MethodGet, endpoint.Keys, nil)
-
-		metadataHandler.ServeHTTP(rr, request)
-
-		if rr.Code != http.StatusOK {
-			t.Errorf("handler returned wrong status code: got %v want %v", rr.Code, http.StatusOK)
-		}
-
-		requestResponse := rr.Result()
-
-		metadata := testMetadataParse(t, requestResponse)
-
-		if metadata.Issuer != "http://example.com" {
-			t.Error("metadata issuer did not match")
-		}
-
-		if metadata.AuthorizationEndpoint != "http://example.com/authorize" {
-			t.Error("metadata authorization_endpoint did not match")
-		}
-
-		if metadata.TokenEndpoint != "http://example.com/token" {
-			t.Error("metadata token_endpoint did not match")
-		}
-
-		if metadata.JWKsUri != "http://example.com/keys" {
-			t.Error("metadata jwks_uri did not match")
-		}
-
-		if metadata.IntrospectionEndpoint != "http://example.com/introspect" {
-			t.Error("metadata introspection_endpoint did not match")
-		}
-
-		if metadata.RevocationEndpoint != "http://example.com/revoke" {
-			t.Error("metadata revocation_endpoint did not match")
-		}
-
-		if metadata.ServiceDocumentation != "https://stopnik.webish.dev" {
-			t.Error("metadata service_documentation did not match")
-		}
-	})
-}
-
-func testMetadataNotAllowedHttpMethods(t *testing.T) {
+func Test_MetadataNotAllowedHttpMethods(t *testing.T) {
 	var testInvalidMetadataHttpMethods = []string{
 		http.MethodPost,
 		http.MethodPut,

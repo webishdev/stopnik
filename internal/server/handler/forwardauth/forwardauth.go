@@ -5,6 +5,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/webishdev/stopnik/internal/config"
 	"github.com/webishdev/stopnik/internal/endpoint"
+	internalHttp "github.com/webishdev/stopnik/internal/http"
 	"github.com/webishdev/stopnik/internal/manager/cookie"
 	"github.com/webishdev/stopnik/internal/manager/session"
 	"github.com/webishdev/stopnik/internal/oauth2"
@@ -40,9 +41,14 @@ func NewForwardAuthHandler(cookieManager *cookie.Manager, authSessionManager ses
 func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	log.AccessLogRequest(r)
 
-	forwardProtocol := r.Header.Get("X-Forwarded-Proto")
-	forwardHost := r.Header.Get("X-Forwarded-Host")
-	forwardPath := r.Header.Get("X-Forwarded-Uri")
+	forwardProtocol := r.Header.Get(internalHttp.XForwardProtocol)
+	forwardHost := r.Header.Get(internalHttp.XForwardHost)
+	forwardPath := r.Header.Get(internalHttp.XForwardUri)
+
+	if forwardProtocol == "" || forwardHost == "" || forwardPath == "" {
+		h.errorHandler.BadRequestHandler(w, r)
+		return
+	}
 
 	forwardString := fmt.Sprintf("%s://%s%s", forwardProtocol, forwardHost, forwardPath)
 	forwardUri, forwardUriError := url.Parse(forwardString)
@@ -51,8 +57,10 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	forwardAuthParameterName := h.config.GetForwardAuthParameterName()
+
 	codeParameter := forwardUri.Query().Get(oauth2.ParameterCode)
-	forwardIdParameter := forwardUri.Query().Get("forward_id")
+	forwardIdParameter := forwardUri.Query().Get(forwardAuthParameterName)
 
 	_, validCookie := h.cookieManager.ValidateAuthCookie(r)
 
@@ -68,7 +76,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		} else {
 			http.SetCookie(w, authCookie)
-			w.Header().Set("Location", forwardSession.RedirectUri)
+			w.Header().Set(internalHttp.Location, forwardSession.RedirectUri)
 			w.WriteHeader(http.StatusTemporaryRedirect)
 			return
 		}
@@ -79,7 +87,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	forwardSessionId := uuid.NewString()
 
 	redirectUri, redirectUriError := createUri(forwardString, "", func(query url.Values) {
-		query.Set("forward_id", forwardSessionId)
+		query.Set(forwardAuthParameterName, forwardSessionId)
 	})
 	if redirectUriError != nil {
 		h.errorHandler.InternalServerErrorHandler(w, r)

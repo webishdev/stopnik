@@ -38,15 +38,13 @@ func Test_Logout(t *testing.T) {
 	testInvalidCookies(t, testConfig)
 
 	testLogout(t, testConfig)
-
-	testLogoutNotAllowedHttpMethods(t)
 }
 
 func testInvalidCookies(t *testing.T, testConfig *config.Config) {
 	t.Run("Logout with invalid cookie", func(t *testing.T) {
 		cookieManager := cookie.GetCookieManagerInstance()
 
-		cookie := http.Cookie{
+		authCookie := http.Cookie{
 			Name:     testConfig.GetAuthCookieName(),
 			Value:    "foobar",
 			Path:     "/",
@@ -60,7 +58,7 @@ func testInvalidCookies(t *testing.T, testConfig *config.Config) {
 		rr := httptest.NewRecorder()
 
 		request := httptest.NewRequest(http.MethodPost, endpoint.Logout, nil)
-		request.AddCookie(&cookie)
+		request.AddCookie(&authCookie)
 
 		logoutHandler.ServeHTTP(rr, request)
 
@@ -88,7 +86,7 @@ func testLogout(t *testing.T, testConfig *config.Config) {
 			cookieManager := cookie.GetCookieManagerInstance()
 
 			user, _ := testConfig.GetUser("foo")
-			cookie, _ := cookieManager.CreateAuthCookie(user.Username)
+			authCookie, _ := cookieManager.CreateAuthCookie(user.Username)
 
 			logoutHandler := NewLogoutHandler(cookieManager, test.handlerRedirect)
 
@@ -103,7 +101,7 @@ func testLogout(t *testing.T, testConfig *config.Config) {
 			body := strings.NewReader(bodyString)
 
 			request := httptest.NewRequest(http.MethodPost, endpoint.Logout, body)
-			request.AddCookie(&cookie)
+			request.AddCookie(&authCookie)
 			if bodyString != "" {
 				request.Header.Add(internalHttp.ContentType, "application/x-www-form-urlencoded")
 			}
@@ -137,7 +135,7 @@ func testLogout(t *testing.T, testConfig *config.Config) {
 	}
 }
 
-func testLogoutNotAllowedHttpMethods(t *testing.T) {
+func Test_LogoutNotAllowedHttpMethods(t *testing.T) {
 	var testInvalidLogoutHttpMethods = []string{
 		http.MethodGet,
 		http.MethodPut,

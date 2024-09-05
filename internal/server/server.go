@@ -125,7 +125,7 @@ func (stopnikServer *StopnikServer) Start() {
 			errorServer := stopnikServer.listenAndServe(stopnikServer.config.Server.TLS.Addr, *stopnikServer.serveTLS)
 
 			if errorServer != nil && !errors.Is(errorServer, http.ErrServerClosed) {
-				log.Error("Error starting server: %v", errorServer)
+				log.Error("Error starting TLS server: %v", errorServer)
 			}
 		}()
 	}

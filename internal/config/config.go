@@ -32,8 +32,9 @@ type Cookies struct {
 }
 
 type ForwardAuth struct {
-	Endpoint    string `yaml:"endpoint"`
-	ExternalUrl string `yaml:"externalUrl"`
+	Endpoint      string `yaml:"endpoint"`
+	ExternalUrl   string `yaml:"externalUrl"`
+	ParameterName string `yaml:"parameterName"`
 }
 
 type Server struct {
@@ -47,6 +48,7 @@ type Server struct {
 	IntrospectScope       string      `yaml:"introspectScope"`
 	RevokeScope           string      `yaml:"revokeScopeScope"`
 	SessionTimeoutSeconds int         `yaml:"sessionTimeoutSeconds"`
+	Issuer                string      `yaml:"issuer"`
 	ForwardAuth           ForwardAuth `yaml:"forwardAuth"`
 }
 
@@ -108,7 +110,6 @@ type Client struct {
 	OpaqueToken             bool     `yaml:"opaqueToken"`
 	PasswordFallbackAllowed bool     `yaml:"passwordFallbackAllowed"`
 	Claims                  []Claim  `yaml:"claims"`
-	Issuer                  string   `yaml:"issuer"`
 	Audience                []string `yaml:"audience"`
 	PrivateKey              string   `yaml:"privateKey"`
 	RolesClaim              string   `yaml:"rolesClaim"`
@@ -295,12 +296,23 @@ func (config *Config) GetOidc() bool {
 	return config.oidc
 }
 
+func (config *Config) GetIssuer(requestData *internalHttp.RequestData) string {
+	if requestData == nil || requestData.Host == "" || requestData.Scheme == "" {
+		return GetOrDefaultString(config.Server.Issuer, "STOPnik")
+	}
+	return GetOrDefaultString(config.Server.Issuer, requestData.IssuerString())
+}
+
 func (config *Config) GetForwardAuthEnabled() bool {
 	return config.Server.ForwardAuth.ExternalUrl != ""
 }
 
 func (config *Config) GetForwardAuthEndpoint() string {
 	return GetOrDefaultString(config.Server.ForwardAuth.Endpoint, "/forward")
+}
+
+func (config *Config) GetForwardAuthParameterName() string {
+	return GetOrDefaultString(config.Server.ForwardAuth.ParameterName, "forward_id")
 }
 
 func (client *Client) GetRolesClaim() string {
@@ -317,13 +329,6 @@ func (client *Client) GetRefreshTTL() int {
 
 func (client *Client) GetIdTTL() int {
 	return GetOrDefaultInt(client.IdTTL, 0)
-}
-
-func (client *Client) GetIssuer(requestData *internalHttp.RequestData) string {
-	if requestData == nil || requestData.Host == "" || requestData.Scheme == "" {
-		return GetOrDefaultString(client.Issuer, "STOPnik")
-	}
-	return GetOrDefaultString(client.Issuer, requestData.IssuerString())
 }
 
 func (client *Client) GetAudience() []string {

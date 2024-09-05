@@ -56,62 +56,53 @@ func Test_Keys(t *testing.T) {
 		t.Fatal(initializationError)
 	}
 
-	testKeys(t)
+	keyManger := key.GetKeyMangerInstance()
 
-	testKeysNotAllowedHttpMethods(t)
+	keysHandler := NewKeysHandler(keyManger)
 
-}
+	rr := httptest.NewRecorder()
+	request := httptest.NewRequest(http.MethodGet, endpoint.Keys, nil)
 
-func testKeys(t *testing.T) {
-	t.Run("Get keys", func(t *testing.T) {
-		keyManger := key.GetKeyMangerInstance()
+	keysHandler.ServeHTTP(rr, request)
 
-		keysHandler := NewKeysHandler(keyManger)
+	if rr.Code != http.StatusOK {
+		t.Errorf("handler returned wrong status code: got %v want %v", rr.Code, http.StatusOK)
+	}
 
-		rr := httptest.NewRecorder()
-		request := httptest.NewRequest(http.MethodGet, endpoint.Keys, nil)
+	requestResponse := rr.Result()
 
-		keysHandler.ServeHTTP(rr, request)
+	keys := testKeyParse(t, requestResponse)
 
-		if rr.Code != http.StatusOK {
-			t.Errorf("handler returned wrong status code: got %v want %v", rr.Code, http.StatusOK)
-		}
+	if len(keys.Keys) != 3 {
+		t.Errorf("handler returned wrong number of keys: got %v want %v", len(keys.Keys), 3)
+	}
 
-		requestResponse := rr.Result()
-
-		keys := testKeyParse(t, requestResponse)
-
-		if len(keys.Keys) != 3 {
-			t.Errorf("handler returned wrong number of keys: got %v want %v", len(keys.Keys), 3)
-		}
-
-		containsES512 := slices.ContainsFunc(keys.Keys, func(r responseKeys) bool {
-			return r.Alg == string(jwa.ES512) && r.Kty == "EC"
-		})
-
-		if !containsES512 {
-			t.Error("key for ES512 was missing")
-		}
-
-		containsES256 := slices.ContainsFunc(keys.Keys, func(r responseKeys) bool {
-			return r.Alg == string(jwa.ES256) && r.Kty == "EC"
-		})
-
-		if !containsES256 {
-			t.Error("key for ES256 was missing")
-		}
-
-		containsRSA256 := slices.ContainsFunc(keys.Keys, func(r responseKeys) bool {
-			return r.Alg == string(jwa.RS256) && r.Kty == "RSA"
-		})
-
-		if !containsRSA256 {
-			t.Error("key for RS256 was missing")
-		}
+	containsES512 := slices.ContainsFunc(keys.Keys, func(r responseKeys) bool {
+		return r.Alg == string(jwa.ES512) && r.Kty == "EC"
 	})
+
+	if !containsES512 {
+		t.Error("key for ES512 was missing")
+	}
+
+	containsES256 := slices.ContainsFunc(keys.Keys, func(r responseKeys) bool {
+		return r.Alg == string(jwa.ES256) && r.Kty == "EC"
+	})
+
+	if !containsES256 {
+		t.Error("key for ES256 was missing")
+	}
+
+	containsRSA256 := slices.ContainsFunc(keys.Keys, func(r responseKeys) bool {
+		return r.Alg == string(jwa.RS256) && r.Kty == "RSA"
+	})
+
+	if !containsRSA256 {
+		t.Error("key for RS256 was missing")
+	}
 }
 
-func testKeysNotAllowedHttpMethods(t *testing.T) {
+func Test_KeysNotAllowedHttpMethods(t *testing.T) {
 	var testInvalidIntrospectHttpMethods = []string{
 		http.MethodPost,
 		http.MethodPut,

@@ -7,55 +7,77 @@ import (
 	"github.com/webishdev/stopnik/internal/endpoint"
 	internalHttp "github.com/webishdev/stopnik/internal/http"
 	"github.com/webishdev/stopnik/internal/oauth2"
+	"github.com/webishdev/stopnik/internal/oidc"
 	"net/http"
 	"net/http/httptest"
 	"reflect"
 	"testing"
 )
 
-func Test_Token(t *testing.T) {
+func Test_AccessTokenResponse(t *testing.T) {
 	type tokenTestParameter struct {
 		opaque          bool
 		refreshTokenTTL int
+		idTTL           int
 	}
 
 	var opaqueTokenParameter = []tokenTestParameter{
-		{true, 0},
-		{false, 0},
-		{true, 100},
-		{false, 100},
+		{true, 0, 0},
+		{false, 0, 0},
+		{true, 100, 0},
+		{false, 100, 0},
+		{false, 0, 100},
+		{false, 100, 100},
+		{false, 100, 100},
 	}
 
 	for _, test := range opaqueTokenParameter {
-		testMessage := fmt.Sprintf("Valid token opaque %t refreshTTL %d", test.opaque, test.refreshTokenTTL)
+		testMessage := fmt.Sprintf("Valid token opaque %t refreshTTL %d idTTL %d", test.opaque, test.refreshTokenTTL, test.idTTL)
 		t.Run(testMessage, func(t *testing.T) {
-			testConfig := createTestConfig(t, test.opaque, test.refreshTokenTTL)
+			testConfig := createTestConfig(t, test.opaque, test.refreshTokenTTL, test.idTTL, "../../../.test_files/ecdsa521key.pem")
 			tokenManager := GetTokenManagerInstance()
 			client, clientExists := testConfig.GetClient("foo")
 			if !clientExists {
 				t.Fatal("client does not exist")
 			}
 
-			request := httptest.NewRequest(http.MethodPost, endpoint.Token, nil)
-			accessTokenResponse := tokenManager.CreateAccessTokenResponse(request, "foo", client, []string{"abc", "def"}, "")
+			requestScopes := []string{"abc", "def"}
+			if test.idTTL > 0 {
+				requestScopes = append(requestScopes, oidc.ScopeOpenId)
+			}
 
-			if accessTokenResponse.AccessTokenKey == "" {
+			request := httptest.NewRequest(http.MethodPost, endpoint.Token, nil)
+			accessTokenResponse := tokenManager.CreateAccessTokenResponse(request, "foo", client, requestScopes, "")
+
+			if accessTokenResponse.AccessTokenValue == "" {
 				t.Error("empty access token")
 			}
 
-			if test.refreshTokenTTL == 0 && accessTokenResponse.RefreshTokenKey != "" {
+			if test.refreshTokenTTL == 0 && accessTokenResponse.RefreshTokenValue != "" {
 				t.Error("refresh token should not exists")
 			}
 
-			if test.refreshTokenTTL > 0 && accessTokenResponse.RefreshTokenKey == "" {
+			if test.refreshTokenTTL > 0 && accessTokenResponse.RefreshTokenValue == "" {
 				t.Error("refresh token should exists")
+			}
+
+			if test.idTTL > 0 && !client.Oidc {
+				t.Error("client should be configured for OIDC because of id token")
+			}
+
+			if test.idTTL == 0 && accessTokenResponse.IdTokenValue != "" {
+				t.Error("id token should not exists")
+			}
+
+			if test.idTTL > 0 && accessTokenResponse.IdTokenValue == "" {
+				t.Error("id token should exists")
 			}
 
 			if accessTokenResponse.TokenType != oauth2.TtBearer {
 				t.Error("wrong token type")
 			}
 
-			authorizationHeader := fmt.Sprintf("%s %s", internalHttp.AuthBearer, accessTokenResponse.AccessTokenKey)
+			authorizationHeader := fmt.Sprintf("%s %s", internalHttp.AuthBearer, accessTokenResponse.AccessTokenValue)
 
 			user, _, scopes, valid := tokenManager.ValidateAccessToken(authorizationHeader)
 			if !valid {
@@ -66,21 +88,21 @@ func Test_Token(t *testing.T) {
 				t.Error("wrong username")
 			}
 
-			if !reflect.DeepEqual(scopes, []string{"abc", "def"}) {
-				t.Errorf("assertion error, %v != %v", scopes, []string{"abc", "def"})
+			if !reflect.DeepEqual(scopes, requestScopes) {
+				t.Errorf("assertion error, %v != %v", scopes, requestScopes)
 			}
 
-			accessToken, accessTokenExists := tokenManager.GetAccessToken(accessTokenResponse.AccessTokenKey)
+			accessToken, accessTokenExists := tokenManager.GetAccessToken(accessTokenResponse.AccessTokenValue)
 
 			if !accessTokenExists {
 				t.Error("access token does not exist")
 			}
 
-			if accessToken.Key != accessTokenResponse.AccessTokenKey {
+			if accessToken.Key != accessTokenResponse.AccessTokenValue {
 				t.Error("wrong access token")
 			}
 
-			refreshToken, refreshTokenExists := tokenManager.GetRefreshToken(accessTokenResponse.RefreshTokenKey)
+			refreshToken, refreshTokenExists := tokenManager.GetRefreshToken(accessTokenResponse.RefreshTokenValue)
 
 			if test.refreshTokenTTL == 0 && refreshTokenExists {
 				t.Error("refresh token should not exists")
@@ -90,26 +112,46 @@ func Test_Token(t *testing.T) {
 				t.Error("refresh token should exists")
 			}
 
-			if test.refreshTokenTTL > 0 && refreshToken.Key != accessTokenResponse.RefreshTokenKey {
+			if test.refreshTokenTTL > 0 && refreshToken.Key != accessTokenResponse.RefreshTokenValue {
 				t.Error("wrong refresh token")
 			}
 
 			tokenManager.RevokeRefreshToken(refreshToken)
-			_, refreshTokenExists = tokenManager.GetRefreshToken(accessTokenResponse.RefreshTokenKey)
+			_, refreshTokenExists = tokenManager.GetRefreshToken(accessTokenResponse.RefreshTokenValue)
 			if refreshTokenExists {
 				t.Error("refresh token should not exists")
 			}
 
 			tokenManager.RevokeAccessToken(accessToken)
-			_, accessTokenExists = tokenManager.GetAccessToken(accessTokenResponse.AccessTokenKey)
+			_, accessTokenExists = tokenManager.GetAccessToken(accessTokenResponse.AccessTokenValue)
 			if accessTokenExists {
 				t.Error("access token should not exists")
 			}
 		})
 	}
 
+	t.Run("Invalid User in token", func(t *testing.T) {
+		testConfig := createTestConfig(t, false, 0, 0, "")
+		tokenManager := GetTokenManagerInstance()
+		client, clientExists := testConfig.GetClient("foo")
+		if !clientExists {
+			t.Fatal("client does not exist")
+		}
+
+		request := httptest.NewRequest(http.MethodPost, endpoint.Token, nil)
+		accessTokenResponse := tokenManager.CreateAccessTokenResponse(request, "bar", client, []string{"abc", "def"}, "")
+
+		_, _, _, valid := tokenManager.ValidateAccessToken(fmt.Sprintf("%s %s", internalHttp.AuthBearer, accessTokenResponse.AccessTokenValue))
+
+		if valid {
+			t.Error("should not be valid")
+		}
+	})
+}
+
+func Test_ValidAccessToken(t *testing.T) {
 	t.Run("Invalid HTTP Authorization header", func(t *testing.T) {
-		createTestConfig(t, false, 0)
+		createTestConfig(t, false, 0, 0, "")
 		tokenManager := GetTokenManagerInstance()
 
 		_, _, _, valid := tokenManager.ValidateAccessToken("foooo")
@@ -120,28 +162,10 @@ func Test_Token(t *testing.T) {
 	})
 
 	t.Run("Invalid Token value", func(t *testing.T) {
-		createTestConfig(t, false, 0)
+		createTestConfig(t, false, 0, 0, "")
 		tokenManager := GetTokenManagerInstance()
 
 		_, _, _, valid := tokenManager.ValidateAccessToken(fmt.Sprintf("%s %s", internalHttp.AuthBearer, "foo"))
-
-		if valid {
-			t.Error("should not be valid")
-		}
-	})
-
-	t.Run("Invalid User in token", func(t *testing.T) {
-		testConfig := createTestConfig(t, false, 0)
-		tokenManager := GetTokenManagerInstance()
-		client, clientExists := testConfig.GetClient("foo")
-		if !clientExists {
-			t.Fatal("client does not exist")
-		}
-
-		request := httptest.NewRequest(http.MethodPost, endpoint.Token, nil)
-		accessTokenResponse := tokenManager.CreateAccessTokenResponse(request, "bar", client, []string{"abc", "def"}, "")
-
-		_, _, _, valid := tokenManager.ValidateAccessToken(fmt.Sprintf("%s %s", internalHttp.AuthBearer, accessTokenResponse.AccessTokenKey))
 
 		if valid {
 			t.Error("should not be valid")
@@ -174,7 +198,8 @@ func Test_HashToken(t *testing.T) {
 
 }
 
-func createTestConfig(t *testing.T, opaque bool, refreshTokenTTL int) *config.Config {
+func createTestConfig(t *testing.T, opaque bool, refreshTokenTTL int, idTTokenTTL int, keyPath string) *config.Config {
+	var isOidc = idTTokenTTL > 0
 	testConfig := &config.Config{
 		Clients: []config.Client{
 			{
@@ -183,6 +208,9 @@ func createTestConfig(t *testing.T, opaque bool, refreshTokenTTL int) *config.Co
 				Redirects:    []string{"https://example.com/callback"},
 				OpaqueToken:  opaque,
 				RefreshTTL:   refreshTokenTTL,
+				IdTTL:        idTTokenTTL,
+				Oidc:         isOidc,
+				PrivateKey:   keyPath,
 			},
 		},
 		Users: []config.User{

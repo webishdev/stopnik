@@ -15,7 +15,7 @@ import (
 	"testing"
 )
 
-func Test_Account(t *testing.T) {
+func Test_AccountWithCookie(t *testing.T) {
 
 	testConfig := &config.Config{
 		Clients: []config.Client{
@@ -38,92 +38,78 @@ func Test_Account(t *testing.T) {
 		t.Fatal(initializationError)
 	}
 
-	testAccountWithoutCookie(t, testConfig)
+	requestValidator := validation.NewRequestValidator()
+	cookieManager := cookie.GetCookieManagerInstance()
+	templateManager := template.GetTemplateManagerInstance()
 
-	testAccountWithCookie(t, testConfig)
+	user, _ := testConfig.GetUser("foo")
+	authCookie, _ := cookieManager.CreateAuthCookie(user.Username)
 
-	testAccountLogin(t, testConfig)
+	accountHandler := NewAccountHandler(requestValidator, cookieManager, templateManager)
 
-	testAccountNotAllowedHttpMethods(t)
+	rr := httptest.NewRecorder()
+
+	request := httptest.NewRequest(http.MethodGet, endpoint.Account, nil)
+	request.AddCookie(&authCookie)
+
+	accountHandler.ServeHTTP(rr, request)
+
+	if rr.Code != http.StatusOK {
+		t.Errorf("handler returned wrong status code: got %v want %v", rr.Code, http.StatusOK)
+	}
+
+	contentType := rr.Header().Get(internalHttp.ContentType)
+
+	if contentType != "text/html; charset=utf-8" {
+		t.Errorf("content type was not text/html: %v", contentType)
+	}
+
+	response := rr.Result()
+	body, bodyReadErr := io.ReadAll(response.Body)
+
+	if bodyReadErr != nil {
+		t.Errorf("could not read response body: %v", bodyReadErr)
+	}
+
+	if body == nil {
+		t.Errorf("response body was nil")
+	}
 }
 
-func testAccountWithoutCookie(t *testing.T, testConfig *config.Config) {
-	t.Run("Account without cookie", func(t *testing.T) {
-		requestValidator := validation.NewRequestValidator()
-		cookieManager := cookie.GetCookieManagerInstance()
-		templateManager := template.GetTemplateManagerInstance()
+func Test_AccountWithoutCookie(t *testing.T) {
+	requestValidator := validation.NewRequestValidator()
+	cookieManager := cookie.GetCookieManagerInstance()
+	templateManager := template.GetTemplateManagerInstance()
 
-		accountHandler := NewAccountHandler(requestValidator, cookieManager, templateManager)
+	accountHandler := NewAccountHandler(requestValidator, cookieManager, templateManager)
 
-		rr := httptest.NewRecorder()
+	rr := httptest.NewRecorder()
 
-		accountHandler.ServeHTTP(rr, httptest.NewRequest(http.MethodGet, endpoint.Account, nil))
+	accountHandler.ServeHTTP(rr, httptest.NewRequest(http.MethodGet, endpoint.Account, nil))
 
-		if rr.Code != http.StatusOK {
-			t.Errorf("handler returned wrong status code: got %v want %v", rr.Code, http.StatusOK)
-		}
+	if rr.Code != http.StatusOK {
+		t.Errorf("handler returned wrong status code: got %v want %v", rr.Code, http.StatusOK)
+	}
 
-		contentType := rr.Header().Get(internalHttp.ContentType)
+	contentType := rr.Header().Get(internalHttp.ContentType)
 
-		if contentType != "text/html; charset=utf-8" {
-			t.Errorf("content type was not text/html: %v", contentType)
-		}
+	if contentType != "text/html; charset=utf-8" {
+		t.Errorf("content type was not text/html: %v", contentType)
+	}
 
-		response := rr.Result()
-		body, bodyReadErr := io.ReadAll(response.Body)
+	response := rr.Result()
+	body, bodyReadErr := io.ReadAll(response.Body)
 
-		if bodyReadErr != nil {
-			t.Errorf("could not read response body: %v", bodyReadErr)
-		}
+	if bodyReadErr != nil {
+		t.Errorf("could not read response body: %v", bodyReadErr)
+	}
 
-		if body == nil {
-			t.Errorf("response body was nil")
-		}
-	})
+	if body == nil {
+		t.Errorf("response body was nil")
+	}
 }
 
-func testAccountWithCookie(t *testing.T, testConfig *config.Config) {
-	t.Run("Account cookie", func(t *testing.T) {
-		requestValidator := validation.NewRequestValidator()
-		cookieManager := cookie.GetCookieManagerInstance()
-		templateManager := template.GetTemplateManagerInstance()
-
-		user, _ := testConfig.GetUser("foo")
-		cookie, _ := cookieManager.CreateAuthCookie(user.Username)
-
-		accountHandler := NewAccountHandler(requestValidator, cookieManager, templateManager)
-
-		rr := httptest.NewRecorder()
-
-		request := httptest.NewRequest(http.MethodGet, endpoint.Account, nil)
-		request.AddCookie(&cookie)
-
-		accountHandler.ServeHTTP(rr, request)
-
-		if rr.Code != http.StatusOK {
-			t.Errorf("handler returned wrong status code: got %v want %v", rr.Code, http.StatusOK)
-		}
-
-		contentType := rr.Header().Get(internalHttp.ContentType)
-
-		if contentType != "text/html; charset=utf-8" {
-			t.Errorf("content type was not text/html: %v", contentType)
-		}
-
-		response := rr.Result()
-		body, bodyReadErr := io.ReadAll(response.Body)
-
-		if bodyReadErr != nil {
-			t.Errorf("could not read response body: %v", bodyReadErr)
-		}
-
-		if body == nil {
-			t.Errorf("response body was nil")
-		}
-	})
-}
-
-func testAccountLogin(t *testing.T, testConfig *config.Config) {
+func Test_AccountLogin(t *testing.T) {
 	type loginParameter struct {
 		username string
 		password string
@@ -140,7 +126,7 @@ func testAccountLogin(t *testing.T, testConfig *config.Config) {
 			cookieManager := cookie.GetCookieManagerInstance()
 			templateManager := template.GetTemplateManagerInstance()
 
-			cookie, _ := cookieManager.CreateAuthCookie(test.username)
+			authCookie, _ := cookieManager.CreateAuthCookie(test.username)
 
 			accountHandler := NewAccountHandler(requestValidator, cookieManager, templateManager)
 
@@ -154,7 +140,7 @@ func testAccountLogin(t *testing.T, testConfig *config.Config) {
 
 			request := httptest.NewRequest(http.MethodPost, endpoint.Account, body)
 			request.Header.Add(internalHttp.ContentType, "application/x-www-form-urlencoded")
-			request.AddCookie(&cookie)
+			request.AddCookie(&authCookie)
 
 			accountHandler.ServeHTTP(rr, request)
 
@@ -174,7 +160,7 @@ func testAccountLogin(t *testing.T, testConfig *config.Config) {
 	}
 }
 
-func testAccountNotAllowedHttpMethods(t *testing.T) {
+func Test_AccountNotAllowedHttpMethods(t *testing.T) {
 	var testInvalidAccountHttpMethods = []string{
 		http.MethodPut,
 		http.MethodPatch,

@@ -51,61 +51,47 @@ func Test_Introspect(t *testing.T) {
 		t.Fatal(initializationError)
 	}
 
-	testIntrospectMissingClientCredentials(t)
-
-	testIntrospectInvalidClientCredentials(t)
-
-	testIntrospectEmptyToken(t)
-
-	testIntrospectInvalidToken(t)
-
 	testIntrospect(t, testConfig)
 
 	testIntrospectWithoutHint(t, testConfig)
 
 	testIntrospectDisabled(t, testConfig)
-
-	testIntrospectNotAllowedHttpMethods(t)
 }
 
-func testIntrospectMissingClientCredentials(t *testing.T) {
-	t.Run("Missing client credentials", func(t *testing.T) {
-		requestValidator := validation.NewRequestValidator()
-		tokenManager := token.GetTokenManagerInstance()
+func Test_IntrospectMissingClientCredentials(t *testing.T) {
+	requestValidator := validation.NewRequestValidator()
+	tokenManager := token.GetTokenManagerInstance()
 
-		introspectHandler := NewIntrospectHandler(requestValidator, tokenManager)
+	introspectHandler := NewIntrospectHandler(requestValidator, tokenManager)
 
-		rr := httptest.NewRecorder()
+	rr := httptest.NewRecorder()
 
-		introspectHandler.ServeHTTP(rr, httptest.NewRequest(http.MethodPost, endpoint.Introspect, nil))
+	introspectHandler.ServeHTTP(rr, httptest.NewRequest(http.MethodPost, endpoint.Introspect, nil))
 
-		if rr.Code != http.StatusUnauthorized {
-			t.Errorf("handler returned wrong status code: got %v want %v", rr.Code, http.StatusUnauthorized)
-		}
-	})
+	if rr.Code != http.StatusUnauthorized {
+		t.Errorf("handler returned wrong status code: got %v want %v", rr.Code, http.StatusUnauthorized)
+	}
 }
 
-func testIntrospectInvalidClientCredentials(t *testing.T) {
-	t.Run("Invalid client credentials", func(t *testing.T) {
-		requestValidator := validation.NewRequestValidator()
-		tokenManager := token.GetTokenManagerInstance()
+func Test_IntrospectInvalidClientCredentials(t *testing.T) {
+	requestValidator := validation.NewRequestValidator()
+	tokenManager := token.GetTokenManagerInstance()
 
-		introspectHandler := NewIntrospectHandler(requestValidator, tokenManager)
+	introspectHandler := NewIntrospectHandler(requestValidator, tokenManager)
 
-		rr := httptest.NewRecorder()
+	rr := httptest.NewRecorder()
 
-		request := httptest.NewRequest(http.MethodPost, endpoint.Introspect, nil)
-		request.Header.Add(internalHttp.Authorization, fmt.Sprintf("Basic %s", testTokenCreateBasicAuth("foo", "xxx")))
+	request := httptest.NewRequest(http.MethodPost, endpoint.Introspect, nil)
+	request.Header.Add(internalHttp.Authorization, fmt.Sprintf("Basic %s", testTokenCreateBasicAuth("foo", "xxx")))
 
-		introspectHandler.ServeHTTP(rr, request)
+	introspectHandler.ServeHTTP(rr, request)
 
-		if rr.Code != http.StatusUnauthorized {
-			t.Errorf("handler returned wrong status code: got %v want %v", rr.Code, http.StatusUnauthorized)
-		}
-	})
+	if rr.Code != http.StatusUnauthorized {
+		t.Errorf("handler returned wrong status code: got %v want %v", rr.Code, http.StatusUnauthorized)
+	}
 }
 
-func testIntrospectEmptyToken(t *testing.T) {
+func Test_IntrospectEmptyToken(t *testing.T) {
 	type introspectParameter struct {
 		tokenHint oauth2.IntrospectTokenType
 	}
@@ -151,7 +137,7 @@ func testIntrospectEmptyToken(t *testing.T) {
 	}
 }
 
-func testIntrospectInvalidToken(t *testing.T) {
+func Test_IntrospectInvalidToken(t *testing.T) {
 	type introspectParameter struct {
 		tokenHint oauth2.IntrospectTokenType
 	}
@@ -198,6 +184,36 @@ func testIntrospectInvalidToken(t *testing.T) {
 	}
 }
 
+func Test_IntrospectNotAllowedHttpMethods(t *testing.T) {
+	var testInvalidIntrospectHttpMethods = []string{
+		http.MethodGet,
+		http.MethodPut,
+		http.MethodPatch,
+		http.MethodDelete,
+	}
+
+	testConfig := &config.Config{}
+	initializationError := config.Initialize(testConfig)
+	if initializationError != nil {
+		t.Fatal(initializationError)
+	}
+
+	for _, method := range testInvalidIntrospectHttpMethods {
+		testMessage := fmt.Sprintf("Introspect with unsupported method %s", method)
+		t.Run(testMessage, func(t *testing.T) {
+			introspectHandler := NewIntrospectHandler(&validation.RequestValidator{}, &token.Manager{})
+
+			rr := httptest.NewRecorder()
+
+			introspectHandler.ServeHTTP(rr, httptest.NewRequest(method, endpoint.Introspect, nil))
+
+			if rr.Code != http.StatusMethodNotAllowed {
+				t.Errorf("handler returned wrong status code: got %v want %v", rr.Code, http.StatusMethodNotAllowed)
+			}
+		})
+	}
+}
+
 func testIntrospect(t *testing.T, testConfig *config.Config) {
 	type introspectParameter struct {
 		tokenHint oauth2.IntrospectTokenType
@@ -237,15 +253,15 @@ func testIntrospect(t *testing.T, testConfig *config.Config) {
 
 			introspectHandler := NewIntrospectHandler(requestValidator, tokenManager)
 
-			token := accessTokenResponse.AccessTokenKey
+			accessTokenValue := accessTokenResponse.AccessTokenValue
 			if test.tokenHint == oauth2.ItRefreshToken {
-				token = accessTokenResponse.RefreshTokenKey
+				accessTokenValue = accessTokenResponse.RefreshTokenValue
 			}
 
 			rr := httptest.NewRecorder()
 
 			bodyString := testCreateBody(
-				oauth2.ParameterToken, token,
+				oauth2.ParameterToken, accessTokenValue,
 				oauth2.ParameterTokenTypeHint, test.tokenHint,
 			)
 			body := strings.NewReader(bodyString)
@@ -310,15 +326,15 @@ func testIntrospectWithoutHint(t *testing.T, testConfig *config.Config) {
 
 			introspectHandler := NewIntrospectHandler(requestValidator, tokenManager)
 
-			token := accessTokenResponse.AccessTokenKey
+			accessTokenValue := accessTokenResponse.AccessTokenValue
 			if test.tokenType == oauth2.ItRefreshToken {
-				token = accessTokenResponse.RefreshTokenKey
+				accessTokenValue = accessTokenResponse.RefreshTokenValue
 			}
 
 			rr := httptest.NewRecorder()
 
 			bodyString := testCreateBody(
-				oauth2.ParameterToken, token,
+				oauth2.ParameterToken, accessTokenValue,
 			)
 			body := strings.NewReader(bodyString)
 
@@ -382,15 +398,15 @@ func testIntrospectDisabled(t *testing.T, testConfig *config.Config) {
 
 			introspectHandler := NewIntrospectHandler(requestValidator, tokenManager)
 
-			token := accessTokenResponse.AccessTokenKey
+			accessTokenValue := accessTokenResponse.AccessTokenValue
 			if test.tokenHint == oauth2.ItRefreshToken {
-				token = accessTokenResponse.RefreshTokenKey
+				accessTokenValue = accessTokenResponse.RefreshTokenValue
 			}
 
 			rr := httptest.NewRecorder()
 
 			bodyString := testCreateBody(
-				oauth2.ParameterToken, token,
+				oauth2.ParameterToken, accessTokenValue,
 				oauth2.ParameterTokenTypeHint, test.tokenHint,
 			)
 			body := strings.NewReader(bodyString)
@@ -403,36 +419,6 @@ func testIntrospectDisabled(t *testing.T, testConfig *config.Config) {
 
 			if rr.Code != http.StatusServiceUnavailable {
 				t.Errorf("handler returned wrong status code: got %v want %v", rr.Code, http.StatusServiceUnavailable)
-			}
-		})
-	}
-}
-
-func testIntrospectNotAllowedHttpMethods(t *testing.T) {
-	var testInvalidIntrospectHttpMethods = []string{
-		http.MethodGet,
-		http.MethodPut,
-		http.MethodPatch,
-		http.MethodDelete,
-	}
-
-	testConfig := &config.Config{}
-	initializationError := config.Initialize(testConfig)
-	if initializationError != nil {
-		t.Fatal(initializationError)
-	}
-
-	for _, method := range testInvalidIntrospectHttpMethods {
-		testMessage := fmt.Sprintf("Introspect with unsupported method %s", method)
-		t.Run(testMessage, func(t *testing.T) {
-			introspectHandler := NewIntrospectHandler(&validation.RequestValidator{}, &token.Manager{})
-
-			rr := httptest.NewRecorder()
-
-			introspectHandler.ServeHTTP(rr, httptest.NewRequest(method, endpoint.Introspect, nil))
-
-			if rr.Code != http.StatusMethodNotAllowed {
-				t.Errorf("handler returned wrong status code: got %v want %v", rr.Code, http.StatusMethodNotAllowed)
 			}
 		})
 	}

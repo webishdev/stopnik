@@ -16,9 +16,9 @@ type RefreshToken struct {
 
 // AccessTokenResponse as described in https://datatracker.ietf.org/doc/html/rfc6749#section-4.1.4
 type AccessTokenResponse struct {
-	AccessTokenKey  string    `json:"access_token,omitempty"`
-	TokenType       TokenType `json:"token_type,omitempty"`
-	ExpiresIn       int       `json:"expires_in,omitempty"` // seconds
-	RefreshTokenKey string    `json:"refresh_token,omitempty"`
-	IdToken         string    `json:"id_token,omitempty"` // https://openid.net/specs/openid-connect-core-1_0.html#IDToken
+	AccessTokenValue  string    `json:"access_token,omitempty"`
+	TokenType         TokenType `json:"token_type,omitempty"`
+	ExpiresIn         int       `json:"expires_in,omitempty"` // seconds
+	RefreshTokenValue string    `json:"refresh_token,omitempty"`
+	IdTokenValue      string    `json:"id_token,omitempty"` // https://openid.net/specs/openid-connect-core-1_0.html#IDToken
 }

@@ -163,6 +163,7 @@ func Test_SimpleServerConfiguration(t *testing.T) {
 		*origin = Config{
 			Server: Server{
 				Secret: "5XyLSgKpo5kWrJqm",
+				Issuer: "http://foo.com/bar",
 				Cookies: Cookies{
 					AuthName: "my_auth",
 				},
@@ -197,6 +198,11 @@ func Test_SimpleServerConfiguration(t *testing.T) {
 	serverSecret := config.GetServerSecret()
 	if serverSecret != "5XyLSgKpo5kWrJqm" {
 		t.Error("expected server secret to be '5XyLSgKpo5kWrJqm'")
+	}
+
+	issuer := config.GetIssuer(&internalHttp.RequestData{})
+	if issuer != "http://foo.com/bar" {
+		t.Error("expected issuer to be 'http://foo.com/bar'")
 	}
 
 	authCookieName := config.GetAuthCookieName()
@@ -431,6 +437,9 @@ func Test_ValidClients(t *testing.T) {
 	}, func(in []byte, out interface{}) (err error) {
 		origin := out.(*Config)
 		*origin = Config{
+			Server: Server{
+				Issuer: "other",
+			},
 			Clients: []Client{
 				{
 					Id:           "foo",
@@ -444,7 +453,6 @@ func Test_ValidClients(t *testing.T) {
 					AccessTTL:    20,
 					RefreshTTL:   60,
 					IdTTL:        40,
-					Issuer:       "other",
 					RolesClaim:   "groups",
 					Audience:     []string{"one", "two"},
 				},
@@ -650,11 +658,6 @@ func assertClientValues(t *testing.T, config *Config, expected testExpectedClien
 	idTokenTTL := client.GetIdTTL()
 	if idTokenTTL != expected.expectedIdTokenTTL {
 		t.Errorf("expected id token TTL to be %d, got %d", expected.expectedIdTokenTTL, idTokenTTL)
-	}
-
-	issuer := client.GetIssuer(&internalHttp.RequestData{})
-	if issuer != expected.expectedIssuer {
-		t.Errorf("expected issuer to be '%s', got '%s'", expected.expectedIssuer, issuer)
 	}
 
 	audience := client.GetAudience()

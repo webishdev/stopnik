@@ -49,61 +49,47 @@ func Test_Revoke(t *testing.T) {
 		t.Fatal(initializationError)
 	}
 
-	testRevokeMissingClientCredentials(t)
-
-	testRevokeInvalidClientCredentials(t)
-
-	testRevokeEmptyToken(t)
-
-	testRevokeInvalidToken(t)
-
 	testRevoke(t, testConfig)
 
 	testRevokeWithoutHint(t, testConfig)
 
 	testRevokeDisabled(t, testConfig)
-
-	testRevokeNotAllowedHttpMethods(t)
 }
 
-func testRevokeMissingClientCredentials(t *testing.T) {
-	t.Run("Missing client credentials", func(t *testing.T) {
-		requestValidator := validation.NewRequestValidator()
-		tokenManager := token.GetTokenManagerInstance()
+func Test_RevokeMissingClientCredentials(t *testing.T) {
+	requestValidator := validation.NewRequestValidator()
+	tokenManager := token.GetTokenManagerInstance()
 
-		revokeHandler := NewRevokeHandler(requestValidator, tokenManager)
+	revokeHandler := NewRevokeHandler(requestValidator, tokenManager)
 
-		rr := httptest.NewRecorder()
+	rr := httptest.NewRecorder()
 
-		revokeHandler.ServeHTTP(rr, httptest.NewRequest(http.MethodPost, endpoint.Revoke, nil))
+	revokeHandler.ServeHTTP(rr, httptest.NewRequest(http.MethodPost, endpoint.Revoke, nil))
 
-		if rr.Code != http.StatusUnauthorized {
-			t.Errorf("handler returned wrong status code: got %v want %v", rr.Code, http.StatusUnauthorized)
-		}
-	})
+	if rr.Code != http.StatusUnauthorized {
+		t.Errorf("handler returned wrong status code: got %v want %v", rr.Code, http.StatusUnauthorized)
+	}
 }
 
-func testRevokeInvalidClientCredentials(t *testing.T) {
-	t.Run("Invalid client credentials", func(t *testing.T) {
-		requestValidator := validation.NewRequestValidator()
-		tokenManager := token.GetTokenManagerInstance()
+func Test_RevokeInvalidClientCredentials(t *testing.T) {
+	requestValidator := validation.NewRequestValidator()
+	tokenManager := token.GetTokenManagerInstance()
 
-		revokeHandler := NewRevokeHandler(requestValidator, tokenManager)
+	revokeHandler := NewRevokeHandler(requestValidator, tokenManager)
 
-		rr := httptest.NewRecorder()
+	rr := httptest.NewRecorder()
 
-		request := httptest.NewRequest(http.MethodPost, endpoint.Revoke, nil)
-		request.Header.Add(internalHttp.Authorization, fmt.Sprintf("Basic %s", testTokenCreateBasicAuth("foo", "xxx")))
+	request := httptest.NewRequest(http.MethodPost, endpoint.Revoke, nil)
+	request.Header.Add(internalHttp.Authorization, fmt.Sprintf("Basic %s", testTokenCreateBasicAuth("foo", "xxx")))
 
-		revokeHandler.ServeHTTP(rr, request)
+	revokeHandler.ServeHTTP(rr, request)
 
-		if rr.Code != http.StatusUnauthorized {
-			t.Errorf("handler returned wrong status code: got %v want %v", rr.Code, http.StatusUnauthorized)
-		}
-	})
+	if rr.Code != http.StatusUnauthorized {
+		t.Errorf("handler returned wrong status code: got %v want %v", rr.Code, http.StatusUnauthorized)
+	}
 }
 
-func testRevokeEmptyToken(t *testing.T) {
+func Test_RevokeEmptyToken(t *testing.T) {
 	type introspectParameter struct {
 		tokenHint oauth2.IntrospectTokenType
 	}
@@ -142,7 +128,7 @@ func testRevokeEmptyToken(t *testing.T) {
 	}
 }
 
-func testRevokeInvalidToken(t *testing.T) {
+func Test_RevokeInvalidToken(t *testing.T) {
 	type introspectParameter struct {
 		tokenHint oauth2.IntrospectTokenType
 	}
@@ -220,15 +206,15 @@ func testRevoke(t *testing.T, testConfig *config.Config) {
 
 			revokeHandler := NewRevokeHandler(requestValidator, tokenManager)
 
-			token := accessTokenResponse.AccessTokenKey
+			accessTokenValue := accessTokenResponse.AccessTokenValue
 			if test.tokenHint == oauth2.ItRefreshToken {
-				token = accessTokenResponse.RefreshTokenKey
+				accessTokenValue = accessTokenResponse.RefreshTokenValue
 			}
 
 			rr := httptest.NewRecorder()
 
 			bodyString := testCreateBody(
-				oauth2.ParameterToken, token,
+				oauth2.ParameterToken, accessTokenValue,
 				oauth2.ParameterTokenTypeHint, test.tokenHint,
 			)
 			body := strings.NewReader(bodyString)
@@ -244,12 +230,12 @@ func testRevoke(t *testing.T, testConfig *config.Config) {
 			}
 
 			if test.tokenHint == oauth2.ItAccessToken {
-				_, accessTokenExists := tokenManager.GetAccessToken(token)
+				_, accessTokenExists := tokenManager.GetAccessToken(accessTokenValue)
 				if accessTokenExists {
 					t.Errorf("access token should have been revoked")
 				}
 			} else if test.tokenHint == oauth2.ItRefreshToken {
-				_, refreshTokenExists := tokenManager.GetRefreshToken(token)
+				_, refreshTokenExists := tokenManager.GetRefreshToken(accessTokenValue)
 				if refreshTokenExists {
 					t.Errorf("refresh token should have been revoked")
 				}
@@ -298,15 +284,15 @@ func testRevokeWithoutHint(t *testing.T, testConfig *config.Config) {
 
 			revokeHandler := NewRevokeHandler(requestValidator, tokenManager)
 
-			token := accessTokenResponse.AccessTokenKey
+			accessTokenValue := accessTokenResponse.AccessTokenValue
 			if test.tokenHint == oauth2.ItRefreshToken {
-				token = accessTokenResponse.RefreshTokenKey
+				accessTokenValue = accessTokenResponse.RefreshTokenValue
 			}
 
 			rr := httptest.NewRecorder()
 
 			bodyString := testCreateBody(
-				oauth2.ParameterToken, token,
+				oauth2.ParameterToken, accessTokenValue,
 			)
 			body := strings.NewReader(bodyString)
 
@@ -321,12 +307,12 @@ func testRevokeWithoutHint(t *testing.T, testConfig *config.Config) {
 			}
 
 			if test.tokenHint == oauth2.ItAccessToken {
-				_, accessTokenExists := tokenManager.GetAccessToken(token)
+				_, accessTokenExists := tokenManager.GetAccessToken(accessTokenValue)
 				if accessTokenExists {
 					t.Errorf("access token should have been revoked")
 				}
 			} else if test.tokenHint == oauth2.ItRefreshToken {
-				_, refreshTokenExists := tokenManager.GetRefreshToken(token)
+				_, refreshTokenExists := tokenManager.GetRefreshToken(accessTokenValue)
 				if refreshTokenExists {
 					t.Errorf("refresh token should have been revoked")
 				}
@@ -375,15 +361,15 @@ func testRevokeDisabled(t *testing.T, testConfig *config.Config) {
 
 			revokeHandler := NewRevokeHandler(requestValidator, tokenManager)
 
-			token := accessTokenResponse.AccessTokenKey
+			accessTokenValue := accessTokenResponse.AccessTokenValue
 			if test.tokenHint == oauth2.ItRefreshToken {
-				token = accessTokenResponse.RefreshTokenKey
+				accessTokenValue = accessTokenResponse.RefreshTokenValue
 			}
 
 			rr := httptest.NewRecorder()
 
 			bodyString := testCreateBody(
-				oauth2.ParameterToken, token,
+				oauth2.ParameterToken, accessTokenValue,
 				oauth2.ParameterTokenTypeHint, test.tokenHint,
 			)
 			body := strings.NewReader(bodyString)
@@ -402,7 +388,7 @@ func testRevokeDisabled(t *testing.T, testConfig *config.Config) {
 	}
 }
 
-func testRevokeNotAllowedHttpMethods(t *testing.T) {
+func Test_RevokeNotAllowedHttpMethods(t *testing.T) {
 	var testInvalidRevokeHttpMethods = []string{
 		http.MethodGet,
 		http.MethodPut,

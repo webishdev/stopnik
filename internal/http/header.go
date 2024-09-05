@@ -5,6 +5,9 @@ const (
 	ContentType              string = "Content-Type"
 	Authorization            string = "Authorization"
 	AccessControlAllowOrigin string = "Access-Control-Allow-Origin"
+	XForwardProtocol         string = "X-Forwarded-Proto"
+	XForwardHost             string = "X-Forwarded-Host"
+	XForwardUri              string = "X-Forwarded-Uri"
 )
 
 const (

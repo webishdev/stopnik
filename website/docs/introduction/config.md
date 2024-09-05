@@ -10,30 +10,31 @@ The possible configuration options are listed in the next section.
 
 The configuration file (e.g. `config.yml`) may contain different root options which are described here as followed
 
-| Property  | Description                  |
-|-----------|------------------------------|
-| `server`  | Server configuration         |
-| `ui`      | User interface configuration |
-| `clients` | List of clients              |
-| `users`   | List of users                |
+| Property  | Description                  | Required |
+|-----------|------------------------------|----------|
+| `server`  | Server configuration         | Yes      |
+| `ui`      | User interface configuration | No       |
+| `clients` | List of clients              | Yes      |
+| `users`   | List of users                | Yes      |
 
-### Server configuration 
+### Server configuration
 
 Root entry named `server`
 
-| Property                | Description                                                                       |
-|-------------------------|-----------------------------------------------------------------------------------|
-| `logLevel`              | Log level                                                                         |
-| `cookies`               | Configuration related to cookie names                                             |
-| `addr`                  | [Go like address](https://pkg.go.dev/net#Dial), may contain IP and port           |
-| `secret`                | Server secret                                                                     |
-| `privateKey`            | General RSA or EC private key (can be overwritten for each client) to sign tokens |
-| `tls`                   | Configuration for TLS                                                             |
-| `logoutRedirect`        | Where to redirect user after logout                                               |
-| `introspectScope`       | Scope which allows token introspection                                            |
-| `revokeScopeScope`      | Scope which allows token revocation                                               |
-| `sessionTimeoutSeconds` | Seconds until session will end                                                    |
-
+| Property                | Description                                                                                       | Required |
+|-------------------------|---------------------------------------------------------------------------------------------------|----------|
+| `logLevel`              | Log level                                                                                         | No       |
+| `cookies`               | Configuration related to cookie names                                                             | No       |
+| `addr`                  | [Go like address](https://pkg.go.dev/net#Dial), may contain IP and port                           | Yes      |
+| `secret`                | Server secret                                                                                     | No       |
+| `privateKey`            | General RSA or EC private key (can be overwritten for each client) to sign tokens                 | No       |
+| `issuer`                | Issuer                                                                                            | No       |
+| `tls`                   | Configuration for TLS                                                                             | No       |
+| `logoutRedirect`        | Where to redirect user after logout                                                               | No       |
+| `introspectScope`       | Scope which allows token introspection                                                            | No       |
+| `revokeScopeScope`      | Scope which allows token revocation                                                               | No       |
+| `sessionTimeoutSeconds` | Seconds until session will end                                                                    | No       |
+| `forwardAuth`           | [Traefik ForwardAuth](https://doc.traefik.io/traefik/middlewares/http/forwardauth/) configuration | No       |
 
 #### TLS
 
@@ -41,10 +42,10 @@ Public and private keys to sign tokens
 
 Entry `server.tls`
 
-| Property | Description                                                             |
-|----------|-------------------------------------------------------------------------|
-| `addr`   | [Go like address](https://pkg.go.dev/net#Dial), may contain IP and port |
-| `keys`   | Public and private keys for TLS                                         |
+| Property | Description                                                             | Required |
+|----------|-------------------------------------------------------------------------|----------|
+| `addr`   | [Go like address](https://pkg.go.dev/net#Dial), may contain IP and port | Yes      |
+| `keys`   | Public and private keys for TLS                                         | Yes      |
 
 ##### TLS keys
 
@@ -52,10 +53,10 @@ Public and private keys for TLS
 
 Entry `server.tls.keys`
 
-| Property | Description      |
-|----------|------------------|
-| `cert`   | Certificate file |
-| `key`    | Key file         |
+| Property | Description      | Required |
+|----------|------------------|----------|
+| `cert`   | Certificate file | Yes      |
+| `key`    | Key file         | Yes      |
 
 #### Cookies
 
@@ -63,23 +64,35 @@ Public and private keys to sign tokens
 
 Entry `server.cookies`
 
-| Property      | Description                      |
-|---------------|----------------------------------|
-| `authName`    | Name of the authorization cookie |
-| `messageName` | Name of internal message cookie  |
+| Property      | Description                      | Required |
+|---------------|----------------------------------|----------|
+| `authName`    | Name of the authorization cookie | No       |
+| `messageName` | Name of internal message cookie  | No       |
+
+#### ForwardAuth
+
+**STOPnik** supports [Traefik ForwardAuth](https://doc.traefik.io/traefik/middlewares/http/forwardauth/) out of the box.
+
+Entry `server.forwardAuth`
+
+| Property        | Description                                         | Required |
+|-----------------|-----------------------------------------------------|----------|
+| `endpoint`      | Internal endpoint to be called by Traefik           | No       |
+| `externalUrl`   | URL of **STOPnik** to redirect the user for a login | Yes      |
+| `parameterName` | URL parameter used by **STOPnik** for ForwardAuth   | No       |
 
 ### User interface configuration
 
 Root entry named `ui`
 
-| Property          | Description                                                                                                                                 |
-|-------------------|---------------------------------------------------------------------------------------------------------------------------------------------|
-| `logoImage`       | Path of additional logo image                                                                                                               |
-| `logoContentType` | [HTTP Mime type](https://developer.mozilla.org/en-US/docs/Web/HTTP/Basics_of_HTTP/MIME_types/Common_types) of logo image if not `image/png` |
-| `hideFooter`      | Will hide the **STOPnik** footer                                                                                                            |
-| `hideMascot`      | Will hide the **STOPnik** mascot                                                                                                            |
-| `footerText`      | The footer text                                                                                                                             |
-| `title`           | Title                                                                                                                                       |
+| Property          | Description                                                                                                                                 | Required |
+|-------------------|---------------------------------------------------------------------------------------------------------------------------------------------|----------|
+| `logoImage`       | Path of additional logo image                                                                                                               | No       |
+| `logoContentType` | [HTTP Mime type](https://developer.mozilla.org/en-US/docs/Web/HTTP/Basics_of_HTTP/MIME_types/Common_types) of logo image if not `image/png` | No       |
+| `hideFooter`      | Will hide the **STOPnik** footer                                                                                                            | No       |
+| `hideMascot`      | Will hide the **STOPnik** mascot                                                                                                            | No       |
+| `footerText`      | The footer text                                                                                                                             | No       |
+| `title`           | Title                                                                                                                                       | No       |
 
 ### Clients
 
@@ -89,26 +102,24 @@ Root entry `clients`
 
 Each entry may contain the following options
 
-| Property                  | Description                                             |
-|---------------------------|---------------------------------------------------------|
-| `id`                      | The id of the client                                    |
-| `clientSecret`            | SHA512 hashed secret                                    |
-| `salt`                    | Optional salt for secret to avoid identical hash values |
-| `accessTTL`               | Access token time to live                               |
-| `refreshTTL`              | Refresh token time to live                              |
-| `idTTL`                   | OpenId Connect ID token time to live                    |
-| `oidc`                    | Flag to allow an client to handle OpenId Connect        |
-| `introspect`              | Introspection scope                                     |
-| `revoke`                  | Revocation scope                                        |
-| `redirects`               | List of redirects URIs                                  |
-| `opaqueToken`             | Use opaque token                                        |
-| `passwordFallbackAllowed` | Form auth allowed                                       |
-| `claims`                  | List of claims                                          |
-| `issuer`                  | Issuer                                                  |
-| `audience`                | Audience                                                |
-| `privateKey`              | RSA or EC private key to sign tokens                    |
-| `rolesClaim`              | Name for the claim used to provide roles                |
-
+| Property                  | Description                                             | Required |
+|---------------------------|---------------------------------------------------------|----------|
+| `id`                      | The id of the client                                    | Yes      |
+| `clientSecret`            | SHA512 hashed secret                                    | Yes      |
+| `salt`                    | Optional salt for secret to avoid identical hash values | No       |
+| `accessTTL`               | Access token time to live                               | No       |
+| `refreshTTL`              | Refresh token time to live                              | No       |
+| `idTTL`                   | OpenId Connect ID token time to live                    | No       |
+| `oidc`                    | Flag to allow an client to handle OpenId Connect        | No       |
+| `introspect`              | Introspection scope                                     | No       |
+| `revoke`                  | Revocation scope                                        | No       |
+| `redirects`               | List of redirects URIs                                  | No       |
+| `opaqueToken`             | Use opaque token                                        | No       |
+| `passwordFallbackAllowed` | Form auth allowed                                       | No       |
+| `claims`                  | List of claims                                          | No       |
+| `audience`                | Audience                                                | No       |
+| `privateKey`              | RSA or EC private key to sign tokens                    | No       |
+| `rolesClaim`              | Name for the claim used to provide roles                | No       |
 
 For `clientSecret` and `salt` see, [Command line - Password](../advanced/cmd.md#password)
 
@@ -120,10 +131,10 @@ Entry `clients[n].calims`
 
 Each entry may contain the following options
 
-| Property | Description |
-|----------|-------------|
-| `name`   | Name        |
-| `value`  | Value       |
+| Property | Description | Required |
+|----------|-------------|----------|
+| `name`   | Name        | Yes      |
+| `value`  | Value       | Yes      |
 
 ### Users
 
@@ -133,13 +144,13 @@ Root entry `users`
 
 Each entry may contain the following options
 
-| Property   | Description                                                        |
-|------------|--------------------------------------------------------------------|
-| `username` | Username                                                           |
-| `password` | SHA512 hashed password                                             |
-| `salt`     | Optional salt for password to avoid identical hash values          |
-| `profile`  | User profile which will be used for OpenId Connect UserInfo        |
-| `roles`    | YAML map for roles, key of the map is the id of the related client |
+| Property   | Description                                                        | Required |
+|------------|--------------------------------------------------------------------|----------|
+| `username` | Username                                                           | Yes      |
+| `password` | SHA512 hashed password                                             | Yes      |
+| `salt`     | Optional salt for password to avoid identical hash values          | No       |
+| `profile`  | User profile which will be used for OpenId Connect UserInfo        | No       |
+| `roles`    | YAML map for roles, key of the map is the id of the related client | No       |
 
 For `password` and `salt` see, [Command line - Password](../advanced/cmd.md#password)
 
@@ -151,24 +162,24 @@ Entry `users[n].profile`
 
 Each entry may contain the following options
 
-| Property            | Description                      |
-|---------------------|----------------------------------|
-| `givenName`         | Given name                       |
-| `familyName`        | Family name                      |
-| `nickname`          | Nickname                         |
-| `preferredUserName` | Preferred username               |
-| `email`             | E-Mail address                   |
-| `emailVerified`     | E-Mail address verification flag |
-| `gender`            | Gender                           |
-| `birthDate`         | Birthdate                        |
-| `zoneInfo`          | Zone information                 |
-| `locale`            | locale                           |
-| `phoneNumber`       | Phone number                     |
-| `phoneVerified`     | Phone number verficiation flag   |
-| `website`           | Website URL                      |
-| `profile`           | Profile URL                      |
-| `profilePicture`    | Profile picture URL              |
-| `address`           | User address                     |
+| Property            | Description                      | Required |
+|---------------------|----------------------------------|----------|
+| `givenName`         | Given name                       | No       |
+| `familyName`        | Family name                      | No       |
+| `nickname`          | Nickname                         | No       |
+| `preferredUserName` | Preferred username               | No       |
+| `email`             | E-Mail address                   | No       |
+| `emailVerified`     | E-Mail address verification flag | No       |
+| `gender`            | Gender                           | No       |
+| `birthDate`         | Birthdate                        | No       |
+| `zoneInfo`          | Zone information                 | No       |
+| `locale`            | locale                           | No       |
+| `phoneNumber`       | Phone number                     | No       |
+| `phoneVerified`     | Phone number verification flag   | No       |
+| `website`           | Website URL                      | No       |
+| `profile`           | Profile URL                      | No       |
+| `profilePicture`    | Profile picture URL              | No       |
+| `address`           | User address                     | No       |
 
 #### User address
 
@@ -178,14 +189,13 @@ Entry `users[n].profile.address`
 
 Each entry may contain the following options
 
-| Property     | Description |
-|--------------|-------------|
-| `street`     | Street      |
-| `city`       | City        |
-| `postalCode` | Postal code |
-| `region`     | Region      |
-| `country`    | Country     |
-
+| Property     | Description | Required |
+|--------------|-------------|----------|
+| `street`     | Street      | No       |
+| `city`       | City        | No       |
+| `postalCode` | Postal code | No       |
+| `region`     | Region      | No       |
+| `country`    | Country     | No       |
 
 ## Examples
 
@@ -215,7 +225,8 @@ Not login and not `OAuth | OpenId Connect` flow will be possible.
 
 ### Development configuration
 
-The shown `config.yml` is used during development and can be found [here](https://github.com/webishdev/stopnik/blob/main/config.yml) in the repository.
+The shown `config.yml` is used during development and can be
+found [here](https://github.com/webishdev/stopnik/blob/main/config.yml) in the repository.
 
 To be able to use it, the referenced `server.crt` and `server.key` must be created as self-signed certificate.
 
@@ -226,17 +237,19 @@ server:
     authName: stopnik_auth
     messageName: stopnik_message
   #logoutRedirect: http://localhost:8080
+  forwardAuth:
+    externalUrl: http://stopnik.localhost:9090
   secret: WRYldij9ebtDZ5VJSsxNAfCZ
-  privateKey: ./test_keys/rsa256key.pem
+  privateKey: ./.test_files/rsa256key.pem
   addr: :8082
   tls:
     addr: :8081
     keys:
-      cert: ./test_keys/server.crt
-      key: ./test_keys/server.key
+      cert: ./.test_files/server.crt
+      key: ./.test_files/server.key
 ui:
 #  hideFooter: true
-#  hideMascot: true
+#  hideLogo: true
 #  footerText: Some nice line!
 #  title: Test realm
 clients:
@@ -252,6 +265,7 @@ clients:
       - https://oauth.pstmn.io/v1/callback
       - http://localhost:8080/session/callback
       - http://localhost:5173/reporting/oidc-callback*
+      - http://localhost:8082/health
     claims:
       - name: foo
         value: bar
@@ -268,7 +282,7 @@ clients:
     salt: 321
     accessTTL: 5
     refreshTTL: 15
-    privateKey: ./test_keys/ecdsa521key.pem
+    privateKey: ./.test_files/ecdsa521key.pem
     redirects:
       - https://oauth.pstmn.io/v1/callback
 users:

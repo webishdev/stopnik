@@ -11,7 +11,7 @@ import (
 	"testing"
 )
 
-func Test_Health(t *testing.T) {
+func Test_HealthWithToken(t *testing.T) {
 	testConfig := &config.Config{
 		Clients: []config.Client{
 			{
@@ -32,69 +32,67 @@ func Test_Health(t *testing.T) {
 		t.Fatal(initializationError)
 	}
 
-	t.Run("Health without token", func(t *testing.T) {
-		tokenManager := token.GetTokenManagerInstance()
+	tokenManager := token.GetTokenManagerInstance()
 
-		healthHandler := NewHealthHandler(tokenManager)
+	client, clientExists := testConfig.GetClient("foo")
+	if !clientExists {
+		t.Error("client should exist")
+	}
 
-		httpRequest := &http.Request{
-			Method: http.MethodGet,
-		}
-		rr := httptest.NewRecorder()
+	request := httptest.NewRequest(http.MethodPost, endpoint.Token, nil)
+	tokenResponse := tokenManager.CreateAccessTokenResponse(request, "foo", client, []string{"a:foo", "b:bar"}, "")
 
-		healthHandler.ServeHTTP(rr, httpRequest)
+	healthHandler := NewHealthHandler(tokenManager)
 
-		contentType := rr.Header().Get(internalHttp.ContentType)
+	httpRequest := &http.Request{
+		Method: http.MethodGet,
+		Header: http.Header{
+			internalHttp.Authorization: []string{"Bearer " + tokenResponse.AccessTokenValue},
+		},
+	}
+	rr := httptest.NewRecorder()
 
-		if contentType != internalHttp.ContentTypeJSON {
-			t.Errorf("content type should be %s", internalHttp.ContentTypeJSON)
-		}
+	healthHandler.ServeHTTP(rr, httpRequest)
 
-		jsonString := rr.Body.String()
+	contentType := rr.Header().Get(internalHttp.ContentType)
 
-		if jsonString != `{"ping":"pong"}` {
-			t.Errorf("json string should be %s, but was %s", `{"ping":"pong"}`, jsonString)
-		}
+	if contentType != internalHttp.ContentTypeJSON {
+		t.Errorf("content type should be %s", internalHttp.ContentTypeJSON)
+	}
 
-	})
+	jsonString := rr.Body.String()
 
-	t.Run("Health with token", func(t *testing.T) {
-		tokenManager := token.GetTokenManagerInstance()
+	if jsonString != `{"ping":"pong","username":"foo","scopes":["a:foo","b:bar"]}` {
+		t.Errorf("json string should be %s, but was %s", `{"ping":"pong","username":"foo","scopes":["a:foo","b:bar"]}`, jsonString)
+	}
+}
 
-		client, clientExists := testConfig.GetClient("foo")
-		if !clientExists {
-			t.Error("client should exist")
-		}
+func Test_HealthWithoutToken(t *testing.T) {
+	tokenManager := token.GetTokenManagerInstance()
 
-		request := httptest.NewRequest(http.MethodPost, endpoint.Token, nil)
-		tokenResponse := tokenManager.CreateAccessTokenResponse(request, "foo", client, []string{"a:foo", "b:bar"}, "")
+	healthHandler := NewHealthHandler(tokenManager)
 
-		healthHandler := NewHealthHandler(tokenManager)
+	httpRequest := &http.Request{
+		Method: http.MethodGet,
+	}
+	rr := httptest.NewRecorder()
 
-		httpRequest := &http.Request{
-			Method: http.MethodGet,
-			Header: http.Header{
-				internalHttp.Authorization: []string{"Bearer " + tokenResponse.AccessTokenKey},
-			},
-		}
-		rr := httptest.NewRecorder()
+	healthHandler.ServeHTTP(rr, httpRequest)
 
-		healthHandler.ServeHTTP(rr, httpRequest)
+	contentType := rr.Header().Get(internalHttp.ContentType)
 
-		contentType := rr.Header().Get(internalHttp.ContentType)
+	if contentType != internalHttp.ContentTypeJSON {
+		t.Errorf("content type should be %s", internalHttp.ContentTypeJSON)
+	}
 
-		if contentType != internalHttp.ContentTypeJSON {
-			t.Errorf("content type should be %s", internalHttp.ContentTypeJSON)
-		}
+	jsonString := rr.Body.String()
 
-		jsonString := rr.Body.String()
+	if jsonString != `{"ping":"pong"}` {
+		t.Errorf("json string should be %s, but was %s", `{"ping":"pong"}`, jsonString)
+	}
+}
 
-		if jsonString != `{"ping":"pong","username":"foo","scopes":["a:foo","b:bar"]}` {
-			t.Errorf("json string should be %s, but was %s", `{"ping":"pong","username":"foo","scopes":["a:foo","b:bar"]}`, jsonString)
-		}
-
-	})
-
+func Test_HealthNotAllowedHttpMethods(t *testing.T) {
 	var testInvalidHealthHttpMethods = []string{
 		http.MethodPost,
 		http.MethodPut,

@@ -33,13 +33,6 @@ func Test_Assets(t *testing.T) {
 
 	assetsHandler := NewAssetHandler()
 
-	var testAssetsHttpMethods = []string{
-		http.MethodPost,
-		http.MethodPut,
-		http.MethodPatch,
-		http.MethodDelete,
-	}
-
 	type assetHttpParameter struct {
 		path         string
 		expectedCode int
@@ -89,6 +82,15 @@ func Test_Assets(t *testing.T) {
 				t.Errorf("matching values is wrong, %v != %v", test.matches, matches)
 			}
 		})
+	}
+}
+
+func Test_AssetsNotAllowedHttpMethods(t *testing.T) {
+	var testAssetsHttpMethods = []string{
+		http.MethodPost,
+		http.MethodPut,
+		http.MethodPatch,
+		http.MethodDelete,
 	}
 
 	for _, method := range testAssetsHttpMethods {
