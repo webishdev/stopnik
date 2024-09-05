@@ -154,29 +154,8 @@ func GetConfigInstance() *Config {
 func Initialize(config *Config) error {
 	configLock.Lock()
 	defer configLock.Unlock()
-	for userIndex, user := range config.Users {
-		if user.Username == "" || len(user.Password) != 128 {
-			invalidUser := fmt.Sprintf("User configuration invalid. User %d %v", userIndex, user)
-			return errors.New(invalidUser)
-		}
-	}
 
-	for clientIndex, client := range config.Clients {
-		if client.Id == "" {
-			invalidClient := fmt.Sprintf("Client configuration invalid. Client %d is missing an client id, %v", clientIndex, client)
-			return errors.New(invalidClient)
-		}
-
-		if client.GetClientType() == oauth2.CtConfidential && len(client.ClientSecret) != 128 {
-			invalidClient := fmt.Sprintf("Client configuration invalid. Confidential client %d with id %s missing client secret, %v", clientIndex, client.Id, client)
-			return errors.New(invalidClient)
-		}
-
-		if len(client.Redirects) == 0 {
-			invalidClient := fmt.Sprintf("Client is missing redirects. Client %d with id %s, %v", clientIndex, client.Id, client)
-			return errors.New(invalidClient)
-		}
-
+	for _, client := range config.Clients {
 		config.oidc = config.oidc || client.Oidc
 	}
 
@@ -231,6 +210,59 @@ func Initialize(config *Config) error {
 	}
 
 	configSingleton = config
+
+	return nil
+}
+
+func (config *Config) Validate() error {
+	if config.Server.Addr == "" {
+		return errors.New("no server address provided")
+	}
+
+	if config.Server.TLS.Addr != "" && config.Server.TLS.Keys.Key == "" {
+		return errors.New("key for TLS is missing")
+	}
+
+	if config.Server.TLS.Addr != "" && config.Server.TLS.Keys.Cert == "" {
+		return errors.New("certificate for TLS is missing")
+	}
+
+	if len(config.Users) == 0 {
+		return errors.New("no users configured, add at least one user")
+	}
+
+	if len(config.Clients) == 0 {
+		return errors.New("no clients configured, add at least one client")
+	}
+
+	for userIndex, user := range config.Users {
+		if user.Username == "" {
+			invalidUser := fmt.Sprintf("user configuration invalid for user %d, missing username %v", userIndex, user)
+			return errors.New(invalidUser)
+		}
+
+		if len(user.Password) != 128 {
+			invalidUser := fmt.Sprintf("user configuration invalid for user %d with username %s, missing password %v", userIndex, user.Username, user)
+			return errors.New(invalidUser)
+		}
+	}
+
+	for clientIndex, client := range config.Clients {
+		if client.Id == "" {
+			invalidClient := fmt.Sprintf("client configuration invalid for client %d, missing id %v", clientIndex, client)
+			return errors.New(invalidClient)
+		}
+
+		if len(client.ClientSecret) != 128 {
+			invalidClient := fmt.Sprintf("client configuration invalid for client %d with id %s, missing client secret %v", clientIndex, client.Id, client)
+			return errors.New(invalidClient)
+		}
+
+		if len(client.Redirects) == 0 {
+			invalidClient := fmt.Sprintf("client configuration invalid, for client %d with id %s, missing redirects, %v", clientIndex, client.Id, client)
+			return errors.New(invalidClient)
+		}
+	}
 
 	return nil
 }

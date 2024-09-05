@@ -203,7 +203,7 @@ Each entry may contain the following options
 
 The shown `config.yml` is the minimal version possible.
 
-It only defines the HTTP port **STOPnik** should listen on.
+It only defines the HTTP port **STOPnik** should listen on, one client and one user.
 
 After starting locally with this configuration, **STOPnik** will be accessible at
 
@@ -213,15 +213,15 @@ After starting locally with this configuration, **STOPnik** will be accessible a
 ```yaml
 server:
   addr: :8080
+clients:
+  - id: testclient
+    clientSecret: d82c4eb5261cb9c8aa9855edd67d1bd10482f41529858d925094d173fa662aa91ff39bc5b188615273484021dfb16fd8284cf684ccf0fc795be3aa2fc1e6c181
+    redirects:
+      - https://oauth.pstmn.io/v1/callback
+users:
+  - username: foo
+    password: d82c4eb5261cb9c8aa9855edd67d1bd10482f41529858d925094d173fa662aa91ff39bc5b188615273484021dfb16fd8284cf684ccf0fc795be3aa2fc1e6c181
 ```
-
-:::warning
-
-This configuration only allows to start **STOPnik** but makes no sense at all, as no users and clients are defined.
-
-Not login and not `OAuth | OpenId Connect` flow will be possible.
-
-:::
 
 ### Development configuration
 

@@ -61,7 +61,7 @@ func Test_ReadError(t *testing.T) {
 		return nil, errors.New("test error")
 	}, nil)
 
-	err := configLoader.LoadConfig("foo.txt")
+	err := configLoader.LoadConfig("foo.txt", false)
 
 	if err == nil {
 		t.Error("expected error")
@@ -75,7 +75,7 @@ func Test_UnmarshalError(t *testing.T) {
 		return errors.New("test error")
 	})
 
-	err := configLoader.LoadConfig("foo.txt")
+	err := configLoader.LoadConfig("foo.txt", false)
 
 	if err == nil {
 		t.Error("expected error")
@@ -93,10 +93,10 @@ func Test_EmptyServerConfiguration(t *testing.T) {
 		return nil
 	})
 
-	err := configLoader.LoadConfig("foo.txt")
+	err := configLoader.LoadConfig("foo.txt", false)
 
 	if err != nil {
-		t.Error("did not expect error when loading config")
+		t.Errorf("did not expect error when loading config, %v", err)
 	}
 
 	config := GetConfigInstance()
@@ -179,10 +179,10 @@ func Test_SimpleServerConfiguration(t *testing.T) {
 		return nil
 	})
 
-	err := configLoader.LoadConfig("foo.txt")
+	err := configLoader.LoadConfig("foo.txt", false)
 
 	if err != nil {
-		t.Error("did not expect error when loading config")
+		t.Errorf("did not expect error when loading config, %v", err)
 	}
 
 	config := GetConfigInstance()
@@ -247,10 +247,10 @@ func Test_EmptyUIConfiguration(t *testing.T) {
 		return nil
 	})
 
-	err := configLoader.LoadConfig("foo.txt")
+	err := configLoader.LoadConfig("foo.txt", false)
 
 	if err != nil {
-		t.Error("did not expect error when loading config")
+		t.Errorf("did not expect error when loading config, %v", err)
 	}
 
 	config := GetConfigInstance()
@@ -302,10 +302,10 @@ func Test_SimpleUIConfiguration(t *testing.T) {
 		return nil
 	})
 
-	err := configLoader.LoadConfig("foo.txt")
+	err := configLoader.LoadConfig("foo.txt", false)
 
 	if err != nil {
-		t.Error("did not expect error when loading config")
+		t.Errorf("did not expect error when loading config, %v", err)
 	}
 
 	config := GetConfigInstance()
@@ -370,10 +370,10 @@ func Test_ValidUsers(t *testing.T) {
 		return nil
 	})
 
-	err := configLoader.LoadConfig("foo.txt")
+	err := configLoader.LoadConfig("foo.txt", false)
 
 	if err != nil {
-		t.Error("did not expect error when loading config")
+		t.Errorf("did not expect error when loading config, %v", err)
 	}
 
 	config := GetConfigInstance()
@@ -423,11 +423,12 @@ func Test_InvalidUsers(t *testing.T) {
 			return nil
 		})
 
-		err := configLoader.LoadConfig("foo.txt")
+		err := configLoader.LoadConfig("foo.txt", true)
 
 		if err == nil {
 			t.Error("expected error when loading config")
 		}
+
 	}
 }
 
@@ -466,10 +467,10 @@ func Test_ValidClients(t *testing.T) {
 		return nil
 	})
 
-	err := configLoader.LoadConfig("foo.txt")
+	err := configLoader.LoadConfig("foo.txt", false)
 
 	if err != nil {
-		t.Error("did not expect error when loading config")
+		t.Errorf("did not expect error when loading config, %v", err)
 	}
 
 	config := GetConfigInstance()
@@ -525,11 +526,342 @@ func Test_InvalidClients(t *testing.T) {
 			return nil
 		})
 
-		err := configLoader.LoadConfig("foo.txt")
+		err := configLoader.LoadConfig("foo.txt", true)
 
 		if err == nil {
 			t.Error("expected error when loading config")
 		}
+	}
+}
+
+func Test_NoClients(t *testing.T) {
+	configLoader := NewConfigLoader(func(filename string) ([]byte, error) {
+		return make([]byte, 10), nil
+	}, func(in []byte, out interface{}) (err error) {
+		origin := out.(*Config)
+		*origin = Config{
+			Server: Server{
+				Addr: ":8080",
+			},
+			Users: []User{
+				{
+					Username: "foo",
+					Password: "d82c4eb5261cb9c8aa9855edd67d1bd10482f41529858d925094d173fa662aa91ff39bc5b188615273484021dfb16fd8284cf684ccf0fc795be3aa2fc1e6c181",
+				},
+			},
+		}
+		return nil
+	})
+
+	err := configLoader.LoadConfig("foo.txt", true)
+
+	if err == nil {
+		t.Error("expected error when loading config")
+	}
+}
+
+func Test_NoUsers(t *testing.T) {
+	configLoader := NewConfigLoader(func(filename string) ([]byte, error) {
+		return make([]byte, 10), nil
+	}, func(in []byte, out interface{}) (err error) {
+		origin := out.(*Config)
+		*origin = Config{
+			Server: Server{
+				Addr: ":8080",
+			},
+			Clients: []Client{
+				{
+					Id:           "foo",
+					ClientSecret: "d82c4eb5261cb9c8aa9855edd67d1bd10482f41529858d925094d173fa662aa91ff39bc5b188615273484021dfb16fd8284cf684ccf0fc795be3aa2fc1e6c181",
+					Redirects:    []string{"https://example.com/callback"},
+				},
+			},
+		}
+		return nil
+	})
+
+	err := configLoader.LoadConfig("foo.txt", true)
+
+	if err == nil {
+		t.Error("expected error when loading config")
+	}
+}
+
+func Test_UserWithoutPassword(t *testing.T) {
+	configLoader := NewConfigLoader(func(filename string) ([]byte, error) {
+		return make([]byte, 10), nil
+	}, func(in []byte, out interface{}) (err error) {
+		origin := out.(*Config)
+		*origin = Config{
+			Server: Server{
+				Addr: ":8080",
+			},
+			Users: []User{
+				{
+					Username: "foo",
+				},
+			},
+			Clients: []Client{
+				{
+					Id:           "foo",
+					ClientSecret: "d82c4eb5261cb9c8aa9855edd67d1bd10482f41529858d925094d173fa662aa91ff39bc5b188615273484021dfb16fd8284cf684ccf0fc795be3aa2fc1e6c181",
+					Redirects:    []string{"https://example.com/callback"},
+				},
+			},
+		}
+		return nil
+	})
+
+	err := configLoader.LoadConfig("foo.txt", true)
+
+	if err == nil {
+		t.Error("expected error when loading config")
+	}
+}
+
+func Test_UserWithoutUsername(t *testing.T) {
+	configLoader := NewConfigLoader(func(filename string) ([]byte, error) {
+		return make([]byte, 10), nil
+	}, func(in []byte, out interface{}) (err error) {
+		origin := out.(*Config)
+		*origin = Config{
+			Server: Server{
+				Addr: ":8080",
+			},
+			Users: []User{
+				{
+					Password: "d82c4eb5261cb9c8aa9855edd67d1bd10482f41529858d925094d173fa662aa91ff39bc5b188615273484021dfb16fd8284cf684ccf0fc795be3aa2fc1e6c181",
+				},
+			},
+			Clients: []Client{
+				{
+					Id:           "foo",
+					ClientSecret: "d82c4eb5261cb9c8aa9855edd67d1bd10482f41529858d925094d173fa662aa91ff39bc5b188615273484021dfb16fd8284cf684ccf0fc795be3aa2fc1e6c181",
+					Redirects:    []string{"https://example.com/callback"},
+				},
+			},
+		}
+		return nil
+	})
+
+	err := configLoader.LoadConfig("foo.txt", true)
+
+	if err == nil {
+		t.Error("expected error when loading config")
+	}
+}
+
+func Test_ClientWithoutSecret(t *testing.T) {
+	configLoader := NewConfigLoader(func(filename string) ([]byte, error) {
+		return make([]byte, 10), nil
+	}, func(in []byte, out interface{}) (err error) {
+		origin := out.(*Config)
+		*origin = Config{
+			Server: Server{
+				Addr: ":8080",
+			},
+			Users: []User{
+				{
+					Username: "foo",
+					Password: "d82c4eb5261cb9c8aa9855edd67d1bd10482f41529858d925094d173fa662aa91ff39bc5b188615273484021dfb16fd8284cf684ccf0fc795be3aa2fc1e6c181",
+				},
+			},
+			Clients: []Client{
+				{
+					Id:        "foo",
+					Redirects: []string{"https://example.com/callback"},
+				},
+			},
+		}
+		return nil
+	})
+
+	err := configLoader.LoadConfig("foo.txt", true)
+
+	if err == nil {
+		t.Error("expected error when loading config")
+	}
+}
+
+func Test_ClientWithoutId(t *testing.T) {
+	configLoader := NewConfigLoader(func(filename string) ([]byte, error) {
+		return make([]byte, 10), nil
+	}, func(in []byte, out interface{}) (err error) {
+		origin := out.(*Config)
+		*origin = Config{
+			Server: Server{
+				Addr: ":8080",
+			},
+			Users: []User{
+				{
+					Username: "foo",
+					Password: "d82c4eb5261cb9c8aa9855edd67d1bd10482f41529858d925094d173fa662aa91ff39bc5b188615273484021dfb16fd8284cf684ccf0fc795be3aa2fc1e6c181",
+				},
+			},
+			Clients: []Client{
+				{
+					ClientSecret: "d82c4eb5261cb9c8aa9855edd67d1bd10482f41529858d925094d173fa662aa91ff39bc5b188615273484021dfb16fd8284cf684ccf0fc795be3aa2fc1e6c181",
+					Redirects:    []string{"https://example.com/callback"},
+				},
+			},
+		}
+		return nil
+	})
+
+	err := configLoader.LoadConfig("foo.txt", true)
+
+	if err == nil {
+		t.Error("expected error when loading config")
+	}
+}
+
+func Test_ClientWithoutRedirects(t *testing.T) {
+	configLoader := NewConfigLoader(func(filename string) ([]byte, error) {
+		return make([]byte, 10), nil
+	}, func(in []byte, out interface{}) (err error) {
+		origin := out.(*Config)
+		*origin = Config{
+			Server: Server{
+				Addr: ":8080",
+			},
+			Users: []User{
+				{
+					Username: "foo",
+					Password: "d82c4eb5261cb9c8aa9855edd67d1bd10482f41529858d925094d173fa662aa91ff39bc5b188615273484021dfb16fd8284cf684ccf0fc795be3aa2fc1e6c181",
+				},
+			},
+			Clients: []Client{
+				{
+					Id:           "foo",
+					ClientSecret: "d82c4eb5261cb9c8aa9855edd67d1bd10482f41529858d925094d173fa662aa91ff39bc5b188615273484021dfb16fd8284cf684ccf0fc795be3aa2fc1e6c181",
+				},
+			},
+		}
+		return nil
+	})
+
+	err := configLoader.LoadConfig("foo.txt", true)
+
+	if err == nil {
+		t.Error("expected error when loading config")
+	}
+}
+
+func Test_TLSWithoutKey(t *testing.T) {
+	configLoader := NewConfigLoader(func(filename string) ([]byte, error) {
+		return make([]byte, 10), nil
+	}, func(in []byte, out interface{}) (err error) {
+		origin := out.(*Config)
+		*origin = Config{
+			Server: Server{
+				Addr: ":8080",
+				TLS: TLS{
+					Addr: ":8443",
+					Keys: Keys{
+						Cert: "foo.crt",
+					},
+				},
+			},
+			Users: []User{
+				{
+					Username: "foo",
+					Password: "d82c4eb5261cb9c8aa9855edd67d1bd10482f41529858d925094d173fa662aa91ff39bc5b188615273484021dfb16fd8284cf684ccf0fc795be3aa2fc1e6c181",
+				},
+			},
+			Clients: []Client{
+				{
+					Id:           "foo",
+					ClientSecret: "d82c4eb5261cb9c8aa9855edd67d1bd10482f41529858d925094d173fa662aa91ff39bc5b188615273484021dfb16fd8284cf684ccf0fc795be3aa2fc1e6c181",
+					Redirects:    []string{"https://example.com/callback"},
+				},
+			},
+		}
+		return nil
+	})
+
+	err := configLoader.LoadConfig("foo.txt", true)
+
+	if err == nil {
+		t.Error("expected error when loading config")
+	}
+}
+
+func Test_TLSWithoutCertificate(t *testing.T) {
+	configLoader := NewConfigLoader(func(filename string) ([]byte, error) {
+		return make([]byte, 10), nil
+	}, func(in []byte, out interface{}) (err error) {
+		origin := out.(*Config)
+		*origin = Config{
+			Server: Server{
+				Addr: ":8080",
+				TLS: TLS{
+					Addr: ":8443",
+					Keys: Keys{
+						Key: "foo.key",
+					},
+				},
+			},
+			Users: []User{
+				{
+					Username: "foo",
+					Password: "d82c4eb5261cb9c8aa9855edd67d1bd10482f41529858d925094d173fa662aa91ff39bc5b188615273484021dfb16fd8284cf684ccf0fc795be3aa2fc1e6c181",
+				},
+			},
+			Clients: []Client{
+				{
+					Id:           "foo",
+					ClientSecret: "d82c4eb5261cb9c8aa9855edd67d1bd10482f41529858d925094d173fa662aa91ff39bc5b188615273484021dfb16fd8284cf684ccf0fc795be3aa2fc1e6c181",
+					Redirects:    []string{"https://example.com/callback"},
+				},
+			},
+		}
+		return nil
+	})
+
+	err := configLoader.LoadConfig("foo.txt", true)
+
+	if err == nil {
+		t.Error("expected error when loading config")
+	}
+}
+
+func Test_MinimalConfiguration(t *testing.T) {
+	configLoader := NewConfigLoader(func(filename string) ([]byte, error) {
+		return make([]byte, 10), nil
+	}, func(in []byte, out interface{}) (err error) {
+		origin := out.(*Config)
+		*origin = Config{
+			Server: Server{
+				Addr: ":8080",
+				TLS: TLS{
+					Addr: ":8443",
+					Keys: Keys{
+						Cert: "foo.crt",
+						Key:  "foo.key",
+					},
+				},
+			},
+			Users: []User{
+				{
+					Username: "foo",
+					Password: "d82c4eb5261cb9c8aa9855edd67d1bd10482f41529858d925094d173fa662aa91ff39bc5b188615273484021dfb16fd8284cf684ccf0fc795be3aa2fc1e6c181",
+				},
+			},
+			Clients: []Client{
+				{
+					Id:           "foo",
+					ClientSecret: "d82c4eb5261cb9c8aa9855edd67d1bd10482f41529858d925094d173fa662aa91ff39bc5b188615273484021dfb16fd8284cf684ccf0fc795be3aa2fc1e6c181",
+					Redirects:    []string{"https://example.com/callback"},
+				},
+			},
+		}
+		return nil
+	})
+
+	err := configLoader.LoadConfig("foo.txt", true)
+
+	if err != nil {
+		t.Errorf("did not expect error when loading config, %v", err)
 	}
 }
 
