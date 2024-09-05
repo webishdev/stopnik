@@ -24,6 +24,12 @@ User details are only provided when the health endpoint is called with a valid a
 
 - `/health`
 
+### ForwardAuth
+
+This endpoint depends on the provided configuration and is only available when `server.forwardAuth.externalUrl` is set.
+
+- `/forward`
+
 ## OAuth 2.0
 
 ### The OAuth 2.0 Authorization Framework
@@ -53,6 +59,8 @@ User details are only provided when the health endpoint is called with a valid a
 - `/keys`
 
 ## OpenId Connect
+
+OpenId Connect endpoint are only available, when one of the clients has the `oidc` flag set.
 
 ### OpenID Connect Discovery 1.0
 

@@ -129,24 +129,24 @@ func Test_AccessTokenResponse(t *testing.T) {
 			}
 		})
 	}
+}
 
-	t.Run("Invalid User in token", func(t *testing.T) {
-		testConfig := createTestConfig(t, false, 0, 0, "")
-		tokenManager := GetTokenManagerInstance()
-		client, clientExists := testConfig.GetClient("foo")
-		if !clientExists {
-			t.Fatal("client does not exist")
-		}
+func Test_InvalidUserInToken(t *testing.T) {
+	testConfig := createTestConfig(t, false, 0, 0, "")
+	tokenManager := GetTokenManagerInstance()
+	client, clientExists := testConfig.GetClient("foo")
+	if !clientExists {
+		t.Fatal("client does not exist")
+	}
 
-		request := httptest.NewRequest(http.MethodPost, endpoint.Token, nil)
-		accessTokenResponse := tokenManager.CreateAccessTokenResponse(request, "bar", client, []string{"abc", "def"}, "")
+	request := httptest.NewRequest(http.MethodPost, endpoint.Token, nil)
+	accessTokenResponse := tokenManager.CreateAccessTokenResponse(request, "bar", client, []string{"abc", "def"}, "")
 
-		_, _, _, valid := tokenManager.ValidateAccessToken(fmt.Sprintf("%s %s", internalHttp.AuthBearer, accessTokenResponse.AccessTokenValue))
+	_, _, _, valid := tokenManager.ValidateAccessToken(fmt.Sprintf("%s %s", internalHttp.AuthBearer, accessTokenResponse.AccessTokenValue))
 
-		if valid {
-			t.Error("should not be valid")
-		}
-	})
+	if valid {
+		t.Error("should not be valid")
+	}
 }
 
 func Test_ValidAccessToken(t *testing.T) {
