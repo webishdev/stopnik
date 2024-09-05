@@ -253,11 +253,6 @@ func (config *Config) Validate() error {
 			return errors.New(invalidClient)
 		}
 
-		if len(client.ClientSecret) != 128 {
-			invalidClient := fmt.Sprintf("client configuration invalid for client %d with id %s, missing client secret %v", clientIndex, client.Id, client)
-			return errors.New(invalidClient)
-		}
-
 		if len(client.Redirects) == 0 {
 			invalidClient := fmt.Sprintf("client configuration invalid, for client %d with id %s, missing redirects, %v", clientIndex, client.Id, client)
 			return errors.New(invalidClient)

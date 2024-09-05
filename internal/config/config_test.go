@@ -651,38 +651,6 @@ func Test_UserWithoutUsername(t *testing.T) {
 	}
 }
 
-func Test_ClientWithoutSecret(t *testing.T) {
-	configLoader := NewConfigLoader(func(filename string) ([]byte, error) {
-		return make([]byte, 10), nil
-	}, func(in []byte, out interface{}) (err error) {
-		origin := out.(*Config)
-		*origin = Config{
-			Server: Server{
-				Addr: ":8080",
-			},
-			Users: []User{
-				{
-					Username: "foo",
-					Password: "d82c4eb5261cb9c8aa9855edd67d1bd10482f41529858d925094d173fa662aa91ff39bc5b188615273484021dfb16fd8284cf684ccf0fc795be3aa2fc1e6c181",
-				},
-			},
-			Clients: []Client{
-				{
-					Id:        "foo",
-					Redirects: []string{"https://example.com/callback"},
-				},
-			},
-		}
-		return nil
-	})
-
-	err := configLoader.LoadConfig("foo.txt", true)
-
-	if err == nil {
-		t.Error("expected error when loading config")
-	}
-}
-
 func Test_ClientWithoutId(t *testing.T) {
 	configLoader := NewConfigLoader(func(filename string) ([]byte, error) {
 		return make([]byte, 10), nil
