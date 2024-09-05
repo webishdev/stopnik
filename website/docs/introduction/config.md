@@ -228,7 +228,7 @@ users:
 The shown `config.yml` is used during development and can be
 found [here](https://github.com/webishdev/stopnik/blob/main/config.yml) in the repository.
 
-To be able to use it, the referenced `server.crt` and `server.key` must be created as self-signed certificate.
+This configuration uses self-singed TLS certificates, keys and a privates key located in the `.test_files` folder.
 
 ```yaml
 server:
