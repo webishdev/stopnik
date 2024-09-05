@@ -78,7 +78,7 @@ Entry `server.forwardAuth`
 | Property        | Description                                         | Required |
 |-----------------|-----------------------------------------------------|----------|
 | `endpoint`      | Internal endpoint to be called by Traefik           | No       |
-| `externalUrl`   | URL of **STOPnik** to redirect the user for a login | Yes      |
+| `externalUrl`   | URL of **STOPnik** to redirect the user for a login | No       |
 | `parameterName` | URL parameter used by **STOPnik** for ForwardAuth   | No       |
 
 ### User interface configuration
