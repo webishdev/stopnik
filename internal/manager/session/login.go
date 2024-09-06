@@ -56,7 +56,7 @@ func (loginManager *loginManager) CloseSession(id string, all bool) {
 	loginSessionStore := *loginManager.loginSessionStore
 	loginSession, loginSessionExists := loginSessionStore.Get(id)
 	if loginSessionExists {
-		log.Info("Closing main login session with id %s", id)
+		log.Debug("Closing main login session with id %s", id)
 		loginSessionStore.Delete(id)
 		if all {
 			username := loginSession.Username
@@ -67,7 +67,7 @@ func (loginManager *loginManager) CloseSession(id string, all bool) {
 				}
 			}
 			for _, otherSessionId := range userSessionIds {
-				log.Info("Closing login session with id %s", otherSessionId)
+				log.Debug("Closing login session with id %s", otherSessionId)
 				loginSessionStore.Delete(otherSessionId)
 			}
 		}
