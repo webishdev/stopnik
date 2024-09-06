@@ -13,6 +13,11 @@ import (
 
 func Test_ForwardAuth(t *testing.T) {
 	testConfig := &config.Config{
+		Server: config.Server{
+			ForwardAuth: config.ForwardAuth{
+				ExternalUrl: "http://foo.com",
+			},
+		},
 		Clients: []config.Client{
 			{
 				Id:           "foo",
@@ -45,9 +50,10 @@ func testForwardAuthWithoutCookie(t *testing.T, testConfig *config.Config) {
 		cookieManager := cookie.GetCookieManagerInstance()
 		authSessionManager := session.GetAuthSessionManagerInstance()
 		forwardSessionManager := session.GetForwardSessionManagerInstance()
+		loginSessionManager := session.GetLoginSessionManagerInstance()
 		templateManager := template.GetTemplateManagerInstance()
 
-		forwardAuthHandler := NewForwardAuthHandler(cookieManager, authSessionManager, forwardSessionManager, templateManager)
+		forwardAuthHandler := NewForwardAuthHandler(cookieManager, authSessionManager, forwardSessionManager, loginSessionManager, templateManager)
 
 		rr := httptest.NewRecorder()
 		request := httptest.NewRequest(http.MethodGet, testConfig.GetForwardAuthEndpoint(), nil)
@@ -74,9 +80,10 @@ func testForwardAuthMissingHeaders(t *testing.T, testConfig *config.Config) {
 		cookieManager := cookie.GetCookieManagerInstance()
 		authSessionManager := session.GetAuthSessionManagerInstance()
 		forwardSessionManager := session.GetForwardSessionManagerInstance()
+		loginSessionManager := session.GetLoginSessionManagerInstance()
 		templateManager := template.GetTemplateManagerInstance()
 
-		forwardAuthHandler := NewForwardAuthHandler(cookieManager, authSessionManager, forwardSessionManager, templateManager)
+		forwardAuthHandler := NewForwardAuthHandler(cookieManager, authSessionManager, forwardSessionManager, loginSessionManager, templateManager)
 
 		rr := httptest.NewRecorder()
 		request := httptest.NewRequest(http.MethodGet, testConfig.GetForwardAuthEndpoint(), nil)
@@ -94,9 +101,10 @@ func testForwardAuthInvalidHeaders(t *testing.T, testConfig *config.Config) {
 		cookieManager := cookie.GetCookieManagerInstance()
 		authSessionManager := session.GetAuthSessionManagerInstance()
 		forwardSessionManager := session.GetForwardSessionManagerInstance()
+		loginSessionManager := session.GetLoginSessionManagerInstance()
 		templateManager := template.GetTemplateManagerInstance()
 
-		forwardAuthHandler := NewForwardAuthHandler(cookieManager, authSessionManager, forwardSessionManager, templateManager)
+		forwardAuthHandler := NewForwardAuthHandler(cookieManager, authSessionManager, forwardSessionManager, loginSessionManager, templateManager)
 
 		rr := httptest.NewRecorder()
 		request := httptest.NewRequest(http.MethodGet, testConfig.GetForwardAuthEndpoint(), nil)

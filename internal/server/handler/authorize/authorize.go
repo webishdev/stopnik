@@ -22,27 +22,30 @@ import (
 )
 
 type Handler struct {
-	validator          *validation.RequestValidator
-	cookieManager      *cookie.Manager
-	authSessionManager session.Manager[session.AuthSession]
-	tokenManager       *token.Manager
-	templateManager    *template.Manager
-	errorHandler       *error.Handler
+	validator           *validation.RequestValidator
+	cookieManager       *cookie.Manager
+	authSessionManager  session.Manager[session.AuthSession]
+	loginSessionManager session.Manager[session.LoginSession]
+	tokenManager        *token.Manager
+	templateManager     *template.Manager
+	errorHandler        *error.Handler
 }
 
 func NewAuthorizeHandler(
 	validator *validation.RequestValidator,
 	cookieManager *cookie.Manager,
 	authSessionManager session.Manager[session.AuthSession],
+	loginSessionManager session.Manager[session.LoginSession],
 	tokenManager *token.Manager,
 	templateManager *template.Manager) *Handler {
 	return &Handler{
-		validator:          validator,
-		cookieManager:      cookieManager,
-		authSessionManager: authSessionManager,
-		tokenManager:       tokenManager,
-		templateManager:    templateManager,
-		errorHandler:       error.NewErrorHandler(),
+		validator:           validator,
+		cookieManager:       cookieManager,
+		authSessionManager:  authSessionManager,
+		loginSessionManager: loginSessionManager,
+		tokenManager:        tokenManager,
+		templateManager:     templateManager,
+		errorHandler:        error.NewErrorHandler(),
 	}
 }
 
@@ -157,7 +160,7 @@ func (h *Handler) handleGetRequest(w http.ResponseWriter, r *http.Request) {
 		h.authSessionManager.StartSession(authSession)
 	}
 
-	user, validCookie := h.cookieManager.ValidateAuthCookie(r)
+	user, _, validCookie := h.cookieManager.ValidateAuthCookie(r)
 
 	if validCookie {
 		authSession.Username = user.Username
@@ -210,7 +213,12 @@ func (h *Handler) handleGetRequest(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) handlePostRequest(w http.ResponseWriter, r *http.Request, user *config.User) {
-	authCookie, authCookieError := h.cookieManager.CreateAuthCookie(user.Username)
+	loginSession := &session.LoginSession{
+		Id:       uuid.NewString(),
+		Username: user.Username,
+	}
+	h.loginSessionManager.StartSession(loginSession)
+	authCookie, authCookieError := h.cookieManager.CreateAuthCookie(user.Username, loginSession.Id)
 	if authCookieError != nil {
 		h.errorHandler.InternalServerErrorHandler(w, r)
 		return
@@ -268,10 +276,7 @@ func (h *Handler) validateLogin(w http.ResponseWriter, r *http.Request) (*config
 }
 
 func (h *Handler) validateRedirect(client *config.Client, redirect string) func(w http.ResponseWriter, r *http.Request) {
-	validRedirect, validationError := client.ValidateRedirect(redirect)
-	if validationError != nil {
-		return h.errorHandler.InternalServerErrorHandler
-	}
+	validRedirect := client.ValidateRedirect(redirect)
 
 	if !validRedirect {
 		return h.errorHandler.BadRequestHandler

@@ -11,32 +11,37 @@ import (
 	"github.com/webishdev/stopnik/log"
 	"io"
 	"os"
-	"regexp"
 	"strings"
 	"sync"
 )
 
+// Keys defines path to TSL certificate and key file.
 type Keys struct {
 	Cert string `yaml:"cert"`
 	Key  string `yaml:"key"`
 }
 
+// TLS defines the Go like address to listen to and references the necessary Keys.
 type TLS struct {
 	Addr string `yaml:"addr"`
 	Keys Keys   `yaml:"keys"`
 }
 
+// Cookies defines the name for HTTP cookies used by STOPnik.
 type Cookies struct {
 	AuthName    string `yaml:"authName"`
 	MessageName string `yaml:"messageName"`
 }
 
+// ForwardAuth defines the configuration related to Traefik Forward Auth,
+// only used when ExternalUrl is provided.
 type ForwardAuth struct {
 	Endpoint      string `yaml:"endpoint"`
 	ExternalUrl   string `yaml:"externalUrl"`
 	ParameterName string `yaml:"parameterName"`
 }
 
+// Server defines the main STOPnik server configuration.
 type Server struct {
 	LogLevel              string      `yaml:"logLevel"`
 	Addr                  string      `yaml:"addr"`
@@ -52,6 +57,8 @@ type Server struct {
 	ForwardAuth           ForwardAuth `yaml:"forwardAuth"`
 }
 
+// UserAddress defines the address for a specific user,
+// the definition provided in the YAML file will be mapped into values inside a JSON response.
 type UserAddress struct {
 	Formatted  string `json:"formatted,omitempty"`
 	Street     string `yaml:"street" json:"street_address,omitempty"`
@@ -61,6 +68,8 @@ type UserAddress struct {
 	Country    string `yaml:"country" json:"country,omitempty"`
 }
 
+// UserProfile defines the profile for a specific user,
+// the definition provided in the YAML file will be mapped into values inside a JSON response.
 type UserProfile struct {
 	Subject           string      `json:"sub,omitempty"`
 	Name              string      `json:"name,omitempty"`
@@ -83,6 +92,7 @@ type UserProfile struct {
 	UpdatedAt         string      `json:"updated_at,omitempty"`
 }
 
+// User defines the general user entry in the configuration.
 type User struct {
 	Username string              `yaml:"username"`
 	Password string              `yaml:"password"`
@@ -91,11 +101,14 @@ type User struct {
 	Roles    map[string][]string `yaml:"roles"`
 }
 
+// Claim defines additional claims with name and value,
+// used for a specific Client.
 type Claim struct {
 	Name  string `yaml:"name"`
 	Value string `yaml:"value"`
 }
 
+// Client defines the general client entry in the configuration.
 type Client struct {
 	Id                      string   `yaml:"id"`
 	ClientSecret            string   `yaml:"clientSecret"`
@@ -116,6 +129,7 @@ type Client struct {
 	isForwardAuth           bool
 }
 
+// UI defines the general web user interface entry in the configuration.
 type UI struct {
 	HideFooter      bool   `yaml:"hideFooter"`
 	HideLogo        bool   `yaml:"hideLogo"`
@@ -125,6 +139,7 @@ type UI struct {
 	LogoContentType string `yaml:"logoContentType"`
 }
 
+// Config defines the root entry for the configuration.
 type Config struct {
 	Server            Server   `yaml:"server"`
 	Clients           []Client `yaml:"clients"`
@@ -141,6 +156,7 @@ type Config struct {
 var configLock = &sync.Mutex{}
 var configSingleton *Config
 
+// GetConfigInstance returns the current singleton of Config when it was initialized by Initialize before.
 func GetConfigInstance() *Config {
 	configLock.Lock()
 	defer configLock.Unlock()
@@ -151,6 +167,13 @@ func GetConfigInstance() *Config {
 	return configSingleton
 }
 
+// Initialize initializes a given Config.
+// Checks for OIDC configuration on given Client entries.
+// Initializes maps for faster Client and User access in the Config.
+// Generates a server secret when none was provided.
+// Loads a logo image into []byte to use in the web user interface.
+// Checks for ForwardAuth settings.
+// Sets the singleton for the current Config
 func Initialize(config *Config) error {
 	configLock.Lock()
 	defer configLock.Unlock()
@@ -202,11 +225,12 @@ func Initialize(config *Config) error {
 		config.logoImage = &bs
 	}
 
-	if config.Server.ForwardAuth.Endpoint != "" {
+	if config.Server.ForwardAuth.ExternalUrl != "" {
 		config.forwardAuthClient = &Client{
 			Id:            uuid.NewString(),
 			isForwardAuth: true,
 		}
+		log.Info("Forward auth client created")
 	}
 
 	configSingleton = config
@@ -214,6 +238,7 @@ func Initialize(config *Config) error {
 	return nil
 }
 
+// Validate validates the current Config and returns an error when necessary values are missing.
 func (config *Config) Validate() error {
 	if config.Server.Addr == "" {
 		return errors.New("no server address provided")
@@ -262,67 +287,91 @@ func (config *Config) Validate() error {
 	return nil
 }
 
-func (config *Config) GetUser(name string) (*User, bool) {
-	value, exists := config.userMap[name]
+// GetUser returns a User for the given username.
+// Also returns a bool which indicates, whether the User exists or not.
+func (config *Config) GetUser(username string) (*User, bool) {
+	value, exists := config.userMap[username]
 	return value, exists
 }
 
-func (config *Config) GetClient(name string) (*Client, bool) {
-	value, exists := config.clientMap[name]
-	if !exists && config.forwardAuthClient != nil {
+// GetClient returns a Client for the given clientId.
+// Also returns a bool which indicates, whether the Client exists or not.
+func (config *Config) GetClient(clientId string) (*Client, bool) {
+	value, exists := config.clientMap[clientId]
+	if !exists && config.forwardAuthClient != nil && config.forwardAuthClient.Id == clientId {
 		return config.forwardAuthClient, true
 	}
 	return value, exists
 }
 
+// GetAuthCookieName returns the name of the authentication cookie.
+// When no name is provided a default value will be returned.
 func (config *Config) GetAuthCookieName() string {
 	return GetOrDefaultString(config.Server.Cookies.AuthName, "stopnik_auth")
 }
 
+// GetMessageCookieName returns the name of the message cookie.
+// When no name is provided a default value will be returned.
 func (config *Config) GetMessageCookieName() string {
 	return GetOrDefaultString(config.Server.Cookies.MessageName, "stopnik_message")
 }
 
+// GetSessionTimeoutSeconds returns the session timeout in seconds.
+// When no session timeout is provided a default value will be returned.
 func (config *Config) GetSessionTimeoutSeconds() int {
 	return GetOrDefaultInt(config.Server.SessionTimeoutSeconds, 3600)
 }
 
+// GetIntrospectScope returns the scope which can be used to introspect tokens.
+// When no scope is provided a default value will be returned.
 func (config *Config) GetIntrospectScope() string {
 	return GetOrDefaultString(config.Server.IntrospectScope, "stopnik:introspect")
 }
 
+// GetRevokeScope returns the scope which can be used to revoke tokens.
+// When no scope is provided a default value will be returned.
 func (config *Config) GetRevokeScope() string {
 	return GetOrDefaultString(config.Server.RevokeScope, "stopnik:revoke")
 }
 
+// GetServerSecret returns the server secret.
+// When no secret is provided a previously generated value will be returned.
 func (config *Config) GetServerSecret() string {
 	return GetOrDefaultString(config.Server.Secret, config.generatedSecret)
 }
 
+// GetHideFooter returns whether the footer should be hidden in the web user interface.
 func (config *Config) GetHideFooter() bool {
 	return config.UI.HideFooter
 }
 
-func (config *Config) GetHideMascot() bool {
+// GetHideLogo returns whether the logo should be hidden in the web user interface.
+func (config *Config) GetHideLogo() bool {
 	return config.UI.HideLogo
 }
 
+// GetTitle returns whether the title shown in the web user interface.
 func (config *Config) GetTitle() string {
 	return config.UI.Title
 }
 
+// GetFooterText returns whether the text shown in the footer of the web user interface.
+// When no footer text is provided a default value will be returned.
 func (config *Config) GetFooterText() string {
 	return GetOrDefaultString(config.UI.FooterText, "STOPnik")
 }
 
+// GetLogoImage returns a pointer to the loaded logo image. Can be nil if no image was provided.
 func (config *Config) GetLogoImage() *[]byte {
 	return config.logoImage
 }
 
+// GetOidc returns whether one of the existing clients has OIDC flag set or not.
 func (config *Config) GetOidc() bool {
 	return config.oidc
 }
 
+// GetIssuer returns the issuer, either by mirroring from request, from Server configuration or default value.
 func (config *Config) GetIssuer(requestData *internalHttp.RequestData) string {
 	if requestData == nil || requestData.Host == "" || requestData.Scheme == "" {
 		return GetOrDefaultString(config.Server.Issuer, "STOPnik")
@@ -330,38 +379,64 @@ func (config *Config) GetIssuer(requestData *internalHttp.RequestData) string {
 	return GetOrDefaultString(config.Server.Issuer, requestData.IssuerString())
 }
 
+// GetForwardAuthEnabled returns whether Traefik Forward Auth is enabled or not.
+// Check in general whether the ForwardAuth ExternalUrl value is set.
 func (config *Config) GetForwardAuthEnabled() bool {
 	return config.Server.ForwardAuth.ExternalUrl != ""
 }
 
+// GetForwardAuthEndpoint returns the endpoint which will use used for Traefik Forward Auth.
+// When no endpoint is provided a default value will be returned.
 func (config *Config) GetForwardAuthEndpoint() string {
 	return GetOrDefaultString(config.Server.ForwardAuth.Endpoint, "/forward")
 }
 
+// GetForwardAuthParameterName returns the query parameter name which will use used for Traefik Forward Auth.
+// When no query parameter name is provided a default value will be returned.
 func (config *Config) GetForwardAuthParameterName() string {
 	return GetOrDefaultString(config.Server.ForwardAuth.ParameterName, "forward_id")
 }
 
+func (config *Config) GetForwardAuthClient() (*Client, bool) {
+	if config.forwardAuthClient != nil && config.forwardAuthClient.Id != "" {
+		return config.forwardAuthClient, true
+	}
+	return nil, false
+}
+
+// GetRolesClaim returns the name of the claim uses to provide User roles in a Client.
+// When no name is provided a default value will be returned.
 func (client *Client) GetRolesClaim() string {
 	return GetOrDefaultString(client.RolesClaim, "roles")
 }
 
+// GetAccessTTL returns access token time to live.
+// When no time to live is provided a default value will be returned.
 func (client *Client) GetAccessTTL() int {
 	return GetOrDefaultInt(client.AccessTTL, 5)
 }
 
+// GetRefreshTTL returns refresh token time to live.
+// When no time to live is provided a default value will be returned.
 func (client *Client) GetRefreshTTL() int {
 	return GetOrDefaultInt(client.RefreshTTL, 0)
 }
 
+// GetIdTTL returns id token time to live.
+// When no time to live is provided a default value will be returned.
 func (client *Client) GetIdTTL() int {
 	return GetOrDefaultInt(client.IdTTL, 0)
 }
 
+// GetAudience returns the audience value.
+// When no audience value is provided a default value will be returned.
 func (client *Client) GetAudience() []string {
 	return GetOrDefaultStringSlice(client.Audience, []string{"all"})
 }
 
+// GetClientType returns the client type value.
+// When no client secret is provided the client will be a public client, confidential otherwise.
+// See oauth2.ClientType
 func (client *Client) GetClientType() oauth2.ClientType {
 	if client.ClientSecret == "" {
 		return oauth2.CtPublic
@@ -370,13 +445,15 @@ func (client *Client) GetClientType() oauth2.ClientType {
 	}
 }
 
-func (client *Client) ValidateRedirect(redirect string) (bool, error) {
+// ValidateRedirect return whether the redirect is valid for a given Client or not.
+func (client *Client) ValidateRedirect(redirect string) bool {
 	if client.isForwardAuth {
-		return true, nil
+		return true
 	}
 	return validateRedirect(client.Id, client.Redirects, redirect)
 }
 
+// GetPreferredUsername returns the preferred username for a given User, or just the username.
 func (user *User) GetPreferredUsername() string {
 	if user.Profile.PreferredUserName == "" {
 		return user.Username
@@ -385,6 +462,7 @@ func (user *User) GetPreferredUsername() string {
 	}
 }
 
+// GetFormattedAddress return the formatted address for a User.
 func (user *User) GetFormattedAddress() string {
 	userAddress := user.Profile.Address
 	var sb strings.Builder
@@ -403,14 +481,15 @@ func (user *User) GetFormattedAddress() string {
 	return sb.String()
 }
 
+// GetRoles returns the roles configured for the User for a given clientId.
 func (user *User) GetRoles(clientId string) []string {
 	return user.Roles[clientId]
 }
 
-func validateRedirect(clientId string, redirects []string, redirect string) (bool, error) {
+func validateRedirect(clientId string, redirects []string, redirect string) bool {
 	if redirect == "" {
 		log.Error("Redirect provided for client %s was empty", clientId)
-		return false, nil
+		return false
 	}
 
 	redirectCount := len(redirects)
@@ -419,29 +498,20 @@ func validateRedirect(clientId string, redirects []string, redirect string) (boo
 		matchesRedirect := false
 		for redirectIndex := range redirectCount {
 			clientRedirect := redirects[redirectIndex]
-			clientRedirect = strings.Replace(clientRedirect, "/", "\\/", 1)
-			clientRedirect = strings.Replace(clientRedirect, ".", "\\.", 1)
-			clientRedirect = strings.Replace(clientRedirect, "?", "\\?", 1)
 			endsWithWildcard := strings.HasSuffix(clientRedirect, "*")
+			var matched bool
 			if endsWithWildcard {
-				clientRedirect = strings.Replace(clientRedirect[:len(clientRedirect)-1], "*", "\\*", 1)
-				clientRedirect = clientRedirect + ".*"
+				clientRedirect = clientRedirect[:len(clientRedirect)-1]
+				matched = strings.HasPrefix(redirect, clientRedirect)
 			} else {
-				clientRedirect = strings.Replace(clientRedirect, "*", "\\*", 1)
+				matched = redirect == clientRedirect
 			}
-			clientRedirect = fmt.Sprintf("^%s$", clientRedirect)
-			matched, regexError := regexp.MatchString(clientRedirect, redirect)
-			if regexError != nil {
-				log.Error("Cloud not match redirect URI %s for client %s", redirect, clientId)
-				return false, regexError
-			}
-
 			matchesRedirect = matchesRedirect || matched
 		}
 
-		return matchesRedirect, nil
+		return matchesRedirect
 	} else {
 		log.Error("Client %s has no redirect URI(s) configured!", clientId)
-		return false, nil
+		return false
 	}
 }

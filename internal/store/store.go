@@ -181,7 +181,7 @@ func (s *store[T]) Set(key string, value *T) {
 	s.storeMap[key] = value
 }
 
-func (s *store[T]) SetWithDuration(key string, value *T, duration time.Duration) {
+func (s *store[T]) SetWithDuration(key string, value *T, _ time.Duration) {
 	s.Set(key, value)
 }
 

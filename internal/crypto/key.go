@@ -12,6 +12,7 @@ import (
 	"os"
 )
 
+// HashAlgorithm used for the names of the supported hash algorithms.
 type HashAlgorithm string
 
 const (
@@ -20,12 +21,14 @@ const (
 	SHA512 HashAlgorithm = "SHA512"
 )
 
+// SigningPrivateKey defines a combination of private key, signing and hash algorithm.
 type SigningPrivateKey struct {
 	PrivateKey         interface{}
 	SignatureAlgorithm jwa.SignatureAlgorithm
 	HashAlgorithm      HashAlgorithm
 }
 
+// ManagedKey defines a combination of keys defined for config.Client.
 type ManagedKey struct {
 	Id            string
 	Clients       []*config.Client
@@ -34,7 +37,9 @@ type ManagedKey struct {
 	HashAlgorithm HashAlgorithm
 }
 
+// ServerSecretLoader defines how to receive a private server key.
 type ServerSecretLoader interface {
+	// GetServerKey returns the private key of the server.
 	GetServerKey() jwt.SignEncryptParseOption
 }
 
@@ -42,11 +47,14 @@ type serverSecret struct {
 	secret string
 }
 
+// KeyLoader defines how to get ManagedKey for a specific client.
 type KeyLoader interface {
+	// LoadKeys returns a ManagedKey for a specific client and a bool indicating whether a key exists or not.
 	LoadKeys(client *config.Client) (*ManagedKey, bool)
 	ServerSecretLoader
 }
 
+// NewServerSecretLoader creates a ServerSecretLoader based on the current config.Config.
 func NewServerSecretLoader() ServerSecretLoader {
 	currentConfig := config.GetConfigInstance()
 	return &serverSecret{secret: currentConfig.GetServerSecret()}
@@ -56,8 +64,9 @@ func (s *serverSecret) GetServerKey() jwt.SignEncryptParseOption {
 	return jwt.WithKey(jwa.HS256, []byte(s.secret))
 }
 
-func LoadPrivateKey(name string) (*SigningPrivateKey, error) {
-	privateKeyBytes, readError := os.ReadFile(name)
+// LoadPrivateKey loads a private key from a given filename.
+func LoadPrivateKey(filename string) (*SigningPrivateKey, error) {
+	privateKeyBytes, readError := os.ReadFile(filename)
 	if readError != nil {
 		return nil, readError
 	}

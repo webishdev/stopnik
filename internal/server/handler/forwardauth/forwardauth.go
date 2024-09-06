@@ -22,17 +22,19 @@ type Handler struct {
 	cookieManager         *cookie.Manager
 	authSessionManager    session.Manager[session.AuthSession]
 	forwardSessionManager session.Manager[session.ForwardSession]
+	loginSessionManager   session.Manager[session.LoginSession]
 	templateManager       *template.Manager
 	errorHandler          *internalError.Handler
 }
 
-func NewForwardAuthHandler(cookieManager *cookie.Manager, authSessionManager session.Manager[session.AuthSession], forwardSessionManager session.Manager[session.ForwardSession], templateManager *template.Manager) *Handler {
+func NewForwardAuthHandler(cookieManager *cookie.Manager, authSessionManager session.Manager[session.AuthSession], forwardSessionManager session.Manager[session.ForwardSession], loginSessionManager session.Manager[session.LoginSession], templateManager *template.Manager) *Handler {
 	currentConfig := config.GetConfigInstance()
 	return &Handler{
 		config:                currentConfig,
 		cookieManager:         cookieManager,
 		authSessionManager:    authSessionManager,
 		forwardSessionManager: forwardSessionManager,
+		loginSessionManager:   loginSessionManager,
 		templateManager:       templateManager,
 		errorHandler:          internalError.NewErrorHandler(),
 	}
@@ -40,6 +42,12 @@ func NewForwardAuthHandler(cookieManager *cookie.Manager, authSessionManager ses
 
 func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	log.AccessLogRequest(r)
+
+	forwardAuthClient, forwardAuthClientExists := h.config.GetForwardAuthClient()
+	if !forwardAuthClientExists {
+		h.errorHandler.InternalServerErrorHandler(w, r)
+		return
+	}
 
 	forwardProtocol := r.Header.Get(internalHttp.XForwardProtocol)
 	forwardHost := r.Header.Get(internalHttp.XForwardHost)
@@ -62,7 +70,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	codeParameter := forwardUri.Query().Get(oauth2.ParameterCode)
 	forwardIdParameter := forwardUri.Query().Get(forwardAuthParameterName)
 
-	_, validCookie := h.cookieManager.ValidateAuthCookie(r)
+	_, _, validCookie := h.cookieManager.ValidateAuthCookie(r)
 
 	if validCookie {
 		w.WriteHeader(http.StatusOK)
@@ -98,7 +106,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	parsedUri, parsedUriError := createUri(h.config.Server.ForwardAuth.ExternalUrl, endpoint.Authorization, func(query url.Values) {
 		query.Set(oauth2.ParameterResponseType, string(oauth2.RtCode))
-		query.Set(oauth2.ParameterClientId, "fooobar")
+		query.Set(oauth2.ParameterClientId, forwardAuthClient.Id)
 		query.Set(oauth2.ParameterState, "abc")
 		query.Set(oauth2.ParameterScope, "xzy")
 		query.Set(oauth2.ParameterRedirectUri, redirectUri.String())
@@ -123,13 +131,18 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) validate(code string, forwardSessionId string) (*http.Cookie, *session.ForwardSession, bool) {
 	authSession, authSessionExists := h.authSessionManager.GetSession(code)
-	forwardSession, forwardSessionExists := h.forwardSessionManager.GetSession(forwardSessionId)
-	if authSessionExists && forwardSessionExists {
+	if authSessionExists {
 		codeChallengeMethod, codeChallengeMethodExists := pkce.CodeChallengeMethodFromString(authSession.CodeChallengeMethod)
-		if codeChallengeMethodExists {
+		forwardSession, forwardSessionExists := h.forwardSessionManager.GetSession(forwardSessionId)
+		if codeChallengeMethodExists && forwardSessionExists {
 			validatePKCE := pkce.ValidatePKCE(codeChallengeMethod, forwardSession.CodeChallengeVerifier, authSession.CodeChallenge)
 			if validatePKCE {
-				authCookie, authCookieError := h.cookieManager.CreateAuthCookie(authSession.Username)
+				loginSession := &session.LoginSession{
+					Id:       uuid.NewString(),
+					Username: authSession.Username,
+				}
+				h.loginSessionManager.StartSession(loginSession)
+				authCookie, authCookieError := h.cookieManager.CreateAuthCookie(authSession.Username, loginSession.Id)
 				if authCookieError != nil {
 					return nil, nil, false
 				}

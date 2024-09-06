@@ -269,7 +269,7 @@ func Test_EmptyUIConfiguration(t *testing.T) {
 		t.Error("expected title to be empty")
 	}
 
-	hideMascot := config.GetHideMascot()
+	hideMascot := config.GetHideLogo()
 	if hideMascot {
 		t.Error("expected hideMascot to be false")
 	}
@@ -324,7 +324,7 @@ func Test_SimpleUIConfiguration(t *testing.T) {
 		t.Error("expected title to be 'Oh my Foo!'")
 	}
 
-	hideMascot := config.GetHideMascot()
+	hideMascot := config.GetHideLogo()
 	if !hideMascot {
 		t.Error("expected hideMascot to be true")
 	}
@@ -852,10 +852,7 @@ func Test_ValidateRedirects(t *testing.T) {
 	for index, test := range redirectParameters {
 		testMessage := fmt.Sprintf("Validate redirect %d %s", index, test.redirect)
 		t.Run(testMessage, func(t *testing.T) {
-			result, validationError := validateRedirect("fooId", validRedirects, test.redirect)
-			if validationError != nil {
-				t.Error("Validation should not return an error")
-			}
+			result := validateRedirect("fooId", validRedirects, test.redirect)
 			if result != test.expectedResult {
 				t.Error("Redirect validation did not match")
 			}
@@ -865,20 +862,14 @@ func Test_ValidateRedirects(t *testing.T) {
 
 func Test_EmptyRedirect(t *testing.T) {
 	var validRedirects = []string{"http://foo.com/callback", "https://foo.com/callback", "https://foo.com/wildcard/*"}
-	result, validationError := validateRedirect("fooId", validRedirects, "")
-	if validationError != nil {
-		t.Error("Validation should not return an error")
-	}
+	result := validateRedirect("fooId", validRedirects, "")
 	if result {
 		t.Error("Redirect validation did not match")
 	}
 }
 
 func Test_NoRedirects(t *testing.T) {
-	result, validationError := validateRedirect("fooId", []string{}, "http://foo.com/callback")
-	if validationError != nil {
-		t.Error("Validation should not return an error")
-	}
+	result := validateRedirect("fooId", []string{}, "http://foo.com/callback")
 	if result {
 		t.Error("Redirect validation did not match")
 	}
@@ -970,18 +961,12 @@ func assertClientValues(t *testing.T, config *Config, expected testExpectedClien
 		t.Errorf("expected expectedRoles claim to be '%s', got '%s'", expected.expectedRolesClaim, rolesClaim)
 	}
 
-	validRedirect, validRedirectError := client.ValidateRedirect("http://localhost:8080/callback")
-	if validRedirectError != nil {
-		t.Error("expected valid redirect not return an error")
-	}
+	validRedirect := client.ValidateRedirect("http://localhost:8080/callback")
 	if !validRedirect {
 		t.Error("expected valid redirect")
 	}
 
-	invalidRedirect, invalidRedirectError := client.ValidateRedirect("http://foo.com:8080/callback")
-	if invalidRedirectError != nil {
-		t.Error("expected invalid redirect not return an error")
-	}
+	invalidRedirect := client.ValidateRedirect("http://foo.com:8080/callback")
 	if invalidRedirect {
 		t.Error("did not expect redirect to be valid")
 	}

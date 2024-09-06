@@ -2,13 +2,11 @@ package oauth2
 
 import "strings"
 
+// GrantType as described in
+// - https://datatracker.ietf.org/doc/html/rfc6749#appendix-A.10
+// - https://datatracker.ietf.org/doc/html/rfc7591#section-2
 type GrantType string
 
-/*
- * GrantType as described in
- * - https://datatracker.ietf.org/doc/html/rfc6749#appendix-A.10
- * - https://datatracker.ietf.org/doc/html/rfc7591#section-2
- */
 const (
 	GtAuthorizationCode GrantType = "authorization_code"
 	GtClientCredentials GrantType = "client_credentials"

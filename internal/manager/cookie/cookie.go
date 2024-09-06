@@ -1,9 +1,11 @@
 package cookie
 
 import (
+	"fmt"
 	"github.com/lestrrat-go/jwx/v2/jwt"
 	"github.com/webishdev/stopnik/internal/config"
 	"github.com/webishdev/stopnik/internal/crypto"
+	"github.com/webishdev/stopnik/internal/manager/session"
 	"github.com/webishdev/stopnik/log"
 	"net/http"
 	"sync"
@@ -13,9 +15,10 @@ import (
 type Now func() time.Time
 
 type Manager struct {
-	config      *config.Config
-	keyFallback crypto.ServerSecretLoader
-	now         Now
+	config       *config.Config
+	loginSession session.Manager[session.LoginSession]
+	keyFallback  crypto.ServerSecretLoader
+	now          Now
 }
 
 var cookieManagerLock = &sync.Mutex{}
@@ -33,9 +36,10 @@ func GetCookieManagerInstance() *Manager {
 func newCookieManagerWithTime(now Now) *Manager {
 	configInstance := config.GetConfigInstance()
 	return &Manager{
-		config:      configInstance,
-		keyFallback: crypto.NewServerSecretLoader(),
-		now:         now,
+		config:       configInstance,
+		loginSession: session.GetLoginSessionManagerInstance(),
+		keyFallback:  crypto.NewServerSecretLoader(),
+		now:          now,
 	}
 }
 
@@ -73,10 +77,10 @@ func (cookieManager *Manager) DeleteAuthCookie() http.Cookie {
 	}
 }
 
-func (cookieManager *Manager) CreateAuthCookie(username string) (http.Cookie, error) {
+func (cookieManager *Manager) CreateAuthCookie(username string, loginSessionId string) (http.Cookie, error) {
 	authCookieName := cookieManager.config.GetAuthCookieName()
 	log.Debug("Creating %s auth cookie", authCookieName)
-	value, err := cookieManager.generateCookieValue(username)
+	value, err := cookieManager.generateAuthCookieValue(username, loginSessionId)
 	if err != nil {
 		return http.Cookie{}, err
 	}
@@ -90,34 +94,47 @@ func (cookieManager *Manager) CreateAuthCookie(username string) (http.Cookie, er
 	}, nil
 }
 
-func (cookieManager *Manager) ValidateAuthCookie(r *http.Request) (*config.User, bool) {
+func (cookieManager *Manager) ValidateAuthCookie(r *http.Request) (*config.User, *session.LoginSession, bool) {
 	authCookieName := cookieManager.config.GetAuthCookieName()
-	log.Debug("Validating %s cookie", authCookieName)
+	log.Debug("Validating %s auth cookie", authCookieName)
 	cookie, cookieError := r.Cookie(authCookieName)
 	if cookieError != nil {
-		return &config.User{}, false
+		return &config.User{}, &session.LoginSession{}, false
 	} else {
-		return cookieManager.validateCookieValue(cookie)
+		return cookieManager.validateAuthCookieValue(cookie)
 	}
 }
 
-func (cookieManager *Manager) validateCookieValue(cookie *http.Cookie) (*config.User, bool) {
+func (cookieManager *Manager) validateAuthCookieValue(cookie *http.Cookie) (*config.User, *session.LoginSession, bool) {
 	options := cookieManager.keyFallback.GetServerKey()
 	token, err := jwt.Parse([]byte(cookie.Value), options)
 	if err != nil {
-		return &config.User{}, false
+		return &config.User{}, &session.LoginSession{}, false
+	}
+
+	loginClaim, loginClaimExists := token.Get("login")
+	if !loginClaimExists {
+		return &config.User{}, &session.LoginSession{}, false
+	}
+
+	loginSessionId := fmt.Sprintf("%s", loginClaim)
+
+	loginSession, loginSessionExists := cookieManager.loginSession.GetSession(loginSessionId)
+	if !loginSessionExists {
+		return &config.User{}, &session.LoginSession{}, false
 	}
 
 	// https://stackoverflow.com/a/61284284/4094586
 	username := token.Subject()
 	user, userExists := cookieManager.config.GetUser(username)
-	return user, userExists
+	return user, loginSession, userExists
 }
 
-func (cookieManager *Manager) generateCookieValue(username string) (string, error) {
+func (cookieManager *Manager) generateAuthCookieValue(username string, loginSessionId string) (string, error) {
 	sessionTimeout := cookieManager.config.GetSessionTimeoutSeconds()
 	token, builderError := jwt.NewBuilder().
 		Subject(username).
+		Claim("login", loginSessionId).
 		Expiration(cookieManager.now().Add(time.Second * time.Duration(sessionTimeout))).
 		Build()
 	if builderError != nil {

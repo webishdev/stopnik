@@ -56,7 +56,7 @@ func start(configurationFile *string) error {
 	return nil
 }
 
-func readConfiguration(configurationFile *string, configLoader *config.Loader) (*config.Config, error) {
+func readConfiguration(configurationFile *string, configLoader config.Loader) (*config.Config, error) {
 	configError := configLoader.LoadConfig(*configurationFile, true)
 	if configError != nil {
 		fmt.Printf("STOPnik %s - %s\n\n", Version, GitHash)

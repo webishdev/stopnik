@@ -2,8 +2,10 @@ package cookie
 
 import (
 	"fmt"
+	"github.com/google/uuid"
 	"github.com/webishdev/stopnik/internal/config"
 	"github.com/webishdev/stopnik/internal/endpoint"
+	"github.com/webishdev/stopnik/internal/manager/session"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -29,8 +31,15 @@ func Test_Cookie(t *testing.T) {
 
 	t.Run("Create and validate auth cookie", func(t *testing.T) {
 		cookieManager := GetCookieManagerInstance()
+		loginSessionManager := session.GetLoginSessionManagerInstance()
 
-		cookie, cookieError := cookieManager.CreateAuthCookie("foo")
+		loginSession := &session.LoginSession{
+			Id:       uuid.NewString(),
+			Username: "foo",
+		}
+		loginSessionManager.StartSession(loginSession)
+
+		cookie, cookieError := cookieManager.CreateAuthCookie("foo", loginSession.Id)
 
 		if cookieError != nil {
 			t.Error(cookieError)
@@ -44,9 +53,9 @@ func Test_Cookie(t *testing.T) {
 			},
 		}
 
-		_, userExists := cookieManager.ValidateAuthCookie(httpRequest)
+		_, _, exists := cookieManager.ValidateAuthCookie(httpRequest)
 
-		if !userExists {
+		if !exists {
 			t.Error("Token in auth cookie is invalid")
 		}
 	})
@@ -54,7 +63,7 @@ func Test_Cookie(t *testing.T) {
 	t.Run("Create and validate expired auth cookie", func(t *testing.T) {
 		cookieManager := newCookieManagerWithTime(now)
 
-		cookie, cookieError := cookieManager.CreateAuthCookie("foo")
+		cookie, cookieError := cookieManager.CreateAuthCookie("foo", "someId")
 
 		if cookieError != nil {
 			t.Error(cookieError)
@@ -68,9 +77,9 @@ func Test_Cookie(t *testing.T) {
 
 		mockedTime = mockedTime.Add(time.Hour * time.Duration(-6))
 
-		_, userExists := cookieManager.ValidateAuthCookie(httpRequest)
+		_, _, exists := cookieManager.ValidateAuthCookie(httpRequest)
 
-		if userExists {
+		if exists {
 			t.Error("Expired token should not provide a user")
 		}
 	})
@@ -78,7 +87,7 @@ func Test_Cookie(t *testing.T) {
 	t.Run("Create and validate auth cookie with wrong username", func(t *testing.T) {
 		cookieManager := GetCookieManagerInstance()
 
-		cookie, cookieError := cookieManager.CreateAuthCookie("bar")
+		cookie, cookieError := cookieManager.CreateAuthCookie("bar", "someId")
 
 		if cookieError != nil {
 			t.Error(cookieError)
@@ -90,9 +99,9 @@ func Test_Cookie(t *testing.T) {
 			},
 		}
 
-		_, userExists := cookieManager.ValidateAuthCookie(httpRequest)
+		_, _, exists := cookieManager.ValidateAuthCookie(httpRequest)
 
-		if userExists {
+		if exists {
 			t.Error("User should not exists")
 		}
 	})
@@ -108,9 +117,9 @@ func Test_Cookie(t *testing.T) {
 			},
 		}
 
-		_, userExists := cookieManager.ValidateAuthCookie(httpRequest)
+		_, _, exists := cookieManager.ValidateAuthCookie(httpRequest)
 
-		if userExists {
+		if exists {
 			t.Error("User should not exists")
 		}
 	})

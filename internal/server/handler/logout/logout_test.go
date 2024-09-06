@@ -2,10 +2,12 @@ package logout
 
 import (
 	"fmt"
+	"github.com/google/uuid"
 	"github.com/webishdev/stopnik/internal/config"
 	"github.com/webishdev/stopnik/internal/endpoint"
 	internalHttp "github.com/webishdev/stopnik/internal/http"
 	"github.com/webishdev/stopnik/internal/manager/cookie"
+	"github.com/webishdev/stopnik/internal/manager/session"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -43,6 +45,7 @@ func Test_Logout(t *testing.T) {
 func testInvalidCookies(t *testing.T, testConfig *config.Config) {
 	t.Run("Logout with invalid cookie", func(t *testing.T) {
 		cookieManager := cookie.GetCookieManagerInstance()
+		loginSessionManager := session.GetLoginSessionManagerInstance()
 
 		authCookie := http.Cookie{
 			Name:     testConfig.GetAuthCookieName(),
@@ -53,7 +56,7 @@ func testInvalidCookies(t *testing.T, testConfig *config.Config) {
 			SameSite: http.SameSiteLaxMode,
 		}
 
-		logoutHandler := NewLogoutHandler(cookieManager, "")
+		logoutHandler := NewLogoutHandler(cookieManager, loginSessionManager, "")
 
 		rr := httptest.NewRecorder()
 
@@ -84,11 +87,17 @@ func testLogout(t *testing.T, testConfig *config.Config) {
 		testMessage := fmt.Sprintf("Logout handler redirect %v, form redirect %v", test.handlerRedirect, test.formRedirect)
 		t.Run(testMessage, func(t *testing.T) {
 			cookieManager := cookie.GetCookieManagerInstance()
+			loginSessionManager := session.GetLoginSessionManagerInstance()
 
 			user, _ := testConfig.GetUser("foo")
-			authCookie, _ := cookieManager.CreateAuthCookie(user.Username)
+			loginSession := &session.LoginSession{
+				Id:       uuid.NewString(),
+				Username: user.Username,
+			}
+			loginSessionManager.StartSession(loginSession)
+			authCookie, _ := cookieManager.CreateAuthCookie(user.Username, loginSession.Id)
 
-			logoutHandler := NewLogoutHandler(cookieManager, test.handlerRedirect)
+			logoutHandler := NewLogoutHandler(cookieManager, loginSessionManager, test.handlerRedirect)
 
 			rr := httptest.NewRecorder()
 
@@ -146,7 +155,7 @@ func Test_LogoutNotAllowedHttpMethods(t *testing.T) {
 	for _, method := range testInvalidLogoutHttpMethods {
 		testMessage := fmt.Sprintf("Logout with unsupported method %s", method)
 		t.Run(testMessage, func(t *testing.T) {
-			logoutHandler := NewLogoutHandler(&cookie.Manager{}, "")
+			logoutHandler := NewLogoutHandler(&cookie.Manager{}, &session.LoginManager{}, "")
 
 			rr := httptest.NewRecorder()
 

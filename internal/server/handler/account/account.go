@@ -4,6 +4,7 @@ import (
 	"github.com/google/uuid"
 	internalHttp "github.com/webishdev/stopnik/internal/http"
 	"github.com/webishdev/stopnik/internal/manager/cookie"
+	"github.com/webishdev/stopnik/internal/manager/session"
 	"github.com/webishdev/stopnik/internal/server/handler/error"
 	"github.com/webishdev/stopnik/internal/server/validation"
 	"github.com/webishdev/stopnik/internal/template"
@@ -12,29 +13,32 @@ import (
 )
 
 type Handler struct {
-	validator       *validation.RequestValidator
-	cookieManager   *cookie.Manager
-	templateManager *template.Manager
-	errorHandler    *error.Handler
+	validator           *validation.RequestValidator
+	cookieManager       *cookie.Manager
+	loginSessionManager session.Manager[session.LoginSession]
+	templateManager     *template.Manager
+	errorHandler        *error.Handler
 }
 
 func NewAccountHandler(
 	validator *validation.RequestValidator,
 	cookieManager *cookie.Manager,
+	loginSessionManager session.Manager[session.LoginSession],
 	templateManager *template.Manager,
 ) *Handler {
 	return &Handler{
-		validator:       validator,
-		cookieManager:   cookieManager,
-		templateManager: templateManager,
-		errorHandler:    error.NewErrorHandler(),
+		validator:           validator,
+		cookieManager:       cookieManager,
+		loginSessionManager: loginSessionManager,
+		templateManager:     templateManager,
+		errorHandler:        error.NewErrorHandler(),
 	}
 }
 
 func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	log.AccessLogRequest(r)
 	if r.Method == http.MethodGet {
-		user, validCookie := h.cookieManager.ValidateAuthCookie(r)
+		user, _, validCookie := h.cookieManager.ValidateAuthCookie(r)
 		if validCookie {
 			logoutTemplate := h.templateManager.LogoutTemplate(user.Username, r.RequestURI)
 
@@ -68,13 +72,18 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		cookie, err := h.cookieManager.CreateAuthCookie(user.Username)
+		loginSession := &session.LoginSession{
+			Id:       uuid.NewString(),
+			Username: user.Username,
+		}
+		h.loginSessionManager.StartSession(loginSession)
+		authCookie, err := h.cookieManager.CreateAuthCookie(user.Username, loginSession.Id)
 		if err != nil {
 			h.errorHandler.InternalServerErrorHandler(w, r)
 			return
 		}
 
-		http.SetCookie(w, &cookie)
+		http.SetCookie(w, &authCookie)
 
 		w.Header().Set(internalHttp.Location, r.RequestURI)
 		w.WriteHeader(http.StatusSeeOther)

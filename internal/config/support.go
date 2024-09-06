@@ -34,6 +34,7 @@ func setup[T any](values *[]T, accessor func(T) string) map[string]*T {
 	return valueMap
 }
 
+// GetOrDefaultString returns a value or a default value if the given value is empty.
 func GetOrDefaultString(value string, defaultValue string) string {
 	if value == "" {
 		return defaultValue
@@ -42,6 +43,7 @@ func GetOrDefaultString(value string, defaultValue string) string {
 	}
 }
 
+// GetOrDefaultStringSlice returns an array or a default array if the given array is empty.
 func GetOrDefaultStringSlice(value []string, defaultValue []string) []string {
 	if len(value) == 0 {
 		return defaultValue
@@ -50,6 +52,7 @@ func GetOrDefaultStringSlice(value []string, defaultValue []string) []string {
 	}
 }
 
+// GetOrDefaultInt returns a value or a default value if the given value is empty.
 func GetOrDefaultInt(value int, defaultValue int) int {
 	if value == 0 {
 		return defaultValue
