@@ -18,27 +18,7 @@ import (
 )
 
 func Test_AccountWithCookie(t *testing.T) {
-
-	testConfig := &config.Config{
-		Clients: []config.Client{
-			{
-				Id:           "foo",
-				ClientSecret: "d82c4eb5261cb9c8aa9855edd67d1bd10482f41529858d925094d173fa662aa91ff39bc5b188615273484021dfb16fd8284cf684ccf0fc795be3aa2fc1e6c181",
-				Redirects:    []string{"https://example.com/callback"},
-			},
-		},
-		Users: []config.User{
-			{
-				Username: "foo",
-				Password: "d82c4eb5261cb9c8aa9855edd67d1bd10482f41529858d925094d173fa662aa91ff39bc5b188615273484021dfb16fd8284cf684ccf0fc795be3aa2fc1e6c181",
-			},
-		},
-	}
-
-	initializationError := config.Initialize(testConfig)
-	if initializationError != nil {
-		t.Fatal(initializationError)
-	}
+	testConfig := testInitializeConfig(t)
 
 	requestValidator := validation.NewRequestValidator()
 	cookieManager := cookie.GetCookieManagerInstance()
@@ -85,6 +65,8 @@ func Test_AccountWithCookie(t *testing.T) {
 }
 
 func Test_AccountWithoutCookie(t *testing.T) {
+	testInitializeConfig(t)
+
 	requestValidator := validation.NewRequestValidator()
 	cookieManager := cookie.GetCookieManagerInstance()
 	loginSessionManager := session.GetLoginSessionManagerInstance()
@@ -119,13 +101,16 @@ func Test_AccountWithoutCookie(t *testing.T) {
 }
 
 func Test_AccountLogin(t *testing.T) {
+	testConfig := testInitializeConfig(t)
+
 	type loginParameter struct {
 		username string
 		password string
+		success  bool
 	}
 	var loginParameters = []loginParameter{
-		{"foo", "bar"},
-		{"xxx", "zzz"},
+		{"foo", "bar", true},
+		{"xxx", "zzz", false},
 	}
 	for _, test := range loginParameters {
 		testMessage := fmt.Sprintf("Account login %v", test.username)
@@ -135,13 +120,6 @@ func Test_AccountLogin(t *testing.T) {
 			cookieManager := cookie.GetCookieManagerInstance()
 			loginSessionManager := session.GetLoginSessionManagerInstance()
 			templateManager := template.GetTemplateManagerInstance()
-
-			loginSession := &session.LoginSession{
-				Id:       uuid.NewString(),
-				Username: test.username,
-			}
-			loginSessionManager.StartSession(loginSession)
-			authCookie, _ := cookieManager.CreateAuthCookie(test.username, loginSession.Id)
 
 			accountHandler := NewAccountHandler(requestValidator, cookieManager, loginSessionManager, templateManager)
 
@@ -155,7 +133,6 @@ func Test_AccountLogin(t *testing.T) {
 
 			request := httptest.NewRequest(http.MethodPost, endpoint.Account, body)
 			request.Header.Add(internalHttp.ContentType, "application/x-www-form-urlencoded")
-			request.AddCookie(&authCookie)
 
 			accountHandler.ServeHTTP(rr, request)
 
@@ -171,6 +148,25 @@ func Test_AccountLogin(t *testing.T) {
 			if location.String() != endpoint.Account {
 				t.Errorf("handler returned wrong location: got %v want %v", location.String(), endpoint.Account)
 			}
+
+			var authCookie *http.Cookie
+			for _, currentCookie := range rr.Result().Cookies() {
+				if currentCookie.Name == testConfig.GetAuthCookieName() {
+					authCookie = currentCookie
+					break
+				}
+			}
+
+			if test.success && authCookie == nil {
+				t.Error("Should have auth cookie after login")
+			} else if !test.success && authCookie != nil {
+				t.Error("Should not have auth cookie after login")
+			}
+
+			_, loginSessionExists := loginSessionManager.SearchSession(test.username)
+			if test.success != loginSessionExists {
+				t.Error("Login session state does not match")
+			}
 		})
 	}
 }
@@ -185,7 +181,8 @@ func Test_AccountNotAllowedHttpMethods(t *testing.T) {
 	for _, method := range testInvalidAccountHttpMethods {
 		testMessage := fmt.Sprintf("Account with unsupported method %s", method)
 		t.Run(testMessage, func(t *testing.T) {
-			accountHandler := NewAccountHandler(&validation.RequestValidator{}, &cookie.Manager{}, &session.LoginManager{}, &template.Manager{})
+			loginSessionManager := session.GetLoginSessionManagerInstance()
+			accountHandler := NewAccountHandler(&validation.RequestValidator{}, &cookie.Manager{}, loginSessionManager, &template.Manager{})
 
 			rr := httptest.NewRecorder()
 
@@ -196,6 +193,31 @@ func Test_AccountNotAllowedHttpMethods(t *testing.T) {
 			}
 		})
 	}
+}
+
+func testInitializeConfig(t *testing.T) *config.Config {
+	testConfig := &config.Config{
+		Clients: []config.Client{
+			{
+				Id:           "foo",
+				ClientSecret: "d82c4eb5261cb9c8aa9855edd67d1bd10482f41529858d925094d173fa662aa91ff39bc5b188615273484021dfb16fd8284cf684ccf0fc795be3aa2fc1e6c181",
+				Redirects:    []string{"https://example.com/callback"},
+			},
+		},
+		Users: []config.User{
+			{
+				Username: "foo",
+				Password: "d82c4eb5261cb9c8aa9855edd67d1bd10482f41529858d925094d173fa662aa91ff39bc5b188615273484021dfb16fd8284cf684ccf0fc795be3aa2fc1e6c181",
+			},
+		},
+	}
+
+	initializationError := config.Initialize(testConfig)
+	if initializationError != nil {
+		t.Fatal(initializationError)
+	}
+
+	return testConfig
 }
 
 func testCreateBody(values ...any) string {

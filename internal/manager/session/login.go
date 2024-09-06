@@ -13,22 +13,28 @@ type LoginSession struct {
 	Username string
 }
 
-type LoginManager struct {
+type loginManager struct {
 	config            *config.Config
 	loginSessionStore *store.ExpiringStore[LoginSession]
 }
 
-var loginSessionManagerLock = &sync.Mutex{}
-var loginSessionManagerSingleton *LoginManager
+type LoginManager[T LoginSession] interface {
+	Manager[T]
+	CloseSession(id string, all bool)
+	SearchSession(username string) ([]*T, bool)
+}
 
-func GetLoginSessionManagerInstance() Manager[LoginSession] {
+var loginSessionManagerLock = &sync.Mutex{}
+var loginSessionManagerSingleton LoginManager[LoginSession]
+
+func GetLoginSessionManagerInstance() LoginManager[LoginSession] {
 	loginSessionManagerLock.Lock()
 	defer loginSessionManagerLock.Unlock()
 	if loginSessionManagerSingleton == nil {
 		currentConfig := config.GetConfigInstance()
 		duration := time.Minute * time.Duration(currentConfig.GetSessionTimeoutSeconds())
 		loginSessionStore := store.NewTimedStore[LoginSession](duration)
-		loginSessionManagerSingleton = &LoginManager{
+		loginSessionManagerSingleton = &loginManager{
 			config:            currentConfig,
 			loginSessionStore: &loginSessionStore,
 		}
@@ -36,17 +42,17 @@ func GetLoginSessionManagerInstance() Manager[LoginSession] {
 	return loginSessionManagerSingleton
 }
 
-func (loginManager *LoginManager) StartSession(loginSession *LoginSession) {
+func (loginManager *loginManager) StartSession(loginSession *LoginSession) {
 	loginSessionStore := *loginManager.loginSessionStore
 	loginSessionStore.Set(loginSession.Id, loginSession)
 }
 
-func (loginManager *LoginManager) GetSession(id string) (*LoginSession, bool) {
+func (loginManager *loginManager) GetSession(id string) (*LoginSession, bool) {
 	loginSessionStore := *loginManager.loginSessionStore
 	return loginSessionStore.Get(id)
 }
 
-func (loginManager *LoginManager) CloseSession(id string, all bool) {
+func (loginManager *loginManager) CloseSession(id string, all bool) {
 	loginSessionStore := *loginManager.loginSessionStore
 	loginSession, loginSessionExists := loginSessionStore.Get(id)
 	if loginSessionExists {
@@ -67,4 +73,17 @@ func (loginManager *LoginManager) CloseSession(id string, all bool) {
 		}
 	}
 
+}
+
+func (loginManager *loginManager) SearchSession(username string) ([]*LoginSession, bool) {
+	loginSessionStore := *loginManager.loginSessionStore
+	var userSessions []*LoginSession
+	exists := false
+	for _, otherSession := range loginSessionStore.GetValues() {
+		if otherSession.Username == username {
+			userSessions = append(userSessions, otherSession)
+			exists = true
+		}
+	}
+	return userSessions, exists
 }

@@ -43,6 +43,3 @@ func (forwardManager *ForwardManager) GetSession(id string) (*ForwardSession, bo
 	forwardSessionStore := *forwardManager.forwardSessionStore
 	return forwardSessionStore.Get(id)
 }
-
-func (forwardManager *ForwardManager) CloseSession(_ string, _ bool) {
-}

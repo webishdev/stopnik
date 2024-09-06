@@ -15,7 +15,7 @@ import (
 type Handler struct {
 	validator           *validation.RequestValidator
 	cookieManager       *cookie.Manager
-	loginSessionManager session.Manager[session.LoginSession]
+	loginSessionManager session.LoginManager[session.LoginSession]
 	templateManager     *template.Manager
 	errorHandler        *error.Handler
 }
@@ -23,7 +23,7 @@ type Handler struct {
 func NewAccountHandler(
 	validator *validation.RequestValidator,
 	cookieManager *cookie.Manager,
-	loginSessionManager session.Manager[session.LoginSession],
+	loginSessionManager session.LoginManager[session.LoginSession],
 	templateManager *template.Manager,
 ) *Handler {
 	return &Handler{

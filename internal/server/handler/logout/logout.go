@@ -12,11 +12,11 @@ import (
 type Handler struct {
 	logoutRedirect      string
 	cookieManager       *cookie.Manager
-	loginSessionManager session.Manager[session.LoginSession]
+	loginSessionManager session.LoginManager[session.LoginSession]
 	errorHandler        *error.Handler
 }
 
-func NewLogoutHandler(cookieManager *cookie.Manager, loginSessionManager session.Manager[session.LoginSession], logoutRedirect string) *Handler {
+func NewLogoutHandler(cookieManager *cookie.Manager, loginSessionManager session.LoginManager[session.LoginSession], logoutRedirect string) *Handler {
 	return &Handler{
 		cookieManager:       cookieManager,
 		loginSessionManager: loginSessionManager,
