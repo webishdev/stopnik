@@ -50,8 +50,9 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		} else {
 			message := h.cookieManager.GetMessageCookieValue(r)
 
-			id := uuid.New()
-			loginTemplate := h.templateManager.LoginTemplate(id.String(), "account", message)
+			id := uuid.NewString()
+			loginToken := h.validator.NewLoginToken(id)
+			loginTemplate := h.templateManager.LoginTemplate(loginToken, "account", message)
 
 			_, err := w.Write(loginTemplate.Bytes())
 			if err != nil {
@@ -61,10 +62,10 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 	} else if r.Method == http.MethodPost {
 		// Handle POST from login
-		user, userExists := h.validator.ValidateFormLogin(r)
-		if !userExists {
+		user, loginError := h.validator.ValidateFormLogin(r)
+		if loginError != nil {
 
-			messageCookie := h.cookieManager.CreateMessageCookie("Invalid credentials")
+			messageCookie := h.cookieManager.CreateMessageCookie(*loginError)
 			http.SetCookie(w, &messageCookie)
 
 			w.Header().Set(internalHttp.Location, r.RequestURI)

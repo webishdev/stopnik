@@ -131,12 +131,14 @@ type Client struct {
 
 // UI defines the general web user interface entry in the configuration.
 type UI struct {
-	HideFooter      bool   `yaml:"hideFooter"`
-	HideLogo        bool   `yaml:"hideLogo"`
-	Title           string `yaml:"title"`
-	FooterText      string `yaml:"footerText"`
-	LogoImage       string `yaml:"logoImage"`
-	LogoContentType string `yaml:"logoContentType"`
+	HideFooter                bool   `yaml:"hideFooter"`
+	HideLogo                  bool   `yaml:"hideLogo"`
+	Title                     string `yaml:"title"`
+	FooterText                string `yaml:"footerText"`
+	LogoImage                 string `yaml:"logoImage"`
+	LogoContentType           string `yaml:"logoContentType"`
+	InvalidCredentialsMessage string `yaml:"invalidCredentialsMessage"`
+	ExpiredLoginMessage       string `yaml:"expiredLoginMessage"`
 }
 
 // Config defines the root entry for the configuration.
@@ -366,6 +368,18 @@ func (config *Config) GetLogoImage() *[]byte {
 	return config.logoImage
 }
 
+// GetInvalidCredentialsMessage returns the configured invalid credentials message.
+// When no invalid credentials message is provided a default value will be returned.
+func (config *Config) GetInvalidCredentialsMessage() string {
+	return GetOrDefaultString(config.UI.InvalidCredentialsMessage, "Invalid credentials")
+}
+
+// GetExpiredLoginMessage returns the configured login expired message.
+// When no login expired message is provided a default value will be returned.
+func (config *Config) GetExpiredLoginMessage() string {
+	return GetOrDefaultString(config.UI.ExpiredLoginMessage, "Login expired, try again")
+}
+
 // GetOidc returns whether one of the existing clients has OIDC flag set or not.
 func (config *Config) GetOidc() bool {
 	return config.oidc
@@ -397,6 +411,8 @@ func (config *Config) GetForwardAuthParameterName() string {
 	return GetOrDefaultString(config.Server.ForwardAuth.ParameterName, "forward_id")
 }
 
+// GetForwardAuthClient return a Client used for Traefik Forward Auth,
+// also returns a bool indicating whether such a Client exists or not.
 func (config *Config) GetForwardAuthClient() (*Client, bool) {
 	if config.forwardAuthClient != nil && config.forwardAuthClient.Id != "" {
 		return config.forwardAuthClient, true

@@ -2,6 +2,7 @@ package validation
 
 import (
 	"fmt"
+	"github.com/google/uuid"
 	"github.com/webishdev/stopnik/internal/config"
 	"github.com/webishdev/stopnik/internal/oauth2"
 	"net/http"
@@ -80,6 +81,8 @@ func Test_Validation(t *testing.T) {
 		for _, httpMethod := range httpMethods {
 			testMessage := fmt.Sprintf("Valid user password from request %s %t %s", test.name, test.valid, httpMethod)
 			t.Run(testMessage, func(t *testing.T) {
+				requestValidator := NewRequestValidator()
+
 				httpRequest := &http.Request{
 					Method: httpMethod,
 					PostForm: map[string][]string{
@@ -88,13 +91,16 @@ func Test_Validation(t *testing.T) {
 					},
 				}
 
-				requestValidator := NewRequestValidator()
+				if test.valid {
+					loginToken := requestValidator.NewLoginToken(uuid.NewString())
+					httpRequest.PostForm["stopnik_auth_session"] = []string{loginToken}
+				}
 
-				_, valid := requestValidator.ValidateFormLogin(httpRequest)
+				_, loginError := requestValidator.ValidateFormLogin(httpRequest)
 
-				if httpMethod == http.MethodPost && test.valid != valid {
-					t.Errorf("result does not match %t != %t", test.valid, valid)
-				} else if httpMethod != http.MethodPost && valid {
+				if httpMethod == http.MethodPost && test.valid && loginError != nil {
+					t.Error("should be valid form login")
+				} else if httpMethod != http.MethodPost && loginError == nil {
 					t.Error("should not be valid form login")
 				}
 			})

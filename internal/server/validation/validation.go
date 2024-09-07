@@ -1,31 +1,78 @@
 package validation
 
 import (
+	"github.com/google/uuid"
+	"github.com/lestrrat-go/jwx/v2/jwt"
 	"github.com/webishdev/stopnik/internal/config"
 	"github.com/webishdev/stopnik/internal/crypto"
 	"github.com/webishdev/stopnik/internal/oauth2"
+	"github.com/webishdev/stopnik/internal/system"
 	"github.com/webishdev/stopnik/log"
 	"net/http"
+	"time"
 )
 
 type RequestValidator struct {
-	config *config.Config
+	config             *config.Config
+	serverSecretLoader crypto.ServerSecretLoader
 }
 
 func NewRequestValidator() *RequestValidator {
 	currentConfig := config.GetConfigInstance()
-	return &RequestValidator{config: currentConfig}
+	return &RequestValidator{
+		config:             currentConfig,
+		serverSecretLoader: crypto.NewServerSecretLoader(),
+	}
 }
 
-func (validator *RequestValidator) ValidateFormLogin(r *http.Request) (*config.User, bool) {
+func (validator *RequestValidator) NewLoginToken(id string) string {
+	duration := time.Minute * time.Duration(5)
+	tokenId := uuid.NewString()
+	builder := jwt.NewBuilder().
+		JwtID(tokenId).
+		Subject(id).
+		Expiration(time.Now().Add(duration)).
+		IssuedAt(time.Now())
+
+	token, tokenError := builder.Build()
+	if tokenError != nil {
+		system.Error(tokenError)
+	}
+	options := validator.serverSecretLoader.GetServerKey()
+	tokenString, tokenError := jwt.Sign(token, options)
+	if tokenError != nil {
+		system.Error(tokenError)
+	}
+
+	return string(tokenString)
+}
+
+func (validator *RequestValidator) GetLoginToken(loginToken string) (jwt.Token, error) {
+	options := validator.serverSecretLoader.GetServerKey()
+	token, tokenError := jwt.Parse([]byte(loginToken), options)
+	if tokenError != nil {
+		return nil, tokenError
+	}
+	return token, nil
+}
+
+func (validator *RequestValidator) ValidateFormLogin(r *http.Request) (*config.User, *string) {
 	if r.Method == http.MethodPost {
 		log.Debug("Validating user credentials")
 
 		username := r.PostFormValue("stopnik_username")
 		password := r.PostFormValue("stopnik_password")
+		loginToken := r.PostFormValue("stopnik_auth_session")
 
-		if username == "" || password == "" {
-			return nil, false
+		if username == "" || password == "" || loginToken == "" {
+			loginError := validator.config.GetInvalidCredentialsMessage()
+			return nil, &loginError
+		}
+
+		_, tokenError := validator.GetLoginToken(loginToken)
+		if tokenError != nil {
+			loginError := validator.config.GetExpiredLoginMessage()
+			return nil, &loginError
 		}
 
 		// When login invalid
@@ -34,18 +81,21 @@ func (validator *RequestValidator) ValidateFormLogin(r *http.Request) (*config.U
 		// When login valid
 		user, exists := validator.config.GetUser(username)
 		if !exists {
-			return nil, false
+			loginError := validator.config.GetInvalidCredentialsMessage()
+			return nil, &loginError
 		}
 
 		passwordHash := crypto.Sha512SaltedHash(password, user.Salt)
 
 		if passwordHash != user.Password {
-			return nil, false
+			loginError := validator.config.GetInvalidCredentialsMessage()
+			return nil, &loginError
 		}
 
-		return user, true
+		return user, nil
 	}
-	return nil, false
+	loginError := validator.config.GetInvalidCredentialsMessage()
+	return nil, &loginError
 }
 
 func (validator *RequestValidator) ValidateClientCredentials(r *http.Request) (*config.Client, bool, bool) {
@@ -104,7 +154,7 @@ func (validator *RequestValidator) ValidateUserPassword(username string, passwor
 	if !exists {
 		return nil, false
 	}
-	passwordHash := crypto.Sha512Hash(password)
+	passwordHash := crypto.Sha512SaltedHash(password, user.Salt)
 	if passwordHash != user.Password {
 		return nil, false
 	}

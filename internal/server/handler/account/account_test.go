@@ -123,11 +123,14 @@ func Test_AccountLogin(t *testing.T) {
 
 			accountHandler := NewAccountHandler(requestValidator, cookieManager, loginSessionManager, templateManager)
 
+			loginToken := requestValidator.NewLoginToken(uuid.NewString())
+
 			rr := httptest.NewRecorder()
 
 			bodyString := testCreateBody(
 				"stopnik_username", test.username,
 				"stopnik_password", test.password,
+				"stopnik_auth_session", loginToken,
 			)
 			body := strings.NewReader(bodyString)
 

@@ -129,9 +129,9 @@ func (h *Handler) handleGetRequest(w http.ResponseWriter, r *http.Request) {
 
 	scopes := strings.Split(scope, " ")
 
-	id := uuid.New()
+	id := uuid.NewString()
 	authSession := &session.AuthSession{
-		Id:                  id.String(),
+		Id:                  id,
 		Redirect:            redirect,
 		AuthURI:             r.URL.RequestURI(),
 		CodeChallenge:       codeChallenge,
@@ -172,7 +172,7 @@ func (h *Handler) handleGetRequest(w http.ResponseWriter, r *http.Request) {
 		if slices.Contains(responseTypes, oauth2.RtToken) {
 			setImplicitGrantParameter(query, accessTokenResponse)
 		} else if slices.Contains(responseTypes, oauth2.RtCode) {
-			setAuthorizationGrantParameter(query, id.String())
+			setAuthorizationGrantParameter(query, id)
 		} else if idTokenRequest {
 			accessTokenHash := h.tokenManager.CreateAccessTokenHash(client, accessTokenResponse.AccessTokenValue)
 			idToken = h.tokenManager.CreateIdToken(r, user.Username, client, scopes, authSession.Nonce, accessTokenHash)
@@ -202,7 +202,8 @@ func (h *Handler) handleGetRequest(w http.ResponseWriter, r *http.Request) {
 		query := r.URL.Query()
 		encodedQuery := query.Encode()
 		formAction := fmt.Sprintf("authorize?%s", encodedQuery)
-		loginTemplate := h.templateManager.LoginTemplate(authSession.Id, formAction, message)
+		loginToken := h.validator.NewLoginToken(authSession.Id)
+		loginTemplate := h.templateManager.LoginTemplate(loginToken, formAction, message)
 
 		_, err := w.Write(loginTemplate.Bytes())
 		if err != nil {
@@ -225,7 +226,13 @@ func (h *Handler) handlePostRequest(w http.ResponseWriter, r *http.Request, user
 	}
 
 	authSessionForm := r.PostFormValue("stopnik_auth_session")
-	authSession, exists := h.authSessionManager.GetSession(authSessionForm)
+	loginToken, loginTokenError := h.validator.GetLoginToken(authSessionForm)
+	if loginTokenError != nil {
+		h.errorHandler.BadRequestHandler(w, r)
+		return
+	}
+	authSessionId := loginToken.Subject()
+	authSession, exists := h.authSessionManager.GetSession(authSessionId)
 	if !exists {
 		h.sendRetryLocation(w, r, "")
 		return
@@ -267,9 +274,9 @@ func (h *Handler) handlePostRequest(w http.ResponseWriter, r *http.Request, user
 
 func (h *Handler) validateLogin(w http.ResponseWriter, r *http.Request) (*config.User, bool) {
 	// Handle Post from Login
-	user, userExists := h.validator.ValidateFormLogin(r)
-	if !userExists {
-		h.sendRetryLocation(w, r, "Invalid credentials")
+	user, loginError := h.validator.ValidateFormLogin(r)
+	if loginError != nil {
+		h.sendRetryLocation(w, r, *loginError)
 		return nil, true
 	}
 	return user, false

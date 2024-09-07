@@ -23,40 +23,8 @@ import (
 	"time"
 )
 
-func Test_Authorize(t *testing.T) {
-
-	testConfig := &config.Config{
-		Clients: []config.Client{
-			{
-				Id:           "foo",
-				ClientSecret: "d82c4eb5261cb9c8aa9855edd67d1bd10482f41529858d925094d173fa662aa91ff39bc5b188615273484021dfb16fd8284cf684ccf0fc795be3aa2fc1e6c181",
-				Redirects:    []string{"https://example.com/callback"},
-			},
-		},
-		Users: []config.User{
-			{
-				Username: "foo",
-				Password: "d82c4eb5261cb9c8aa9855edd67d1bd10482f41529858d925094d173fa662aa91ff39bc5b188615273484021dfb16fd8284cf684ccf0fc795be3aa2fc1e6c181",
-			},
-		},
-	}
-
-	initializationError := config.Initialize(testConfig)
-	if initializationError != nil {
-		t.Fatal(initializationError)
-	}
-
-	testAuthorizeAuthorizationGrant(t, testConfig)
-
-	testAuthorizeImplicitGrant(t, testConfig)
-
-	testAuthorizeValidLoginAuthorizationGrant(t, testConfig)
-
-	testAuthorizeValidLoginImplicitGrant(t, testConfig)
-
-}
-
 func Test_AuthorizeInvalidLogin(t *testing.T) {
+	createTestConfig(t)
 	type invalidLoginParameter struct {
 		state string
 		scope string
@@ -145,6 +113,7 @@ func Test_AuthorizeInvalidLogin(t *testing.T) {
 }
 
 func Test_AuthorizeEmptyLogin(t *testing.T) {
+	createTestConfig(t)
 	type emptyLoginParameter struct {
 		state string
 		scope string
@@ -231,6 +200,7 @@ func Test_AuthorizeEmptyLogin(t *testing.T) {
 }
 
 func Test_AuthorizeValidLoginNoSession(t *testing.T) {
+	createTestConfig(t)
 	type validLoginParameter struct {
 		state string
 		scope string
@@ -264,10 +234,12 @@ func Test_AuthorizeValidLoginNoSession(t *testing.T) {
 
 			authorizeHandler := NewAuthorizeHandler(requestValidator, cookieManager, authSessionManager, loginSessionManager, tokenManager, &template.Manager{})
 
+			loginToken := requestValidator.NewLoginToken(uuid.NewString())
+
 			rr := httptest.NewRecorder()
 
 			bodyString := testCreateBody(
-				"stopnik_auth_session", uuid.NewString(),
+				"stopnik_auth_session", loginToken,
 				"stopnik_username", "foo",
 				"stopnik_password", "bar",
 			)
@@ -352,6 +324,7 @@ func Test_AuthorizeNotAllowedHttpMethods(t *testing.T) {
 }
 
 func Test_AuthorizeNoCookieExists(t *testing.T) {
+	createTestConfig(t)
 	parsedUri := createUri(t, endpoint.Authorization, func(query url.Values) {
 		query.Set(oauth2.ParameterClientId, "foo")
 		query.Set(oauth2.ParameterRedirectUri, "https://example.com/callback")
@@ -392,6 +365,7 @@ func Test_AuthorizeNoCookieExists(t *testing.T) {
 }
 
 func Test_AuthorizeInvalidResponseType(t *testing.T) {
+	createTestConfig(t)
 	parsedUri := createUri(t, endpoint.Authorization, func(query url.Values) {
 		query.Set(oauth2.ParameterClientId, "foo")
 		query.Set(oauth2.ParameterRedirectUri, "https://example.com/callback")
@@ -429,6 +403,7 @@ func Test_AuthorizeInvalidResponseType(t *testing.T) {
 }
 
 func Test_AuthorizeInvalidRedirect(t *testing.T) {
+	createTestConfig(t)
 	type redirectTest struct {
 		redirect string
 		status   int
@@ -466,6 +441,7 @@ func Test_AuthorizeInvalidRedirect(t *testing.T) {
 }
 
 func Test_AuthorizeInvalidClientId(t *testing.T) {
+	createTestConfig(t)
 	parsedUri := createUri(t, endpoint.Authorization, func(query url.Values) {
 		query.Set(oauth2.ParameterClientId, "bar")
 	})
@@ -485,6 +461,7 @@ func Test_AuthorizeInvalidClientId(t *testing.T) {
 }
 
 func Test_AuthorizeNoClientId(t *testing.T) {
+	createTestConfig(t)
 	loginSessionManager := session.GetLoginSessionManagerInstance()
 	requestValidator := validation.NewRequestValidator()
 
@@ -499,7 +476,9 @@ func Test_AuthorizeNoClientId(t *testing.T) {
 	}
 }
 
-func testAuthorizeAuthorizationGrant(t *testing.T, testConfig *config.Config) {
+func Test_AuthorizeAuthorizationGrant(t *testing.T) {
+	testConfig := createTestConfig(t)
+
 	type authorizationGrantParameter struct {
 		state                   string
 		scope                   string
@@ -600,7 +579,9 @@ func testAuthorizeAuthorizationGrant(t *testing.T, testConfig *config.Config) {
 	}
 }
 
-func testAuthorizeImplicitGrant(t *testing.T, testConfig *config.Config) {
+func Test_AuthorizeImplicitGrant(t *testing.T) {
+	testConfig := createTestConfig(t)
+
 	type implicitGrantParameter struct {
 		state string
 		scope string
@@ -687,7 +668,9 @@ func testAuthorizeImplicitGrant(t *testing.T, testConfig *config.Config) {
 	}
 }
 
-func testAuthorizeValidLoginAuthorizationGrant(t *testing.T, testConfig *config.Config) {
+func Test_AuthorizeValidLoginAuthorizationGrant(t *testing.T) {
+	testConfig := createTestConfig(t)
+
 	type validLoginParameter struct {
 		state string
 		scope string
@@ -716,9 +699,9 @@ func testAuthorizeValidLoginAuthorizationGrant(t *testing.T, testConfig *config.
 
 			client, _ := testConfig.GetClient("foo")
 
-			id := uuid.New()
+			id := uuid.NewString()
 			authSession := &session.AuthSession{
-				Id:                  id.String(),
+				Id:                  id,
 				Redirect:            "https://example.com/callback",
 				AuthURI:             parsedUri.RequestURI(),
 				CodeChallenge:       "",
@@ -738,10 +721,12 @@ func testAuthorizeValidLoginAuthorizationGrant(t *testing.T, testConfig *config.
 
 			authorizeHandler := NewAuthorizeHandler(requestValidator, cookieManager, authSessionManager, loginSessionManager, tokenManager, &template.Manager{})
 
+			loginToken := requestValidator.NewLoginToken(id)
+
 			rr := httptest.NewRecorder()
 
 			bodyString := testCreateBody(
-				"stopnik_auth_session", id.String(),
+				"stopnik_auth_session", loginToken,
 				"stopnik_username", "foo",
 				"stopnik_password", "bar",
 			)
@@ -776,7 +761,9 @@ func testAuthorizeValidLoginAuthorizationGrant(t *testing.T, testConfig *config.
 	}
 }
 
-func testAuthorizeValidLoginImplicitGrant(t *testing.T, testConfig *config.Config) {
+func Test_AuthorizeValidLoginImplicitGrant(t *testing.T) {
+	testConfig := createTestConfig(t)
+
 	type validLoginParameter struct {
 		state string
 		scope string
@@ -805,9 +792,9 @@ func testAuthorizeValidLoginImplicitGrant(t *testing.T, testConfig *config.Confi
 
 			client, _ := testConfig.GetClient("foo")
 
-			id := uuid.New()
+			id := uuid.NewString()
 			authSession := &session.AuthSession{
-				Id:                  id.String(),
+				Id:                  id,
 				Redirect:            "https://example.com/callback",
 				AuthURI:             parsedUri.RequestURI(),
 				CodeChallenge:       "",
@@ -827,10 +814,12 @@ func testAuthorizeValidLoginImplicitGrant(t *testing.T, testConfig *config.Confi
 
 			authorizeHandler := NewAuthorizeHandler(requestValidator, cookieManager, authSessionManager, loginSessionManager, tokenManager, &template.Manager{})
 
+			loginToken := requestValidator.NewLoginToken(id)
+
 			rr := httptest.NewRecorder()
 
 			bodyString := testCreateBody(
-				"stopnik_auth_session", id.String(),
+				"stopnik_auth_session", loginToken,
 				"stopnik_username", "foo",
 				"stopnik_password", "bar",
 			)
@@ -876,6 +865,30 @@ func testAuthorizeValidLoginImplicitGrant(t *testing.T, testConfig *config.Confi
 			}
 		})
 	}
+}
+
+func createTestConfig(t *testing.T) *config.Config {
+	testConfig := &config.Config{
+		Clients: []config.Client{
+			{
+				Id:           "foo",
+				ClientSecret: "d82c4eb5261cb9c8aa9855edd67d1bd10482f41529858d925094d173fa662aa91ff39bc5b188615273484021dfb16fd8284cf684ccf0fc795be3aa2fc1e6c181",
+				Redirects:    []string{"https://example.com/callback"},
+			},
+		},
+		Users: []config.User{
+			{
+				Username: "foo",
+				Password: "d82c4eb5261cb9c8aa9855edd67d1bd10482f41529858d925094d173fa662aa91ff39bc5b188615273484021dfb16fd8284cf684ccf0fc795be3aa2fc1e6c181",
+			},
+		},
+	}
+
+	initializationError := config.Initialize(testConfig)
+	if initializationError != nil {
+		t.Fatal(initializationError)
+	}
+	return testConfig
 }
 
 func createUri(t *testing.T, uri string, handler func(query url.Values)) *url.URL {
