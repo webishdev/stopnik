@@ -50,7 +50,7 @@ func (cookieManager *Manager) CreateMessageCookie(message string) http.Cookie {
 		Name:     messageCookieName,
 		Value:    message,
 		Path:     "/",
-		MaxAge:   5,
+		MaxAge:   1,
 		HttpOnly: true,
 		SameSite: http.SameSiteLaxMode,
 	}
