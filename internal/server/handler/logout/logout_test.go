@@ -155,7 +155,9 @@ func Test_LogoutNotAllowedHttpMethods(t *testing.T) {
 	for _, method := range testInvalidLogoutHttpMethods {
 		testMessage := fmt.Sprintf("Logout with unsupported method %s", method)
 		t.Run(testMessage, func(t *testing.T) {
-			logoutHandler := NewLogoutHandler(&cookie.Manager{}, &session.LoginManager{}, "")
+			loginSessionManager := session.GetLoginSessionManagerInstance()
+
+			logoutHandler := NewLogoutHandler(&cookie.Manager{}, loginSessionManager, "")
 
 			rr := httptest.NewRecorder()
 

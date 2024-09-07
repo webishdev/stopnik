@@ -83,9 +83,10 @@ func Test_AuthorizeInvalidLogin(t *testing.T) {
 				}
 			})
 			cookieManager := cookie.GetCookieManagerInstance()
+			loginSessionManager := session.GetLoginSessionManagerInstance()
 			requestValidator := validation.NewRequestValidator()
 
-			authorizeHandler := NewAuthorizeHandler(requestValidator, cookieManager, &session.AuthManager{}, &session.LoginManager{}, &token.Manager{}, &template.Manager{})
+			authorizeHandler := NewAuthorizeHandler(requestValidator, cookieManager, &session.AuthManager{}, loginSessionManager, &token.Manager{}, &template.Manager{})
 
 			rr := httptest.NewRecorder()
 
@@ -170,9 +171,10 @@ func Test_AuthorizeEmptyLogin(t *testing.T) {
 				}
 			})
 			cookieManager := cookie.GetCookieManagerInstance()
+			loginSessionManager := session.GetLoginSessionManagerInstance()
 			requestValidator := validation.NewRequestValidator()
 
-			authorizeHandler := NewAuthorizeHandler(requestValidator, cookieManager, &session.AuthManager{}, &session.LoginManager{}, &token.Manager{}, &template.Manager{})
+			authorizeHandler := NewAuthorizeHandler(requestValidator, cookieManager, &session.AuthManager{}, loginSessionManager, &token.Manager{}, &template.Manager{})
 
 			rr := httptest.NewRecorder()
 
@@ -334,7 +336,9 @@ func Test_AuthorizeNotAllowedHttpMethods(t *testing.T) {
 	for _, method := range testInvalidAuthorizeHttpMethods {
 		testMessage := fmt.Sprintf("Authorize with unsupported method %s", method)
 		t.Run(testMessage, func(t *testing.T) {
-			authorizeHandler := NewAuthorizeHandler(&validation.RequestValidator{}, &cookie.Manager{}, &session.AuthManager{}, &session.LoginManager{}, &token.Manager{}, &template.Manager{})
+			loginSessionManager := session.GetLoginSessionManagerInstance()
+
+			authorizeHandler := NewAuthorizeHandler(&validation.RequestValidator{}, &cookie.Manager{}, &session.AuthManager{}, loginSessionManager, &token.Manager{}, &template.Manager{})
 
 			rr := httptest.NewRecorder()
 
@@ -394,8 +398,9 @@ func Test_AuthorizeInvalidResponseType(t *testing.T) {
 		query.Set(oauth2.ParameterResponseType, "abc")
 	})
 	requestValidator := validation.NewRequestValidator()
+	loginSessionManager := session.GetLoginSessionManagerInstance()
 
-	authorizeHandler := NewAuthorizeHandler(requestValidator, &cookie.Manager{}, &session.AuthManager{}, &session.LoginManager{}, &token.Manager{}, &template.Manager{})
+	authorizeHandler := NewAuthorizeHandler(requestValidator, &cookie.Manager{}, &session.AuthManager{}, loginSessionManager, &token.Manager{}, &template.Manager{})
 
 	rr := httptest.NewRecorder()
 
@@ -443,9 +448,10 @@ func Test_AuthorizeInvalidRedirect(t *testing.T) {
 				query.Set(oauth2.ParameterRedirectUri, test.redirect)
 			})
 
+			loginSessionManager := session.GetLoginSessionManagerInstance()
 			requestValidator := validation.NewRequestValidator()
 
-			authorizeHandler := NewAuthorizeHandler(requestValidator, &cookie.Manager{}, &session.AuthManager{}, &session.LoginManager{}, &token.Manager{}, &template.Manager{})
+			authorizeHandler := NewAuthorizeHandler(requestValidator, &cookie.Manager{}, &session.AuthManager{}, loginSessionManager, &token.Manager{}, &template.Manager{})
 
 			rr := httptest.NewRecorder()
 
@@ -464,9 +470,10 @@ func Test_AuthorizeInvalidClientId(t *testing.T) {
 		query.Set(oauth2.ParameterClientId, "bar")
 	})
 
+	loginSessionManager := session.GetLoginSessionManagerInstance()
 	requestValidator := validation.NewRequestValidator()
 
-	authorizeHandler := NewAuthorizeHandler(requestValidator, &cookie.Manager{}, &session.AuthManager{}, &session.LoginManager{}, &token.Manager{}, &template.Manager{})
+	authorizeHandler := NewAuthorizeHandler(requestValidator, &cookie.Manager{}, &session.AuthManager{}, loginSessionManager, &token.Manager{}, &template.Manager{})
 
 	rr := httptest.NewRecorder()
 
@@ -478,9 +485,10 @@ func Test_AuthorizeInvalidClientId(t *testing.T) {
 }
 
 func Test_AuthorizeNoClientId(t *testing.T) {
+	loginSessionManager := session.GetLoginSessionManagerInstance()
 	requestValidator := validation.NewRequestValidator()
 
-	authorizeHandler := NewAuthorizeHandler(requestValidator, &cookie.Manager{}, &session.AuthManager{}, &session.LoginManager{}, &token.Manager{}, &template.Manager{})
+	authorizeHandler := NewAuthorizeHandler(requestValidator, &cookie.Manager{}, &session.AuthManager{}, loginSessionManager, &token.Manager{}, &template.Manager{})
 
 	rr := httptest.NewRecorder()
 
