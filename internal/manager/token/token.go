@@ -239,7 +239,7 @@ func (tokenManager *Manager) generateJWTToken(client *config.Client, token jwt.T
 }
 
 func generateIdToken(requestData *internalHttp.RequestData, config *config.Config, user *config.User, client *config.Client, nonce string, atHash string, duration time.Duration) jwt.Token {
-	tokenId := uuid.New().String()
+	tokenId := uuid.NewString()
 	builder := jwt.NewBuilder().
 		Expiration(time.Now().Add(duration)). // https://www.rfc-editor.org/rfc/rfc7519.html#section-4.1.4
 		IssuedAt(time.Now())                  // https://www.rfc-editor.org/rfc/rfc7519.html#section-4.1.6
