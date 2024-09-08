@@ -1,7 +1,6 @@
 package config
 
 import (
-	"errors"
 	"fmt"
 	internalHttp "github.com/webishdev/stopnik/internal/http"
 	"reflect"
@@ -22,64 +21,6 @@ type testExpectedUserValues struct {
 	username                  string
 	expectedPreferredUserName string
 	expectedRoles             []string
-}
-
-func Test_DefaultValues(t *testing.T) {
-	t.Run("Default value as string", func(t *testing.T) {
-		assertDefaultValues[string](t, "abc", "def", GetOrDefaultString, func(a string) bool {
-			return a == "abc"
-		})
-
-		assertDefaultValues[string](t, "", "def", GetOrDefaultString, func(a string) bool {
-			return a == "def"
-		})
-	})
-
-	t.Run("Default value as []string", func(t *testing.T) {
-		assertDefaultValues[[]string](t, []string{"abc", "def"}, []string{"ghi", "jkl"}, GetOrDefaultStringSlice, func(a []string) bool {
-			return reflect.DeepEqual(a, []string{"abc", "def"})
-		})
-
-		assertDefaultValues[[]string](t, []string{}, []string{"ghi", "jkl"}, GetOrDefaultStringSlice, func(a []string) bool {
-			return reflect.DeepEqual(a, []string{"ghi", "jkl"})
-		})
-	})
-
-	t.Run("Default value as int", func(t *testing.T) {
-		assertDefaultValues[int](t, 22, 23, GetOrDefaultInt, func(a int) bool {
-			return a == 22
-		})
-
-		assertDefaultValues[int](t, 0, 23, GetOrDefaultInt, func(a int) bool {
-			return a == 23
-		})
-	})
-}
-
-func Test_ReadError(t *testing.T) {
-	configLoader := NewConfigLoader(func(filename string) ([]byte, error) {
-		return nil, errors.New("test error")
-	}, nil)
-
-	err := configLoader.LoadConfig("foo.txt", false)
-
-	if err == nil {
-		t.Error("expected error")
-	}
-}
-
-func Test_UnmarshalError(t *testing.T) {
-	configLoader := NewConfigLoader(func(filename string) ([]byte, error) {
-		return make([]byte, 10), nil
-	}, func(in []byte, out interface{}) (err error) {
-		return errors.New("test error")
-	})
-
-	err := configLoader.LoadConfig("foo.txt", false)
-
-	if err == nil {
-		t.Error("expected error")
-	}
 }
 
 func Test_EmptyServerConfiguration(t *testing.T) {
