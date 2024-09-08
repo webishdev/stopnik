@@ -72,9 +72,19 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	_, _, validCookie := h.cookieManager.ValidateAuthCookie(r)
 
-	if validCookie {
+	if validCookie && codeParameter == "" && forwardIdParameter == "" {
 		w.WriteHeader(http.StatusOK)
 		return
+	} else if validCookie && codeParameter != "" && forwardIdParameter != "" {
+		forwardSession, valid := h.validatePKCE(codeParameter, forwardIdParameter)
+		if !valid {
+			h.errorHandler.InternalServerErrorHandler(w, r)
+			return
+		} else {
+			w.Header().Set(internalHttp.Location, forwardSession.RedirectUri)
+			w.WriteHeader(http.StatusTemporaryRedirect)
+			return
+		}
 	}
 
 	if codeParameter != "" && forwardIdParameter != "" {
@@ -127,6 +137,21 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Location", parsedUri.String())
 	w.WriteHeader(http.StatusTemporaryRedirect)
+}
+
+func (h *Handler) validatePKCE(code string, forwardSessionId string) (*session.ForwardSession, bool) {
+	authSession, authSessionExists := h.authSessionManager.GetSession(code)
+	if authSessionExists {
+		codeChallengeMethod, codeChallengeMethodExists := pkce.CodeChallengeMethodFromString(authSession.CodeChallengeMethod)
+		forwardSession, forwardSessionExists := h.forwardSessionManager.GetSession(forwardSessionId)
+		if codeChallengeMethodExists && forwardSessionExists {
+			validatePKCE := pkce.ValidatePKCE(codeChallengeMethod, forwardSession.CodeChallengeVerifier, authSession.CodeChallenge)
+			if validatePKCE {
+				return forwardSession, true
+			}
+		}
+	}
+	return nil, false
 }
 
 func (h *Handler) validate(code string, forwardSessionId string) (*http.Cookie, *session.ForwardSession, bool) {
