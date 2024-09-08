@@ -283,6 +283,16 @@ func Test_EmptyUIConfiguration(t *testing.T) {
 	if logoImage != nil {
 		t.Error("expected logo image to be nil")
 	}
+
+	invalidCredentialsMessage := config.GetInvalidCredentialsMessage()
+	if invalidCredentialsMessage != "Invalid credentials" {
+		t.Error("expected invalid credential message to be 'Invalid credentials'")
+	}
+
+	expiredLoginMessage := config.GetExpiredLoginMessage()
+	if expiredLoginMessage != "Login expired, try again" {
+		t.Error("expected invalid credential message to be 'Login expired, try again'")
+	}
 }
 
 func Test_SimpleUIConfiguration(t *testing.T) {
@@ -292,11 +302,13 @@ func Test_SimpleUIConfiguration(t *testing.T) {
 		origin := out.(*Config)
 		*origin = Config{
 			UI: UI{
-				HideFooter: true,
-				HideLogo:   true,
-				Title:      "Oh my Foo!",
-				FooterText: "In the end",
-				LogoImage:  "../../.test_files/test_logo.png",
+				HideFooter:                true,
+				HideLogo:                  true,
+				Title:                     "Oh my Foo!",
+				FooterText:                "In the end",
+				LogoImage:                 "../../.test_files/test_logo.png",
+				InvalidCredentialsMessage: "Go away!",
+				ExpiredLoginMessage:       "Time is up!",
 			},
 		}
 		return nil
@@ -337,6 +349,16 @@ func Test_SimpleUIConfiguration(t *testing.T) {
 	logoImage := config.GetLogoImage()
 	if logoImage == nil {
 		t.Error("expected logo image to be non-nil")
+	}
+
+	invalidCredentialsMessage := config.GetInvalidCredentialsMessage()
+	if invalidCredentialsMessage != "Go away!" {
+		t.Error("expected invalid credential message to be 'Go away!'")
+	}
+
+	expiredLoginMessage := config.GetExpiredLoginMessage()
+	if expiredLoginMessage != "Time is up!" {
+		t.Error("expected invalid credential message to be 'Time is up!'")
 	}
 }
 
