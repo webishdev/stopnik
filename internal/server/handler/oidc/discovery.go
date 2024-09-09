@@ -19,18 +19,18 @@ type oidcConfigurationResponse struct {
 	JWKsUri                                            string                     `json:"jwks_uri,omitempty"`
 	RegistrationEndpoint                               string                     `json:"registration_endpoint,omitempty"`
 	ScopesSupported                                    []string                   `json:"scopes_supported,omitempty"`
-	ResponseTypesSupported                             []oauth2.ResponseType      `json:"response_types_supported,omitempty"`
+	ResponseTypesSupported                             []oauth2.ResponseType      `json:"response_types_supported"`
 	ResponseModesSupported                             []string                   `json:"response_modes_supported,omitempty"`
 	GrantTypesSupported                                []oauth2.GrantType         `json:"grant_types_supported,omitempty"`
 	AcrValuesSupported                                 []string                   `json:"acr_values_supported,omitempty"`
-	SubjectTypesSupported                              []string                   `json:"subject_types_supported,omitempty"`
-	IdTokenSigningAlgValuesSupported                   []string                   `json:"id_token_signing_alg_values_supported,omitempty"`
+	SubjectTypesSupported                              []string                   `json:"subject_types_supported"`
+	IdTokenSigningAlgValuesSupported                   []jwa.SignatureAlgorithm   `json:"id_token_signing_alg_values_supported"`
 	IdTokenEncryptionAlgValuesSupported                []string                   `json:"id_token_encryption_alg_values_supported,omitempty"`
 	IdTokenEncryptionEncValuesSupported                []string                   `json:"id_token_encryption_enc_values_supported,omitempty"`
-	UserInfoSigningAlgValuesSupported                  []string                   `json:"userinfo_signing_alg_values_supported,omitempty"`
+	UserInfoSigningAlgValuesSupported                  []jwa.SignatureAlgorithm   `json:"userinfo_signing_alg_values_supported,omitempty"`
 	UserInfoEncryptionAlgValuesSupported               []string                   `json:"userinfo_encryption_alg_values_supported,omitempty"`
 	UserInfoEncryptionEncValuesSupported               []string                   `json:"userinfo_encryption_enc_values_supported,omitempty"`
-	RequestObjectSigningAlgValuesSupported             []string                   `json:"request_object_signing_alg_values_supported,omitempty"`
+	RequestObjectSigningAlgValuesSupported             []jwa.SignatureAlgorithm   `json:"request_object_signing_alg_values_supported,omitempty"`
 	RequestObjectEncryptionAlgValuesSupported          []string                   `json:"request_object_encryption_alg_values_supported,omitempty"`
 	RequestObjectEncryptionEncValuesSupported          []string                   `json:"request_object_encryption_enc_values_supported,omitempty"`
 	DisplayValuesSupported                             []string                   `json:"display_values_supported,omitempty"`
@@ -135,6 +135,8 @@ func (h *DiscoveryHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			IntrospectionEndpointAuthSigningAlgValuesSupported: signatureAlgorithmSupported,
 			RevocationEndpointAuthMethodsSupported:             authMethodsSupported,
 			RevocationEndpointAuthSigningAlgValuesSupported:    signatureAlgorithmSupported,
+			IdTokenSigningAlgValuesSupported:                   signatureAlgorithmSupported,
+			SubjectTypesSupported:                              []string{"public"},
 		}
 		jsonError := internalHttp.SendJson(metadataResponse, w)
 		if jsonError != nil {
