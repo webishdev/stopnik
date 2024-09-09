@@ -464,7 +464,7 @@ func (client *Client) GetClientType() oauth2.ClientType {
 	}
 }
 
-// ValidateRedirect return whether the redirect is valid for a given Client or not.
+// ValidateRedirect returns whether the redirect is valid for a given Client or not.
 func (client *Client) ValidateRedirect(redirect string) bool {
 	return validateRedirect(client.Id, client.Redirects, redirect)
 }
@@ -502,6 +502,7 @@ func (user *User) GetRoles(clientId string) []string {
 	return user.Roles[clientId]
 }
 
+// validateRedirect validated a given redirect against an array of redirects. Given clientId is used for logging.
 func validateRedirect(clientId string, redirects []string, redirect string) bool {
 	if redirect == "" {
 		log.Error("Redirect provided for client %s was empty", clientId)
