@@ -60,6 +60,7 @@ func NewServerSecretLoader() ServerSecretLoader {
 	return &serverSecret{secret: currentConfig.GetServerSecret()}
 }
 
+// GetServerKey returns the server secret as jwa.HS256 key.
 func (s *serverSecret) GetServerKey() jwt.SignEncryptParseOption {
 	return jwt.WithKey(jwa.HS256, []byte(s.secret))
 }
