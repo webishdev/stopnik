@@ -229,7 +229,9 @@ users:
 ### Development configuration
 
 The shown `config.yml` is used during development and can be
-found [here](https://github.com/webishdev/stopnik/blob/main/config.yml) in the repository.
+found in the repository.
+
+https://github.com/webishdev/stopnik/blob/main/config.yml
 
 This configuration uses self-singed TLS certificates, keys and a privates key located in the `.test_files` folder.
 
