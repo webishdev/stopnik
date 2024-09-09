@@ -40,3 +40,7 @@ func Error(err error) {
 		GetSignalChannel() <- syscall.SIGTERM
 	}
 }
+
+func ConfigureExit(newFunc func(code int)) {
+	exitFunc = newFunc
+}

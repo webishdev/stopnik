@@ -10,6 +10,7 @@ type ForwardSession struct {
 	Id                    string
 	CodeChallengeVerifier string
 	RedirectUri           string
+	State                 string
 }
 
 type ForwardManager struct {

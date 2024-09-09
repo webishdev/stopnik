@@ -3,6 +3,8 @@ package config
 import (
 	"fmt"
 	internalHttp "github.com/webishdev/stopnik/internal/http"
+	"github.com/webishdev/stopnik/internal/oauth2"
+	"github.com/webishdev/stopnik/internal/system"
 	"reflect"
 	"testing"
 )
@@ -15,12 +17,28 @@ type testExpectedClientValues struct {
 	expectedIssuer     string
 	expectedRolesClaim string
 	expectedAudience   []string
+	expectedClientType oauth2.ClientType
 }
 
 type testExpectedUserValues struct {
 	username                  string
 	expectedPreferredUserName string
 	expectedRoles             []string
+	expectedAddress           string
+}
+
+func Test_ConfigNotInitialized(t *testing.T) {
+	exitCode := 0
+	newFunc := func(code int) {
+		exitCode = code
+	}
+	system.ConfigureExit(newFunc)
+
+	GetConfigInstance()
+
+	if exitCode != 1 {
+		t.Errorf("exit code should be 1")
+	}
 }
 
 func Test_EmptyServerConfiguration(t *testing.T) {
@@ -90,6 +108,16 @@ func Test_EmptyServerConfiguration(t *testing.T) {
 		t.Error("expected forward auth endpoint to be '/forward'")
 	}
 
+	forwardAuthParameterName := config.GetForwardAuthParameterName()
+	if forwardAuthParameterName != "forward_id" {
+		t.Error("expected forward auth parameter name to be 'forward_id'")
+	}
+
+	forwardAuthClient, exists := config.GetForwardAuthClient()
+	if exists || forwardAuthClient != nil {
+		t.Error("expected forward auth client to not exist")
+	}
+
 	oidc := config.GetOidc()
 	if oidc {
 		t.Error("expected oidc enabled to be false")
@@ -112,8 +140,10 @@ func Test_SimpleServerConfiguration(t *testing.T) {
 				RevokeScope:           "r:b",
 				SessionTimeoutSeconds: 4200,
 				ForwardAuth: ForwardAuth{
-					Endpoint:    "/fa",
-					ExternalUrl: "http://forward.example.com",
+					Endpoint:      "/fa",
+					ExternalUrl:   "http://forward.example.com",
+					ParameterName: "bla_blub",
+					Redirects:     []string{"http://foo.example.com/callback"},
 				},
 			},
 		}
@@ -174,6 +204,21 @@ func Test_SimpleServerConfiguration(t *testing.T) {
 	forwardAuthEndpoint := config.GetForwardAuthEndpoint()
 	if forwardAuthEndpoint != "/fa" {
 		t.Error("expected forward auth endpoint to be '/fa'")
+	}
+
+	forwardAuthParameterName := config.GetForwardAuthParameterName()
+	if forwardAuthParameterName != "bla_blub" {
+		t.Error("expected forward auth parameter name to be 'bla_blub'")
+	}
+
+	forwardAuthClient, exists := config.GetForwardAuthClient()
+	if !exists || forwardAuthClient == nil {
+		t.Error("expected forward auth client to exist")
+	}
+
+	if forwardAuthClient != nil {
+		redirects := forwardAuthClient.Redirects
+		reflect.DeepEqual(redirects, []string{"http://foo.example.com/callback"})
 	}
 }
 
@@ -315,6 +360,11 @@ func Test_ValidUsers(t *testing.T) {
 					Password: "d82c4eb5261cb9c8aa9855edd67d1bd10482f41529858d925094d173fa662aa91ff39bc5b188615273484021dfb16fd8284cf684ccf0fc795be3aa2fc1e6c181",
 					Profile: UserProfile{
 						PreferredUserName: "foofoo",
+						Address: UserAddress{
+							Street:     "Main Street 123",
+							PostalCode: "98765",
+							City:       "Maintown",
+						},
 					},
 					Roles: map[string][]string{
 						"foo": {"Admin", "User"},
@@ -357,6 +407,10 @@ func Test_ValidUsers(t *testing.T) {
 		username:                  "foo",
 		expectedPreferredUserName: "foofoo",
 		expectedRoles:             []string{"Admin", "User"},
+		expectedAddress: `Main Street 123
+98765
+Maintown
+`,
 	})
 	assertUserValues(t, config, "bar", testExpectedUserValues{
 		username:                  "bar",
@@ -419,11 +473,11 @@ func Test_ValidClients(t *testing.T) {
 					IdTTL:        40,
 					RolesClaim:   "groups",
 					Audience:     []string{"one", "two"},
+					Oidc:         true,
 				},
 				{
-					Id:           "moo",
-					ClientSecret: "ddaf35a193617abacc417349ae20413112e6fa4e89a97ea20a9eeee64b55d39a2192992a274fc1a836ba3c23a3feebbd454d4423643ce80e2a9ac94fa54ca49f",
-					Redirects:    []string{"http://localhost:8080/callback"},
+					Id:        "moo",
+					Redirects: []string{"http://localhost:8080/callback"},
 				},
 			},
 		}
@@ -446,6 +500,11 @@ func Test_ValidClients(t *testing.T) {
 		t.Errorf("expected 3 clients, got %d", len(config.Clients))
 	}
 
+	oidc := config.GetOidc()
+	if !oidc {
+		t.Error("expected oidc to be true")
+	}
+
 	assertClientExistsWithId(t, "foo", config)
 	assertClientExistsWithId(t, "bar", config)
 	assertClientExistsWithId(t, "moo", config)
@@ -458,6 +517,7 @@ func Test_ValidClients(t *testing.T) {
 		expectedRolesClaim: "roles",
 		expectedIssuer:     "STOPnik",
 		expectedAudience:   []string{"all"},
+		expectedClientType: oauth2.CtConfidential,
 	})
 	assertClientValues(t, config, testExpectedClientValues{
 		id:                 "bar",
@@ -467,6 +527,17 @@ func Test_ValidClients(t *testing.T) {
 		expectedRolesClaim: "groups",
 		expectedIssuer:     "other",
 		expectedAudience:   []string{"one", "two"},
+		expectedClientType: oauth2.CtConfidential,
+	})
+	assertClientValues(t, config, testExpectedClientValues{
+		id:                 "moo",
+		expectedAccessTTL:  5,
+		expectedRefreshTTL: 0,
+		expectedIdTokenTTL: 0,
+		expectedRolesClaim: "roles",
+		expectedIssuer:     "STOPnik",
+		expectedAudience:   []string{"all"},
+		expectedClientType: oauth2.CtPublic,
 	})
 }
 
@@ -797,7 +868,7 @@ func Test_MinimalConfiguration(t *testing.T) {
 }
 
 func Test_ValidateRedirects(t *testing.T) {
-	var validRedirects = []string{"http://foo.com/callback", "https://foo.com/callback", "https://foo.com/wildcard/*"}
+	var validRedirects = []string{"http://foo.com/callback", "https://foo.com/callback", "https://foo.com/wildcard/*", "https://bar.com", "https://moo.com*"}
 	type redirectParameter struct {
 		redirect       string
 		expectedResult bool
@@ -810,6 +881,12 @@ func Test_ValidateRedirects(t *testing.T) {
 		{"https://foo.com/wildcard", false},
 		{"https://foo.com/wildcard/", true},
 		{"https://foo.com/wildcard/more", true},
+		{"https://foo.com/wildcard/more", true},
+		{"https://bar.com", true},
+		{"https://bar.com/nope", false},
+		{"https://moo.com", true},
+		{"https://moo.com/", true},
+		{"https://moo.com/sure", true},
 	}
 
 	for index, test := range redirectParameters {
@@ -878,6 +955,12 @@ func assertUserValues(t *testing.T, config *Config, clientId string, expected te
 			t.Error("expected correct roles for user")
 		}
 	}
+	if expected.expectedAddress != "" {
+		formattedAddress := user.GetFormattedAddress()
+		if formattedAddress != expected.expectedAddress {
+			t.Errorf("expected correct address formatted for user, got %v, expected %v", user.GetFormattedAddress(), expected.expectedAddress)
+		}
+	}
 }
 
 func assertClientExistsWithId(t *testing.T, id string, config *Config) {
@@ -887,9 +970,6 @@ func assertClientExistsWithId(t *testing.T, id string, config *Config) {
 	}
 	if client.Id != id {
 		t.Error("expected correct id")
-	}
-	if client.ClientSecret == "" {
-		t.Error("expected secret")
 	}
 }
 
@@ -932,5 +1012,10 @@ func assertClientValues(t *testing.T, config *Config, expected testExpectedClien
 	invalidRedirect := client.ValidateRedirect("http://foo.com:8080/callback")
 	if invalidRedirect {
 		t.Error("did not expect redirect to be valid")
+	}
+
+	clientType := client.GetClientType()
+	if clientType != expected.expectedClientType {
+		t.Errorf("expected client type to be '%s', got '%s'", expected.expectedClientType, clientType)
 	}
 }

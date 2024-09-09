@@ -17,6 +17,8 @@ import (
 	"net/url"
 )
 
+const forwardAuthScope = "forward:auth"
+
 type Handler struct {
 	config                *config.Config
 	cookieManager         *cookie.Manager
@@ -68,17 +70,18 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	forwardAuthParameterName := h.config.GetForwardAuthParameterName()
 
 	codeParameter := forwardUri.Query().Get(oauth2.ParameterCode)
+	stateParameter := forwardUri.Query().Get(oauth2.ParameterState)
 	forwardIdParameter := forwardUri.Query().Get(forwardAuthParameterName)
 
 	_, _, validCookie := h.cookieManager.ValidateAuthCookie(r)
 
-	if validCookie && codeParameter == "" && forwardIdParameter == "" {
+	if validCookie && codeParameter == "" && forwardIdParameter == "" && stateParameter == "" {
 		w.WriteHeader(http.StatusOK)
 		return
-	} else if validCookie && codeParameter != "" && forwardIdParameter != "" {
-		forwardSession, valid := h.validatePKCE(codeParameter, forwardIdParameter)
+	} else if validCookie && codeParameter != "" && forwardIdParameter != "" && stateParameter != "" {
+		_, forwardSession, valid := h.validatePKCEAndState(codeParameter, stateParameter, forwardIdParameter)
 		if !valid {
-			h.errorHandler.InternalServerErrorHandler(w, r)
+			h.errorHandler.BadRequestHandler(w, r)
 			return
 		} else {
 			w.Header().Set(internalHttp.Location, forwardSession.RedirectUri)
@@ -87,10 +90,10 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	if codeParameter != "" && forwardIdParameter != "" {
-		authCookie, forwardSession, valid := h.validate(codeParameter, forwardIdParameter)
+	if codeParameter != "" && forwardIdParameter != "" && stateParameter != "" {
+		authCookie, forwardSession, valid := h.validateAndCreateAuthCookie(codeParameter, stateParameter, forwardIdParameter)
 		if !valid {
-			h.errorHandler.InternalServerErrorHandler(w, r)
+			h.errorHandler.BadRequestHandler(w, r)
 			return
 		} else {
 			http.SetCookie(w, authCookie)
@@ -103,6 +106,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	codeChallenge := uuid.NewString()
 	codeChallengeVerifier := pkce.CalculatePKCE(pkce.S256, codeChallenge)
 	forwardSessionId := uuid.NewString()
+	forwardSessionState := uuid.NewString()
 
 	redirectUri, redirectUriError := createUri(forwardString, "", func(query url.Values) {
 		query.Set(forwardAuthParameterName, forwardSessionId)
@@ -117,8 +121,8 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	parsedUri, parsedUriError := createUri(h.config.Server.ForwardAuth.ExternalUrl, endpoint.Authorization, func(query url.Values) {
 		query.Set(oauth2.ParameterResponseType, string(oauth2.RtCode))
 		query.Set(oauth2.ParameterClientId, forwardAuthClient.Id)
-		query.Set(oauth2.ParameterState, "abc")
-		query.Set(oauth2.ParameterScope, "xzy")
+		query.Set(oauth2.ParameterState, forwardSessionState)
+		query.Set(oauth2.ParameterScope, forwardAuthScope)
 		query.Set(oauth2.ParameterRedirectUri, redirectUri.String())
 		query.Set(pkce.ParameterCodeChallengeMethod, string(pkce.S256))
 		query.Set(pkce.ParameterCodeChallenge, codeChallenge)
@@ -131,50 +135,44 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		Id:                    forwardSessionId,
 		CodeChallengeVerifier: codeChallengeVerifier,
 		RedirectUri:           forwardString,
+		State:                 forwardSessionState,
 	}
 
 	h.forwardSessionManager.StartSession(forwardSession)
 
-	w.Header().Set("Location", parsedUri.String())
+	w.Header().Set(internalHttp.Location, parsedUri.String())
 	w.WriteHeader(http.StatusTemporaryRedirect)
 }
 
-func (h *Handler) validatePKCE(code string, forwardSessionId string) (*session.ForwardSession, bool) {
+func (h *Handler) validatePKCEAndState(code string, state string, forwardSessionId string) (*session.AuthSession, *session.ForwardSession, bool) {
 	authSession, authSessionExists := h.authSessionManager.GetSession(code)
 	if authSessionExists {
 		codeChallengeMethod, codeChallengeMethodExists := pkce.CodeChallengeMethodFromString(authSession.CodeChallengeMethod)
 		forwardSession, forwardSessionExists := h.forwardSessionManager.GetSession(forwardSessionId)
-		if codeChallengeMethodExists && forwardSessionExists {
+		if codeChallengeMethodExists && forwardSessionExists && forwardSession.State == state {
 			validatePKCE := pkce.ValidatePKCE(codeChallengeMethod, forwardSession.CodeChallengeVerifier, authSession.CodeChallenge)
 			if validatePKCE {
-				return forwardSession, true
+				return authSession, forwardSession, true
 			}
 		}
 	}
-	return nil, false
+	return nil, nil, false
 }
 
-func (h *Handler) validate(code string, forwardSessionId string) (*http.Cookie, *session.ForwardSession, bool) {
-	authSession, authSessionExists := h.authSessionManager.GetSession(code)
-	if authSessionExists {
-		codeChallengeMethod, codeChallengeMethodExists := pkce.CodeChallengeMethodFromString(authSession.CodeChallengeMethod)
-		forwardSession, forwardSessionExists := h.forwardSessionManager.GetSession(forwardSessionId)
-		if codeChallengeMethodExists && forwardSessionExists {
-			validatePKCE := pkce.ValidatePKCE(codeChallengeMethod, forwardSession.CodeChallengeVerifier, authSession.CodeChallenge)
-			if validatePKCE {
-				loginSession := &session.LoginSession{
-					Id:       uuid.NewString(),
-					Username: authSession.Username,
-				}
-				h.loginSessionManager.StartSession(loginSession)
-				authCookie, authCookieError := h.cookieManager.CreateAuthCookie(authSession.Username, loginSession.Id)
-				if authCookieError != nil {
-					return nil, nil, false
-				}
-
-				return &authCookie, forwardSession, true
-			}
+func (h *Handler) validateAndCreateAuthCookie(code string, state string, forwardSessionId string) (*http.Cookie, *session.ForwardSession, bool) {
+	authSession, forwardSession, valid := h.validatePKCEAndState(code, state, forwardSessionId)
+	if valid {
+		loginSession := &session.LoginSession{
+			Id:       uuid.NewString(),
+			Username: authSession.Username,
 		}
+		h.loginSessionManager.StartSession(loginSession)
+		authCookie, authCookieError := h.cookieManager.CreateAuthCookie(authSession.Username, loginSession.Id)
+		if authCookieError != nil {
+			return nil, nil, false
+		}
+
+		return &authCookie, forwardSession, true
 	}
 	return nil, nil, false
 }

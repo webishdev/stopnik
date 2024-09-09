@@ -36,9 +36,10 @@ type Cookies struct {
 // ForwardAuth defines the configuration related to Traefik Forward Auth,
 // only used when ExternalUrl is provided.
 type ForwardAuth struct {
-	Endpoint      string `yaml:"endpoint"`
-	ExternalUrl   string `yaml:"externalUrl"`
-	ParameterName string `yaml:"parameterName"`
+	Endpoint      string   `yaml:"endpoint"`
+	ExternalUrl   string   `yaml:"externalUrl"`
+	ParameterName string   `yaml:"parameterName"`
+	Redirects     []string `yaml:"redirects"`
 }
 
 // Server defines the main STOPnik server configuration.
@@ -164,6 +165,7 @@ func GetConfigInstance() *Config {
 	defer configLock.Unlock()
 	if configSingleton == nil {
 		system.CriticalError(errors.New("config not initialized"))
+		return nil
 	}
 
 	return configSingleton
@@ -231,6 +233,7 @@ func Initialize(config *Config) error {
 		config.forwardAuthClient = &Client{
 			Id:            uuid.NewString(),
 			isForwardAuth: true,
+			Redirects:     config.Server.ForwardAuth.Redirects,
 		}
 		log.Info("Forward auth client created")
 	}
@@ -463,9 +466,6 @@ func (client *Client) GetClientType() oauth2.ClientType {
 
 // ValidateRedirect return whether the redirect is valid for a given Client or not.
 func (client *Client) ValidateRedirect(redirect string) bool {
-	if client.isForwardAuth {
-		return true
-	}
 	return validateRedirect(client.Id, client.Redirects, redirect)
 }
 

@@ -80,6 +80,7 @@ Entry `server.forwardAuth`
 | `endpoint`      | Internal endpoint to be called by Traefik           | No       |
 | `externalUrl`   | URL of **STOPnik** to redirect the user for a login | No       |
 | `parameterName` | URL parameter used by **STOPnik** for ForwardAuth   | No       |
+| `redirects`     | List of redirects URIs                              | No       |
 
 ### User interface configuration
 
@@ -240,7 +241,9 @@ server:
     messageName: stopnik_message
   #logoutRedirect: http://localhost:8080
   forwardAuth:
-    externalUrl: http://stopnik.localhost:9090
+    externalUrl: http://localhost:9090
+    redirects:
+      - http://localhost:9090*
   secret: WRYldij9ebtDZ5VJSsxNAfCZ
   privateKey: ./.test_files/rsa256key.pem
   addr: :8082

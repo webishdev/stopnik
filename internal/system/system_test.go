@@ -10,9 +10,9 @@ import (
 func Test_System(t *testing.T) {
 	t.Run("Critical error", func(t *testing.T) {
 		var exitCode *int
-		exitFunc = func(code int) {
+		ConfigureExit(func(code int) {
 			exitCode = &code
-		}
+		})
 
 		CriticalError(errors.New("foo"))
 
@@ -23,9 +23,9 @@ func Test_System(t *testing.T) {
 
 	t.Run("Error", func(t *testing.T) {
 		var exitCode *int
-		exitFunc = func(code int) {
+		ConfigureExit(func(code int) {
 			exitCode = &code
-		}
+		})
 
 		wg := sync.WaitGroup{}
 		var signal *os.Signal
