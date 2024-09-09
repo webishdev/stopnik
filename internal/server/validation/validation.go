@@ -79,15 +79,8 @@ func (validator *RequestValidator) ValidateFormLogin(r *http.Request) (*config.U
 		// https://en.wikipedia.org/wiki/Post/Redirect/Get
 		// redirect with Status 303
 		// When login valid
-		user, exists := validator.config.GetUser(username)
-		if !exists {
-			loginError := validator.config.GetInvalidCredentialsMessage()
-			return nil, &loginError
-		}
-
-		passwordHash := crypto.Sha512SaltedHash(password, user.Salt)
-
-		if passwordHash != user.Password {
+		user, valid := validator.ValidateUserPassword(username, password)
+		if !valid {
 			loginError := validator.config.GetInvalidCredentialsMessage()
 			return nil, &loginError
 		}
