@@ -14,6 +14,7 @@ var signalSingleton *byte
 
 var exitFunc = os.Exit
 
+// GetSignalChannel returns the signal channel registered for notifications about syscall.SIGINT and syscall.SIGTERM.
 func GetSignalChannel() chan os.Signal {
 	signalLock.Lock()
 	defer signalLock.Unlock()
@@ -25,6 +26,7 @@ func GetSignalChannel() chan os.Signal {
 	return sigs
 }
 
+// CriticalError handles a critical error, prints a message and exists the application with a error code.
 func CriticalError(err error) {
 	if err != nil {
 		errorMessage := fmt.Sprintf("An critical error occurred: %v", err)
@@ -33,6 +35,7 @@ func CriticalError(err error) {
 	}
 }
 
+// Error handles an error, prints a message and sends syscall.SIGTERM signal to teardown the application.
 func Error(err error) {
 	if err != nil {
 		errorMessage := fmt.Sprintf("An error occurred: %v", err)
@@ -41,6 +44,7 @@ func Error(err error) {
 	}
 }
 
+// ConfigureExit allows to overwrite the used os.Exit function. Used in tests.
 func ConfigureExit(newFunc func(code int)) {
 	exitFunc = newFunc
 }
