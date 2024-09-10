@@ -134,10 +134,10 @@ type Client struct {
 type UI struct {
 	HideFooter                bool   `yaml:"hideFooter"`
 	HideLogo                  bool   `yaml:"hideLogo"`
+	HtmlTitle                 string `yaml:"htmlTitle"`
 	Title                     string `yaml:"title"`
 	FooterText                string `yaml:"footerText"`
 	LogoImage                 string `yaml:"logoImage"`
-	LogoContentType           string `yaml:"logoContentType"`
 	InvalidCredentialsMessage string `yaml:"invalidCredentialsMessage"`
 	ExpiredLoginMessage       string `yaml:"expiredLoginMessage"`
 }
@@ -355,6 +355,11 @@ func (config *Config) GetHideLogo() bool {
 	return config.UI.HideLogo
 }
 
+// GetHtmlTitle returns whether the HTML title shown in the web user interface.
+func (config *Config) GetHtmlTitle() string {
+	return config.UI.HtmlTitle
+}
+
 // GetTitle returns whether the title shown in the web user interface.
 func (config *Config) GetTitle() string {
 	return config.UI.Title
@@ -390,7 +395,7 @@ func (config *Config) GetOidc() bool {
 
 // GetIssuer returns the issuer, either by mirroring from request, from Server configuration or default value.
 func (config *Config) GetIssuer(requestData *internalHttp.RequestData) string {
-	if requestData == nil || requestData.Host == "" || requestData.Scheme == "" {
+	if requestData == nil || !requestData.Valid() {
 		return GetOrDefaultString(config.Server.Issuer, "STOPnik")
 	}
 	return GetOrDefaultString(config.Server.Issuer, requestData.IssuerString())

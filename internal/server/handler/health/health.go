@@ -39,9 +39,9 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			healthResponse.Scopes = scopes
 		}
 
-		jsonError := internalHttp.SendJson(healthResponse, w)
+		jsonError := internalHttp.SendJson(healthResponse, w, r)
 		if jsonError != nil {
-			h.errorHandler.InternalServerErrorHandler(w, r)
+			h.errorHandler.InternalServerErrorHandler(w, r, jsonError)
 			return
 		}
 	} else {

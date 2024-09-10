@@ -9,18 +9,7 @@ import (
 	"testing"
 )
 
-func Test_Error(t *testing.T) {
-
-	testAuthorizationErrorResponseHandler(t)
-
-	testTokenErrorResponseHandler(t)
-
-	testTokenErrorStatusResponseHandler(t)
-
-	testAuthorizationErrorTypeFromString(t)
-
-	testTokenErrorTypeFromString(t)
-
+func Test_ErrorNoRedirectUri(t *testing.T) {
 	t.Run("No redirect uri provided", func(t *testing.T) {
 		rr := httptest.NewRecorder()
 
@@ -33,7 +22,7 @@ func Test_Error(t *testing.T) {
 	})
 }
 
-func testAuthorizationErrorTypeFromString(t *testing.T) {
+func Test_AuthorizationErrorTypeFromString(t *testing.T) {
 	type authorizationErrorTypeParameter struct {
 		value    string
 		exists   bool
@@ -61,7 +50,7 @@ func testAuthorizationErrorTypeFromString(t *testing.T) {
 	}
 }
 
-func testAuthorizationErrorResponseHandler(t *testing.T) {
+func Test_AuthorizationErrorResponseHandler(t *testing.T) {
 	type errorResponseHandlerParameter struct {
 		state                    string
 		expectedErrorParameter   AuthorizationErrorType
@@ -140,10 +129,11 @@ func testAuthorizationErrorResponseHandler(t *testing.T) {
 	}
 }
 
-func testTokenErrorResponseHandler(t *testing.T) {
+func Test_TokenErrorResponseHandler(t *testing.T) {
 	t.Run("Token error handler", func(t *testing.T) {
+		request := httptest.NewRequest(http.MethodGet, "https://example.com/foo", nil)
 		rr := httptest.NewRecorder()
-		TokenErrorResponseHandler(rr, &TokenErrorResponseParameter{})
+		TokenErrorResponseHandler(rr, request, &TokenErrorResponseParameter{})
 
 		if rr.Code != http.StatusBadRequest {
 			t.Errorf("handler returned wrong status code: got %v want %v", rr.Code, http.StatusBadRequest)
@@ -151,13 +141,14 @@ func testTokenErrorResponseHandler(t *testing.T) {
 	})
 }
 
-func testTokenErrorStatusResponseHandler(t *testing.T) {
+func Test_TokenErrorStatusResponseHandler(t *testing.T) {
 	statusCodes := []int{http.StatusBadRequest, http.StatusUnauthorized, http.StatusForbidden, http.StatusNotFound, http.StatusMethodNotAllowed, http.StatusRequestTimeout}
 	for _, statusCode := range statusCodes {
 		testMessage := fmt.Sprintf("Token error handler with status code %d", statusCode)
 		t.Run(testMessage, func(t *testing.T) {
+			request := httptest.NewRequest(http.MethodGet, "https://example.com/foo", nil)
 			rr := httptest.NewRecorder()
-			TokenErrorStatusResponseHandler(rr, statusCode, &TokenErrorResponseParameter{})
+			TokenErrorStatusResponseHandler(rr, request, statusCode, &TokenErrorResponseParameter{})
 
 			if rr.Code != statusCode {
 				t.Errorf("handler returned wrong status code: got %v want %v", rr.Code, statusCode)
@@ -166,7 +157,7 @@ func testTokenErrorStatusResponseHandler(t *testing.T) {
 	}
 }
 
-func testTokenErrorTypeFromString(t *testing.T) {
+func Test_TokenErrorTypeFromString(t *testing.T) {
 	type tokenErrorTypeParameter struct {
 		value    string
 		exists   bool

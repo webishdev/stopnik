@@ -1,6 +1,7 @@
 package http
 
 import (
+	"net/http"
 	"net/http/httptest"
 	"testing"
 )
@@ -18,7 +19,8 @@ func Test_SendJson(t *testing.T) {
 		Age:  20,
 	}
 
-	err := SendJson(data, rr)
+	request := httptest.NewRequest(http.MethodGet, "https://example.com/foo", nil)
+	err := SendJson(data, rr, request)
 
 	if err != nil {
 		t.Error(err)

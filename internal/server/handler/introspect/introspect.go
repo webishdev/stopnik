@@ -52,19 +52,19 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			authorizationHeader := r.Header.Get(internalHttp.Authorization)
 			_, _, scopes, valid := h.tokenManager.ValidateAccessToken(authorizationHeader)
 			if !valid {
-				oauth2.TokenErrorStatusResponseHandler(w, http.StatusUnauthorized, &oauth2.TokenErrorResponseParameter{Error: oauth2.TokenEtInvalidRequest})
+				oauth2.TokenErrorStatusResponseHandler(w, r, http.StatusUnauthorized, &oauth2.TokenErrorResponseParameter{Error: oauth2.TokenEtInvalidRequest})
 				return
 			}
 
 			hasIntrospectScope := slices.Contains(scopes, h.config.GetIntrospectScope())
 
 			if !hasIntrospectScope {
-				oauth2.TokenErrorStatusResponseHandler(w, http.StatusUnauthorized, &oauth2.TokenErrorResponseParameter{Error: oauth2.TokenEtInvalidRequest})
+				oauth2.TokenErrorStatusResponseHandler(w, r, http.StatusUnauthorized, &oauth2.TokenErrorResponseParameter{Error: oauth2.TokenEtInvalidRequest})
 				return
 			}
 		} else {
 			if !client.Introspect {
-				oauth2.TokenErrorStatusResponseHandler(w, http.StatusServiceUnavailable, &oauth2.TokenErrorResponseParameter{Error: oauth2.TokenEtInvalidRequest})
+				oauth2.TokenErrorStatusResponseHandler(w, r, http.StatusServiceUnavailable, &oauth2.TokenErrorResponseParameter{Error: oauth2.TokenEtInvalidRequest})
 				return
 			}
 		}
@@ -87,9 +87,9 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			h.checkRefreshToken(token, &introspectResponse)
 		}
 
-		jsonError := internalHttp.SendJson(introspectResponse, w)
+		jsonError := internalHttp.SendJson(introspectResponse, w, r)
 		if jsonError != nil {
-			h.errorHandler.InternalServerErrorHandler(w, r)
+			h.errorHandler.InternalServerErrorHandler(w, r, jsonError)
 			return
 		}
 	} else {

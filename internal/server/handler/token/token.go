@@ -47,14 +47,14 @@ func (h *Handler) handlePostRequest(w http.ResponseWriter, r *http.Request) {
 		if fallbackUsed {
 			httpStatus = http.StatusBadRequest
 		}
-		oauth2.TokenErrorStatusResponseHandler(w, httpStatus, &oauth2.TokenErrorResponseParameter{Error: oauth2.TokenEtInvalidClient})
+		oauth2.TokenErrorStatusResponseHandler(w, r, httpStatus, &oauth2.TokenErrorResponseParameter{Error: oauth2.TokenEtInvalidClient})
 		return
 	}
 
 	grantTypeValue := r.PostFormValue(oauth2.ParameterGrantType)
 	grantType, grantTypeExists := oauth2.GrantTypeFromString(grantTypeValue)
 	if !grantTypeExists {
-		oauth2.TokenErrorResponseHandler(w, &oauth2.TokenErrorResponseParameter{Error: oauth2.TokenEtInvalidGrant})
+		oauth2.TokenErrorResponseHandler(w, r, &oauth2.TokenErrorResponseParameter{Error: oauth2.TokenEtInvalidGrant})
 		return
 	}
 
@@ -67,7 +67,7 @@ func (h *Handler) handlePostRequest(w http.ResponseWriter, r *http.Request) {
 		code := r.PostFormValue(oauth2.ParameterCode)
 		authSession, authSessionExists := h.authSessionManager.GetSession(code)
 		if !authSessionExists {
-			oauth2.TokenErrorResponseHandler(w, &oauth2.TokenErrorResponseParameter{Error: oauth2.TokenEtInvalidRequest})
+			oauth2.TokenErrorResponseHandler(w, r, &oauth2.TokenErrorResponseParameter{Error: oauth2.TokenEtInvalidRequest})
 			return
 		}
 
@@ -75,12 +75,12 @@ func (h *Handler) handlePostRequest(w http.ResponseWriter, r *http.Request) {
 		if codeVerifier != "" {
 			codeChallengeMethod, codeChallengeMethodExists := pkce.CodeChallengeMethodFromString(authSession.CodeChallengeMethod)
 			if !codeChallengeMethodExists {
-				oauth2.TokenErrorResponseHandler(w, &oauth2.TokenErrorResponseParameter{Error: oauth2.TokenEtInvalidRequest})
+				oauth2.TokenErrorResponseHandler(w, r, &oauth2.TokenErrorResponseParameter{Error: oauth2.TokenEtInvalidRequest})
 				return
 			}
 			validPKCE := pkce.ValidatePKCE(codeChallengeMethod, authSession.CodeChallenge, codeVerifier)
 			if !validPKCE {
-				oauth2.TokenErrorResponseHandler(w, &oauth2.TokenErrorResponseParameter{Error: oauth2.TokenEtInvalidRequest})
+				oauth2.TokenErrorResponseHandler(w, r, &oauth2.TokenErrorResponseParameter{Error: oauth2.TokenEtInvalidRequest})
 				return
 			}
 		}
@@ -96,7 +96,7 @@ func (h *Handler) handlePostRequest(w http.ResponseWriter, r *http.Request) {
 
 		user, exists := h.validator.ValidateUserPassword(usernameFrom, passwordForm)
 		if !exists {
-			oauth2.TokenErrorResponseHandler(w, &oauth2.TokenErrorResponseParameter{Error: oauth2.TokenEtInvalidRequest})
+			oauth2.TokenErrorResponseHandler(w, r, &oauth2.TokenErrorResponseParameter{Error: oauth2.TokenEtInvalidRequest})
 			return
 		}
 		scopes = strings.Split(scopeForm, " ")
@@ -107,34 +107,34 @@ func (h *Handler) handlePostRequest(w http.ResponseWriter, r *http.Request) {
 
 		scopes = strings.Split(scopeForm, " ")
 	} else if grantType == oauth2.GtRefreshToken && client.GetRefreshTTL() <= 0 {
-		oauth2.TokenErrorResponseHandler(w, &oauth2.TokenErrorResponseParameter{Error: oauth2.TokenEtInvalidRequest})
+		oauth2.TokenErrorResponseHandler(w, r, &oauth2.TokenErrorResponseParameter{Error: oauth2.TokenEtInvalidRequest})
 		return
 	} else if grantType == oauth2.GtRefreshToken && client.GetRefreshTTL() > 0 {
 		// https://datatracker.ietf.org/doc/html/rfc6749#section-6
 		refreshTokenForm := r.PostFormValue(oauth2.ParameterRefreshToken)
 		refreshToken, refreshTokenExists := h.tokenManager.GetRefreshToken(refreshTokenForm)
 		if !refreshTokenExists {
-			oauth2.TokenErrorResponseHandler(w, &oauth2.TokenErrorResponseParameter{Error: oauth2.TokenEtInvalidRequest})
+			oauth2.TokenErrorResponseHandler(w, r, &oauth2.TokenErrorResponseParameter{Error: oauth2.TokenEtInvalidRequest})
 			return
 		}
 
 		if refreshToken.ClientId != client.Id {
-			oauth2.TokenErrorResponseHandler(w, &oauth2.TokenErrorResponseParameter{Error: oauth2.TokenEtInvalidRequest})
+			oauth2.TokenErrorResponseHandler(w, r, &oauth2.TokenErrorResponseParameter{Error: oauth2.TokenEtInvalidRequest})
 			return
 		}
 
 		username = refreshToken.Username
 		scopes = refreshToken.Scopes
 	} else {
-		oauth2.TokenErrorResponseHandler(w, &oauth2.TokenErrorResponseParameter{Error: oauth2.TokenEtUnsupportedGrandType})
+		oauth2.TokenErrorResponseHandler(w, r, &oauth2.TokenErrorResponseParameter{Error: oauth2.TokenEtUnsupportedGrandType})
 		return
 	}
 
 	accessTokenResponse := h.tokenManager.CreateAccessTokenResponse(r, username, client, scopes, nonce)
 
-	jsonError := internalHttp.SendJson(accessTokenResponse, w)
+	jsonError := internalHttp.SendJson(accessTokenResponse, w, r)
 	if jsonError != nil {
-		h.errorHandler.InternalServerErrorHandler(w, r)
+		h.errorHandler.InternalServerErrorHandler(w, r, jsonError)
 		return
 	}
 }

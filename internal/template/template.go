@@ -74,25 +74,29 @@ func (templateManager *Manager) LoginTemplate(id string, action string, message 
 	addTemplates(loginTemplate)
 
 	data := struct {
-		Action      string
-		Token       string
-		HideFooter  bool
-		HideMascot  bool
-		ShowTitle   bool
-		Title       string
-		FooterText  string
-		ShowMessage bool
-		Message     string
+		Action        string
+		Token         string
+		HideFooter    bool
+		HideMascot    bool
+		ShowHtmlTitle bool
+		HtmlTitle     string
+		ShowTitle     bool
+		Title         string
+		FooterText    string
+		ShowMessage   bool
+		Message       string
 	}{
-		Action:      action,
-		Token:       id,
-		HideFooter:  templateManager.config.GetHideFooter(),
-		HideMascot:  templateManager.config.GetHideLogo(),
-		ShowTitle:   templateManager.config.GetTitle() != "",
-		Title:       templateManager.config.GetTitle(),
-		FooterText:  templateManager.config.GetFooterText(),
-		ShowMessage: message != "",
-		Message:     message,
+		Action:        action,
+		Token:         id,
+		HideFooter:    templateManager.config.GetHideFooter(),
+		HideMascot:    templateManager.config.GetHideLogo(),
+		ShowHtmlTitle: templateManager.config.GetHtmlTitle() != "",
+		HtmlTitle:     templateManager.config.GetHtmlTitle(),
+		ShowTitle:     templateManager.config.GetTitle() != "",
+		Title:         templateManager.config.GetTitle(),
+		FooterText:    templateManager.config.GetFooterText(),
+		ShowMessage:   message != "",
+		Message:       message,
 	}
 
 	templateExecuteError := loginTemplate.Execute(&tpl, data)
@@ -114,21 +118,25 @@ func (templateManager *Manager) LogoutTemplate(username string, requestURI strin
 	addTemplates(logoutTemplate)
 
 	data := struct {
-		Username   string
-		RequestURI string
-		HideFooter bool
-		HideMascot bool
-		ShowTitle  bool
-		Title      string
-		FooterText string
+		Username      string
+		RequestURI    string
+		HideFooter    bool
+		HideMascot    bool
+		ShowHtmlTitle bool
+		HtmlTitle     string
+		ShowTitle     bool
+		Title         string
+		FooterText    string
 	}{
-		Username:   username,
-		RequestURI: requestURI,
-		HideFooter: templateManager.config.GetHideFooter(),
-		HideMascot: templateManager.config.GetHideLogo(),
-		ShowTitle:  templateManager.config.GetTitle() != "",
-		Title:      templateManager.config.GetTitle(),
-		FooterText: templateManager.config.GetFooterText(),
+		Username:      username,
+		RequestURI:    requestURI,
+		HideFooter:    templateManager.config.GetHideFooter(),
+		HideMascot:    templateManager.config.GetHideLogo(),
+		ShowHtmlTitle: templateManager.config.GetHtmlTitle() != "",
+		HtmlTitle:     templateManager.config.GetHtmlTitle(),
+		ShowTitle:     templateManager.config.GetTitle() != "",
+		Title:         templateManager.config.GetTitle(),
+		FooterText:    templateManager.config.GetFooterText(),
 	}
 
 	templateExecuteError := logoutTemplate.Execute(&tpl, data)

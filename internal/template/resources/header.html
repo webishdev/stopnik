@@ -2,7 +2,12 @@
 <html lang="en">
 <head>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    {{ if .ShowHtmlTitle }}
+    <title>{{ .HtmlTitle }}</title>
+    {{ else }}
     <title>STOPnik</title>
+    {{ end }}
     <link href="assets/styles.css" rel="stylesheet" />
+    <link rel="shortcut icon" href="assets/favicon.ico">
 </head>
 <body>

@@ -47,7 +47,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	forwardAuthClient, forwardAuthClientExists := h.config.GetForwardAuthClient()
 	if !forwardAuthClientExists {
-		h.errorHandler.InternalServerErrorHandler(w, r)
+		h.errorHandler.BadRequestHandler(w, r)
 		return
 	}
 
@@ -63,7 +63,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	forwardString := fmt.Sprintf("%s://%s%s", forwardProtocol, forwardHost, forwardPath)
 	forwardUri, forwardUriError := url.Parse(forwardString)
 	if forwardUriError != nil {
-		h.errorHandler.InternalServerErrorHandler(w, r)
+		h.errorHandler.InternalServerErrorHandler(w, r, forwardUriError)
 		return
 	}
 
@@ -112,7 +112,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		query.Set(forwardAuthParameterName, forwardSessionId)
 	})
 	if redirectUriError != nil {
-		h.errorHandler.InternalServerErrorHandler(w, r)
+		h.errorHandler.InternalServerErrorHandler(w, r, redirectUriError)
 		return
 	}
 
@@ -128,7 +128,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		query.Set(pkce.ParameterCodeChallenge, codeChallenge)
 	})
 	if parsedUriError != nil {
-		h.errorHandler.InternalServerErrorHandler(w, r)
+		h.errorHandler.InternalServerErrorHandler(w, r, parsedUriError)
 		return
 	}
 	forwardSession := &session.ForwardSession{

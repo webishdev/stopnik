@@ -23,7 +23,8 @@ func (h *Handler) ForbiddenHandler(w http.ResponseWriter, r *http.Request) {
 	h.sendStatus(http.StatusForbidden, "403 Forbidden", w, r)
 }
 
-func (h *Handler) InternalServerErrorHandler(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) InternalServerErrorHandler(w http.ResponseWriter, r *http.Request, err error) {
+	log.Error("Internal server error %s", err.Error())
 	h.sendStatus(http.StatusInternalServerError, "500 Internal Server Error", w, r)
 }
 

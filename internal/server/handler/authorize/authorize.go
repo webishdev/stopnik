@@ -205,9 +205,14 @@ func (h *Handler) handleGetRequest(w http.ResponseWriter, r *http.Request) {
 		loginToken := h.validator.NewLoginToken(authSession.Id)
 		loginTemplate := h.templateManager.LoginTemplate(loginToken, formAction, message)
 
-		_, err := w.Write(loginTemplate.Bytes())
-		if err != nil {
-			h.errorHandler.InternalServerErrorHandler(w, r)
+		requestData := internalHttp.NewRequestData(r)
+		responseWriter := internalHttp.NewResponseWriter(w, requestData)
+
+		responseWriter.SetEncodingHeader()
+
+		_, writeError := responseWriter.Write(loginTemplate.Bytes())
+		if writeError != nil {
+			h.errorHandler.InternalServerErrorHandler(w, r, writeError)
 			return
 		}
 	}
@@ -221,7 +226,7 @@ func (h *Handler) handlePostRequest(w http.ResponseWriter, r *http.Request, user
 	h.loginSessionManager.StartSession(loginSession)
 	authCookie, authCookieError := h.cookieManager.CreateAuthCookie(user.Username, loginSession.Id)
 	if authCookieError != nil {
-		h.errorHandler.InternalServerErrorHandler(w, r)
+		h.errorHandler.InternalServerErrorHandler(w, r, authCookieError)
 		return
 	}
 
@@ -232,8 +237,8 @@ func (h *Handler) handlePostRequest(w http.ResponseWriter, r *http.Request, user
 		return
 	}
 	authSessionId := loginToken.Subject()
-	authSession, exists := h.authSessionManager.GetSession(authSessionId)
-	if !exists {
+	authSession, authSessionExists := h.authSessionManager.GetSession(authSessionId)
+	if !authSessionExists {
 		h.sendRetryLocation(w, r, "")
 		return
 	}
@@ -241,7 +246,7 @@ func (h *Handler) handlePostRequest(w http.ResponseWriter, r *http.Request, user
 	authSession.Username = user.Username
 	redirectURL, urlParseError := url.Parse(authSession.Redirect)
 	if urlParseError != nil {
-		h.errorHandler.InternalServerErrorHandler(w, r)
+		h.errorHandler.InternalServerErrorHandler(w, r, urlParseError)
 		return
 	}
 
@@ -251,9 +256,9 @@ func (h *Handler) handlePostRequest(w http.ResponseWriter, r *http.Request, user
 
 	query := redirectURL.Query()
 	if slices.Contains(responseTypes, oauth2.RtToken) {
-		client, exists := h.validator.ValidateClientId(authSession.ClientId)
-		if !exists {
-			h.errorHandler.InternalServerErrorHandler(w, r)
+		client, clientExists := h.validator.ValidateClientId(authSession.ClientId)
+		if !clientExists {
+			h.errorHandler.BadRequestHandler(w, r)
 			return
 		}
 		accessTokenResponse := h.tokenManager.CreateAccessTokenResponse(r, user.Username, client, authSession.Scopes, authSession.Nonce)

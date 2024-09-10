@@ -50,24 +50,24 @@ func Test_RequestData(t *testing.T) {
 
 			requestData := NewRequestData(request)
 
-			if requestData.Scheme != test.expectedScheme {
-				t.Errorf("Scheme mismatch. Expected: %s, got: %s", test.expectedScheme, requestData.Scheme)
+			if requestData.scheme != test.expectedScheme {
+				t.Errorf("Scheme mismatch. Expected: %s, got: %s", test.expectedScheme, requestData.scheme)
 			}
 
-			if requestData.Host != test.expectedHost {
+			if requestData.host != test.expectedHost {
 				t.Errorf("Host mismatch. Expected: %s, got: %s", test.expectedHost, request.Host)
 			}
 
-			if requestData.Path != test.expectedPath {
-				t.Errorf("Path mismatch. Expected: %s, got: %s", test.expectedPath, requestData.Path)
+			if requestData.path != test.expectedPath {
+				t.Errorf("Path mismatch. Expected: %s, got: %s", test.expectedPath, requestData.path)
 			}
 
-			if requestData.Query != test.expectedQuery {
-				t.Errorf("Query mismatch. Expected: %s, got: %s", test.expectedQuery, requestData.Query)
+			if requestData.query != test.expectedQuery {
+				t.Errorf("Query mismatch. Expected: %s, got: %s", test.expectedQuery, requestData.query)
 			}
 
-			if requestData.Fragment != test.expectedFragment {
-				t.Errorf("Fragment mismatch. Expected: %s, got: %s", test.expectedFragment, requestData.Fragment)
+			if requestData.fragment != test.expectedFragment {
+				t.Errorf("Fragment mismatch. Expected: %s, got: %s", test.expectedFragment, requestData.fragment)
 			}
 
 			parsedUrl, parseError := requestData.URL()

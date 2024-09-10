@@ -52,7 +52,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		requestData := internalHttp.NewRequestData(r)
 		urlFromRequest, parseError := requestData.URL()
 		if parseError != nil {
-			h.errorHandler.InternalServerErrorHandler(w, r)
+			h.errorHandler.InternalServerErrorHandler(w, r, parseError)
 			return
 		}
 
@@ -112,9 +112,9 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			RevocationEndpointAuthMethodsSupported:             authMethodsSupported,
 			RevocationEndpointAuthSigningAlgValuesSupported:    signatureAlgorithmSupported,
 		}
-		jsonError := internalHttp.SendJson(metadataResponse, w)
+		jsonError := internalHttp.SendJson(metadataResponse, w, r)
 		if jsonError != nil {
-			h.errorHandler.InternalServerErrorHandler(w, r)
+			h.errorHandler.InternalServerErrorHandler(w, r, jsonError)
 			return
 		}
 	} else {

@@ -51,9 +51,9 @@ func (h *UserInfoHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 
-		jsonError := internalHttp.SendJson(result, w)
+		jsonError := internalHttp.SendJson(result, w, r)
 		if jsonError != nil {
-			h.errorHandler.InternalServerErrorHandler(w, r)
+			h.errorHandler.InternalServerErrorHandler(w, r, jsonError)
 			return
 		}
 	} else {

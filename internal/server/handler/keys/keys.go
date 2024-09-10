@@ -42,7 +42,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			for _, mangedKey := range h.keyManager.GetAllKeys() {
 				addKeyError := h.addKey(mangedKey)
 				if addKeyError != nil {
-					h.errorHandler.InternalServerErrorHandler(w, r)
+					h.errorHandler.InternalServerErrorHandler(w, r, addKeyError)
 					return
 				}
 			}
@@ -50,9 +50,9 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			h.loaded = true
 		}
 
-		jsonError := http2.SendJson(h.keySet, w)
+		jsonError := http2.SendJson(h.keySet, w, r)
 		if jsonError != nil {
-			h.errorHandler.InternalServerErrorHandler(w, r)
+			h.errorHandler.InternalServerErrorHandler(w, r, jsonError)
 			return
 		}
 	} else {
@@ -62,9 +62,9 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) addKey(mangedKey *crypto.ManagedKey) error {
-	key := *mangedKey.Key
+	mgmKey := *mangedKey.Key
 
-	addKeyError := h.keySet.AddKey(key)
+	addKeyError := h.keySet.AddKey(mgmKey)
 	if addKeyError != nil {
 		return addKeyError
 	}

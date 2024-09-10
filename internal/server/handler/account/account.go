@@ -42,9 +42,14 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		if validCookie {
 			logoutTemplate := h.templateManager.LogoutTemplate(user.Username, r.RequestURI)
 
-			_, err := w.Write(logoutTemplate.Bytes())
-			if err != nil {
-				h.errorHandler.InternalServerErrorHandler(w, r)
+			requestData := internalHttp.NewRequestData(r)
+			responseWriter := internalHttp.NewResponseWriter(w, requestData)
+
+			responseWriter.SetEncodingHeader()
+
+			_, writeError := responseWriter.Write(logoutTemplate.Bytes())
+			if writeError != nil {
+				h.errorHandler.InternalServerErrorHandler(w, r, writeError)
 				return
 			}
 		} else {
@@ -54,9 +59,14 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			loginToken := h.validator.NewLoginToken(id)
 			loginTemplate := h.templateManager.LoginTemplate(loginToken, "account", message)
 
-			_, err := w.Write(loginTemplate.Bytes())
-			if err != nil {
-				h.errorHandler.InternalServerErrorHandler(w, r)
+			requestData := internalHttp.NewRequestData(r)
+			responseWriter := internalHttp.NewResponseWriter(w, requestData)
+
+			responseWriter.SetEncodingHeader()
+
+			_, writeError := responseWriter.Write(loginTemplate.Bytes())
+			if writeError != nil {
+				h.errorHandler.InternalServerErrorHandler(w, r, writeError)
 				return
 			}
 		}
@@ -78,9 +88,9 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			Username: user.Username,
 		}
 		h.loginSessionManager.StartSession(loginSession)
-		authCookie, err := h.cookieManager.CreateAuthCookie(user.Username, loginSession.Id)
-		if err != nil {
-			h.errorHandler.InternalServerErrorHandler(w, r)
+		authCookie, authCookieError := h.cookieManager.CreateAuthCookie(user.Username, loginSession.Id)
+		if authCookieError != nil {
+			h.errorHandler.InternalServerErrorHandler(w, r, authCookieError)
 			return
 		}
 

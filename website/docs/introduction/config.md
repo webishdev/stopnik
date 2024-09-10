@@ -89,11 +89,11 @@ Root entry named `ui`
 | Property          | Description                                                                                                                                 | Required |
 |-------------------|---------------------------------------------------------------------------------------------------------------------------------------------|----------|
 | `logoImage`       | Path of additional logo image                                                                                                               | No       |
-| `logoContentType` | [HTTP Mime type](https://developer.mozilla.org/en-US/docs/Web/HTTP/Basics_of_HTTP/MIME_types/Common_types) of logo image if not `image/png` | No       |
 | `hideFooter`      | Will hide the **STOPnik** footer                                                                                                            | No       |
 | `hideMascot`      | Will hide the **STOPnik** mascot                                                                                                            | No       |
 | `footerText`      | The footer text                                                                                                                             | No       |
-| `title`           | Title                                                                                                                                       | No       |
+| `title`           | Title displayed above the forms                                                                                                             | No       |
+| `htmlTitle`       | HTML title                                                                                                                                  | No       |
 
 ### Clients
 

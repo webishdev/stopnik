@@ -44,12 +44,8 @@ func Test_HealthWithToken(t *testing.T) {
 
 	healthHandler := NewHealthHandler(tokenManager)
 
-	httpRequest := &http.Request{
-		Method: http.MethodGet,
-		Header: http.Header{
-			internalHttp.Authorization: []string{"Bearer " + tokenResponse.AccessTokenValue},
-		},
-	}
+	httpRequest := httptest.NewRequest(http.MethodGet, "https://example.com/foo", nil)
+	httpRequest.Header.Set(internalHttp.Authorization, "Bearer "+tokenResponse.AccessTokenValue)
 	rr := httptest.NewRecorder()
 
 	healthHandler.ServeHTTP(rr, httpRequest)
@@ -72,9 +68,7 @@ func Test_HealthWithoutToken(t *testing.T) {
 
 	healthHandler := NewHealthHandler(tokenManager)
 
-	httpRequest := &http.Request{
-		Method: http.MethodGet,
-	}
+	httpRequest := httptest.NewRequest(http.MethodGet, "https://example.com/foo", nil)
 	rr := httptest.NewRecorder()
 
 	healthHandler.ServeHTTP(rr, httpRequest)

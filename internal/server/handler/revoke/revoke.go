@@ -42,20 +42,20 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			authorizationHeader := r.Header.Get(internalHttp.Authorization)
 			_, _, scopes, valid := h.tokenManager.ValidateAccessToken(authorizationHeader)
 			if !valid {
-				oauth2.TokenErrorStatusResponseHandler(w, http.StatusUnauthorized, &oauth2.TokenErrorResponseParameter{Error: oauth2.TokenEtInvalidRequest})
+				oauth2.TokenErrorStatusResponseHandler(w, r, http.StatusUnauthorized, &oauth2.TokenErrorResponseParameter{Error: oauth2.TokenEtInvalidRequest})
 				return
 			}
 
 			hasRevokeScope := slices.Contains(scopes, h.config.GetRevokeScope())
 
 			if !hasRevokeScope {
-				oauth2.TokenErrorStatusResponseHandler(w, http.StatusUnauthorized, &oauth2.TokenErrorResponseParameter{Error: oauth2.TokenEtInvalidRequest})
+				oauth2.TokenErrorStatusResponseHandler(w, r, http.StatusUnauthorized, &oauth2.TokenErrorResponseParameter{Error: oauth2.TokenEtInvalidRequest})
 				return
 			}
 		} else {
 			if !client.Revoke {
 				// https://datatracker.ietf.org/doc/html/rfc7009#section-2.2.1
-				oauth2.TokenErrorStatusResponseHandler(w, http.StatusServiceUnavailable, &oauth2.TokenErrorResponseParameter{Error: oauth2.TokenEtUnsupportedTokenType})
+				oauth2.TokenErrorStatusResponseHandler(w, r, http.StatusServiceUnavailable, &oauth2.TokenErrorResponseParameter{Error: oauth2.TokenEtUnsupportedTokenType})
 				return
 			}
 		}

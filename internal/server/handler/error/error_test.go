@@ -1,6 +1,7 @@
 package error
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -19,16 +20,9 @@ func Test_Errors(t *testing.T) {
 	var errorTestCases = []errorTestCase{
 		{"Method not allowed", http.StatusMethodNotAllowed, errorHandler.MethodNotAllowedHandler},
 		{"Forbidden", http.StatusForbidden, errorHandler.ForbiddenHandler},
-		{"Internal server error", http.StatusInternalServerError, errorHandler.InternalServerErrorHandler},
 		{"Not found", http.StatusNotFound, errorHandler.NotFoundHandler},
 		{"No content", http.StatusNoContent, errorHandler.NoContentHandler},
 		{"See other", http.StatusSeeOther, errorHandler.SeeOtherHandler},
-	}
-
-	var testStatusCodes = []int{
-		http.StatusOK,
-		http.StatusBadRequest,
-		http.StatusInternalServerError,
 	}
 
 	for _, test := range errorTestCases {
@@ -45,6 +39,17 @@ func Test_Errors(t *testing.T) {
 		})
 	}
 
+}
+
+func Test_StatusCodes(t *testing.T) {
+	var testStatusCodes = []int{
+		http.StatusOK,
+		http.StatusBadRequest,
+		http.StatusInternalServerError,
+	}
+
+	errorHandler := NewErrorHandler()
+
 	for _, testStatus := range testStatusCodes {
 		testMessage := fmt.Sprintf("Send status code %d", testStatus)
 		t.Run(testMessage, func(t *testing.T) {
@@ -58,5 +63,17 @@ func Test_Errors(t *testing.T) {
 			}
 		})
 	}
+}
 
+func Test_InternalServerError(t *testing.T) {
+	errorHandler := NewErrorHandler()
+
+	httpRequest := &http.Request{}
+	rr := httptest.NewRecorder()
+
+	errorHandler.InternalServerErrorHandler(rr, httpRequest, errors.New("message"))
+
+	if rr.Code != http.StatusInternalServerError {
+		t.Errorf("Internal server error returned wrong status code")
+	}
 }

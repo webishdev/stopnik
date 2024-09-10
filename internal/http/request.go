@@ -4,14 +4,24 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"strings"
 )
 
+type CompressionMethod string
+
+const (
+	CompressionMethodGZip CompressionMethod = "gzip"
+)
+
+var supportedEncodingMethods = []CompressionMethod{CompressionMethodGZip}
+
 type RequestData struct {
-	Scheme   string
-	Host     string
-	Path     string
-	Query    string
-	Fragment string
+	scheme     string
+	host       string
+	path       string
+	query      string
+	fragment   string
+	compressed *CompressionMethod
 }
 
 func NewRequestData(r *http.Request) *RequestData {
@@ -31,21 +41,44 @@ func NewRequestData(r *http.Request) *RequestData {
 	if r.URL.RawFragment != "" {
 		fragment = "#" + r.URL.RawFragment
 	}
+
+	acceptEncodingHeader := r.Header.Get(AcceptEncoding)
+	acceptEncoding := strings.Split(acceptEncodingHeader, ", ")
+
+	var compress CompressionMethod
+	for _, encoding := range acceptEncoding {
+		for _, supported := range supportedEncodingMethods {
+			if encoding == string(supported) {
+				compress = supported
+				break
+			}
+		}
+	}
+
 	return &RequestData{
-		Scheme:   scheme,
-		Host:     host,
-		Path:     path,
-		Query:    query,
-		Fragment: fragment,
+		scheme:     scheme,
+		host:       host,
+		path:       path,
+		query:      query,
+		fragment:   fragment,
+		compressed: &compress,
 	}
 }
 
 func (r *RequestData) IssuerString() string {
-	return fmt.Sprintf("%s://%s", r.Scheme, r.Host)
+	return fmt.Sprintf("%s://%s", r.scheme, r.host)
 }
 
 func (r *RequestData) URL() (*url.URL, error) {
-	uri := fmt.Sprintf("%s://%s%s%s%s", r.Scheme, r.Host, r.Path, r.Query, r.Fragment)
+	uri := fmt.Sprintf("%s://%s%s%s%s", r.scheme, r.host, r.path, r.query, r.fragment)
 
 	return url.Parse(uri)
+}
+
+func (r *RequestData) Valid() bool {
+	return r.host != "" && r.scheme != ""
+}
+
+func (r *RequestData) AcceptCompressed() (*CompressionMethod, bool) {
+	return r.compressed, r.compressed != nil && *r.compressed != ""
 }

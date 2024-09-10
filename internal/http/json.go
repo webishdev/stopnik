@@ -5,20 +5,27 @@ import (
 	"net/http"
 )
 
-func SendJson(value any, w http.ResponseWriter) error {
-	return SendJsonWithStatus(value, w, http.StatusOK)
+func SendJson(value any, w http.ResponseWriter, r *http.Request) error {
+	return SendJsonWithStatus(value, http.StatusOK, w, r)
 }
 
-func SendJsonWithStatus(value any, w http.ResponseWriter, statusCode int) error {
+func SendJsonWithStatus(value any, statusCode int, w http.ResponseWriter, r *http.Request) error {
 	bytes, tokenMarshalError := json.Marshal(value)
 	if tokenMarshalError != nil {
 		return tokenMarshalError
 	}
 
+	requestData := NewRequestData(r)
+	responseWriter := NewResponseWriter(w, requestData)
+
+	responseWriter.SetEncodingHeader()
+
 	w.Header().Set(ContentType, ContentTypeJSON)
+	w.Header().Set(CacheControl, "private, no-store")
 	w.Header().Set(AccessControlAllowOrigin, "*")
 	w.WriteHeader(statusCode)
-	_, writeError := w.Write(bytes)
+
+	_, writeError := responseWriter.Write(bytes)
 	if writeError != nil {
 		return writeError
 	}

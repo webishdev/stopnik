@@ -104,12 +104,12 @@ func AuthorizationErrorResponseHandler(w http.ResponseWriter, redirectURL *url.U
 	w.WriteHeader(http.StatusFound)
 }
 
-func TokenErrorResponseHandler(w http.ResponseWriter, errorResponseParameter *TokenErrorResponseParameter) {
-	TokenErrorStatusResponseHandler(w, http.StatusBadRequest, errorResponseParameter)
+func TokenErrorResponseHandler(w http.ResponseWriter, r *http.Request, errorResponseParameter *TokenErrorResponseParameter) {
+	TokenErrorStatusResponseHandler(w, r, http.StatusBadRequest, errorResponseParameter)
 }
 
-func TokenErrorStatusResponseHandler(w http.ResponseWriter, statusCode int, errorResponseParameter *TokenErrorResponseParameter) {
-	err := internalHttp.SendJsonWithStatus(errorResponseParameter, w, statusCode)
+func TokenErrorStatusResponseHandler(w http.ResponseWriter, r *http.Request, statusCode int, errorResponseParameter *TokenErrorResponseParameter) {
+	err := internalHttp.SendJsonWithStatus(errorResponseParameter, statusCode, w, r)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 	}

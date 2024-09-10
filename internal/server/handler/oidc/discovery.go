@@ -72,7 +72,7 @@ func (h *DiscoveryHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		requestData := internalHttp.NewRequestData(r)
 		urlFromRequest, parseError := requestData.URL()
 		if parseError != nil {
-			h.errorHandler.InternalServerErrorHandler(w, r)
+			h.errorHandler.InternalServerErrorHandler(w, r, parseError)
 			return
 		}
 
@@ -138,9 +138,9 @@ func (h *DiscoveryHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			IdTokenSigningAlgValuesSupported:                   signatureAlgorithmSupported,
 			SubjectTypesSupported:                              []string{"public"},
 		}
-		jsonError := internalHttp.SendJson(metadataResponse, w)
+		jsonError := internalHttp.SendJson(metadataResponse, w, r)
 		if jsonError != nil {
-			h.errorHandler.InternalServerErrorHandler(w, r)
+			h.errorHandler.InternalServerErrorHandler(w, r, jsonError)
 			return
 		}
 	} else {

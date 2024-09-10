@@ -74,12 +74,8 @@ func testOidcUserInfo(t *testing.T, testConfig *config.Config) {
 
 		oidcDiscoveryHandler := NewOidcUserInfoHandler(tokenManager)
 
-		httpRequest := &http.Request{
-			Method: http.MethodGet,
-			Header: http.Header{
-				internalHttp.Authorization: []string{"Bearer " + tokenResponse.AccessTokenValue},
-			},
-		}
+		httpRequest := httptest.NewRequest(http.MethodGet, endpoint.OidcDiscovery, nil)
+		httpRequest.Header.Set(internalHttp.Authorization, "Bearer "+tokenResponse.AccessTokenValue)
 		rr := httptest.NewRecorder()
 
 		oidcDiscoveryHandler.ServeHTTP(rr, httpRequest)
