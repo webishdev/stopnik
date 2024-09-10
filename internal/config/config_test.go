@@ -449,6 +449,33 @@ func Test_InvalidUsers(t *testing.T) {
 	}
 }
 
+func Test_DuplicateUsers(t *testing.T) {
+	configLoader := NewConfigLoader(func(filename string) ([]byte, error) {
+		return make([]byte, 10), nil
+	}, func(in []byte, out interface{}) (err error) {
+		origin := out.(*Config)
+		*origin = Config{
+			Users: []User{
+				{
+					Username: "foo",
+					Password: "d82c4eb5261cb9c8aa9855edd67d1bd10482f41529858d925094d173fa662aa91ff39bc5b188615273484021dfb16fd8284cf684ccf0fc795be3aa2fc1e6c181",
+				},
+				{
+					Username: "foo",
+					Password: "3c9909afec25354d551dae21590bb26e38d53f2173b8d3dc3eee4c047e7ab1c1eb8b85103e3be7ba613b31bb5c9c36214dc9f14a42fd7a2fdb84856bca5c44c2",
+				},
+			},
+		}
+		return nil
+	})
+
+	err := configLoader.LoadConfig("foo.txt", false)
+
+	if err == nil {
+		t.Error("expected error when loading config because of duplicate usernames")
+	}
+}
+
 func Test_ValidClients(t *testing.T) {
 	configLoader := NewConfigLoader(func(filename string) ([]byte, error) {
 		return make([]byte, 10), nil
@@ -565,6 +592,38 @@ func Test_InvalidClients(t *testing.T) {
 		if err == nil {
 			t.Error("expected error when loading config")
 		}
+	}
+}
+
+func Test_DuplicateClients(t *testing.T) {
+	configLoader := NewConfigLoader(func(filename string) ([]byte, error) {
+		return make([]byte, 10), nil
+	}, func(in []byte, out interface{}) (err error) {
+		origin := out.(*Config)
+		*origin = Config{
+			Server: Server{
+				Issuer: "other",
+			},
+			Clients: []Client{
+				{
+					Id:           "foo",
+					ClientSecret: "d82c4eb5261cb9c8aa9855edd67d1bd10482f41529858d925094d173fa662aa91ff39bc5b188615273484021dfb16fd8284cf684ccf0fc795be3aa2fc1e6c181",
+					Redirects:    []string{"http://localhost:8080/callback"},
+				},
+				{
+					Id:           "foo",
+					ClientSecret: "3c9909afec25354d551dae21590bb26e38d53f2173b8d3dc3eee4c047e7ab1c1eb8b85103e3be7ba613b31bb5c9c36214dc9f14a42fd7a2fdb84856bca5c44c2",
+					Redirects:    []string{"http://localhost:8080/callback", "https://example.com/callback"},
+				},
+			},
+		}
+		return nil
+	})
+
+	err := configLoader.LoadConfig("foo.txt", false)
+
+	if err == nil {
+		t.Error("expected error when loading config because of duplicate client ids")
 	}
 }
 
