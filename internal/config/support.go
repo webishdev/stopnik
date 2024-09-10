@@ -2,6 +2,7 @@ package config
 
 import (
 	"crypto/rand"
+	"fmt"
 	"math/big"
 )
 
@@ -19,19 +20,23 @@ func generateRandomString(n int) (string, error) {
 	return string(ret), nil
 }
 
-func setup[T any](values *[]T, accessor func(T) string) map[string]*T {
+func setup[T any](values *[]T, errorPrefix string, accessor func(T) string) (map[string]*T, error) {
 	valueMap := make(map[string]*T)
 
 	for index := 0; index < len(*values); index += 1 {
 		value := (*values)[index]
 		key := accessor(value)
 		if key != "" {
+			currentValue := valueMap[key]
+			if currentValue != nil {
+				return nil, fmt.Errorf("%s '%s' is defined more then once", errorPrefix, key)
+			}
 			valueMap[key] = &value
 		}
 
 	}
 
-	return valueMap
+	return valueMap, nil
 }
 
 // GetOrDefaultString returns a value or a default value if the given value is empty.

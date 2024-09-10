@@ -186,17 +186,24 @@ func Initialize(config *Config) error {
 		config.oidc = config.oidc || client.Oidc
 	}
 
-	config.userMap = setup[User](&config.Users, func(user User) string {
+	var userMapError error
+	config.userMap, userMapError = setup[User](&config.Users, "User with username", func(user User) string {
 		return user.Username
 	})
+	if userMapError != nil {
+		return userMapError
+	}
 
-	config.clientMap = setup[Client](&config.Clients, func(client Client) string {
+	var clientMapError error
+	config.clientMap, clientMapError = setup[Client](&config.Clients, "Client with id", func(client Client) string {
 		return client.Id
 	})
+	if clientMapError != nil {
+		return clientMapError
+	}
 
 	randomString, randomError := generateRandomString(16)
 	if randomError != nil {
-		log.Error("Could not generate random secret: %v", randomError)
 		return randomError
 	}
 	generatedSecret := randomString
