@@ -2,6 +2,7 @@ package config
 
 import (
 	"bufio"
+	"cmp"
 	"errors"
 	"fmt"
 	"github.com/google/uuid"
@@ -29,8 +30,9 @@ type TLS struct {
 
 // Cookies defines the name for HTTP cookies used by STOPnik.
 type Cookies struct {
-	AuthName    string `yaml:"authName"`
-	MessageName string `yaml:"messageName"`
+	AuthName        string `yaml:"authName"`
+	MessageName     string `yaml:"messageName"`
+	ForwardAuthName string `yaml:"forwardAuthName"`
 }
 
 // ForwardAuth defines the configuration related to Traefik Forward Auth,
@@ -296,6 +298,21 @@ func (config *Config) Validate() error {
 		}
 	}
 
+	if config.GetAuthCookieName() == config.GetForwardAuthCookieName() {
+		invalidClient := fmt.Sprintf("auth cookie name should not equal forward auth cookie name")
+		return errors.New(invalidClient)
+	}
+
+	if config.GetAuthCookieName() == config.GetMessageCookieName() {
+		invalidClient := fmt.Sprintf("auth cookie name should not equal message cookie name")
+		return errors.New(invalidClient)
+	}
+
+	if config.GetForwardAuthCookieName() == config.GetMessageCookieName() {
+		invalidClient := fmt.Sprintf("forward auth cookie name should not equal message cookie name")
+		return errors.New(invalidClient)
+	}
+
 	return nil
 }
 
@@ -319,37 +336,43 @@ func (config *Config) GetClient(clientId string) (*Client, bool) {
 // GetAuthCookieName returns the name of the authentication cookie.
 // When no name is provided a default value will be returned.
 func (config *Config) GetAuthCookieName() string {
-	return GetOrDefaultString(config.Server.Cookies.AuthName, "stopnik_auth")
+	return cmp.Or(config.Server.Cookies.AuthName, "stopnik_auth")
 }
 
 // GetMessageCookieName returns the name of the message cookie.
 // When no name is provided a default value will be returned.
 func (config *Config) GetMessageCookieName() string {
-	return GetOrDefaultString(config.Server.Cookies.MessageName, "stopnik_message")
+	return cmp.Or(config.Server.Cookies.MessageName, "stopnik_message")
+}
+
+// GetForwardAuthCookieName returns the name of the authentication cookie for ForwardAuth.
+// When no name is provided a default value will be returned.
+func (config *Config) GetForwardAuthCookieName() string {
+	return cmp.Or(config.Server.Cookies.ForwardAuthName, "stopnik_forward_auth")
 }
 
 // GetSessionTimeoutSeconds returns the session timeout in seconds.
 // When no session timeout is provided a default value will be returned.
 func (config *Config) GetSessionTimeoutSeconds() int {
-	return GetOrDefaultInt(config.Server.SessionTimeoutSeconds, 3600)
+	return cmp.Or(config.Server.SessionTimeoutSeconds, 3600)
 }
 
 // GetIntrospectScope returns the scope which can be used to introspect tokens.
 // When no scope is provided a default value will be returned.
 func (config *Config) GetIntrospectScope() string {
-	return GetOrDefaultString(config.Server.IntrospectScope, "stopnik:introspect")
+	return cmp.Or(config.Server.IntrospectScope, "stopnik:introspect")
 }
 
 // GetRevokeScope returns the scope which can be used to revoke tokens.
 // When no scope is provided a default value will be returned.
 func (config *Config) GetRevokeScope() string {
-	return GetOrDefaultString(config.Server.RevokeScope, "stopnik:revoke")
+	return cmp.Or(config.Server.RevokeScope, "stopnik:revoke")
 }
 
 // GetServerSecret returns the server secret.
 // When no secret is provided a previously generated value will be returned.
 func (config *Config) GetServerSecret() string {
-	return GetOrDefaultString(config.Server.Secret, config.generatedSecret)
+	return cmp.Or(config.Server.Secret, config.generatedSecret)
 }
 
 // GetHideFooter returns whether the footer should be hidden in the web user interface.
@@ -375,7 +398,7 @@ func (config *Config) GetTitle() string {
 // GetFooterText returns whether the text shown in the footer of the web user interface.
 // When no footer text is provided a default value will be returned.
 func (config *Config) GetFooterText() string {
-	return GetOrDefaultString(config.UI.FooterText, "STOPnik")
+	return cmp.Or(config.UI.FooterText, "STOPnik")
 }
 
 // GetLogoImage returns a pointer to the loaded logo image. Can be nil if no image was provided.
@@ -386,13 +409,13 @@ func (config *Config) GetLogoImage() *[]byte {
 // GetInvalidCredentialsMessage returns the configured invalid credentials message.
 // When no invalid credentials message is provided a default value will be returned.
 func (config *Config) GetInvalidCredentialsMessage() string {
-	return GetOrDefaultString(config.UI.InvalidCredentialsMessage, "Invalid credentials")
+	return cmp.Or(config.UI.InvalidCredentialsMessage, "Invalid credentials")
 }
 
 // GetExpiredLoginMessage returns the configured login expired message.
 // When no login expired message is provided a default value will be returned.
 func (config *Config) GetExpiredLoginMessage() string {
-	return GetOrDefaultString(config.UI.ExpiredLoginMessage, "Login expired, try again")
+	return cmp.Or(config.UI.ExpiredLoginMessage, "Login expired, try again")
 }
 
 // GetOidc returns whether one of the existing clients has OIDC flag set or not.
@@ -403,9 +426,9 @@ func (config *Config) GetOidc() bool {
 // GetIssuer returns the issuer, either by mirroring from request, from Server configuration or default value.
 func (config *Config) GetIssuer(requestData *internalHttp.RequestData) string {
 	if requestData == nil || !requestData.Valid() {
-		return GetOrDefaultString(config.Server.Issuer, "STOPnik")
+		return cmp.Or(config.Server.Issuer, "STOPnik")
 	}
-	return GetOrDefaultString(config.Server.Issuer, requestData.IssuerString())
+	return cmp.Or(config.Server.Issuer, requestData.IssuerString())
 }
 
 // GetForwardAuthEnabled returns whether Traefik Forward Auth is enabled or not.
@@ -417,13 +440,13 @@ func (config *Config) GetForwardAuthEnabled() bool {
 // GetForwardAuthEndpoint returns the endpoint which will use used for Traefik Forward Auth.
 // When no endpoint is provided a default value will be returned.
 func (config *Config) GetForwardAuthEndpoint() string {
-	return GetOrDefaultString(config.Server.ForwardAuth.Endpoint, "/forward")
+	return cmp.Or(config.Server.ForwardAuth.Endpoint, "/forward")
 }
 
 // GetForwardAuthParameterName returns the query parameter name which will use used for Traefik Forward Auth.
 // When no query parameter name is provided a default value will be returned.
 func (config *Config) GetForwardAuthParameterName() string {
-	return GetOrDefaultString(config.Server.ForwardAuth.ParameterName, "forward_id")
+	return cmp.Or(config.Server.ForwardAuth.ParameterName, "forward_id")
 }
 
 // GetForwardAuthClient return a Client used for Traefik Forward Auth,
@@ -438,25 +461,25 @@ func (config *Config) GetForwardAuthClient() (*Client, bool) {
 // GetRolesClaim returns the name of the claim uses to provide User roles in a Client.
 // When no name is provided a default value will be returned.
 func (client *Client) GetRolesClaim() string {
-	return GetOrDefaultString(client.RolesClaim, "roles")
+	return cmp.Or(client.RolesClaim, "roles")
 }
 
 // GetAccessTTL returns access token time to live.
 // When no time to live is provided a default value will be returned.
 func (client *Client) GetAccessTTL() int {
-	return GetOrDefaultInt(client.AccessTTL, 5)
+	return cmp.Or(client.AccessTTL, 5)
 }
 
 // GetRefreshTTL returns refresh token time to live.
 // When no time to live is provided a default value will be returned.
 func (client *Client) GetRefreshTTL() int {
-	return GetOrDefaultInt(client.RefreshTTL, 0)
+	return cmp.Or(client.RefreshTTL, 0)
 }
 
 // GetIdTTL returns id token time to live.
 // When no time to live is provided a default value will be returned.
 func (client *Client) GetIdTTL() int {
-	return GetOrDefaultInt(client.IdTTL, 0)
+	return cmp.Or(client.IdTTL, 0)
 }
 
 // GetAudience returns the audience value.

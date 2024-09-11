@@ -2,7 +2,6 @@ package revoke
 
 import (
 	"github.com/webishdev/stopnik/internal/config"
-	internalHttp "github.com/webishdev/stopnik/internal/http"
 	"github.com/webishdev/stopnik/internal/manager/token"
 	"github.com/webishdev/stopnik/internal/oauth2"
 	"github.com/webishdev/stopnik/internal/server/handler/error"
@@ -39,8 +38,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		if !validClientCredentials {
 
 			// Fall back to access token with scopes
-			authorizationHeader := r.Header.Get(internalHttp.Authorization)
-			_, _, scopes, valid := h.tokenManager.ValidateAccessToken(authorizationHeader)
+			_, _, scopes, valid := h.tokenManager.ValidateAccessTokenRequest(r)
 			if !valid {
 				oauth2.TokenErrorStatusResponseHandler(w, r, http.StatusUnauthorized, &oauth2.TokenErrorResponseParameter{Error: oauth2.TokenEtInvalidRequest})
 				return

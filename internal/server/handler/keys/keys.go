@@ -64,7 +64,11 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) addKey(mangedKey *crypto.ManagedKey) error {
 	mgmKey := *mangedKey.Key
 
-	addKeyError := h.keySet.AddKey(mgmKey)
+	publicKey, publicKeyError := mgmKey.PublicKey()
+	if publicKeyError != nil {
+		return publicKeyError
+	}
+	addKeyError := h.keySet.AddKey(publicKey)
 	if addKeyError != nil {
 		return addKeyError
 	}

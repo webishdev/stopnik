@@ -83,6 +83,11 @@ func Test_EmptyServerConfiguration(t *testing.T) {
 		t.Error("expected message cookie name to be 'stopnik_message'")
 	}
 
+	forwardAuthCookieName := config.GetForwardAuthCookieName()
+	if forwardAuthCookieName != "stopnik_forward_auth" {
+		t.Error("expected forward auth cookie name to be 'stopnik_forward_auth'")
+	}
+
 	introspectScope := config.GetIntrospectScope()
 	if introspectScope != "stopnik:introspect" {
 		t.Error("expected introspect scope to be 'stopnik:introspect'")
@@ -134,7 +139,9 @@ func Test_SimpleServerConfiguration(t *testing.T) {
 				Secret: "5XyLSgKpo5kWrJqm",
 				Issuer: "http://foo.com/bar",
 				Cookies: Cookies{
-					AuthName: "my_auth",
+					AuthName:        "my_auth",
+					MessageName:     "my_message",
+					ForwardAuthName: "my_forward_auth",
 				},
 				IntrospectScope:       "i:a",
 				RevokeScope:           "r:b",
@@ -179,6 +186,16 @@ func Test_SimpleServerConfiguration(t *testing.T) {
 	authCookieName := config.GetAuthCookieName()
 	if authCookieName != "my_auth" {
 		t.Error("expected auth cookie name to be 'my_auth'")
+	}
+
+	messageCookieName := config.GetMessageCookieName()
+	if messageCookieName != "my_message" {
+		t.Error("expected message cookie name to be 'my_message'")
+	}
+
+	forwardAuthCookieName := config.GetForwardAuthCookieName()
+	if forwardAuthCookieName != "my_forward_auth" {
+		t.Error("expected forward auth cookie name to be 'my_forward_auth'")
 	}
 
 	introspectScope := config.GetIntrospectScope()

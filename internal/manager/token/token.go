@@ -148,14 +148,33 @@ func (tokenManager *Manager) CreateAccessTokenHash(client *config.Client, access
 	return hashToken(managedKey.HashAlgorithm, accessTokenKey)
 }
 
-func (tokenManager *Manager) ValidateAccessToken(authorizationHeader string) (*config.User, *config.Client, []string, bool) {
-	log.Debug("Validating access token")
-	accessTokenStore := *tokenManager.accessTokenStore
+// ValidateAccessTokenRequest  implements https://datatracker.ietf.org/doc/html/rfc6750#section-2
+func (tokenManager *Manager) ValidateAccessTokenRequest(r *http.Request) (*config.User, *config.Client, []string, bool) {
+	// https://datatracker.ietf.org/doc/html/rfc6750#section-2.1
+	log.Debug("Checking authorization request header field")
+	authorizationHeader := r.Header.Get(internalHttp.Authorization)
+	if authorizationHeader == "" {
+		// https://datatracker.ietf.org/doc/html/rfc6750#section-2.2
+		log.Debug("Checking form-encoded body parameter")
+		accessTokenValue := r.PostFormValue("access_token")
+		return tokenManager.validateAccessToken(accessTokenValue)
+	} else {
+		return tokenManager.validateAccessTokenHeader(authorizationHeader)
+	}
+}
+
+func (tokenManager *Manager) validateAccessTokenHeader(authorizationHeader string) (*config.User, *config.Client, []string, bool) {
 	headerValue := getAuthorizationHeaderValue(authorizationHeader)
 	if headerValue == nil {
 		return nil, nil, []string{}, false
 	}
-	accessToken, authorizationHeaderExists := accessTokenStore.Get(*headerValue)
+	return tokenManager.validateAccessToken(*headerValue)
+}
+
+func (tokenManager *Manager) validateAccessToken(accessTokenValue string) (*config.User, *config.Client, []string, bool) {
+	log.Debug("Validating access token")
+	accessTokenStore := *tokenManager.accessTokenStore
+	accessToken, authorizationHeaderExists := accessTokenStore.Get(accessTokenValue)
 	if !authorizationHeaderExists {
 		return nil, nil, []string{}, false
 	}

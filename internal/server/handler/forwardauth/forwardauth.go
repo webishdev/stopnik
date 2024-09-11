@@ -73,7 +73,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	stateParameter := forwardUri.Query().Get(oauth2.ParameterState)
 	forwardIdParameter := forwardUri.Query().Get(forwardAuthParameterName)
 
-	_, _, validCookie := h.cookieManager.ValidateAuthCookie(r)
+	_, _, validCookie := h.cookieManager.ValidateForwardAuthCookie(r)
 
 	if validCookie && codeParameter == "" && forwardIdParameter == "" && stateParameter == "" {
 		w.WriteHeader(http.StatusOK)
@@ -167,7 +167,7 @@ func (h *Handler) validateAndCreateAuthCookie(code string, state string, forward
 			Username: authSession.Username,
 		}
 		h.loginSessionManager.StartSession(loginSession)
-		authCookie, authCookieError := h.cookieManager.CreateAuthCookie(authSession.Username, loginSession.Id)
+		authCookie, authCookieError := h.cookieManager.CreateForwardAuthCookie(authSession.Username, loginSession.Id)
 		if authCookieError != nil {
 			return nil, nil, false
 		}

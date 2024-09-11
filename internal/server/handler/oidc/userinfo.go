@@ -24,10 +24,9 @@ func NewOidcUserInfoHandler(tokenManager *token.Manager) *UserInfoHandler {
 
 func (h *UserInfoHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	log.AccessLogRequest(r)
-	if r.Method == http.MethodGet {
+	if r.Method == http.MethodGet || r.Method == http.MethodPost {
 		var userInfoResponse *config.UserProfile
-		authorizationHeader := r.Header.Get(internalHttp.Authorization)
-		user, client, _, valid := h.tokenManager.ValidateAccessToken(authorizationHeader)
+		user, client, _, valid := h.tokenManager.ValidateAccessTokenRequest(r)
 		if valid {
 			userInfoResponse = &user.Profile
 			userInfoResponse.Subject = user.Username

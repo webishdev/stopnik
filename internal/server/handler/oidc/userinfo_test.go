@@ -148,7 +148,6 @@ func testOidcUserInfo(t *testing.T, testConfig *config.Config) {
 
 func testOidcUserInfoNotAllowedHttpMethods(t *testing.T) {
 	var testInvalidOidcUserInfoHttpMethods = []string{
-		http.MethodPost,
 		http.MethodPut,
 		http.MethodPatch,
 		http.MethodDelete,

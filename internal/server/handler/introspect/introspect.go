@@ -49,8 +49,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		if !validClientCredentials {
 
 			// Fall back to access token with scopes
-			authorizationHeader := r.Header.Get(internalHttp.Authorization)
-			_, _, scopes, valid := h.tokenManager.ValidateAccessToken(authorizationHeader)
+			_, _, scopes, valid := h.tokenManager.ValidateAccessTokenRequest(r)
 			if !valid {
 				oauth2.TokenErrorStatusResponseHandler(w, r, http.StatusUnauthorized, &oauth2.TokenErrorResponseParameter{Error: oauth2.TokenEtInvalidRequest})
 				return
@@ -69,7 +68,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 
-		token := r.PostFormValue(oauth2.ParameterToken)
+		tokenParameter := r.PostFormValue(oauth2.ParameterToken)
 		tokenTypeHintParameter := r.PostFormValue(oauth2.ParameterTokenTypeHint)
 
 		tokenTypeHint, tokenTypeHintExists := oauth2.IntrospectTokenTypeFromString(tokenTypeHintParameter)
@@ -77,14 +76,14 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		introspectResponse := response{}
 
 		if !tokenTypeHintExists {
-			accessTokenExists := h.checkAccessToken(token, &introspectResponse)
+			accessTokenExists := h.checkAccessToken(tokenParameter, &introspectResponse)
 			if !accessTokenExists {
-				h.checkRefreshToken(token, &introspectResponse)
+				h.checkRefreshToken(tokenParameter, &introspectResponse)
 			}
 		} else if tokenTypeHint == oauth2.ItAccessToken {
-			h.checkAccessToken(token, &introspectResponse)
+			h.checkAccessToken(tokenParameter, &introspectResponse)
 		} else if tokenTypeHint == oauth2.ItRefreshToken {
-			h.checkRefreshToken(token, &introspectResponse)
+			h.checkRefreshToken(tokenParameter, &introspectResponse)
 		}
 
 		jsonError := internalHttp.SendJson(introspectResponse, w, r)

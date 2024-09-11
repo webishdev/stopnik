@@ -39,27 +39,9 @@ func setup[T any](values *[]T, errorPrefix string, accessor func(T) string) (map
 	return valueMap, nil
 }
 
-// GetOrDefaultString returns a value or a default value if the given value is empty.
-func GetOrDefaultString(value string, defaultValue string) string {
-	if value == "" {
-		return defaultValue
-	} else {
-		return value
-	}
-}
-
 // GetOrDefaultStringSlice returns an array or a default array if the given array is empty.
 func GetOrDefaultStringSlice(value []string, defaultValue []string) []string {
 	if len(value) == 0 {
-		return defaultValue
-	} else {
-		return value
-	}
-}
-
-// GetOrDefaultInt returns a value or a default value if the given value is empty.
-func GetOrDefaultInt(value int, defaultValue int) int {
-	if value == 0 {
 		return defaultValue
 	} else {
 		return value

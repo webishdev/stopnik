@@ -80,12 +80,34 @@ func (cookieManager *Manager) DeleteAuthCookie() http.Cookie {
 func (cookieManager *Manager) CreateAuthCookie(username string, loginSessionId string) (http.Cookie, error) {
 	authCookieName := cookieManager.config.GetAuthCookieName()
 	log.Debug("Creating %s auth cookie", authCookieName)
+	return cookieManager.createAuthCookie(authCookieName, username, loginSessionId)
+}
+
+func (cookieManager *Manager) ValidateAuthCookie(r *http.Request) (*config.User, *session.LoginSession, bool) {
+	authCookieName := cookieManager.config.GetAuthCookieName()
+	log.Debug("Validating %s auth cookie", authCookieName)
+	return cookieManager.validateAuthCookie(authCookieName, r)
+}
+
+func (cookieManager *Manager) CreateForwardAuthCookie(username string, loginSessionId string) (http.Cookie, error) {
+	forwardAuthCookieName := cookieManager.config.GetForwardAuthCookieName()
+	log.Debug("Creating %s forward auth cookie", forwardAuthCookieName)
+	return cookieManager.createAuthCookie(forwardAuthCookieName, username, loginSessionId)
+}
+
+func (cookieManager *Manager) ValidateForwardAuthCookie(r *http.Request) (*config.User, *session.LoginSession, bool) {
+	forwardAuthCookieName := cookieManager.config.GetForwardAuthCookieName()
+	log.Debug("Validating %s forward auth cookie", forwardAuthCookieName)
+	return cookieManager.validateAuthCookie(forwardAuthCookieName, r)
+}
+
+func (cookieManager *Manager) createAuthCookie(name string, username string, loginSessionId string) (http.Cookie, error) {
 	value, err := cookieManager.generateAuthCookieValue(username, loginSessionId)
 	if err != nil {
 		return http.Cookie{}, err
 	}
 	return http.Cookie{
-		Name:     authCookieName,
+		Name:     name,
 		Value:    value,
 		Path:     "/",
 		MaxAge:   cookieManager.config.GetSessionTimeoutSeconds(),
@@ -94,10 +116,8 @@ func (cookieManager *Manager) CreateAuthCookie(username string, loginSessionId s
 	}, nil
 }
 
-func (cookieManager *Manager) ValidateAuthCookie(r *http.Request) (*config.User, *session.LoginSession, bool) {
-	authCookieName := cookieManager.config.GetAuthCookieName()
-	log.Debug("Validating %s auth cookie", authCookieName)
-	cookie, cookieError := r.Cookie(authCookieName)
+func (cookieManager *Manager) validateAuthCookie(name string, r *http.Request) (*config.User, *session.LoginSession, bool) {
+	cookie, cookieError := r.Cookie(name)
 	if cookieError != nil {
 		return &config.User{}, &session.LoginSession{}, false
 	} else {
