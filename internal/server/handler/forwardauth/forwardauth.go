@@ -167,12 +167,12 @@ func (h *Handler) validateAndCreateAuthCookie(code string, state string, forward
 			Username: authSession.Username,
 		}
 		h.loginSessionManager.StartSession(loginSession)
-		authCookie, authCookieError := h.cookieManager.CreateForwardAuthCookie(authSession.Username, loginSession.Id)
-		if authCookieError != nil {
+		forwardAuthCookie, forwardAuthCookieError := h.cookieManager.CreateForwardAuthCookie(authSession.Username, loginSession.Id)
+		if forwardAuthCookieError != nil {
 			return nil, nil, false
 		}
 
-		return &authCookie, forwardSession, true
+		return &forwardAuthCookie, forwardSession, true
 	}
 	return nil, nil, false
 }
