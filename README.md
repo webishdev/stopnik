@@ -50,6 +50,7 @@ They add features like persistence and access to user directories like LDAP.
 | [JSON Web Token (JWT)](https://datatracker.ietf.org/doc/html/rfc7519)                                                               |   Dependency   |
 | [OAuth 2.0 Authorization Server Metadata](https://datatracker.ietf.org/doc/html/rfc8414)                                            |   Partially    |
 | [OAuth 2.0 Device Authorization Grant](https://datatracker.ietf.org/doc/html/rfc8628)                                               |    Planned     |
+| [The OAuth 2.0 Authorization Framework: Bearer Token Usage](https://datatracker.ietf.org/doc/html/rfc6750)                          |    Planned     |
 | [Resource Indicators for OAuth 2.0](https://datatracker.ietf.org/doc/html/rfc8707)                                                  |    Planned     |
 | [OAuth 2.0 Authorization Server Issuer Identification](https://datatracker.ietf.org/doc/html/rfc9207)                               |    Planned     |
 | [OpenID Connect Core 1.0](https://openid.net/specs/openid-connect-core-1_0.html)                                                    |   Partially    |
