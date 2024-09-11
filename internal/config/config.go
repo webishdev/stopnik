@@ -299,18 +299,15 @@ func (config *Config) Validate() error {
 	}
 
 	if config.GetAuthCookieName() == config.GetForwardAuthCookieName() {
-		invalidClient := fmt.Sprintf("auth cookie name should not equal forward auth cookie name")
-		return errors.New(invalidClient)
+		return errors.New("auth cookie name should not equal forward auth cookie name")
 	}
 
 	if config.GetAuthCookieName() == config.GetMessageCookieName() {
-		invalidClient := fmt.Sprintf("auth cookie name should not equal message cookie name")
-		return errors.New(invalidClient)
+		return errors.New("auth cookie name should not equal message cookie name")
 	}
 
 	if config.GetForwardAuthCookieName() == config.GetMessageCookieName() {
-		invalidClient := fmt.Sprintf("forward auth cookie name should not equal message cookie name")
-		return errors.New(invalidClient)
+		return errors.New("forward auth cookie name should not equal message cookie name")
 	}
 
 	return nil
