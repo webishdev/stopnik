@@ -74,7 +74,6 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		// Handle POST from login
 		user, loginError := h.validator.ValidateFormLogin(r)
 		if loginError != nil {
-
 			messageCookie := h.cookieManager.CreateMessageCookie(*loginError)
 			http.SetCookie(w, &messageCookie)
 

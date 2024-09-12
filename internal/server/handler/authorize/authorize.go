@@ -96,8 +96,8 @@ func (h *Handler) handleGetRequest(w http.ResponseWriter, r *http.Request) {
 	responseTypeQueryParameter := r.URL.Query().Get(oauth2.ParameterResponseType)
 	responseTypeQueryParameters := strings.Split(responseTypeQueryParameter, " ")
 	for _, currentQueryParameter := range responseTypeQueryParameters {
-		responseType, valid := oauth2.ResponseTypeFromString(currentQueryParameter)
-		if !valid {
+		responseType, validResponseType := oauth2.ResponseTypeFromString(currentQueryParameter)
+		if !validResponseType {
 			log.Error("Invalid %s parameter with value %s for client %s", oauth2.ParameterResponseType, responseTypeQueryParameter, client.Id)
 
 			errorMessage := fmt.Sprintf("Invalid %s parameter value", oauth2.ParameterResponseType)
@@ -150,7 +150,6 @@ func (h *Handler) handleGetRequest(w http.ResponseWriter, r *http.Request) {
 		if nonceQueryParameter != "" {
 			log.Error("Nonce used without OpenID Connect setting for client with id %s", client.Id)
 			oauth2.AuthorizationErrorResponseHandler(w, redirectURL, state, &oauth2.AuthorizationErrorResponseParameter{Error: oauth2.AuthorizationEtInvalidRequest})
-
 		}
 	}
 
@@ -160,9 +159,31 @@ func (h *Handler) handleGetRequest(w http.ResponseWriter, r *http.Request) {
 		h.authSessionManager.StartSession(authSession)
 	}
 
+	forceLogin := false
+
 	user, _, validCookie := h.cookieManager.ValidateAuthCookie(r)
 
-	if validCookie {
+	promptQueryParameter := r.URL.Query().Get(oidc.ParameterPrompt)
+	if client.Oidc && oidc.HasOidcScope(scopes) && promptQueryParameter != "" {
+		promptType, validPromptType := oidc.PromptTypeFromString(promptQueryParameter)
+		if !validPromptType {
+			errorMessage := fmt.Sprintf("Invalid %s parameter value", oidc.ParameterPrompt)
+			authorizeError := &oauth2.AuthorizationErrorResponseParameter{Error: oauth2.AuthorizationEtInvalidRequest, Description: errorMessage}
+			oauth2.AuthorizationErrorResponseHandler(w, redirectURL, state, authorizeError)
+		}
+		switch promptType {
+		case oidc.PtLogin:
+			forceLogin = true
+		case oidc.PtNone:
+			if !validCookie {
+				errorMessage := "Requested to skip login for unauthenticated user"
+				authorizeError := &oauth2.AuthorizationErrorResponseParameter{Error: oauth2.AuthorizationEtLoginRequired, Description: errorMessage}
+				oauth2.AuthorizationErrorResponseHandler(w, redirectURL, state, authorizeError)
+			}
+		}
+	}
+
+	if validCookie && !forceLogin {
 		authSession.Username = user.Username
 
 		query := redirectURL.Query()
