@@ -1,7 +1,6 @@
 package oauth2
 
 import (
-	"fmt"
 	internalHttp "github.com/webishdev/stopnik/internal/http"
 	"github.com/webishdev/stopnik/log"
 	"net/http"
@@ -109,8 +108,7 @@ func AuthorizationErrorResponseHandler(w http.ResponseWriter, redirectURL *url.U
 	if errorResponseParameter == nil {
 		query.Set(ParameterError, string(AuthorizationEtServerError))
 	} else {
-		responseError := fmt.Sprintf("%s", errorResponseParameter.Error)
-		query.Set(ParameterError, responseError)
+		query.Set(ParameterError, string(errorResponseParameter.Error))
 		if errorResponseParameter.Description != "" {
 			query.Set(ParameterErrorDescription, errorResponseParameter.Description)
 		}
