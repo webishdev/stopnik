@@ -6,8 +6,10 @@ server:
   #logoutRedirect: http://localhost:8080
   forwardAuth:
     externalUrl: http://localhost:9090
+    #externalUrl: http://stopnik.localhost:9090 #ext
     redirects:
     - http://localhost:9090*
+    - http://whoami.localhost:9090*
   secret: WRYldij9ebtDZ5VJSsxNAfCZ
   privateKey: ./.test_files/rsa256key.pem
   addr: :8082
