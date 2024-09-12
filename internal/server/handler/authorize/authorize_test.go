@@ -624,6 +624,120 @@ func Test_AuthorizeAuthorizationGrant(t *testing.T) {
 	}
 }
 
+func Test_AuthorizeAuthorizationGrantPromptLogin(t *testing.T) {
+	testConfig := createTestConfig(t)
+
+	pkceCodeChallenge := ""
+	parsedUri := createUri(t, endpoint.Authorization, func(query url.Values) {
+		query.Set(oauth2.ParameterClientId, "bar")
+		query.Set(oauth2.ParameterRedirectUri, "https://example.com/callback")
+		query.Set(oauth2.ParameterResponseType, oauth2.ParameterCode)
+		query.Set(oauth2.ParameterState, "some_state")
+		query.Set(oauth2.ParameterScope, oidc.ScopeOpenId)
+		pkceCodeChallenge = pkce.CalculatePKCE(pkce.S256, uuid.NewString())
+		query.Set(pkce.ParameterCodeChallenge, pkceCodeChallenge)
+		query.Set(oidc.ParameterPrompt, string(oidc.PtLogin))
+	})
+	requestValidator := validation.NewRequestValidator()
+	authSessionManager := session.GetAuthSessionManagerInstance()
+	cookieManager := cookie.GetCookieManagerInstance()
+	loginSessionManager := session.GetLoginSessionManagerInstance()
+	tokenManager := token.GetTokenManagerInstance()
+	templateManager := template.GetTemplateManagerInstance()
+
+	user, _ := testConfig.GetUser("foo")
+	loginSession := &session.LoginSession{
+		Id:       uuid.NewString(),
+		Username: user.Username,
+	}
+	loginSessionManager.StartSession(loginSession)
+	authCookie, _ := cookieManager.CreateAuthCookie(user.Username, loginSession.Id)
+
+	authorizeHandler := NewAuthorizeHandler(requestValidator, cookieManager, authSessionManager, loginSessionManager, tokenManager, templateManager)
+
+	rr := httptest.NewRecorder()
+	request := httptest.NewRequest(http.MethodGet, parsedUri.String(), nil)
+	request.AddCookie(&authCookie)
+
+	authorizeHandler.ServeHTTP(rr, request)
+
+	if rr.Code != http.StatusOK {
+		t.Errorf("handler returned wrong status code: got %v want %v", rr.Code, http.StatusOK)
+	}
+
+	contentType := rr.Header().Get(internalHttp.ContentType)
+
+	if contentType != "text/html; charset=utf-8" {
+		t.Errorf("content type was not text/html: %v", contentType)
+	}
+
+	response := rr.Result()
+	body, bodyReadErr := io.ReadAll(response.Body)
+
+	if bodyReadErr != nil {
+		t.Errorf("could not read response body: %v", bodyReadErr)
+	}
+
+	if body == nil {
+		t.Errorf("response body was nil")
+	}
+}
+
+func Test_AuthorizeAuthorizationGrantUnknownPrompt(t *testing.T) {
+	testConfig := createTestConfig(t)
+
+	pkceCodeChallenge := ""
+	parsedUri := createUri(t, endpoint.Authorization, func(query url.Values) {
+		query.Set(oauth2.ParameterClientId, "bar")
+		query.Set(oauth2.ParameterRedirectUri, "https://example.com/callback")
+		query.Set(oauth2.ParameterResponseType, oauth2.ParameterCode)
+		query.Set(oauth2.ParameterState, "some_state")
+		query.Set(oauth2.ParameterScope, oidc.ScopeOpenId)
+		pkceCodeChallenge = pkce.CalculatePKCE(pkce.S256, uuid.NewString())
+		query.Set(pkce.ParameterCodeChallenge, pkceCodeChallenge)
+		query.Set(oidc.ParameterPrompt, "foo_bar")
+	})
+	requestValidator := validation.NewRequestValidator()
+	authSessionManager := session.GetAuthSessionManagerInstance()
+	cookieManager := cookie.GetCookieManagerInstance()
+	loginSessionManager := session.GetLoginSessionManagerInstance()
+	tokenManager := token.GetTokenManagerInstance()
+	templateManager := template.GetTemplateManagerInstance()
+
+	user, _ := testConfig.GetUser("foo")
+	loginSession := &session.LoginSession{
+		Id:       uuid.NewString(),
+		Username: user.Username,
+	}
+	loginSessionManager.StartSession(loginSession)
+	authCookie, _ := cookieManager.CreateAuthCookie(user.Username, loginSession.Id)
+
+	authorizeHandler := NewAuthorizeHandler(requestValidator, cookieManager, authSessionManager, loginSessionManager, tokenManager, templateManager)
+
+	rr := httptest.NewRecorder()
+	request := httptest.NewRequest(http.MethodGet, parsedUri.String(), nil)
+	request.AddCookie(&authCookie)
+
+	authorizeHandler.ServeHTTP(rr, request)
+
+	location, locationError := rr.Result().Location()
+	if locationError != nil {
+		t.Errorf("location was not provied: %v", locationError)
+	}
+
+	errorQueryParameter := location.Query().Get(oauth2.ParameterError)
+
+	errorType, errorTypeExists := oauth2.AuthorizationErrorTypeFromString(errorQueryParameter)
+
+	if !errorTypeExists {
+		t.Errorf("error type could not be parsed: %v", errorQueryParameter)
+	}
+
+	if errorType != oauth2.AuthorizationEtInvalidRequest {
+		t.Errorf("error type was not Invalid: %v", errorQueryParameter)
+	}
+}
+
 func Test_AuthorizeImplicitGrant(t *testing.T) {
 	testConfig := createTestConfig(t)
 
