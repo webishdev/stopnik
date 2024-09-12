@@ -140,11 +140,12 @@ func (h *Handler) handleGetRequest(w http.ResponseWriter, r *http.Request) {
 		State:               stateParameter,
 	}
 
-	if client.Oidc && oidc.HasOidcScope(scopes) {
+	if client.Oidc && oidc.HasOidcScope(scopes) && nonceQueryParameter != "" {
 		authSession.Nonce = nonceQueryParameter
 	} else if nonceQueryParameter != "" {
 		log.Error("Nonce used without OpenID Connect setting for client with id %s", client.Id)
 		oauth2.AuthorizationErrorResponseHandler(w, redirectURL, stateParameter, &oauth2.AuthorizationErrorResponseParameter{Error: oauth2.AuthorizationEtInvalidRequest})
+		return
 	}
 
 	idTokenRequest := slices.Contains(responseTypes, oauth2.RtIdToken) && len(responseTypes) == 1
@@ -153,30 +154,23 @@ func (h *Handler) handleGetRequest(w http.ResponseWriter, r *http.Request) {
 		h.authSessionManager.StartSession(authSession)
 	}
 
-	forceLogin := false
-
 	user, _, validCookie := h.cookieManager.ValidateAuthCookie(r)
 
+	var promptType *oidc.PromptType
 	if client.Oidc && oidc.HasOidcScope(scopes) && promptQueryParameter != "" {
-		promptType, validPromptType := oidc.PromptTypeFromString(promptQueryParameter)
-		if !validPromptType {
-			errorMessage := fmt.Sprintf("Invalid %s parameter value", oidc.ParameterPrompt)
-			authorizeError := &oauth2.AuthorizationErrorResponseParameter{Error: oauth2.AuthorizationEtInvalidRequest, Description: errorMessage}
-			oauth2.AuthorizationErrorResponseHandler(w, redirectURL, stateParameter, authorizeError)
+		var authorizationErrorResponse *oauth2.AuthorizationErrorResponseParameter
+		promptType, authorizationErrorResponse = h.getPromptType(validCookie, promptQueryParameter)
+		if authorizationErrorResponse != nil {
+			oauth2.AuthorizationErrorResponseHandler(w, redirectURL, stateParameter, authorizationErrorResponse)
+			return
 		}
-		switch promptType {
-		case oidc.PtLogin:
-			forceLogin = true
-		case oidc.PtNone:
-			if !validCookie {
-				errorMessage := "Requested to skip login for unauthenticated user"
-				authorizeError := &oauth2.AuthorizationErrorResponseParameter{Error: oauth2.AuthorizationEtLoginRequired, Description: errorMessage}
-				oauth2.AuthorizationErrorResponseHandler(w, redirectURL, stateParameter, authorizeError)
-			}
-		}
+	} else if promptQueryParameter != "" {
+		log.Error("Prompt used without OpenID Connect setting for client with id %s", client.Id)
+		oauth2.AuthorizationErrorResponseHandler(w, redirectURL, stateParameter, &oauth2.AuthorizationErrorResponseParameter{Error: oauth2.AuthorizationEtInvalidRequest})
+		return
 	}
 
-	if validCookie && !forceLogin {
+	if validCookie && !h.forceLogin(promptType) {
 		authSession.Username = user.Username
 
 		query := redirectURL.Query()
@@ -207,25 +201,7 @@ func (h *Handler) handleGetRequest(w http.ResponseWriter, r *http.Request) {
 		sendFound(w, redirectURL, query)
 	} else {
 		// Show login page
-
-		message := h.cookieManager.GetMessageCookieValue(r)
-
-		query := r.URL.Query()
-		encodedQuery := query.Encode()
-		formAction := fmt.Sprintf("authorize?%s", encodedQuery)
-		loginToken := h.validator.NewLoginToken(authSession.Id)
-		loginTemplate := h.templateManager.LoginTemplate(loginToken, formAction, message)
-
-		requestData := internalHttp.NewRequestData(r)
-		responseWriter := internalHttp.NewResponseWriter(w, requestData)
-
-		responseWriter.SetEncodingHeader()
-
-		_, writeError := responseWriter.Write(loginTemplate.Bytes())
-		if writeError != nil {
-			h.errorHandler.InternalServerErrorHandler(w, r, writeError)
-			return
-		}
+		h.sendLogin(w, r, authSession.Id)
 	}
 }
 
@@ -310,6 +286,56 @@ func (h *Handler) validateRedirect(client *config.Client, redirect string) func(
 	}
 
 	return nil
+}
+
+func (h *Handler) getPromptType(validCookie bool, promptQueryParameter string) (*oidc.PromptType, *oauth2.AuthorizationErrorResponseParameter) {
+	promptType, validPromptType := oidc.PromptTypeFromString(promptQueryParameter)
+	if !validPromptType {
+		errorMessage := fmt.Sprintf("Invalid %s parameter value", oidc.ParameterPrompt)
+		authorizeError := &oauth2.AuthorizationErrorResponseParameter{Error: oauth2.AuthorizationEtInvalidRequest, Description: errorMessage}
+		return nil, authorizeError
+	}
+
+	if !validCookie && promptType == oidc.PtNone {
+		errorMessage := "Requested to skip login for unauthenticated user"
+		authorizeError := &oauth2.AuthorizationErrorResponseParameter{Error: oauth2.AuthorizationEtLoginRequired, Description: errorMessage}
+		return nil, authorizeError
+	}
+
+	return &promptType, nil
+}
+
+func (h *Handler) forceLogin(promptType *oidc.PromptType) bool {
+	if promptType == nil {
+		return false
+	}
+	switch *promptType {
+	case oidc.PtLogin:
+		return true
+	default:
+		return false
+	}
+}
+
+func (h *Handler) sendLogin(w http.ResponseWriter, r *http.Request, authSessionId string) {
+	message := h.cookieManager.GetMessageCookieValue(r)
+
+	query := r.URL.Query()
+	encodedQuery := query.Encode()
+	formAction := fmt.Sprintf("authorize?%s", encodedQuery)
+	loginToken := h.validator.NewLoginToken(authSessionId)
+	loginTemplate := h.templateManager.LoginTemplate(loginToken, formAction, message)
+
+	requestData := internalHttp.NewRequestData(r)
+	responseWriter := internalHttp.NewResponseWriter(w, requestData)
+
+	responseWriter.SetEncodingHeader()
+
+	_, writeError := responseWriter.Write(loginTemplate.Bytes())
+	if writeError != nil {
+		h.errorHandler.InternalServerErrorHandler(w, r, writeError)
+		return
+	}
 }
 
 func (h *Handler) getResponseTypes(responseTypeQueryParameter string) ([]oauth2.ResponseType, bool) {
