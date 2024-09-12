@@ -9,8 +9,9 @@ import (
 )
 
 type LoginSession struct {
-	Id       string
-	Username string
+	Id        string
+	Username  string
+	StartTime time.Time
 }
 
 type loginManager struct {
@@ -44,6 +45,7 @@ func GetLoginSessionManagerInstance() LoginManager[LoginSession] {
 
 func (loginManager *loginManager) StartSession(loginSession *LoginSession) {
 	loginSessionStore := *loginManager.loginSessionStore
+	loginSession.StartTime = time.Now()
 	loginSessionStore.Set(loginSession.Id, loginSession)
 }
 
