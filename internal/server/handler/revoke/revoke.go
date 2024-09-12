@@ -58,20 +58,20 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 
-		token := r.PostFormValue(oauth2.ParameterToken)
+		tokenParameter := r.PostFormValue(oauth2.ParameterToken)
 		tokenTypeHintParameter := r.PostFormValue(oauth2.ParameterTokenTypeHint)
 
 		tokenTypeHint, tokenTypeHintExists := oauth2.IntrospectTokenTypeFromString(tokenTypeHintParameter)
 
 		if !tokenTypeHintExists {
-			accessTokenRevoked := h.revokeAccessToken(token)
+			accessTokenRevoked := h.revokeAccessToken(tokenParameter)
 			if !accessTokenRevoked {
-				h.revokeRefreshToken(token)
+				h.revokeRefreshToken(tokenParameter)
 			}
 		} else if tokenTypeHint == oauth2.ItAccessToken {
-			h.revokeAccessToken(token)
+			h.revokeAccessToken(tokenParameter)
 		} else if tokenTypeHint == oauth2.ItRefreshToken {
-			h.revokeRefreshToken(token)
+			h.revokeRefreshToken(tokenParameter)
 		}
 
 		w.WriteHeader(http.StatusOK)
