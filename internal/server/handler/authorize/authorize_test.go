@@ -10,6 +10,7 @@ import (
 	"github.com/webishdev/stopnik/internal/manager/session"
 	"github.com/webishdev/stopnik/internal/manager/token"
 	"github.com/webishdev/stopnik/internal/oauth2"
+	"github.com/webishdev/stopnik/internal/oidc"
 	"github.com/webishdev/stopnik/internal/pkce"
 	"github.com/webishdev/stopnik/internal/server/validation"
 	"github.com/webishdev/stopnik/internal/template"
@@ -362,6 +363,50 @@ func Test_AuthorizeNoCookieExists(t *testing.T) {
 	if body == nil {
 		t.Errorf("response body was nil")
 	}
+}
+
+func Test_AuthorizeNoCookieExistsPromptNone(t *testing.T) {
+	createTestConfig(t)
+	parsedUri := createUri(t, endpoint.Authorization, func(query url.Values) {
+		query.Set(oauth2.ParameterClientId, "bar")
+		query.Set(oauth2.ParameterRedirectUri, "https://example.com/callback")
+		query.Set(oauth2.ParameterResponseType, oauth2.ParameterCode)
+		query.Set(oauth2.ParameterScope, oidc.ScopeOpenId)
+		query.Set(oidc.ParameterPrompt, string(oidc.PtNone))
+	})
+	requestValidator := validation.NewRequestValidator()
+	authSessionManager := session.GetAuthSessionManagerInstance()
+	loginSessionManager := session.GetLoginSessionManagerInstance()
+	cookieManager := cookie.GetCookieManagerInstance()
+	templateManager := template.GetTemplateManagerInstance()
+
+	authorizeHandler := NewAuthorizeHandler(requestValidator, cookieManager, authSessionManager, loginSessionManager, &token.Manager{}, templateManager)
+
+	rr := httptest.NewRecorder()
+
+	authorizeHandler.ServeHTTP(rr, httptest.NewRequest(http.MethodGet, parsedUri.String(), nil))
+
+	if rr.Code != http.StatusFound {
+		t.Errorf("handler returned wrong status code: got %v want %v", rr.Code, http.StatusFound)
+	}
+
+	location, locationError := rr.Result().Location()
+	if locationError != nil {
+		t.Errorf("location was not provied: %v", locationError)
+	}
+
+	errorQueryParameter := location.Query().Get(oauth2.ParameterError)
+
+	errorType, errorTypeExists := oauth2.AuthorizationErrorTypeFromString(errorQueryParameter)
+
+	if !errorTypeExists {
+		t.Errorf("error type could not be parsed: %v", errorQueryParameter)
+	}
+
+	if errorType != oauth2.AuthorizationEtLoginRequired {
+		t.Errorf("error type was not Invalid: %v", errorQueryParameter)
+	}
+
 }
 
 func Test_AuthorizeInvalidResponseType(t *testing.T) {
@@ -874,6 +919,12 @@ func createTestConfig(t *testing.T) *config.Config {
 				Id:           "foo",
 				ClientSecret: "d82c4eb5261cb9c8aa9855edd67d1bd10482f41529858d925094d173fa662aa91ff39bc5b188615273484021dfb16fd8284cf684ccf0fc795be3aa2fc1e6c181",
 				Redirects:    []string{"https://example.com/callback"},
+			},
+			{
+				Id:           "bar",
+				ClientSecret: "d82c4eb5261cb9c8aa9855edd67d1bd10482f41529858d925094d173fa662aa91ff39bc5b188615273484021dfb16fd8284cf684ccf0fc795be3aa2fc1e6c181",
+				Redirects:    []string{"https://example.com/callback"},
+				Oidc:         true,
 			},
 		},
 		Users: []config.User{
