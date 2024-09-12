@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/google/uuid"
 	"github.com/webishdev/stopnik/internal/config"
+	"github.com/webishdev/stopnik/internal/endpoint"
 	internalHttp "github.com/webishdev/stopnik/internal/http"
 	"github.com/webishdev/stopnik/internal/manager/cookie"
 	"github.com/webishdev/stopnik/internal/manager/session"
@@ -322,7 +323,8 @@ func (h *Handler) sendLogin(w http.ResponseWriter, r *http.Request, authSessionI
 
 	query := r.URL.Query()
 	encodedQuery := query.Encode()
-	formAction := fmt.Sprintf("authorize?%s", encodedQuery)
+	authorization := endpoint.Authorization[1:]
+	formAction := fmt.Sprintf("%s?%s", authorization, encodedQuery)
 	loginToken := h.validator.NewLoginToken(authSessionId)
 	loginTemplate := h.templateManager.LoginTemplate(loginToken, formAction, message)
 
