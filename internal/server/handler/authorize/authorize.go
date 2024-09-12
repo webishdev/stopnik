@@ -67,90 +67,84 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) handleGetRequest(w http.ResponseWriter, r *http.Request) {
-	clientId := r.URL.Query().Get(oauth2.ParameterClientId)
-	client, exists := h.validator.ValidateClientId(clientId)
+	clientIdParameter := r.URL.Query().Get(oauth2.ParameterClientId)
+	stateParameter := r.URL.Query().Get(oauth2.ParameterState)
+	responseTypeQueryParameter := r.URL.Query().Get(oauth2.ParameterResponseType)
+	redirectParameter := r.URL.Query().Get(oauth2.ParameterRedirectUri)
+	scopeParameter := r.URL.Query().Get(oauth2.ParameterScope)
+
+	// PKCE
+	codeChallengeParameter := r.URL.Query().Get(pkce.ParameterCodeChallenge)
+	codeChallengeMethodParameter := r.URL.Query().Get(pkce.ParameterCodeChallengeMethod)
+
+	// OpenId Connect
+	nonceQueryParameter := r.URL.Query().Get(oidc.ParameterNonce)
+	promptQueryParameter := r.URL.Query().Get(oidc.ParameterPrompt)
+
+	client, exists := h.validator.ValidateClientId(clientIdParameter)
 	if !exists {
-		log.Error("Invalid client id %s", clientId)
+		log.Error("Invalid client id %s", clientIdParameter)
 		h.errorHandler.BadRequestHandler(w, r)
 		return
 	}
 
-	redirect := r.URL.Query().Get(oauth2.ParameterRedirectUri)
-
-	redirectURL, urlParseError := url.Parse(redirect)
+	redirectURL, urlParseError := url.Parse(redirectParameter)
 	if urlParseError != nil {
-		log.Error("Could not parse redirect URI %s for client %s", redirect, client.Id)
+		log.Error("Could not parse redirect URI %s for client %s", redirectParameter, client.Id)
 		h.errorHandler.BadRequestHandler(w, r)
 		return
 	}
 
-	invalidRedirectErrorHandler := h.validateRedirect(client, redirect)
+	invalidRedirectErrorHandler := h.validateRedirect(client, redirectParameter)
 	if invalidRedirectErrorHandler != nil {
 		invalidRedirectErrorHandler(w, r)
 		return
 	}
 
-	state := r.URL.Query().Get(oauth2.ParameterState)
+	responseTypes, validResponseTypes := h.getResponseTypes(responseTypeQueryParameter)
+	if !validResponseTypes {
+		log.Error("Invalid %s parameter with value %s for client %s", oauth2.ParameterResponseType, responseTypeQueryParameter, client.Id)
 
-	var responseTypes []oauth2.ResponseType
-	responseTypeQueryParameter := r.URL.Query().Get(oauth2.ParameterResponseType)
-	responseTypeQueryParameters := strings.Split(responseTypeQueryParameter, " ")
-	for _, currentQueryParameter := range responseTypeQueryParameters {
-		responseType, validResponseType := oauth2.ResponseTypeFromString(currentQueryParameter)
-		if !validResponseType {
-			log.Error("Invalid %s parameter with value %s for client %s", oauth2.ParameterResponseType, responseTypeQueryParameter, client.Id)
-
-			errorMessage := fmt.Sprintf("Invalid %s parameter value", oauth2.ParameterResponseType)
-			authorizeError := &oauth2.AuthorizationErrorResponseParameter{Error: oauth2.AuthorizationEtInvalidRequest, Description: errorMessage}
-			oauth2.AuthorizationErrorResponseHandler(w, redirectURL, state, authorizeError)
-			return
-		}
-		responseTypes = append(responseTypes, responseType)
+		errorMessage := fmt.Sprintf("Invalid %s parameter value", oauth2.ParameterResponseType)
+		authorizeError := &oauth2.AuthorizationErrorResponseParameter{Error: oauth2.AuthorizationEtInvalidRequest, Description: errorMessage}
+		oauth2.AuthorizationErrorResponseHandler(w, redirectURL, stateParameter, authorizeError)
+		return
 	}
 
-	scope := r.URL.Query().Get(oauth2.ParameterScope)
-
-	codeChallenge := r.URL.Query().Get(pkce.ParameterCodeChallenge)
-	codeChallengeMethod := r.URL.Query().Get(pkce.ParameterCodeChallengeMethod)
-
-	if !slices.Contains(responseTypes, oauth2.RtCode) && codeChallenge != "" && codeChallengeMethod != "" {
+	if !slices.Contains(responseTypes, oauth2.RtCode) && codeChallengeParameter != "" && codeChallengeMethodParameter != "" {
 		errorMessage := fmt.Sprintf("Code challenge should only be used for response type %s", oauth2.RtCode)
 		authorizeError := &oauth2.AuthorizationErrorResponseParameter{Error: oauth2.AuthorizationEtInvalidRequest, Description: errorMessage}
-		oauth2.AuthorizationErrorResponseHandler(w, redirectURL, state, authorizeError)
+		oauth2.AuthorizationErrorResponseHandler(w, redirectURL, stateParameter, authorizeError)
 		return
 	}
 
 	if log.IsDebug() {
 		log.Debug("Response types: %v", responseTypes)
-		log.Debug("Redirect URI: %s", redirect)
-		log.Debug("State: %s", state)
-		log.Debug("Scope: %s", scope)
+		log.Debug("Redirect URI: %s", redirectParameter)
+		log.Debug("State: %s", stateParameter)
+		log.Debug("Scope: %s", scopeParameter)
 	}
 
-	scopes := strings.Split(scope, " ")
+	scopes := strings.Split(scopeParameter, " ")
 
 	id := uuid.NewString()
 	authSession := &session.AuthSession{
 		Id:                  id,
-		Redirect:            redirect,
+		Redirect:            redirectParameter,
 		AuthURI:             r.URL.RequestURI(),
-		CodeChallenge:       codeChallenge,
-		CodeChallengeMethod: codeChallengeMethod,
-		ClientId:            clientId,
+		CodeChallenge:       codeChallengeParameter,
+		CodeChallengeMethod: codeChallengeMethodParameter,
+		ClientId:            clientIdParameter,
 		ResponseTypes:       responseTypes,
 		Scopes:              scopes,
-		State:               state,
+		State:               stateParameter,
 	}
 
 	if client.Oidc && oidc.HasOidcScope(scopes) {
-		nonceQueryParameter := r.URL.Query().Get(oidc.ParameterNonce)
 		authSession.Nonce = nonceQueryParameter
-	} else {
-		nonceQueryParameter := r.URL.Query().Get(oidc.ParameterNonce)
-		if nonceQueryParameter != "" {
-			log.Error("Nonce used without OpenID Connect setting for client with id %s", client.Id)
-			oauth2.AuthorizationErrorResponseHandler(w, redirectURL, state, &oauth2.AuthorizationErrorResponseParameter{Error: oauth2.AuthorizationEtInvalidRequest})
-		}
+	} else if nonceQueryParameter != "" {
+		log.Error("Nonce used without OpenID Connect setting for client with id %s", client.Id)
+		oauth2.AuthorizationErrorResponseHandler(w, redirectURL, stateParameter, &oauth2.AuthorizationErrorResponseParameter{Error: oauth2.AuthorizationEtInvalidRequest})
 	}
 
 	idTokenRequest := slices.Contains(responseTypes, oauth2.RtIdToken) && len(responseTypes) == 1
@@ -163,13 +157,12 @@ func (h *Handler) handleGetRequest(w http.ResponseWriter, r *http.Request) {
 
 	user, _, validCookie := h.cookieManager.ValidateAuthCookie(r)
 
-	promptQueryParameter := r.URL.Query().Get(oidc.ParameterPrompt)
 	if client.Oidc && oidc.HasOidcScope(scopes) && promptQueryParameter != "" {
 		promptType, validPromptType := oidc.PromptTypeFromString(promptQueryParameter)
 		if !validPromptType {
 			errorMessage := fmt.Sprintf("Invalid %s parameter value", oidc.ParameterPrompt)
 			authorizeError := &oauth2.AuthorizationErrorResponseParameter{Error: oauth2.AuthorizationEtInvalidRequest, Description: errorMessage}
-			oauth2.AuthorizationErrorResponseHandler(w, redirectURL, state, authorizeError)
+			oauth2.AuthorizationErrorResponseHandler(w, redirectURL, stateParameter, authorizeError)
 		}
 		switch promptType {
 		case oidc.PtLogin:
@@ -178,7 +171,7 @@ func (h *Handler) handleGetRequest(w http.ResponseWriter, r *http.Request) {
 			if !validCookie {
 				errorMessage := "Requested to skip login for unauthenticated user"
 				authorizeError := &oauth2.AuthorizationErrorResponseParameter{Error: oauth2.AuthorizationEtLoginRequired, Description: errorMessage}
-				oauth2.AuthorizationErrorResponseHandler(w, redirectURL, state, authorizeError)
+				oauth2.AuthorizationErrorResponseHandler(w, redirectURL, stateParameter, authorizeError)
 			}
 		}
 	}
@@ -199,12 +192,12 @@ func (h *Handler) handleGetRequest(w http.ResponseWriter, r *http.Request) {
 			idToken = h.tokenManager.CreateIdToken(r, user.Username, client, scopes, authSession.Nonce, accessTokenHash)
 		} else {
 			log.Error("Invalid response type %v", responseTypes)
-			oauth2.AuthorizationErrorResponseHandler(w, redirectURL, state, &oauth2.AuthorizationErrorResponseParameter{Error: oauth2.AuthorizationEtUnsupportedResponseType})
+			oauth2.AuthorizationErrorResponseHandler(w, redirectURL, stateParameter, &oauth2.AuthorizationErrorResponseParameter{Error: oauth2.AuthorizationEtUnsupportedResponseType})
 			return
 		}
 
-		if state != "" {
-			query.Set(oauth2.ParameterState, state)
+		if stateParameter != "" {
+			query.Set(oauth2.ParameterState, stateParameter)
 		}
 
 		if idToken != "" {
@@ -213,9 +206,6 @@ func (h *Handler) handleGetRequest(w http.ResponseWriter, r *http.Request) {
 
 		sendFound(w, redirectURL, query)
 	} else {
-		// http.ServeFile(w, r, "foo.html")
-		// bytes := []byte(loginHtml)
-
 		// Show login page
 
 		message := h.cookieManager.GetMessageCookieValue(r)
@@ -320,6 +310,19 @@ func (h *Handler) validateRedirect(client *config.Client, redirect string) func(
 	}
 
 	return nil
+}
+
+func (h *Handler) getResponseTypes(responseTypeQueryParameter string) ([]oauth2.ResponseType, bool) {
+	var responseTypes []oauth2.ResponseType
+	responseTypeQueryParameters := strings.Split(responseTypeQueryParameter, " ")
+	for _, currentQueryParameter := range responseTypeQueryParameters {
+		responseType, validResponseType := oauth2.ResponseTypeFromString(currentQueryParameter)
+		if !validResponseType {
+			return nil, false
+		}
+		responseTypes = append(responseTypes, responseType)
+	}
+	return responseTypes, true
 }
 
 func setAuthorizationGrantParameter(query url.Values, code string) {
