@@ -19,7 +19,9 @@ import (
 	"net/http"
 	"net/url"
 	"slices"
+	"strconv"
 	"strings"
+	"time"
 )
 
 type Handler struct {
@@ -70,7 +72,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) handleGetRequest(w http.ResponseWriter, r *http.Request) {
 	clientIdParameter := r.URL.Query().Get(oauth2.ParameterClientId)
 	stateParameter := r.URL.Query().Get(oauth2.ParameterState)
-	responseTypeQueryParameter := r.URL.Query().Get(oauth2.ParameterResponseType)
+	responseTypeParameter := r.URL.Query().Get(oauth2.ParameterResponseType)
 	redirectParameter := r.URL.Query().Get(oauth2.ParameterRedirectUri)
 	scopeParameter := r.URL.Query().Get(oauth2.ParameterScope)
 
@@ -79,8 +81,9 @@ func (h *Handler) handleGetRequest(w http.ResponseWriter, r *http.Request) {
 	codeChallengeMethodParameter := r.URL.Query().Get(pkce.ParameterCodeChallengeMethod)
 
 	// OpenId Connect
-	nonceQueryParameter := r.URL.Query().Get(oidc.ParameterNonce)
-	promptQueryParameter := r.URL.Query().Get(oidc.ParameterPrompt)
+	nonceParameter := r.URL.Query().Get(oidc.ParameterNonce)
+	promptParameter := r.URL.Query().Get(oidc.ParameterPrompt)
+	maxAgeParameter := r.URL.Query().Get(oidc.ParameterMaxAge)
 
 	client, exists := h.validator.ValidateClientId(clientIdParameter)
 	if !exists {
@@ -102,9 +105,9 @@ func (h *Handler) handleGetRequest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	responseTypes, validResponseTypes := h.getResponseTypes(responseTypeQueryParameter)
+	responseTypes, validResponseTypes := h.getResponseTypes(responseTypeParameter)
 	if !validResponseTypes {
-		log.Error("Invalid %s parameter with value %s for client %s", oauth2.ParameterResponseType, responseTypeQueryParameter, client.Id)
+		log.Error("Invalid %s parameter with value %s for client %s", oauth2.ParameterResponseType, responseTypeParameter, client.Id)
 
 		errorMessage := fmt.Sprintf("Invalid %s parameter value", oauth2.ParameterResponseType)
 		authorizeError := &oauth2.AuthorizationErrorResponseParameter{Error: oauth2.AuthorizationEtInvalidRequest, Description: errorMessage}
@@ -141,9 +144,9 @@ func (h *Handler) handleGetRequest(w http.ResponseWriter, r *http.Request) {
 		State:               stateParameter,
 	}
 
-	if client.Oidc && oidc.HasOidcScope(scopes) && nonceQueryParameter != "" {
-		authSession.Nonce = nonceQueryParameter
-	} else if nonceQueryParameter != "" {
+	if client.Oidc && oidc.HasOidcScope(scopes) && nonceParameter != "" {
+		authSession.Nonce = nonceParameter
+	} else if nonceParameter != "" {
 		log.Error("Nonce used without OpenID Connect setting for client with id %s", client.Id)
 		oauth2.AuthorizationErrorResponseHandler(w, redirectURL, stateParameter, &oauth2.AuthorizationErrorResponseParameter{Error: oauth2.AuthorizationEtInvalidRequest})
 		return
@@ -155,48 +158,43 @@ func (h *Handler) handleGetRequest(w http.ResponseWriter, r *http.Request) {
 		h.authSessionManager.StartSession(authSession)
 	}
 
-	user, _, validCookie := h.cookieManager.ValidateAuthCookie(r)
+	user, loginSession, validCookie := h.cookieManager.ValidateAuthCookie(r)
 
 	var promptType *oidc.PromptType
-	if client.Oidc && oidc.HasOidcScope(scopes) && promptQueryParameter != "" {
+	if client.Oidc && oidc.HasOidcScope(scopes) && promptParameter != "" {
 		var authorizationErrorResponse *oauth2.AuthorizationErrorResponseParameter
-		promptType, authorizationErrorResponse = h.getPromptType(validCookie, promptQueryParameter)
+		promptType, authorizationErrorResponse = h.getPromptType(validCookie, promptParameter)
 		if authorizationErrorResponse != nil {
 			oauth2.AuthorizationErrorResponseHandler(w, redirectURL, stateParameter, authorizationErrorResponse)
 			return
 		}
-	} else if promptQueryParameter != "" {
+	} else if promptParameter != "" {
 		log.Error("Prompt used without OpenID Connect setting for client with id %s", client.Id)
 		oauth2.AuthorizationErrorResponseHandler(w, redirectURL, stateParameter, &oauth2.AuthorizationErrorResponseParameter{Error: oauth2.AuthorizationEtInvalidRequest})
 		return
 	}
 
-	if validCookie && !h.forceLogin(promptType) {
-		authSession.Username = user.Username
-
-		query := redirectURL.Query()
-
-		var idToken string
-		accessTokenResponse := h.tokenManager.CreateAccessTokenResponse(r, user.Username, client, scopes, authSession.Nonce)
-		if slices.Contains(responseTypes, oauth2.RtToken) {
-			setImplicitGrantParameter(query, accessTokenResponse)
-		} else if slices.Contains(responseTypes, oauth2.RtCode) {
-			setAuthorizationGrantParameter(query, id)
-		} else if idTokenRequest {
-			accessTokenHash := h.tokenManager.CreateAccessTokenHash(client, accessTokenResponse.AccessTokenValue)
-			idToken = h.tokenManager.CreateIdToken(r, user.Username, client, scopes, authSession.Nonce, accessTokenHash)
-		} else {
-			log.Error("Invalid response type %v", responseTypes)
-			oauth2.AuthorizationErrorResponseHandler(w, redirectURL, stateParameter, &oauth2.AuthorizationErrorResponseParameter{Error: oauth2.AuthorizationEtUnsupportedResponseType})
+	var maxAge *int
+	if client.Oidc && oidc.HasOidcScope(scopes) && maxAgeParameter != "" {
+		maxAgeResult, maxAgeError := strconv.Atoi(maxAgeParameter)
+		if maxAgeError != nil {
+			oauth2.AuthorizationErrorResponseHandler(w, redirectURL, stateParameter, &oauth2.AuthorizationErrorResponseParameter{Error: oauth2.AuthorizationEtInvalidRequest})
 			return
 		}
+		maxAge = &maxAgeResult
+	} else if maxAgeParameter != "" {
+		log.Error("Max age used without OpenID Connect setting for client with id %s", client.Id)
+		oauth2.AuthorizationErrorResponseHandler(w, redirectURL, stateParameter, &oauth2.AuthorizationErrorResponseParameter{Error: oauth2.AuthorizationEtInvalidRequest})
+		return
+	}
 
-		if stateParameter != "" {
-			query.Set(oauth2.ParameterState, stateParameter)
-		}
+	if validCookie && !h.forceLogin(loginSession, promptType, maxAge) {
+		authSession.Username = user.Username
 
-		if idToken != "" {
-			setIdTokenParameter(query, idToken)
+		query, authorizationErrorResponse := h.createQuery(r, redirectURL, user, client, scopes, authSession, responseTypes, id, idTokenRequest, stateParameter)
+		if authorizationErrorResponse != nil {
+			oauth2.AuthorizationErrorResponseHandler(w, redirectURL, stateParameter, authorizationErrorResponse)
+			return
 		}
 
 		sendFound(w, redirectURL, query)
@@ -204,6 +202,33 @@ func (h *Handler) handleGetRequest(w http.ResponseWriter, r *http.Request) {
 		// Show login page
 		h.sendLogin(w, r, authSession.Id)
 	}
+}
+
+func (h *Handler) createQuery(r *http.Request, redirectURL *url.URL, user *config.User, client *config.Client, scopes []string, authSession *session.AuthSession, responseTypes []oauth2.ResponseType, id string, idTokenRequest bool, stateParameter string) (url.Values, *oauth2.AuthorizationErrorResponseParameter) {
+	query := redirectURL.Query()
+
+	var idToken string
+	accessTokenResponse := h.tokenManager.CreateAccessTokenResponse(r, user.Username, client, scopes, authSession.Nonce)
+	if slices.Contains(responseTypes, oauth2.RtToken) {
+		setImplicitGrantParameter(query, accessTokenResponse)
+	} else if slices.Contains(responseTypes, oauth2.RtCode) {
+		setAuthorizationGrantParameter(query, id)
+	} else if idTokenRequest {
+		accessTokenHash := h.tokenManager.CreateAccessTokenHash(client, accessTokenResponse.AccessTokenValue)
+		idToken = h.tokenManager.CreateIdToken(r, user.Username, client, scopes, authSession.Nonce, accessTokenHash)
+	} else {
+		log.Error("Invalid response type %v", responseTypes)
+		return nil, &oauth2.AuthorizationErrorResponseParameter{Error: oauth2.AuthorizationEtUnsupportedResponseType}
+	}
+
+	if stateParameter != "" {
+		query.Set(oauth2.ParameterState, stateParameter)
+	}
+
+	if idToken != "" {
+		setIdTokenParameter(query, idToken)
+	}
+	return query, nil
 }
 
 func (h *Handler) handlePostRequest(w http.ResponseWriter, r *http.Request, user *config.User) {
@@ -306,16 +331,25 @@ func (h *Handler) getPromptType(validCookie bool, promptQueryParameter string) (
 	return &promptType, nil
 }
 
-func (h *Handler) forceLogin(promptType *oidc.PromptType) bool {
-	if promptType == nil {
-		return false
-	}
-	switch *promptType {
-	case oidc.PtLogin:
+func (h *Handler) forceLogin(loginSession *session.LoginSession, promptType *oidc.PromptType, maxAge *int) bool {
+	if loginSession == nil {
 		return true
-	default:
-		return false
 	}
+	if promptType != nil {
+		switch *promptType {
+		case oidc.PtLogin:
+			return true
+		}
+	}
+	if maxAge != nil && *maxAge > 0 {
+		now := time.Now()
+		maxSessionStartTime := loginSession.StartTime.Add(time.Second * time.Duration(*maxAge))
+		return now.After(maxSessionStartTime)
+	} else if maxAge != nil && *maxAge == 0 {
+		return true
+	}
+
+	return false
 }
 
 func (h *Handler) sendLogin(w http.ResponseWriter, r *http.Request, authSessionId string) {
