@@ -1,6 +1,7 @@
 package oauth2
 
 import (
+	"fmt"
 	internalHttp "github.com/webishdev/stopnik/internal/http"
 	"github.com/webishdev/stopnik/log"
 	"net/http"
@@ -26,16 +27,36 @@ const (
 	AuthorizationEtInvalidScope            AuthorizationErrorType = "invalid_scope"
 	AuthorizationEtServerError             AuthorizationErrorType = "server_error"
 	AuthorizationEtTemporaryUnavailable    AuthorizationErrorType = "temporarily_unavailable"
+
+	// AuthorizationEtInteractionRequired and following extended by https://openid.net/specs/openid-connect-core-1_0.html#AuthError
+	AuthorizationEtInteractionRequired      AuthorizationErrorType = "interaction_required"
+	AuthorizationEtLoginRequired            AuthorizationErrorType = "login_required"
+	AuthorizationEtAccountSelectionRequired AuthorizationErrorType = "account_selection_required"
+	AuthorizationEtConsentRequired          AuthorizationErrorType = "consent_required"
+	AuthorizationEtInvalidRequestUri        AuthorizationErrorType = "invalid_request_uri"
+	AuthorizationEtInvalidRequestObject     AuthorizationErrorType = "invalid_request_object"
+	AuthorizationEtRequestNotSupported      AuthorizationErrorType = "request_not_supported"
+	AuthorizationEtRequestUriNotSupported   AuthorizationErrorType = "request_uri_not_supported"
+	AuthorizationEtRegistrationNotSupported AuthorizationErrorType = "registration_not_supported"
 )
 
 var authorizationErrorTypeMap = map[string]AuthorizationErrorType{
-	"invalid_request":           AuthorizationEtInvalidRequest,
-	"unauthorized_client":       AuthorizationEtUnauthorizedClient,
-	"access_denied":             AuthorizationEtAccessDenied,
-	"unsupported_response_type": AuthorizationEtUnsupportedResponseType,
-	"invalid_scope":             AuthorizationEtInvalidScope,
-	"server_error":              AuthorizationEtServerError,
-	"temporarily_unavailable":   AuthorizationEtTemporaryUnavailable,
+	"invalid_request":            AuthorizationEtInvalidRequest,
+	"unauthorized_client":        AuthorizationEtUnauthorizedClient,
+	"access_denied":              AuthorizationEtAccessDenied,
+	"unsupported_response_type":  AuthorizationEtUnsupportedResponseType,
+	"invalid_scope":              AuthorizationEtInvalidScope,
+	"server_error":               AuthorizationEtServerError,
+	"temporarily_unavailable":    AuthorizationEtTemporaryUnavailable,
+	"interaction_required":       AuthorizationEtInteractionRequired,
+	"login_required":             AuthorizationEtLoginRequired,
+	"account_selection_required": AuthorizationEtAccountSelectionRequired,
+	"consent_required":           AuthorizationEtConsentRequired,
+	"invalid_request_uri":        AuthorizationEtInvalidRequestUri,
+	"invalid_request_object":     AuthorizationEtInvalidRequestObject,
+	"request_not_supported":      AuthorizationEtRequestNotSupported,
+	"request_uri_not_supported":  AuthorizationEtRequestUriNotSupported,
+	"registration_not_supported": AuthorizationEtRegistrationNotSupported,
 }
 
 // TokenErrorType as described in multiple places e.g. https://datatracker.ietf.org/doc/html/rfc6749#section-5.2
@@ -55,7 +76,7 @@ const (
 	TokenEtUnauthorizedClient   TokenErrorType = "unauthorized_client"
 	TokenEtUnsupportedGrandType TokenErrorType = "unsupported_grant_type"
 	TokenEtInvalidScope         TokenErrorType = "invalid_scope"
-	// https://datatracker.ietf.org/doc/html/rfc7009#section-2.2.1
+	// TokenEtUnsupportedTokenType https://datatracker.ietf.org/doc/html/rfc7009#section-2.2.1
 	TokenEtUnsupportedTokenType TokenErrorType = "unsupported_token_type"
 )
 
@@ -88,7 +109,8 @@ func AuthorizationErrorResponseHandler(w http.ResponseWriter, redirectURL *url.U
 	if errorResponseParameter == nil {
 		query.Set(ParameterError, string(AuthorizationEtServerError))
 	} else {
-		query.Set(ParameterError, string(errorResponseParameter.Error))
+		responseError := fmt.Sprintf("%s", errorResponseParameter.Error)
+		query.Set(ParameterError, responseError)
 		if errorResponseParameter.Description != "" {
 			query.Set(ParameterErrorDescription, errorResponseParameter.Description)
 		}

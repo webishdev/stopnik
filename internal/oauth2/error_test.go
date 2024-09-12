@@ -37,6 +37,15 @@ func Test_AuthorizationErrorTypeFromString(t *testing.T) {
 		{string(AuthorizationEtInvalidScope), true, "invalid_scope"},
 		{string(AuthorizationEtServerError), true, "server_error"},
 		{string(AuthorizationEtTemporaryUnavailable), true, "temporarily_unavailable"},
+		{string(AuthorizationEtInteractionRequired), true, "interaction_required"},
+		{string(AuthorizationEtLoginRequired), true, "login_required"},
+		{string(AuthorizationEtAccountSelectionRequired), true, "account_selection_required"},
+		{string(AuthorizationEtConsentRequired), true, "consent_required"},
+		{string(AuthorizationEtInvalidRequestUri), true, "invalid_request_uri"},
+		{string(AuthorizationEtInvalidRequestObject), true, "invalid_request_object"},
+		{string(AuthorizationEtRequestNotSupported), true, "request_not_supported"},
+		{string(AuthorizationEtRequestUriNotSupported), true, "request_uri_not_supported"},
+		{string(AuthorizationEtRegistrationNotSupported), true, "registration_not_supported"},
 		{"foo", false, ""},
 	}
 
