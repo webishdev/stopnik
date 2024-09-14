@@ -126,7 +126,7 @@ func (h *Handler) handlePostRequest(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if refreshToken.ClientId != client.Id {
-			oauth2.TokenErrorResponseHandler(w, r, &oauth2.TokenErrorResponseParameter{Error: oauth2.TokenEtInvalidRequest})
+			oauth2.TokenErrorResponseHandler(w, r, &oauth2.TokenErrorResponseParameter{Error: oauth2.TokenEtInvalidGrant})
 			return
 		}
 

@@ -9,9 +9,20 @@ server:
       cert: ./.test_files/server.crt
       key: ./.test_files/server.key
 clients:
-- id: oidc
+- id: oidc # pw: bar
   clientSecret: 1efcbc37f7d7e2f9f8cf009b91c95b2b7b913b89d36a21a05da1e3cb396ed1ab0e596e2b649e9407367e40d852ac4d0abfcfc1c4227eb661385e9f2e0f3203ca
   salt: 321
+  accessTTL: 30
+  refreshTTL: 45
+  idTTL: 45
+  oidc: true
+  privateKey: ./.test_files/ecdsa521key.pem
+  redirects:
+    - https://localhost:8443/*
+    - https://localhost.emobix.co.uk:8443/test/a/instructions-example*
+- id: oidc2 # pw: foo
+  clientSecret: d2994b96f7fafa7303a4bce00f7135e88f950ae87fdf8c0b95428803f6c78337ecfab4062e0ca68a177de97490660e5aa31981e5ee4b97b291301b2edbc0788f
+  salt: 789
   accessTTL: 30
   refreshTTL: 45
   idTTL: 45
