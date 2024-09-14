@@ -11,6 +11,7 @@ import (
 	"github.com/webishdev/stopnik/log"
 	"net/http"
 	"strings"
+	"time"
 )
 
 type Handler struct {
@@ -61,6 +62,7 @@ func (h *Handler) handlePostRequest(w http.ResponseWriter, r *http.Request) {
 	var scopes []string
 	var username string
 	nonce := ""
+	var authTime time.Time
 
 	if grantType == oauth2.GtAuthorizationCode {
 		// https://datatracker.ietf.org/doc/html/rfc6749#section-4.1.3
@@ -88,6 +90,7 @@ func (h *Handler) handlePostRequest(w http.ResponseWriter, r *http.Request) {
 		scopes = authSession.Scopes
 		username = authSession.Username
 		nonce = authSession.Nonce
+		authTime = authSession.AuthTime
 	} else if grantType == oauth2.GtPassword {
 		// https://datatracker.ietf.org/doc/html/rfc6749#section-4.3.2
 		usernameFrom := r.PostFormValue(oauth2.ParameterUsername)
@@ -130,7 +133,7 @@ func (h *Handler) handlePostRequest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	accessTokenResponse := h.tokenManager.CreateAccessTokenResponse(r, username, client, scopes, nonce)
+	accessTokenResponse := h.tokenManager.CreateAccessTokenResponse(r, username, client, &authTime, scopes, nonce)
 
 	jsonError := internalHttp.SendJson(accessTokenResponse, w, r)
 	if jsonError != nil {

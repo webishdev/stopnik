@@ -5,6 +5,7 @@ import (
 	"github.com/webishdev/stopnik/internal/oauth2"
 	"github.com/webishdev/stopnik/internal/store"
 	"sync"
+	"time"
 )
 
 type AuthSession struct {
@@ -19,6 +20,7 @@ type AuthSession struct {
 	Scopes              []string
 	State               string
 	Nonce               string // OpenId Connect
+	AuthTime            time.Time
 }
 
 type AuthManager struct {

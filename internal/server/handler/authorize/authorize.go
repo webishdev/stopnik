@@ -1,6 +1,7 @@
 package authorize
 
 import (
+	"errors"
 	"fmt"
 	"github.com/google/uuid"
 	"github.com/webishdev/stopnik/internal/config"
@@ -14,6 +15,7 @@ import (
 	"github.com/webishdev/stopnik/internal/pkce"
 	"github.com/webishdev/stopnik/internal/server/handler/error"
 	"github.com/webishdev/stopnik/internal/server/validation"
+	"github.com/webishdev/stopnik/internal/system"
 	"github.com/webishdev/stopnik/internal/template"
 	"github.com/webishdev/stopnik/log"
 	"net/http"
@@ -190,8 +192,9 @@ func (h *Handler) handleGetRequest(w http.ResponseWriter, r *http.Request) {
 
 	if validCookie && !h.forceLogin(loginSession, promptType, maxAge) {
 		authSession.Username = user.Username
+		authSession.AuthTime = loginSession.StartTime
 
-		query, authorizationErrorResponse := h.createQuery(r, redirectURL, user, client, scopes, authSession, responseTypes, id, idTokenRequest, stateParameter)
+		query, authorizationErrorResponse := h.createQuery(r, redirectURL, user, client, scopes, authSession, loginSession, responseTypes, id, idTokenRequest, stateParameter)
 		if authorizationErrorResponse != nil {
 			oauth2.AuthorizationErrorResponseHandler(w, redirectURL, stateParameter, authorizationErrorResponse)
 			return
@@ -204,18 +207,20 @@ func (h *Handler) handleGetRequest(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (h *Handler) createQuery(r *http.Request, redirectURL *url.URL, user *config.User, client *config.Client, scopes []string, authSession *session.AuthSession, responseTypes []oauth2.ResponseType, id string, idTokenRequest bool, stateParameter string) (url.Values, *oauth2.AuthorizationErrorResponseParameter) {
+func (h *Handler) createQuery(r *http.Request, redirectURL *url.URL, user *config.User, client *config.Client, scopes []string, authSession *session.AuthSession, loginSession *session.LoginSession, responseTypes []oauth2.ResponseType, id string, idTokenRequest bool, stateParameter string) (url.Values, *oauth2.AuthorizationErrorResponseParameter) {
 	query := redirectURL.Query()
 
 	var idToken string
-	accessTokenResponse := h.tokenManager.CreateAccessTokenResponse(r, user.Username, client, scopes, authSession.Nonce)
+	accessTokenResponse := h.tokenManager.CreateAccessTokenResponse(r, user.Username, client, &loginSession.StartTime, scopes, authSession.Nonce)
 	if slices.Contains(responseTypes, oauth2.RtToken) {
 		setImplicitGrantParameter(query, accessTokenResponse)
 	} else if slices.Contains(responseTypes, oauth2.RtCode) {
 		setAuthorizationGrantParameter(query, id)
 	} else if idTokenRequest {
-		accessTokenHash := h.tokenManager.CreateAccessTokenHash(client, accessTokenResponse.AccessTokenValue)
-		idToken = h.tokenManager.CreateIdToken(r, user.Username, client, scopes, authSession.Nonce, accessTokenHash)
+		if accessTokenResponse.IdTokenValue == "" {
+			system.CriticalError(errors.New("no id_token found in response"))
+		}
+		idToken = accessTokenResponse.IdTokenValue
 	} else {
 		log.Error("Invalid response type %v", responseTypes)
 		return nil, &oauth2.AuthorizationErrorResponseParameter{Error: oauth2.AuthorizationEtUnsupportedResponseType}
@@ -257,6 +262,7 @@ func (h *Handler) handlePostRequest(w http.ResponseWriter, r *http.Request, user
 	}
 
 	authSession.Username = user.Username
+	authSession.AuthTime = loginSession.StartTime
 	redirectURL, urlParseError := url.Parse(authSession.Redirect)
 	if urlParseError != nil {
 		h.errorHandler.InternalServerErrorHandler(w, r, urlParseError)
@@ -274,7 +280,7 @@ func (h *Handler) handlePostRequest(w http.ResponseWriter, r *http.Request, user
 			h.errorHandler.BadRequestHandler(w, r)
 			return
 		}
-		accessTokenResponse := h.tokenManager.CreateAccessTokenResponse(r, user.Username, client, authSession.Scopes, authSession.Nonce)
+		accessTokenResponse := h.tokenManager.CreateAccessTokenResponse(r, user.Username, client, &loginSession.StartTime, authSession.Scopes, authSession.Nonce)
 		setImplicitGrantParameter(query, accessTokenResponse)
 	} else if slices.Contains(responseTypes, oauth2.RtCode) {
 		setAuthorizationGrantParameter(query, authSession.Id)

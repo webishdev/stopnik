@@ -40,7 +40,7 @@ func Test_HealthWithToken(t *testing.T) {
 	}
 
 	request := httptest.NewRequest(http.MethodPost, endpoint.Token, nil)
-	tokenResponse := tokenManager.CreateAccessTokenResponse(request, "foo", client, []string{"a:foo", "b:bar"}, "")
+	tokenResponse := tokenManager.CreateAccessTokenResponse(request, "foo", client, nil, []string{"a:foo", "b:bar"}, "")
 
 	healthHandler := NewHealthHandler(tokenManager)
 
