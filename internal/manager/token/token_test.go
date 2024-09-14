@@ -47,7 +47,7 @@ func Test_AccessTokenResponse(t *testing.T) {
 			}
 
 			request := httptest.NewRequest(http.MethodPost, endpoint.Token, nil)
-			accessTokenResponse := tokenManager.CreateAccessTokenResponse(request, "foo", client, nil, requestScopes, "")
+			accessTokenResponse := tokenManager.CreateAccessTokenResponse(request, "foo", client, nil, requestScopes, "", "")
 
 			if accessTokenResponse.AccessTokenValue == "" {
 				t.Error("empty access token")
@@ -140,7 +140,7 @@ func Test_InvalidUserInToken(t *testing.T) {
 	}
 
 	request := httptest.NewRequest(http.MethodPost, endpoint.Token, nil)
-	accessTokenResponse := tokenManager.CreateAccessTokenResponse(request, "bar", client, nil, []string{"abc", "def"}, "")
+	accessTokenResponse := tokenManager.CreateAccessTokenResponse(request, "bar", client, nil, []string{"abc", "def"}, "", "")
 
 	_, _, _, valid := tokenManager.validateAccessTokenHeader(fmt.Sprintf("%s %s", internalHttp.AuthBearer, accessTokenResponse.AccessTokenValue))
 

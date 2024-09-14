@@ -202,7 +202,7 @@ func testRevoke(t *testing.T, testConfig *config.Config) {
 			tokenManager := token.GetTokenManagerInstance()
 			sessionManager.StartSession(authSession)
 			request := httptest.NewRequest(http.MethodPost, endpoint.Token, nil)
-			accessTokenResponse := tokenManager.CreateAccessTokenResponse(request, user.Username, client, nil, scopes, "")
+			accessTokenResponse := tokenManager.CreateAccessTokenResponse(request, user.Username, client, nil, scopes, "", "")
 
 			revokeHandler := NewRevokeHandler(requestValidator, tokenManager)
 
@@ -280,7 +280,7 @@ func testRevokeWithoutHint(t *testing.T, testConfig *config.Config) {
 			tokenManager := token.GetTokenManagerInstance()
 			sessionManager.StartSession(authSession)
 			request := httptest.NewRequest(http.MethodPost, endpoint.Token, nil)
-			accessTokenResponse := tokenManager.CreateAccessTokenResponse(request, user.Username, client, nil, scopes, "")
+			accessTokenResponse := tokenManager.CreateAccessTokenResponse(request, user.Username, client, nil, scopes, "", "")
 
 			revokeHandler := NewRevokeHandler(requestValidator, tokenManager)
 
@@ -357,7 +357,7 @@ func testRevokeDisabled(t *testing.T, testConfig *config.Config) {
 			tokenManager := token.GetTokenManagerInstance()
 			sessionManager.StartSession(authSession)
 			request := httptest.NewRequest(http.MethodPost, endpoint.Token, nil)
-			accessTokenResponse := tokenManager.CreateAccessTokenResponse(request, user.Username, client, nil, scopes, "")
+			accessTokenResponse := tokenManager.CreateAccessTokenResponse(request, user.Username, client, nil, scopes, "", "")
 
 			revokeHandler := NewRevokeHandler(requestValidator, tokenManager)
 

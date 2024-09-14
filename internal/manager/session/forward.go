@@ -44,3 +44,8 @@ func (forwardManager *ForwardManager) GetSession(id string) (*ForwardSession, bo
 	forwardSessionStore := *forwardManager.forwardSessionStore
 	return forwardSessionStore.Get(id)
 }
+
+func (forwardManager *ForwardManager) DeleteSession(id string) {
+	forwardSessionStore := *forwardManager.forwardSessionStore
+	forwardSessionStore.Delete(id)
+}

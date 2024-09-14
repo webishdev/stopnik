@@ -34,7 +34,8 @@ func (h *UserInfoHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			userInfoResponse.Name = userInfoResponse.GivenName + " " + userInfoResponse.FamilyName
 			userInfoResponse.Address.Formatted = user.GetFormattedAddress()
 		} else {
-			userInfoResponse = &config.UserProfile{}
+			h.errorHandler.BadRequestHandler(w, r)
+			return
 		}
 
 		var result interface{}

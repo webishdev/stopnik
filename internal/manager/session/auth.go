@@ -54,3 +54,8 @@ func (authManager *AuthManager) GetSession(id string) (*AuthSession, bool) {
 	authSessionStore := *authManager.authSessionStore
 	return authSessionStore.Get(id)
 }
+
+func (authManager *AuthManager) DeleteSession(id string) {
+	authSessionStore := *authManager.authSessionStore
+	authSessionStore.Delete(id)
+}

@@ -62,6 +62,7 @@ func (h *Handler) handlePostRequest(w http.ResponseWriter, r *http.Request) {
 	var scopes []string
 	var username string
 	nonce := ""
+	authCode := ""
 	var authTime time.Time
 
 	if grantType == oauth2.GtAuthorizationCode {
@@ -69,7 +70,8 @@ func (h *Handler) handlePostRequest(w http.ResponseWriter, r *http.Request) {
 		code := r.PostFormValue(oauth2.ParameterCode)
 		authSession, authSessionExists := h.authSessionManager.GetSession(code)
 		if !authSessionExists {
-			oauth2.TokenErrorResponseHandler(w, r, &oauth2.TokenErrorResponseParameter{Error: oauth2.TokenEtInvalidRequest})
+			h.tokenManager.RevokeAccessTokenByAuthorizationCode(code)
+			oauth2.TokenErrorResponseHandler(w, r, &oauth2.TokenErrorResponseParameter{Error: oauth2.TokenEtInvalidGrant})
 			return
 		}
 
@@ -91,6 +93,8 @@ func (h *Handler) handlePostRequest(w http.ResponseWriter, r *http.Request) {
 		username = authSession.Username
 		nonce = authSession.Nonce
 		authTime = authSession.AuthTime
+		authCode = code
+		h.authSessionManager.DeleteSession(authSession.Id)
 	} else if grantType == oauth2.GtPassword {
 		// https://datatracker.ietf.org/doc/html/rfc6749#section-4.3.2
 		usernameFrom := r.PostFormValue(oauth2.ParameterUsername)
@@ -133,7 +137,7 @@ func (h *Handler) handlePostRequest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	accessTokenResponse := h.tokenManager.CreateAccessTokenResponse(r, username, client, &authTime, scopes, nonce)
+	accessTokenResponse := h.tokenManager.CreateAccessTokenResponse(r, username, client, &authTime, scopes, nonce, authCode)
 
 	jsonError := internalHttp.SendJson(accessTokenResponse, w, r)
 	if jsonError != nil {

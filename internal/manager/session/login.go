@@ -54,6 +54,11 @@ func (loginManager *loginManager) GetSession(id string) (*LoginSession, bool) {
 	return loginSessionStore.Get(id)
 }
 
+func (loginManager *loginManager) DeleteSession(id string) {
+	loginSessionStore := *loginManager.loginSessionStore
+	loginSessionStore.Delete(id)
+}
+
 func (loginManager *loginManager) CloseSession(id string, all bool) {
 	loginSessionStore := *loginManager.loginSessionStore
 	loginSession, loginSessionExists := loginSessionStore.Get(id)

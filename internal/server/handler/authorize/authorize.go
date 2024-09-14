@@ -211,7 +211,7 @@ func (h *Handler) createQuery(r *http.Request, redirectURL *url.URL, user *confi
 	query := redirectURL.Query()
 
 	var idToken string
-	accessTokenResponse := h.tokenManager.CreateAccessTokenResponse(r, user.Username, client, &loginSession.StartTime, scopes, authSession.Nonce)
+	accessTokenResponse := h.tokenManager.CreateAccessTokenResponse(r, user.Username, client, &loginSession.StartTime, scopes, authSession.Nonce, "")
 	if slices.Contains(responseTypes, oauth2.RtToken) {
 		setImplicitGrantParameter(query, accessTokenResponse)
 	} else if slices.Contains(responseTypes, oauth2.RtCode) {
@@ -280,7 +280,7 @@ func (h *Handler) handlePostRequest(w http.ResponseWriter, r *http.Request, user
 			h.errorHandler.BadRequestHandler(w, r)
 			return
 		}
-		accessTokenResponse := h.tokenManager.CreateAccessTokenResponse(r, user.Username, client, &loginSession.StartTime, authSession.Scopes, authSession.Nonce)
+		accessTokenResponse := h.tokenManager.CreateAccessTokenResponse(r, user.Username, client, &loginSession.StartTime, authSession.Scopes, authSession.Nonce, "")
 		setImplicitGrantParameter(query, accessTokenResponse)
 	} else if slices.Contains(responseTypes, oauth2.RtCode) {
 		setAuthorizationGrantParameter(query, authSession.Id)

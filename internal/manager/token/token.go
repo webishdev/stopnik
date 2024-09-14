@@ -23,11 +23,16 @@ import (
 	"time"
 )
 
+type clientStores struct {
+	accessTokenStore       *store.ExpiringStore[oauth2.AccessToken]
+	refreshTokenStore      *store.ExpiringStore[oauth2.RefreshToken]
+	authorizationCodeStore *store.ExpiringStore[string]
+}
+
 type Manager struct {
-	config            *config.Config
-	keyLoader         crypto.KeyLoader
-	accessTokenStore  *store.ExpiringStore[oauth2.AccessToken]
-	refreshTokenStore *store.ExpiringStore[oauth2.RefreshToken]
+	config       *config.Config
+	keyLoader    crypto.KeyLoader
+	clientStores map[string]*clientStores
 }
 
 type IdTokenInput struct {
@@ -49,44 +54,89 @@ func GetTokenManagerInstance() *Manager {
 	if tokenManagerSingleton == nil {
 		currentConfig := config.GetConfigInstance()
 		keyLoader := key.GetDefaultKeyLoaderInstance()
-		accessTokenStore := store.NewDefaultTimedStore[oauth2.AccessToken]()
-		refreshTokenStore := store.NewDefaultTimedStore[oauth2.RefreshToken]()
 		tokenManagerSingleton = &Manager{
-			config:            currentConfig,
-			keyLoader:         keyLoader,
-			accessTokenStore:  &accessTokenStore,
-			refreshTokenStore: &refreshTokenStore,
+			config:       currentConfig,
+			keyLoader:    keyLoader,
+			clientStores: make(map[string]*clientStores),
+		}
+
+		for _, client := range currentConfig.Clients {
+			accessStoreTime := time.Minute*time.Duration(client.GetAccessTTL()) + time.Minute*time.Duration(1)
+			refreshStoreTime := time.Minute*time.Duration(client.GetRefreshTTL()) + time.Minute*time.Duration(1)
+			accessTokenStore := store.NewTimedStore[oauth2.AccessToken](accessStoreTime)
+			refreshTokenStore := store.NewTimedStore[oauth2.RefreshToken](refreshStoreTime)
+			authorizationCodeStore := store.NewDefaultTimedStore[string]()
+			stores := &clientStores{
+				accessTokenStore:       &accessTokenStore,
+				refreshTokenStore:      &refreshTokenStore,
+				authorizationCodeStore: &authorizationCodeStore,
+			}
+			tokenManagerSingleton.clientStores[client.Id] = stores
 		}
 	}
 	return tokenManagerSingleton
 }
 
 func (tokenManager *Manager) GetAccessToken(token string) (*oauth2.AccessToken, bool) {
-	accessTokenStore := *tokenManager.accessTokenStore
-	return accessTokenStore.Get(token)
+	for _, currentClientStores := range tokenManager.clientStores {
+		accessTokenStore := *currentClientStores.accessTokenStore
+		accessToken, accessTokenExists := accessTokenStore.Get(token)
+		if accessTokenExists {
+			return accessToken, true
+		}
+	}
+	return nil, false
 }
 
 func (tokenManager *Manager) RevokeAccessToken(accessToken *oauth2.AccessToken) {
-	accessTokenStore := *tokenManager.accessTokenStore
-	accessTokenStore.Delete(accessToken.Key)
+	if accessToken != nil {
+		for _, currentClientStores := range tokenManager.clientStores {
+			accessTokenStore := *currentClientStores.accessTokenStore
+			accessTokenStore.Delete(accessToken.Key)
+		}
+	}
 }
 
 func (tokenManager *Manager) GetRefreshToken(token string) (*oauth2.RefreshToken, bool) {
-	refreshTokenStore := *tokenManager.refreshTokenStore
-	return refreshTokenStore.Get(token)
+	for _, currentClientStores := range tokenManager.clientStores {
+		refreshTokenStore := *currentClientStores.refreshTokenStore
+		refreshToken, refreshTokenExists := refreshTokenStore.Get(token)
+		if refreshTokenExists {
+			return refreshToken, true
+		}
+	}
+	return nil, false
 }
 
 func (tokenManager *Manager) RevokeRefreshToken(refreshToken *oauth2.RefreshToken) {
-	refreshTokenStore := *tokenManager.refreshTokenStore
-	refreshTokenStore.Delete(refreshToken.Key)
+	if refreshToken != nil {
+		for _, currentClientStores := range tokenManager.clientStores {
+			refreshTokenStore := *currentClientStores.refreshTokenStore
+			refreshTokenStore.Delete(refreshToken.Key)
+		}
+	}
 }
 
-func (tokenManager *Manager) CreateAccessTokenResponse(r *http.Request, username string, client *config.Client, authTime *time.Time, scopes []string, nonce string) oauth2.AccessTokenResponse {
+func (tokenManager *Manager) RevokeAccessTokenByAuthorizationCode(authorizationCode string) {
+	for _, currentClientStores := range tokenManager.clientStores {
+		authorizationCodeStore := *currentClientStores.authorizationCodeStore
+		accessTokenKey, accessTokenKeyExists := authorizationCodeStore.Get(authorizationCode)
+		if accessTokenKeyExists {
+			accessToken, accessTokenExists := tokenManager.GetAccessToken(*accessTokenKey)
+			if accessTokenExists {
+				tokenManager.RevokeAccessToken(accessToken)
+			}
+		}
+	}
+}
+
+func (tokenManager *Manager) CreateAccessTokenResponse(r *http.Request, username string, client *config.Client, authTime *time.Time, scopes []string, nonce string, authorizationCode string) oauth2.AccessTokenResponse {
 	log.Debug("Creating new access token for %s, access TTL %d, refresh TTL %d", client.Id, client.GetAccessTTL(), client.GetRefreshTTL())
 
 	requestData := internalHttp.NewRequestData(r)
-	accessTokenStore := *tokenManager.accessTokenStore
-	refreshTokenStore := *tokenManager.refreshTokenStore
+	accessTokenStore := *tokenManager.clientStores[client.Id].accessTokenStore
+	refreshTokenStore := *tokenManager.clientStores[client.Id].refreshTokenStore
+	authorizationCodeStore := *tokenManager.clientStores[client.Id].authorizationCodeStore
 
 	accessTokenDuration := time.Minute * time.Duration(client.GetAccessTTL())
 	accessTokenKey := tokenManager.CreateAccessToken(r, username, client, accessTokenDuration)
@@ -140,6 +190,10 @@ func (tokenManager *Manager) CreateAccessTokenResponse(r *http.Request, username
 		}
 	}
 
+	if authorizationCode != "" {
+		authorizationCodeStore.Set(authorizationCode, &accessToken.Key)
+	}
+
 	return accessTokenResponse
 }
 
@@ -191,9 +245,8 @@ func (tokenManager *Manager) validateAccessTokenHeader(authorizationHeader strin
 
 func (tokenManager *Manager) validateAccessToken(accessTokenValue string) (*config.User, *config.Client, []string, bool) {
 	log.Debug("Validating access token")
-	accessTokenStore := *tokenManager.accessTokenStore
-	accessToken, authorizationHeaderExists := accessTokenStore.Get(accessTokenValue)
-	if !authorizationHeaderExists {
+	accessToken, accessTokenExists := tokenManager.GetAccessToken(accessTokenValue)
+	if !accessTokenExists {
 		return nil, nil, []string{}, false
 	}
 
