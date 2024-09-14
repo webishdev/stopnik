@@ -132,6 +132,7 @@ func (h *Handler) handlePostRequest(w http.ResponseWriter, r *http.Request) {
 
 		username = refreshToken.Username
 		scopes = refreshToken.Scopes
+		authTime = refreshToken.AuthTime
 	} else {
 		oauth2.TokenErrorResponseHandler(w, r, &oauth2.TokenErrorResponseParameter{Error: oauth2.TokenEtUnsupportedGrandType})
 		return

@@ -166,6 +166,10 @@ func (tokenManager *Manager) CreateAccessTokenResponse(r *http.Request, username
 			Scopes:   scopes,
 		}
 
+		if authTime != nil {
+			refreshToken.AuthTime = *authTime
+		}
+
 		refreshTokenStore.SetWithDuration(refreshToken.Key, refreshToken, refreshTokenDuration)
 
 		accessTokenResponse.RefreshTokenValue = refreshToken.Key
