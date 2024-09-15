@@ -1,6 +1,9 @@
 package oidc
 
-import "strings"
+import (
+	"github.com/webishdev/stopnik/internal/config"
+	"strings"
+)
 
 // PromptType as described in https://openid.net/specs/openid-connect-core-1_0.html#AuthRequest
 // prompt=create is not supported, as no account can be created by a user in STOPnik
@@ -18,6 +21,11 @@ var promptTypeMap = map[string]PromptType{
 	"login":          PtLogin,
 	"consent":        PtConsent,
 	"select_account": PtSelectAccount,
+}
+
+type UserInfoResponse struct {
+	config.UserProfile
+	config.UserInformation
 }
 
 func PromptTypeFromString(value string) (PromptType, bool) {

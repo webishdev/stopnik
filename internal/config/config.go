@@ -74,34 +74,38 @@ type UserAddress struct {
 // UserProfile defines the profile for a specific user,
 // the definition provided in the YAML file will be mapped into values inside a JSON response.
 type UserProfile struct {
-	Subject           string      `json:"sub,omitempty"`
-	Name              string      `json:"name,omitempty"`
-	GivenName         string      `yaml:"givenName" json:"given_name,omitempty"`
-	FamilyName        string      `yaml:"familyName" json:"family_name,omitempty"`
-	Nickname          string      `yaml:"nickname" json:"nickname,omitempty"`
-	PreferredUserName string      `yaml:"preferredUserName" json:"preferred_username,omitempty"`
-	Email             string      `yaml:"email" json:"email,omitempty"`
-	EmailVerified     bool        `yaml:"emailVerified" json:"email_verified,omitempty"`
-	Gender            string      `yaml:"gender" json:"gender,omitempty"`
-	BirthDate         string      `yaml:"birthDate" json:"birth_date,omitempty"`
-	ZoneInfo          string      `yaml:"zoneInfo" json:"zone_info,omitempty"`
-	Locale            string      `yaml:"locale" json:"locale,omitempty"`
-	PhoneNumber       string      `yaml:"phoneNumber" json:"phone_number,omitempty"`
-	PhoneVerified     bool        `yaml:"phoneVerified" json:"phone_verified,omitempty"`
-	Website           string      `yaml:"website" json:"website,omitempty"`
-	Profile           string      `yaml:"profile" json:"profile,omitempty"`
-	ProfilePicture    string      `yaml:"profilePicture" json:"profile_picture,omitempty"`
-	Address           UserAddress `yaml:"address" json:"address,omitempty"`
-	UpdatedAt         string      `json:"updated_at,omitempty"`
+	Subject           string `json:"sub,omitempty"`
+	Name              string `json:"name,omitempty"`
+	GivenName         string `yaml:"givenName" json:"given_name,omitempty"`
+	FamilyName        string `yaml:"familyName" json:"family_name,omitempty"`
+	Nickname          string `yaml:"nickname" json:"nickname,omitempty"`
+	PreferredUserName string `yaml:"preferredUserName" json:"preferred_username,omitempty"`
+	Gender            string `yaml:"gender" json:"gender,omitempty"`
+	BirthDate         string `yaml:"birthDate" json:"birth_date,omitempty"`
+	ZoneInfo          string `yaml:"zoneInfo" json:"zone_info,omitempty"`
+	Locale            string `yaml:"locale" json:"locale,omitempty"`
+	Website           string `yaml:"website" json:"website,omitempty"`
+	Profile           string `yaml:"profile" json:"profile,omitempty"`
+	ProfilePicture    string `yaml:"profilePicture" json:"profile_picture,omitempty"`
+	UpdatedAt         string `json:"updated_at,omitempty"`
+}
+
+type UserInformation struct {
+	Email         string       `yaml:"email" json:"email,omitempty"`
+	EmailVerified bool         `yaml:"emailVerified" json:"email_verified,omitempty"`
+	PhoneNumber   string       `yaml:"phoneNumber" json:"phone_number,omitempty"`
+	PhoneVerified bool         `yaml:"phoneVerified" json:"phone_verified,omitempty"`
+	Address       *UserAddress `yaml:"address" json:"address,omitempty"`
 }
 
 // User defines the general user entry in the configuration.
 type User struct {
-	Username string              `yaml:"username"`
-	Password string              `yaml:"password"`
-	Salt     string              `yaml:"salt"`
-	Profile  UserProfile         `yaml:"profile"`
-	Roles    map[string][]string `yaml:"roles"`
+	Username        string              `yaml:"username"`
+	Password        string              `yaml:"password"`
+	Salt            string              `yaml:"salt"`
+	UserProfile     UserProfile         `yaml:"userProfile"`
+	UserInformation UserInformation     `yaml:"userInformation"`
+	Roles           map[string][]string `yaml:"roles"`
 }
 
 // Claim defines additional claims with name and value,
@@ -503,30 +507,33 @@ func (client *Client) ValidateRedirect(redirect string) bool {
 
 // GetPreferredUsername returns the preferred username for a given User, or just the username.
 func (user *User) GetPreferredUsername() string {
-	if user.Profile.PreferredUserName == "" {
+	if user.UserProfile.PreferredUserName == "" {
 		return user.Username
 	} else {
-		return user.Profile.PreferredUserName
+		return user.UserProfile.PreferredUserName
 	}
 }
 
 // GetFormattedAddress return the formatted address for a User.
 func (user *User) GetFormattedAddress() string {
-	userAddress := user.Profile.Address
-	var sb strings.Builder
-	if userAddress.Street != "" {
-		sb.WriteString(userAddress.Street)
-		sb.WriteString("\n")
+	userAddress := user.UserInformation.Address
+	if userAddress != nil {
+		var sb strings.Builder
+		if userAddress.Street != "" {
+			sb.WriteString(userAddress.Street)
+			sb.WriteString("\n")
+		}
+		if userAddress.PostalCode != "" {
+			sb.WriteString(userAddress.PostalCode)
+			sb.WriteString("\n")
+		}
+		if userAddress.City != "" {
+			sb.WriteString(userAddress.City)
+			sb.WriteString("\n")
+		}
+		return sb.String()
 	}
-	if userAddress.PostalCode != "" {
-		sb.WriteString(userAddress.PostalCode)
-		sb.WriteString("\n")
-	}
-	if userAddress.City != "" {
-		sb.WriteString(userAddress.City)
-		sb.WriteString("\n")
-	}
-	return sb.String()
+	return ""
 }
 
 // GetRoles returns the roles configured for the User for a given clientId.

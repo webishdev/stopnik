@@ -7,6 +7,7 @@ import (
 	"github.com/webishdev/stopnik/internal/endpoint"
 	internalHttp "github.com/webishdev/stopnik/internal/http"
 	"github.com/webishdev/stopnik/internal/manager/token"
+	"github.com/webishdev/stopnik/internal/oidc"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -27,15 +28,17 @@ func Test_UserInfo(t *testing.T) {
 			{
 				Username: "foo",
 				Password: "d82c4eb5261cb9c8aa9855edd67d1bd10482f41529858d925094d173fa662aa91ff39bc5b188615273484021dfb16fd8284cf684ccf0fc795be3aa2fc1e6c181",
-				Profile: config.UserProfile{
+				UserProfile: config.UserProfile{
 					PreferredUserName: "foobar",
 					GivenName:         "John",
 					FamilyName:        "Doe",
 					Nickname:          "fooby",
-					Email:             "foo@bar.com",
-					EmailVerified:     true,
 					Gender:            "bot",
-					Address: config.UserAddress{
+				},
+				UserInformation: config.UserInformation{
+					Email:         "foo@bar.com",
+					EmailVerified: true,
+					Address: &config.UserAddress{
 						Street:     "Mainstreet 1",
 						PostalCode: "12345",
 						City:       "Maintown",
@@ -70,7 +73,7 @@ func testOidcUserInfo(t *testing.T, testConfig *config.Config) {
 		}
 
 		request := httptest.NewRequest(http.MethodPost, endpoint.Token, nil)
-		tokenResponse := tokenManager.CreateAccessTokenResponse(request, "foo", client, nil, []string{"a:foo", "b:bar"}, "", "")
+		tokenResponse := tokenManager.CreateAccessTokenResponse(request, "foo", client, nil, []string{"a:foo", "b:bar", oidc.ScopeProfile, oidc.ScopeEmail, oidc.ScopePhone, oidc.ScopeAddress}, "", "")
 
 		oidcDiscoveryHandler := NewOidcUserInfoHandler(tokenManager)
 
@@ -171,7 +174,7 @@ func testOidcUserInfoNotAllowedHttpMethods(t *testing.T) {
 	}
 }
 
-func testOidcUserInfoParse(t *testing.T, r *http.Response) config.UserProfile {
+func testOidcUserInfoParse(t *testing.T, r *http.Response) oidc.UserInfoResponse {
 	responseBody, bodyReadErr := io.ReadAll(r.Body)
 
 	if bodyReadErr != nil {
@@ -182,7 +185,7 @@ func testOidcUserInfoParse(t *testing.T, r *http.Response) config.UserProfile {
 		t.Errorf("oidcConfigurationResponse body was nil")
 	}
 
-	userProfileResponse := config.UserProfile{}
+	userProfileResponse := oidc.UserInfoResponse{}
 	jsonParseError := json.Unmarshal(responseBody, &userProfileResponse)
 	if jsonParseError != nil {
 		t.Errorf("could not parse oidcConfigurationResponse body: %v", jsonParseError)

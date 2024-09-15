@@ -5,10 +5,17 @@ import (
 	"github.com/webishdev/stopnik/internal/config"
 	internalHttp "github.com/webishdev/stopnik/internal/http"
 	"github.com/webishdev/stopnik/internal/manager/token"
+	"github.com/webishdev/stopnik/internal/oidc"
 	errorHandler "github.com/webishdev/stopnik/internal/server/handler/error"
 	"github.com/webishdev/stopnik/log"
 	"net/http"
+	"slices"
 )
+
+type UserInfoResponse struct {
+	config.UserProfile
+	config.UserInformation
+}
 
 type UserInfoHandler struct {
 	tokenManager *token.Manager
@@ -25,29 +32,59 @@ func NewOidcUserInfoHandler(tokenManager *token.Manager) *UserInfoHandler {
 func (h *UserInfoHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	log.AccessLogRequest(r)
 	if r.Method == http.MethodGet || r.Method == http.MethodPost {
-		var userInfoResponse *config.UserProfile
-		user, client, _, valid := h.tokenManager.ValidateAccessTokenRequest(r)
+		response := &oidc.UserInfoResponse{}
+		user, client, scopes, valid := h.tokenManager.ValidateAccessTokenRequest(r)
 		if valid {
-			userInfoResponse = &user.Profile
-			userInfoResponse.Subject = user.Username
-			userInfoResponse.PreferredUserName = user.GetPreferredUsername()
-			userInfoResponse.Name = userInfoResponse.GivenName + " " + userInfoResponse.FamilyName
-			userInfoResponse.Address.Formatted = user.GetFormattedAddress()
+			response.Subject = user.Username
+			if slices.Contains(scopes, oidc.ScopeProfile) {
+				response.Name = user.UserProfile.GivenName + " " + user.UserProfile.FamilyName
+				response.GivenName = user.UserProfile.GivenName
+				response.FamilyName = user.UserProfile.FamilyName
+				response.Nickname = user.UserProfile.Nickname
+				response.PreferredUserName = user.GetPreferredUsername()
+				response.Gender = user.UserProfile.Gender
+				response.BirthDate = user.UserProfile.BirthDate
+				response.ZoneInfo = user.UserProfile.ZoneInfo
+				response.Locale = user.UserProfile.Locale
+				response.Website = user.UserProfile.Website
+				response.Profile = user.UserProfile.Profile
+				response.ProfilePicture = user.UserProfile.ProfilePicture
+				response.UpdatedAt = user.UserProfile.UpdatedAt
+			}
+
+			if slices.Contains(scopes, oidc.ScopeAddress) && user.UserInformation.Address != nil {
+				response.Address = &config.UserAddress{}
+				response.Address.Formatted = user.GetFormattedAddress()
+				response.Address.Street = user.UserInformation.Address.Street
+				response.Address.City = user.UserInformation.Address.City
+				response.Address.PostalCode = user.UserInformation.Address.PostalCode
+				response.Address.Region = user.UserInformation.Address.Region
+				response.Address.Country = user.UserInformation.Address.Country
+			}
+
+			if slices.Contains(scopes, oidc.ScopeEmail) {
+				response.Email = user.UserInformation.Email
+				response.EmailVerified = user.UserInformation.EmailVerified
+			}
+
+			if slices.Contains(scopes, oidc.ScopePhone) {
+				response.PhoneNumber = user.UserInformation.PhoneNumber
+				response.PhoneVerified = user.UserInformation.PhoneVerified
+			}
+
 		} else {
 			h.errorHandler.BadRequestHandler(w, r)
 			return
 		}
 
 		var result interface{}
-		result = userInfoResponse
+		result = response
 
-		if valid {
-			roles := user.GetRoles(client.Id)
-			if len(roles) != 0 {
-				updateResult, updateError := updateRoles(userInfoResponse, client.GetRolesClaim(), roles)
-				if updateError == nil {
-					result = updateResult
-				}
+		roles := user.GetRoles(client.Id)
+		if len(roles) != 0 {
+			updateResult, updateError := updateRoles(response, client.GetRolesClaim(), roles)
+			if updateError == nil {
+				result = updateResult
 			}
 		}
 
@@ -62,7 +99,7 @@ func (h *UserInfoHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func updateRoles(userProfile *config.UserProfile, rolesName string, roles []string) (map[string]interface{}, error) {
+func updateRoles(userProfile *oidc.UserInfoResponse, rolesName string, roles []string) (map[string]interface{}, error) {
 	marshaledUserProfile, marshalError := json.Marshal(userProfile)
 	if marshalError != nil {
 		return nil, marshalError

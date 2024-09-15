@@ -64,9 +64,14 @@ users:
     testclient:
       - foo_role
       - bar_role
-  profile:
+  userProfile:
     givenName: John
     familyName: Doe
+  userInformation:
+    email: jone.doe@foo.com
+    emailVerified: true
+    phoneNumber: 555 1234 5678
+    phoneVerified: true
     address:
       street: Mainstreet 1
       city: Sometown
