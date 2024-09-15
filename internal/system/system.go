@@ -6,11 +6,14 @@ import (
 	"os/signal"
 	"sync"
 	"syscall"
+	"time"
 )
 
 var signalLock = &sync.Mutex{}
 var sigs chan os.Signal
 var signalSingleton *byte
+
+var startTime = time.Now()
 
 var exitFunc = os.Exit
 
@@ -24,6 +27,10 @@ func GetSignalChannel() chan os.Signal {
 		signalSingleton = new(byte)
 	}
 	return sigs
+}
+
+func GetStartTime() time.Time {
+	return startTime
 }
 
 // CriticalError handles a critical error, prints a message and exists the application with a error code.

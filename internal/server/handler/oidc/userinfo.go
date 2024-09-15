@@ -7,6 +7,7 @@ import (
 	"github.com/webishdev/stopnik/internal/manager/token"
 	"github.com/webishdev/stopnik/internal/oidc"
 	errorHandler "github.com/webishdev/stopnik/internal/server/handler/error"
+	"github.com/webishdev/stopnik/internal/system"
 	"github.com/webishdev/stopnik/log"
 	"net/http"
 	"slices"
@@ -49,7 +50,7 @@ func (h *UserInfoHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				response.Website = user.UserProfile.Website
 				response.Profile = user.UserProfile.Profile
 				response.Picture = user.UserProfile.Picture
-				response.UpdatedAt = user.UserProfile.UpdatedAt
+				response.UpdatedAt = system.GetStartTime().Unix()
 			}
 
 			if slices.Contains(scopes, oidc.ScopeAddress) && user.UserInformation.Address != nil {

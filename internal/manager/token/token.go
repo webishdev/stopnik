@@ -381,6 +381,7 @@ func generateIdToken(requestData *internalHttp.RequestData, config *config.Confi
 		builder.Website(user.UserProfile.Website)
 		builder.Profile(user.UserProfile.Profile)
 		builder.Picture(user.UserProfile.Picture)
+		builder.UpdatedAt(system.GetStartTime())
 	}
 
 	if slices.Contains(scopes, oidc.ScopeAddress) {

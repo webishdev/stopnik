@@ -87,7 +87,7 @@ type UserProfile struct {
 	Website           string `yaml:"website" json:"website,omitempty"`
 	Profile           string `yaml:"profile" json:"profile,omitempty"`
 	Picture           string `yaml:"picture" json:"picture,omitempty"`
-	UpdatedAt         string `json:"updated_at,omitempty"`
+	UpdatedAt         int64  `json:"updated_at,omitempty"`
 }
 
 type UserInformation struct {
