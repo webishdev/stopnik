@@ -156,7 +156,7 @@ func (tokenManager *Manager) CreateAccessTokenResponse(r *http.Request, username
 		ExpiresIn:        int(accessTokenDuration / time.Second),
 	}
 
-	if client.GetRefreshTTL() > 0 {
+	if (!client.Oidc && client.GetRefreshTTL() > 0) || (client.Oidc && oidc.HasOfflineAccessScope(scopes) && client.GetRefreshTTL() > 0) {
 		refreshTokenDuration := time.Minute * time.Duration(client.GetRefreshTTL())
 		refreshTokenKey := tokenManager.generateAccessToken(requestData, username, client, refreshTokenDuration)
 		refreshToken := &oauth2.RefreshToken{

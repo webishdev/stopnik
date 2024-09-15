@@ -43,7 +43,7 @@ func Test_AccessTokenResponse(t *testing.T) {
 
 			requestScopes := []string{"abc", "def"}
 			if test.idTTL > 0 {
-				requestScopes = append(requestScopes, oidc.ScopeOpenId)
+				requestScopes = append(requestScopes, oidc.ScopeOpenId, oidc.ScopeOfflineAccess)
 			}
 
 			request := httptest.NewRequest(http.MethodPost, endpoint.Token, nil)
