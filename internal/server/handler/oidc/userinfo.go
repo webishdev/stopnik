@@ -37,7 +37,7 @@ func (h *UserInfoHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		if valid {
 			response.Subject = user.Username
 			if slices.Contains(scopes, oidc.ScopeProfile) {
-				response.Name = user.UserProfile.GivenName + " " + user.UserProfile.FamilyName
+				response.Name = user.GetName()
 				response.GivenName = user.UserProfile.GivenName
 				response.FamilyName = user.UserProfile.FamilyName
 				response.Nickname = user.UserProfile.Nickname
@@ -48,7 +48,7 @@ func (h *UserInfoHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				response.Locale = user.UserProfile.Locale
 				response.Website = user.UserProfile.Website
 				response.Profile = user.UserProfile.Profile
-				response.ProfilePicture = user.UserProfile.ProfilePicture
+				response.Picture = user.UserProfile.Picture
 				response.UpdatedAt = user.UserProfile.UpdatedAt
 			}
 

@@ -5,6 +5,7 @@ import (
 	"github.com/webishdev/stopnik/internal/endpoint"
 	internalHttp "github.com/webishdev/stopnik/internal/http"
 	"github.com/webishdev/stopnik/internal/oauth2"
+	"github.com/webishdev/stopnik/internal/oidc"
 	"github.com/webishdev/stopnik/internal/pkce"
 	errorHandler "github.com/webishdev/stopnik/internal/server/handler/error"
 	"github.com/webishdev/stopnik/log"
@@ -137,6 +138,7 @@ func (h *DiscoveryHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			RevocationEndpointAuthSigningAlgValuesSupported:    signatureAlgorithmSupported,
 			IdTokenSigningAlgValuesSupported:                   signatureAlgorithmSupported,
 			SubjectTypesSupported:                              []string{"public"},
+			ScopesSupported:                                    []string{oidc.ScopeOpenId, oidc.ScopeProfile, oidc.ScopeAddress, oidc.ScopeEmail, oidc.ScopePhone, oidc.ScopeOfflineAccess},
 		}
 		jsonError := internalHttp.SendJson(metadataResponse, w, r)
 		if jsonError != nil {

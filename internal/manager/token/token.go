@@ -18,6 +18,7 @@ import (
 	"github.com/webishdev/stopnik/internal/system"
 	"github.com/webishdev/stopnik/log"
 	"net/http"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -339,6 +340,7 @@ func generateIdToken(requestData *internalHttp.RequestData, config *config.Confi
 	atHash := idTokenInput.AtHash
 	nonce := idTokenInput.Nonce
 	authTime := idTokenInput.AuthTime
+	scopes := idTokenInput.Scopes
 	idTokenDuration := time.Minute * time.Duration(idTokenInput.Client.GetIdTTL())
 	tokenId := uuid.NewString()
 	builder := openid.NewBuilder().
@@ -365,6 +367,41 @@ func generateIdToken(requestData *internalHttp.RequestData, config *config.Confi
 	roles := user.GetRoles(client.Id)
 	if len(roles) != 0 {
 		builder.Claim(client.GetRolesClaim(), roles)
+	}
+
+	if slices.Contains(scopes, oidc.ScopeProfile) {
+		builder.Name(user.GetName())
+		builder.FamilyName(user.UserProfile.FamilyName)
+		builder.GivenName(user.UserProfile.GivenName)
+		builder.Nickname(user.UserProfile.Nickname)
+		builder.PreferredUsername(user.GetPreferredUsername())
+		builder.Gender(user.UserProfile.Gender)
+		builder.Zoneinfo(user.UserProfile.ZoneInfo)
+		builder.Locale(user.UserProfile.Locale)
+		builder.Website(user.UserProfile.Website)
+		builder.Profile(user.UserProfile.Profile)
+		builder.Picture(user.UserProfile.Picture)
+	}
+
+	if slices.Contains(scopes, oidc.ScopeAddress) {
+		address := openid.NewAddress()
+		addStringAddressClaim(address, openid.AddressFormattedKey, user.GetFormattedAddress())
+		addStringAddressClaim(address, openid.AddressStreetAddressKey, user.UserInformation.Address.Street)
+		addStringAddressClaim(address, openid.AddressLocalityKey, user.UserInformation.Address.City)
+		addStringAddressClaim(address, openid.AddressPostalCodeKey, user.UserInformation.Address.PostalCode)
+		addStringAddressClaim(address, openid.AddressRegionKey, user.UserInformation.Address.Region)
+		addStringAddressClaim(address, openid.AddressCountryKey, user.UserInformation.Address.Country)
+		builder.Address(address)
+	}
+
+	if slices.Contains(scopes, oidc.ScopeEmail) {
+		builder.Email(user.UserInformation.Email)
+		builder.EmailVerified(user.UserInformation.EmailVerified)
+	}
+
+	if slices.Contains(scopes, oidc.ScopePhone) {
+		builder.PhoneNumber(user.UserInformation.PhoneNumber)
+		builder.PhoneNumberVerified(user.UserInformation.PhoneVerified)
 	}
 
 	token, builderError := builder.Build()
@@ -426,6 +463,15 @@ func addStringClaim(builder *jwt.Builder, claimName string, claimValue string) {
 func addStringClaimOpenId(builder *openid.Builder, claimName string, claimValue string) {
 	if claimValue != "" {
 		builder.Claim(claimName, claimValue)
+	}
+}
+
+func addStringAddressClaim(builder *openid.AddressClaim, claimName string, claimValue string) {
+	if claimValue != "" {
+		err := builder.Set(claimName, claimValue)
+		if err != nil {
+			system.Error(err)
+		}
 	}
 }
 

@@ -86,7 +86,7 @@ type UserProfile struct {
 	Locale            string `yaml:"locale" json:"locale,omitempty"`
 	Website           string `yaml:"website" json:"website,omitempty"`
 	Profile           string `yaml:"profile" json:"profile,omitempty"`
-	ProfilePicture    string `yaml:"profilePicture" json:"profile_picture,omitempty"`
+	Picture           string `yaml:"picture" json:"picture,omitempty"`
 	UpdatedAt         string `json:"updated_at,omitempty"`
 }
 
@@ -511,6 +511,19 @@ func (user *User) GetPreferredUsername() string {
 		return user.Username
 	} else {
 		return user.UserProfile.PreferredUserName
+	}
+}
+
+// GetName returns the name for a given User.
+func (user *User) GetName() string {
+	if user.UserProfile.GivenName != "" && user.UserProfile.FamilyName != "" {
+		return user.UserProfile.GivenName + " " + user.UserProfile.FamilyName
+	} else if user.UserProfile.GivenName != "" && user.UserProfile.FamilyName == "" {
+		return user.UserProfile.GivenName
+	} else if user.UserProfile.GivenName == "" && user.UserProfile.FamilyName != "" {
+		return user.UserProfile.FamilyName
+	} else {
+		return ""
 	}
 }
 
