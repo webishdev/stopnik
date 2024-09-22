@@ -19,16 +19,24 @@ func Test_AccessTokenResponse(t *testing.T) {
 		opaque          bool
 		refreshTokenTTL int
 		idTTL           int
+		authCode        string
 	}
 
 	var opaqueTokenParameter = []tokenTestParameter{
-		{true, 0, 0},
-		{false, 0, 0},
-		{true, 100, 0},
-		{false, 100, 0},
-		{false, 0, 100},
-		{false, 100, 100},
-		{false, 100, 100},
+		{true, 0, 0, ""},
+		{true, 0, 0, "abcd"},
+		{false, 0, 0, ""},
+		{false, 0, 0, "abcd"},
+		{true, 100, 0, ""},
+		{true, 100, 0, "abcd"},
+		{false, 100, 0, ""},
+		{false, 100, 0, "abcd"},
+		{false, 0, 100, ""},
+		{false, 0, 100, "abcd"},
+		{false, 100, 100, ""},
+		{false, 100, 100, "abcd"},
+		{false, 100, 100, ""},
+		{false, 100, 100, "abcd"},
 	}
 
 	for _, test := range opaqueTokenParameter {
@@ -43,11 +51,11 @@ func Test_AccessTokenResponse(t *testing.T) {
 
 			requestScopes := []string{"abc", "def"}
 			if test.idTTL > 0 {
-				requestScopes = append(requestScopes, oidc.ScopeOpenId, oidc.ScopeOfflineAccess)
+				requestScopes = append(requestScopes, oidc.ScopeOpenId, oidc.ScopeOfflineAccess, oidc.ScopeProfile, oidc.ScopeAddress, oidc.ScopeEmail, oidc.ScopePhone)
 			}
 
 			request := httptest.NewRequest(http.MethodPost, endpoint.Token, nil)
-			accessTokenResponse := tokenManager.CreateAccessTokenResponse(request, "foo", client, nil, requestScopes, "", "")
+			accessTokenResponse := tokenManager.CreateAccessTokenResponse(request, "foo", client, nil, requestScopes, "", test.authCode)
 
 			if accessTokenResponse.AccessTokenValue == "" {
 				t.Error("empty access token")
@@ -116,16 +124,25 @@ func Test_AccessTokenResponse(t *testing.T) {
 				t.Error("wrong refresh token")
 			}
 
-			tokenManager.RevokeRefreshToken(refreshToken)
-			_, refreshTokenExists = tokenManager.GetRefreshToken(accessTokenResponse.RefreshTokenValue)
-			if refreshTokenExists {
-				t.Error("refresh token should not exists")
-			}
+			if test.authCode == "" {
 
-			tokenManager.RevokeAccessToken(accessToken)
-			_, accessTokenExists = tokenManager.GetAccessToken(accessTokenResponse.AccessTokenValue)
-			if accessTokenExists {
-				t.Error("access token should not exists")
+				tokenManager.RevokeRefreshToken(refreshToken)
+				_, refreshTokenExists = tokenManager.GetRefreshToken(accessTokenResponse.RefreshTokenValue)
+				if refreshTokenExists {
+					t.Error("refresh token should not exists")
+				}
+
+				tokenManager.RevokeAccessToken(accessToken)
+				_, accessTokenExists = tokenManager.GetAccessToken(accessTokenResponse.AccessTokenValue)
+				if accessTokenExists {
+					t.Error("access token should not exists")
+				}
+			} else {
+				tokenManager.RevokeAccessTokenByAuthorizationCode(test.authCode)
+				_, accessTokenExists = tokenManager.GetAccessToken(accessTokenResponse.AccessTokenValue)
+				if accessTokenExists {
+					t.Error("access token should not exists")
+				}
 			}
 		})
 	}
@@ -211,12 +228,30 @@ func createTestConfig(t *testing.T, opaque bool, refreshTokenTTL int, idTTokenTT
 				IdTTL:        idTTokenTTL,
 				Oidc:         isOidc,
 				PrivateKey:   keyPath,
+				Claims: []config.Claim{
+					{"foo", "bar"},
+				},
 			},
 		},
 		Users: []config.User{
 			{
 				Username: "foo",
 				Password: "d82c4eb5261cb9c8aa9855edd67d1bd10482f41529858d925094d173fa662aa91ff39bc5b188615273484021dfb16fd8284cf684ccf0fc795be3aa2fc1e6c181",
+				UserProfile: config.UserProfile{
+					PreferredUserName: "foofoo",
+					GivenName:         "Hans",
+					FamilyName:        "Mayer",
+				},
+				UserInformation: config.UserInformation{
+					Address: &config.UserAddress{
+						Street:     "Main Street 123",
+						PostalCode: "98765",
+						City:       "Maintown",
+					},
+				},
+				Roles: map[string][]string{
+					"foo": {"Admin", "User"},
+				},
 			},
 		},
 	}

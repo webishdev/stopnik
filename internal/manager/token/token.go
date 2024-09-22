@@ -381,17 +381,19 @@ func generateIdToken(requestData *internalHttp.RequestData, config *config.Confi
 		builder.Website(user.UserProfile.Website)
 		builder.Profile(user.UserProfile.Profile)
 		builder.Picture(user.UserProfile.Picture)
-		builder.UpdatedAt(system.GetStartTime())
+
 	}
 
 	if slices.Contains(scopes, oidc.ScopeAddress) {
 		address := openid.NewAddress()
-		addStringAddressClaim(address, openid.AddressFormattedKey, user.GetFormattedAddress())
-		addStringAddressClaim(address, openid.AddressStreetAddressKey, user.UserInformation.Address.Street)
-		addStringAddressClaim(address, openid.AddressLocalityKey, user.UserInformation.Address.City)
-		addStringAddressClaim(address, openid.AddressPostalCodeKey, user.UserInformation.Address.PostalCode)
-		addStringAddressClaim(address, openid.AddressRegionKey, user.UserInformation.Address.Region)
-		addStringAddressClaim(address, openid.AddressCountryKey, user.UserInformation.Address.Country)
+		if user.UserInformation.Address != nil {
+			addStringAddressClaim(address, openid.AddressFormattedKey, user.GetFormattedAddress())
+			addStringAddressClaim(address, openid.AddressStreetAddressKey, user.UserInformation.Address.Street)
+			addStringAddressClaim(address, openid.AddressLocalityKey, user.UserInformation.Address.City)
+			addStringAddressClaim(address, openid.AddressPostalCodeKey, user.UserInformation.Address.PostalCode)
+			addStringAddressClaim(address, openid.AddressRegionKey, user.UserInformation.Address.Region)
+			addStringAddressClaim(address, openid.AddressCountryKey, user.UserInformation.Address.Country)
+		}
 		builder.Address(address)
 	}
 
