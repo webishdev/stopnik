@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-func Test_Scopes(t *testing.T) {
+func Test_ScopesValues(t *testing.T) {
 	type scopeParameter struct {
 		value    string
 		expected string
@@ -24,7 +24,9 @@ func Test_Scopes(t *testing.T) {
 			}
 		})
 	}
+}
 
+func Test_HasOidcScope(t *testing.T) {
 	type hasScopeParameter struct {
 		values   []string
 		expected bool
@@ -46,7 +48,35 @@ func Test_Scopes(t *testing.T) {
 		t.Run(testMessage, func(t *testing.T) {
 			result := HasOidcScope(test.values)
 			if result != test.expected {
-				t.Errorf("should have OIDC scopes %v", test.values)
+				t.Errorf("should have OIDC scope %v", test.values)
+			}
+		})
+	}
+}
+
+func Test_HasOfflineAccessScope(t *testing.T) {
+	type hasScopeParameter struct {
+		values   []string
+		expected bool
+	}
+
+	var hasScopeParameters = []hasScopeParameter{
+		{[]string{ScopeOpenId}, false},
+		{[]string{ScopeOpenId, ScopeOfflineAccess}, true},
+		{[]string{ScopeOpenId, "foo", "bar"}, false},
+		{[]string{ScopeOfflineAccess}, true},
+		{[]string{ScopeOfflineAccess, "foo"}, true},
+		{[]string{ScopeOfflineAccess, "foo", "bar"}, true},
+		{[]string{"foo", "bar"}, false},
+		{[]string{"foo"}, false},
+	}
+
+	for _, test := range hasScopeParameters {
+		testMessage := fmt.Sprintf("Has OfficeAccess scope %s", test.values)
+		t.Run(testMessage, func(t *testing.T) {
+			result := HasOfflineAccessScope(test.values)
+			if result != test.expected {
+				t.Errorf("should have OfficeAccess scope %v", test.values)
 			}
 		})
 	}
