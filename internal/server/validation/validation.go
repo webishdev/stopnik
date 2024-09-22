@@ -12,15 +12,23 @@ import (
 	"time"
 )
 
+type now func() time.Time
+
 type RequestValidator struct {
 	config             *config.Config
+	now                now
 	serverSecretLoader crypto.ServerSecretLoader
 }
 
 func NewRequestValidator() *RequestValidator {
+	return newRequestValidator(time.Now)
+}
+
+func newRequestValidator(now now) *RequestValidator {
 	currentConfig := config.GetConfigInstance()
 	return &RequestValidator{
 		config:             currentConfig,
+		now:                now,
 		serverSecretLoader: crypto.NewServerSecretLoader(),
 	}
 }
@@ -31,8 +39,8 @@ func (validator *RequestValidator) NewLoginToken(id string) string {
 	builder := jwt.NewBuilder().
 		JwtID(tokenId).
 		Subject(id).
-		Expiration(time.Now().Add(duration)).
-		IssuedAt(time.Now())
+		Expiration(validator.now().Add(duration)).
+		IssuedAt(validator.now())
 
 	token, tokenError := builder.Build()
 	if tokenError != nil {
