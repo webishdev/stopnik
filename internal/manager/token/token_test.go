@@ -2,10 +2,12 @@ package token
 
 import (
 	"fmt"
+	"github.com/lestrrat-go/jwx/v2/jwt"
 	"github.com/webishdev/stopnik/internal/config"
 	"github.com/webishdev/stopnik/internal/crypto"
 	"github.com/webishdev/stopnik/internal/endpoint"
 	internalHttp "github.com/webishdev/stopnik/internal/http"
+	"github.com/webishdev/stopnik/internal/manager/key"
 	"github.com/webishdev/stopnik/internal/oauth2"
 	"github.com/webishdev/stopnik/internal/oidc"
 	"net/http"
@@ -14,14 +16,14 @@ import (
 	"testing"
 )
 
-func Test_AccessTokenResponse(t *testing.T) {
-	type tokenTestParameter struct {
-		opaque          bool
-		refreshTokenTTL int
-		idTTL           int
-		authCode        string
-	}
+type tokenTestParameter struct {
+	opaque          bool
+	refreshTokenTTL int
+	idTTL           int
+	authCode        string
+}
 
+func Test_AccessTokenResponse(t *testing.T) {
 	var opaqueTokenParameter = []tokenTestParameter{
 		{true, 0, 0, ""},
 		{true, 0, 0, "abcd"},
@@ -57,48 +59,11 @@ func Test_AccessTokenResponse(t *testing.T) {
 			request := httptest.NewRequest(http.MethodPost, endpoint.Token, nil)
 			accessTokenResponse := tokenManager.CreateAccessTokenResponse(request, "foo", client, nil, requestScopes, "", test.authCode)
 
-			if accessTokenResponse.AccessTokenValue == "" {
-				t.Error("empty access token")
-			}
-
-			if test.refreshTokenTTL == 0 && accessTokenResponse.RefreshTokenValue != "" {
-				t.Error("refresh token should not exists")
-			}
-
-			if test.refreshTokenTTL > 0 && accessTokenResponse.RefreshTokenValue == "" {
-				t.Error("refresh token should exists")
-			}
-
-			if test.idTTL > 0 && !client.Oidc {
-				t.Error("client should be configured for OIDC because of id token")
-			}
-
-			if test.idTTL == 0 && accessTokenResponse.IdTokenValue != "" {
-				t.Error("id token should not exists")
-			}
-
-			if test.idTTL > 0 && accessTokenResponse.IdTokenValue == "" {
-				t.Error("id token should exists")
-			}
-
-			if accessTokenResponse.TokenType != oauth2.TtBearer {
-				t.Error("wrong token type")
-			}
+			assertTokenResponse(t, accessTokenResponse, test, client)
 
 			authorizationHeader := fmt.Sprintf("%s %s", internalHttp.AuthBearer, accessTokenResponse.AccessTokenValue)
 
-			user, _, scopes, valid := tokenManager.validateAccessTokenHeader(authorizationHeader)
-			if !valid {
-				t.Error("user does not exist")
-			}
-
-			if user.Username != "foo" {
-				t.Error("wrong username")
-			}
-
-			if !reflect.DeepEqual(scopes, requestScopes) {
-				t.Errorf("assertion error, %v != %v", scopes, requestScopes)
-			}
+			assertAuthorizationHeader(t, tokenManager, authorizationHeader, requestScopes)
 
 			accessToken, accessTokenExists := tokenManager.GetAccessToken(accessTokenResponse.AccessTokenValue)
 
@@ -215,6 +180,62 @@ func Test_HashToken(t *testing.T) {
 
 }
 
+func assertAuthorizationHeader(t *testing.T, tokenManager *Manager, authorizationHeader string, requestScopes []string) {
+	user, _, scopes, valid := tokenManager.validateAccessTokenHeader(authorizationHeader)
+	if !valid {
+		t.Error("user does not exist")
+	}
+
+	if user.Username != "foo" {
+		t.Error("wrong username")
+	}
+
+	if !reflect.DeepEqual(scopes, requestScopes) {
+		t.Errorf("assertion error, %v != %v", scopes, requestScopes)
+	}
+}
+
+func assertTokenResponse(t *testing.T, accessTokenResponse oauth2.AccessTokenResponse, test tokenTestParameter, client *config.Client) {
+	if accessTokenResponse.AccessTokenValue == "" {
+		t.Error("empty access token")
+	}
+
+	if test.refreshTokenTTL == 0 && accessTokenResponse.RefreshTokenValue != "" {
+		t.Error("refresh token should not exists")
+	}
+
+	if test.refreshTokenTTL > 0 && accessTokenResponse.RefreshTokenValue == "" {
+		t.Error("refresh token should exists")
+	}
+
+	if test.idTTL > 0 && !client.Oidc {
+		t.Error("client should be configured for OIDC because of id token")
+	}
+
+	if test.idTTL == 0 && accessTokenResponse.IdTokenValue != "" {
+		t.Error("id token should not exists")
+	}
+
+	if test.idTTL > 0 && accessTokenResponse.IdTokenValue == "" {
+		t.Error("id token should exists")
+
+		keyLoader := key.GetDefaultKeyLoaderInstance()
+		options := keyLoader.GetServerKey()
+		parsedIdToken, idTokenParseError := jwt.Parse([]byte(accessTokenResponse.IdTokenValue), options)
+		if idTokenParseError != nil {
+			t.Error(idTokenParseError)
+		}
+
+		if parsedIdToken.Subject() != "foo" {
+			t.Error("expected subject to be 'foo'")
+		}
+	}
+
+	if accessTokenResponse.TokenType != oauth2.TtBearer {
+		t.Error("wrong token type")
+	}
+}
+
 func createTestConfig(t *testing.T, opaque bool, refreshTokenTTL int, idTTokenTTL int, keyPath string) *config.Config {
 	var isOidc = idTTokenTTL > 0
 	testConfig := &config.Config{
@@ -229,7 +250,7 @@ func createTestConfig(t *testing.T, opaque bool, refreshTokenTTL int, idTTokenTT
 				Oidc:         isOidc,
 				PrivateKey:   keyPath,
 				Claims: []config.Claim{
-					{"foo", "bar"},
+					{Name: "foo", Value: "bar"},
 				},
 			},
 		},
