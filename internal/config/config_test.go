@@ -22,6 +22,7 @@ type testExpectedClientValues struct {
 
 type testExpectedUserValues struct {
 	username                  string
+	expectedName              string
 	expectedPreferredUserName string
 	expectedRoles             []string
 	expectedAddress           string
@@ -287,6 +288,11 @@ func Test_EmptyUIConfiguration(t *testing.T) {
 		t.Error("expected logo image to be nil")
 	}
 
+	htmlTitle := config.GetHtmlTitle()
+	if htmlTitle != "" {
+		t.Error("expected html title to be empty")
+	}
+
 	invalidCredentialsMessage := config.GetInvalidCredentialsMessage()
 	if invalidCredentialsMessage != "Invalid credentials" {
 		t.Error("expected invalid credential message to be 'Invalid credentials'")
@@ -310,6 +316,7 @@ func Test_SimpleUIConfiguration(t *testing.T) {
 				Title:                     "Oh my Foo!",
 				FooterText:                "In the end",
 				LogoImage:                 "../../.test_files/test_logo.png",
+				HtmlTitle:                 "My new title",
 				InvalidCredentialsMessage: "Go away!",
 				ExpiredLoginMessage:       "Time is up!",
 			},
@@ -354,6 +361,11 @@ func Test_SimpleUIConfiguration(t *testing.T) {
 		t.Error("expected logo image to be non-nil")
 	}
 
+	htmlTitle := config.GetHtmlTitle()
+	if htmlTitle != "My new title" {
+		t.Error("expected html title to be 'My new title'")
+	}
+
 	invalidCredentialsMessage := config.GetInvalidCredentialsMessage()
 	if invalidCredentialsMessage != "Go away!" {
 		t.Error("expected invalid credential message to be 'Go away!'")
@@ -377,6 +389,8 @@ func Test_ValidUsers(t *testing.T) {
 					Password: "d82c4eb5261cb9c8aa9855edd67d1bd10482f41529858d925094d173fa662aa91ff39bc5b188615273484021dfb16fd8284cf684ccf0fc795be3aa2fc1e6c181",
 					UserProfile: UserProfile{
 						PreferredUserName: "foofoo",
+						GivenName:         "Hans",
+						FamilyName:        "Mayer",
 					},
 					UserInformation: UserInformation{
 						Address: &UserAddress{
@@ -392,10 +406,20 @@ func Test_ValidUsers(t *testing.T) {
 				{
 					Username: "bar",
 					Password: "3c9909afec25354d551dae21590bb26e38d53f2173b8d3dc3eee4c047e7ab1c1eb8b85103e3be7ba613b31bb5c9c36214dc9f14a42fd7a2fdb84856bca5c44c2",
+					UserProfile: UserProfile{
+						GivenName: "Hans",
+					},
 				},
 				{
 					Username: "moo",
 					Password: "ddaf35a193617abacc417349ae20413112e6fa4e89a97ea20a9eeee64b55d39a2192992a274fc1a836ba3c23a3feebbd454d4423643ce80e2a9ac94fa54ca49f",
+				},
+				{
+					Username: "moo_more",
+					Password: "ddaf35a193617abacc417349ae20413112e6fa4e89a97ea20a9eeee64b55d39a2192992a274fc1a836ba3c23a3feebbd454d4423643ce80e2a9ac94fa54ca49f",
+					UserProfile: UserProfile{
+						FamilyName: "Mayer",
+					},
 				},
 			},
 		}
@@ -414,16 +438,18 @@ func Test_ValidUsers(t *testing.T) {
 		t.Fatal("config was nil")
 	}
 
-	if len(config.Users) != 3 {
+	if len(config.Users) != 4 {
 		t.Errorf("expected 3 users, got %d", len(config.Users))
 	}
 
 	assertUserExistsWithName(t, "foo", config)
 	assertUserExistsWithName(t, "bar", config)
 	assertUserExistsWithName(t, "moo", config)
+	assertUserExistsWithName(t, "moo_more", config)
 
 	assertUserValues(t, config, "foo", testExpectedUserValues{
 		username:                  "foo",
+		expectedName:              "Hans Mayer",
 		expectedPreferredUserName: "foofoo",
 		expectedRoles:             []string{"Admin", "User"},
 		expectedAddress: `Main Street 123
@@ -433,11 +459,20 @@ Maintown
 	})
 	assertUserValues(t, config, "bar", testExpectedUserValues{
 		username:                  "bar",
+		expectedName:              "Hans",
 		expectedPreferredUserName: "bar",
+		expectedAddress:           "",
 	})
 	assertUserValues(t, config, "", testExpectedUserValues{
 		username:                  "moo",
 		expectedPreferredUserName: "moo",
+		expectedAddress:           "",
+	})
+	assertUserValues(t, config, "", testExpectedUserValues{
+		username:                  "moo_more",
+		expectedName:              "Mayer",
+		expectedPreferredUserName: "moo_more",
+		expectedAddress:           "",
 	})
 }
 
@@ -1033,12 +1068,14 @@ func assertUserValues(t *testing.T, config *Config, clientId string, expected te
 			t.Error("expected correct roles for user")
 		}
 	}
-	if expected.expectedAddress != "" {
-		formattedAddress := user.GetFormattedAddress()
-		if formattedAddress != expected.expectedAddress {
-			t.Errorf("expected correct address formatted for user, got %v, expected %v", user.GetFormattedAddress(), expected.expectedAddress)
-		}
+	if expected.expectedName != user.GetName() {
+		t.Errorf("expected correct name, got %v, expected %v", user.GetName(), expected.expectedName)
 	}
+
+	if user.GetFormattedAddress() != expected.expectedAddress {
+		t.Errorf("expected correct address formatted for user, got %v, expected %v", user.GetFormattedAddress(), expected.expectedAddress)
+	}
+
 }
 
 func assertClientExistsWithId(t *testing.T, id string, config *Config) {
