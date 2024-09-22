@@ -34,7 +34,7 @@ func Test_ExpiringStore(t *testing.T) {
 		return mockedTickerChannel
 	}
 
-	var timer = &Timer{
+	var timer = &timer{
 		now:           now,
 		tickerChannel: tickerChannel,
 	}

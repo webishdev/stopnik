@@ -6,12 +6,12 @@ import (
 	"time"
 )
 
-type Now func() time.Time
-type TickerChannel func() <-chan time.Time
+type now func() time.Time
+type tickerChannel func() <-chan time.Time
 
-type Timer struct {
-	now           Now
-	tickerChannel TickerChannel
+type timer struct {
+	now           now
+	tickerChannel tickerChannel
 }
 
 type expiringType[T any] struct {
@@ -23,7 +23,7 @@ type timedStore[T any] struct {
 	storeMap      map[string]expiringType[*T]
 	mux           *sync.RWMutex
 	tickerChannel <-chan time.Time
-	now           Now
+	now           now
 	duration      time.Duration
 }
 
@@ -50,9 +50,9 @@ type ExpiringStore[T any] interface {
 	Store[T]
 }
 
-func NewTimer() *Timer {
+func NewTimer() *timer {
 	channel := time.NewTicker(time.Minute * time.Duration(1)).C
-	return &Timer{
+	return &timer{
 		now: time.Now,
 		tickerChannel: func() <-chan time.Time {
 			return channel
@@ -75,7 +75,7 @@ func NewTimedStore[T any](duration time.Duration) ExpiringStore[T] {
 	return newTimedStoreWithTimer[T](duration, NewTimer())
 }
 
-func newTimedStoreWithTimer[T any](duration time.Duration, timer *Timer) ExpiringStore[T] {
+func newTimedStoreWithTimer[T any](duration time.Duration, timer *timer) ExpiringStore[T] {
 	tickerChannel := timer.tickerChannel()
 	cache := &timedStore[T]{
 		storeMap:      make(map[string]expiringType[*T]),
