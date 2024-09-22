@@ -7,7 +7,7 @@ import (
 	"time"
 )
 
-func Test_Store(t *testing.T) {
+func Test_ExpiringStore(t *testing.T) {
 	type Tester struct {
 		name string
 		nice bool
@@ -44,38 +44,19 @@ func Test_Store(t *testing.T) {
 		nice: true,
 	}
 
-	t.Run("Set, get and delete", func(t *testing.T) {
-		simpleStore := NewStore[Tester]()
+	t.Run("New default timed store", func(t *testing.T) {
+		storeWithTimer := NewDefaultTimedStore[Tester]()
 
-		simpleStore.Set("foo", tester)
-		simpleStore.Set("bar", tester)
-
-		fooValueFromStore, fooValueExists := simpleStore.Get("foo")
-
-		if !fooValueExists {
-			t.Error("value did not exist in store")
+		if storeWithTimer == nil {
+			t.Error("store should be created")
 		}
+	})
 
-		if !reflect.DeepEqual(fooValueFromStore, tester) {
-			t.Error("value did not match")
-		}
+	t.Run("New default timed store with duration", func(t *testing.T) {
+		storeWithTimer := NewTimedStore[Tester](time.Hour * time.Duration(1))
 
-		values := simpleStore.GetValues()
-		if len(values) != 2 {
-			t.Error("amount of values did not match")
-		}
-
-		simpleStore.Delete("foo")
-
-		_, fooValueExists = simpleStore.Get("foo")
-
-		if fooValueExists {
-			t.Error("value did exist in store after delete")
-		}
-
-		values = simpleStore.GetValues()
-		if len(values) != 1 {
-			t.Error("amount of values did not match")
+		if storeWithTimer == nil {
+			t.Error("store should be created")
 		}
 	})
 
@@ -159,12 +140,57 @@ func Test_Store(t *testing.T) {
 			t.Error("amount of values did not match")
 		}
 	})
+}
 
-	t.Run("Create timer", func(t *testing.T) {
-		newTimer := NewTimer()
+func Test_SimpleStoreSetGetAndDelete(t *testing.T) {
+	type Tester struct {
+		name string
+		nice bool
+	}
 
-		if newTimer == nil {
-			t.Error("timer was not created")
-		}
-	})
+	tester := &Tester{
+		name: "foo",
+		nice: true,
+	}
+
+	simpleStore := NewStore[Tester]()
+
+	simpleStore.Set("foo", tester)
+	simpleStore.Set("bar", tester)
+
+	fooValueFromStore, fooValueExists := simpleStore.Get("foo")
+
+	if !fooValueExists {
+		t.Error("value did not exist in store")
+	}
+
+	if !reflect.DeepEqual(fooValueFromStore, tester) {
+		t.Error("value did not match")
+	}
+
+	values := simpleStore.GetValues()
+	if len(values) != 2 {
+		t.Error("amount of values did not match")
+	}
+
+	simpleStore.Delete("foo")
+
+	_, fooValueExists = simpleStore.Get("foo")
+
+	if fooValueExists {
+		t.Error("value did exist in store after delete")
+	}
+
+	values = simpleStore.GetValues()
+	if len(values) != 1 {
+		t.Error("amount of values did not match")
+	}
+}
+
+func Test_CreateTimer(t *testing.T) {
+	newTimer := NewTimer()
+
+	if newTimer == nil {
+		t.Error("timer was not created")
+	}
 }

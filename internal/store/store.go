@@ -33,13 +33,19 @@ type store[T any] struct {
 }
 
 type Store[T any] interface {
+	// Delete removes the stored struct related to given key.
 	Delete(key string)
+	// Set adds the provided value with given key to the store.
 	Set(key string, value *T)
+	// Get retrieves the value from the store by the given key.
 	Get(key string) (*T, bool)
+	// GetValues retrieves all values from the store.
 	GetValues() []*T
 }
 
 type ExpiringStore[T any] interface {
+	// SetWithDuration adds the provided value with given key and duration to the store.
+	// The stored value will be removed after the provided duration.
 	SetWithDuration(key string, value *T, duration time.Duration)
 	Store[T]
 }
@@ -179,10 +185,6 @@ func (s *store[T]) Set(key string, value *T) {
 	s.mux.Lock()
 	defer s.mux.Unlock()
 	s.storeMap[key] = value
-}
-
-func (s *store[T]) SetWithDuration(key string, value *T, _ time.Duration) {
-	s.Set(key, value)
 }
 
 func (s *store[T]) Get(key string) (*T, bool) {
