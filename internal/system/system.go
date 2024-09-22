@@ -29,6 +29,7 @@ func GetSignalChannel() chan os.Signal {
 	return sigs
 }
 
+// GetStartTime provides the start time of the application.
 func GetStartTime() time.Time {
 	return startTime
 }
