@@ -24,6 +24,8 @@ func Test_ValidateClientCredentials(t *testing.T) {
 		{name: "foo", password: "xxx", valid: false},
 		{name: "bar", password: "xxx", valid: false},
 		{name: "moo", password: "", valid: true},
+		{name: "xxx", password: "", valid: false},
+		{name: "moo", password: "bar", valid: false},
 		{name: "", password: "", valid: false},
 	}
 
