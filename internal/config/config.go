@@ -11,6 +11,7 @@ import (
 	"github.com/webishdev/stopnik/internal/system"
 	"github.com/webishdev/stopnik/log"
 	"io"
+	"net/url"
 	"os"
 	"strings"
 	"sync"
@@ -564,23 +565,54 @@ func validateRedirect(clientId string, redirects []string, redirect string) bool
 	redirectCount := len(redirects)
 
 	if redirectCount > 0 {
-		matchesRedirect := false
-		for redirectIndex := range redirectCount {
-			clientRedirect := redirects[redirectIndex]
-			endsWithWildcard := strings.HasSuffix(clientRedirect, "*")
-			var matched bool
-			if endsWithWildcard {
-				clientRedirect = clientRedirect[:len(clientRedirect)-1]
-				matched = strings.HasPrefix(redirect, clientRedirect)
-			} else {
-				matched = redirect == clientRedirect
-			}
-			matchesRedirect = matchesRedirect || matched
+
+		parsedRedirect, parseRedirectError := url.Parse(redirect)
+		if parseRedirectError != nil {
+			return false
 		}
 
-		return matchesRedirect
+		for redirectIndex := range redirectCount {
+			clientRedirect := redirects[redirectIndex]
+			parsedClientRedirect, parseClientRedirectError := url.Parse(clientRedirect)
+			if parseClientRedirectError != nil {
+				continue
+			}
+			matchesRedirect := redirectMatches(parsedClientRedirect, parsedRedirect)
+			if matchesRedirect {
+				return true
+			}
+		}
+
+		return false
 	} else {
 		log.Error("Client %s has no redirect URI(s) configured!", clientId)
 		return false
 	}
+}
+
+// redirectMatches check two given url.URL whether they match for a redirect or not
+func redirectMatches(clientRedirect *url.URL, redirect *url.URL) bool {
+	parsedRedirectPath := removeLeadingSlash(redirect.EscapedPath())
+	parsedClientRedirectPath := removeLeadingSlash(clientRedirect.EscapedPath())
+
+	matchesScheme := redirect.Scheme == clientRedirect.Scheme
+	matchesHost := redirect.Host == clientRedirect.Host
+
+	endsWithWildcard := strings.HasSuffix(clientRedirect.Path, "*")
+	var matchesPath bool
+	if endsWithWildcard {
+		pathWithoutWildcard := parsedClientRedirectPath[:len(parsedClientRedirectPath)-1]
+		matchesPath = strings.HasPrefix(parsedRedirectPath, pathWithoutWildcard)
+	} else {
+		matchesPath = parsedRedirectPath == parsedClientRedirectPath
+	}
+	return matchesScheme && matchesHost && matchesPath
+}
+
+// removeLeadingSlash removes the leading "/" if existing
+func removeLeadingSlash(s string) string {
+	if strings.HasPrefix(s, "/") {
+		return s[1:]
+	}
+	return s
 }

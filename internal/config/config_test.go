@@ -981,7 +981,7 @@ func Test_MinimalConfiguration(t *testing.T) {
 }
 
 func Test_ValidateRedirects(t *testing.T) {
-	var validRedirects = []string{"http://foo.com/callback", "https://foo.com/callback", "https://foo.com/wildcard/*", "https://bar.com", "https://moo.com*"}
+	var validRedirects = []string{"http://foo.com/callback", "https://foo.com/callback", "https://foo.com/wildcard/*", "https://bar.com", "https://moo.com/*", "https://moo.com:8080/*"}
 	type redirectParameter struct {
 		redirect       string
 		expectedResult bool
@@ -1000,6 +1000,11 @@ func Test_ValidateRedirects(t *testing.T) {
 		{"https://moo.com", true},
 		{"https://moo.com/", true},
 		{"https://moo.com/sure", true},
+		{"https://moo.com:9090/sure", false},
+		{"https://moo.com:8080/sure", true},
+		{"https://moo.com/sure?abc=def#hello_world", true},
+		{"broken«ape`was~±here", false},
+		{"", false},
 	}
 
 	for index, test := range redirectParameters {
@@ -1026,6 +1031,31 @@ func Test_NoRedirects(t *testing.T) {
 	if result {
 		t.Error("Redirect validation did not match")
 	}
+}
+
+func Test_RemoveLeadingSlash(t *testing.T) {
+	type parameter struct {
+		value          string
+		expectedResult string
+	}
+
+	var parameters = []parameter{
+		{value: "/foo", expectedResult: "foo"},
+		{value: "foo", expectedResult: "foo"},
+		{value: "/bar", expectedResult: "bar"},
+		{value: "bar", expectedResult: "bar"},
+	}
+
+	for _, test := range parameters {
+		testMessage := fmt.Sprintf("Remove leading slash from %s", test.value)
+		t.Run(testMessage, func(t *testing.T) {
+			result := removeLeadingSlash(test.value)
+			if result != test.expectedResult {
+				t.Error("Removing leading slash did not match")
+			}
+		})
+	}
+
 }
 
 func assertDefaultValues[T any](t *testing.T, value T, defaultValue T, ccc func(a T, b T) T, expect func(a T) bool) {
