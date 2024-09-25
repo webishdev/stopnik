@@ -13,18 +13,16 @@ import (
 	"slices"
 )
 
-type UserInfoResponse struct {
-	config.UserProfile
-	config.UserInformation
-}
-
 type UserInfoHandler struct {
+	config       *config.Config
 	tokenManager *token.Manager
 	errorHandler *errorHandler.Handler
 }
 
 func NewOidcUserInfoHandler(tokenManager *token.Manager) *UserInfoHandler {
+	configInstance := config.GetConfigInstance()
 	return &UserInfoHandler{
+		config:       configInstance,
 		tokenManager: tokenManager,
 		errorHandler: errorHandler.NewErrorHandler(),
 	}
@@ -81,9 +79,12 @@ func (h *UserInfoHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		var result interface{}
 		result = response
 
-		roles := user.GetRoles(client.Id)
-		if len(roles) != 0 {
-			updateResult, updateError := updateRoles(response, client.GetRolesClaim(), roles)
+		claims := h.config.GetClaims(user.Username, client.Id, scopes)
+		for _, claim := range claims {
+			currentClaim := *claim
+			name := currentClaim.GetName()
+			values := currentClaim.GetValues()
+			updateResult, updateError := updateResponse(result, name, values)
 			if updateError == nil {
 				result = updateResult
 			}
@@ -100,19 +101,19 @@ func (h *UserInfoHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func updateRoles(userProfile *oidc.UserInfoResponse, rolesName string, roles []string) (map[string]interface{}, error) {
-	marshaledUserProfile, marshalError := json.Marshal(userProfile)
+func updateResponse(response any, key string, value any) (map[string]any, error) {
+	marshaledResponse, marshalError := json.Marshal(response)
 	if marshalError != nil {
 		return nil, marshalError
 	}
 
-	var a map[string]interface{}
-	unmarshalError := json.Unmarshal(marshaledUserProfile, &a)
+	var updatedResponse map[string]any
+	unmarshalError := json.Unmarshal(marshaledResponse, &updatedResponse)
 	if unmarshalError != nil {
 		return nil, unmarshalError
 	}
 
-	a[rolesName] = roles
+	updatedResponse[key] = value
 
-	return a, nil
+	return updatedResponse, nil
 }

@@ -249,9 +249,6 @@ func createTestConfig(t *testing.T, opaque bool, refreshTokenTTL int, idTTokenTT
 				IdTTL:        idTTokenTTL,
 				Oidc:         isOidc,
 				PrivateKey:   keyPath,
-				Claims: []config.Claim{
-					{Name: "foo", Value: "bar"},
-				},
 			},
 		},
 		Users: []config.User{
@@ -269,9 +266,6 @@ func createTestConfig(t *testing.T, opaque bool, refreshTokenTTL int, idTTokenTT
 						PostalCode: "98765",
 						City:       "Maintown",
 					},
-				},
-				Roles: map[string][]string{
-					"foo": {"Admin", "User"},
 				},
 			},
 		},

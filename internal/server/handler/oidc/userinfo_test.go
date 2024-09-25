@@ -46,9 +46,6 @@ func Test_UserInfo(t *testing.T) {
 						Country:    "Main",
 					},
 				},
-				Roles: map[string][]string{
-					"foo": {"role1", "role2"},
-				},
 			},
 		},
 	}

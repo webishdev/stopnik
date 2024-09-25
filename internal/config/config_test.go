@@ -399,9 +399,6 @@ func Test_ValidUsers(t *testing.T) {
 							City:       "Maintown",
 						},
 					},
-					Roles: map[string][]string{
-						"foo": {"Admin", "User"},
-					},
 				},
 				{
 					Username: "bar",
@@ -1091,12 +1088,6 @@ func assertUserValues(t *testing.T, config *Config, clientId string, expected te
 	}
 	if user.GetPreferredUsername() != expected.expectedPreferredUserName {
 		t.Error("expected correct preferred username")
-	}
-	if clientId != "" {
-		equal := reflect.DeepEqual(user.GetRoles(clientId), expected.expectedRoles)
-		if !equal {
-			t.Error("expected correct roles for user")
-		}
 	}
 	if expected.expectedName != user.GetName() {
 		t.Errorf("expected correct name, got %v, expected %v", user.GetName(), expected.expectedName)

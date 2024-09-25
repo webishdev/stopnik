@@ -9,7 +9,7 @@ import (
 type now func() time.Time
 type tickerChannel func() <-chan time.Time
 
-type timer struct {
+type Timer struct {
 	now           now
 	tickerChannel tickerChannel
 }
@@ -50,9 +50,9 @@ type ExpiringStore[T any] interface {
 	Store[T]
 }
 
-func NewTimer() *timer {
+func NewTimer() *Timer {
 	channel := time.NewTicker(time.Minute * time.Duration(1)).C
-	return &timer{
+	return &Timer{
 		now: time.Now,
 		tickerChannel: func() <-chan time.Time {
 			return channel
@@ -75,7 +75,7 @@ func NewTimedStore[T any](duration time.Duration) ExpiringStore[T] {
 	return newTimedStoreWithTimer[T](duration, NewTimer())
 }
 
-func newTimedStoreWithTimer[T any](duration time.Duration, timer *timer) ExpiringStore[T] {
+func newTimedStoreWithTimer[T any](duration time.Duration, timer *Timer) ExpiringStore[T] {
 	tickerChannel := timer.tickerChannel()
 	cache := &timedStore[T]{
 		storeMap:      make(map[string]expiringType[*T]),
@@ -163,13 +163,13 @@ func (ts *timedStore[T]) Get(key string) (*T, bool) {
 func (ts *timedStore[T]) GetValues() []*T {
 	ts.mux.RLock()
 	defer ts.mux.RUnlock()
-	values := make([]*T, 0, len(ts.storeMap))
+	result := make([]*T, 0, len(ts.storeMap))
 
 	for _, value := range ts.storeMap {
-		values = append(values, value.value)
+		result = append(result, value.value)
 	}
 
-	return values
+	return result
 }
 
 func (s *store[T]) Delete(key string) {

@@ -8,6 +8,7 @@ import (
 	"github.com/google/uuid"
 	internalHttp "github.com/webishdev/stopnik/internal/http"
 	"github.com/webishdev/stopnik/internal/oauth2"
+	"github.com/webishdev/stopnik/internal/store"
 	"github.com/webishdev/stopnik/internal/system"
 	"github.com/webishdev/stopnik/log"
 	"io"
@@ -101,19 +102,26 @@ type UserInformation struct {
 
 // User defines the general user entry in the configuration.
 type User struct {
-	Username        string              `yaml:"username"`
-	Password        string              `yaml:"password"`
-	Salt            string              `yaml:"salt"`
-	UserProfile     UserProfile         `yaml:"userProfile"`
-	UserInformation UserInformation     `yaml:"userInformation"`
-	Roles           map[string][]string `yaml:"roles"`
+	Username        string          `yaml:"username"`
+	Password        string          `yaml:"password"`
+	Salt            string          `yaml:"salt"`
+	UserProfile     UserProfile     `yaml:"userProfile"`
+	UserInformation UserInformation `yaml:"userInformation"`
 }
 
-// Claim defines additional claims with name and value,
-// used for a specific Client.
-type Claim struct {
-	Name  string `yaml:"name"`
-	Value string `yaml:"value"`
+// claim defines additional claims with name and value
+type claim struct {
+	Name   string   `yaml:"name"`
+	Value  string   `yaml:"value"`
+	Values []string `yaml:"values"`
+	Scope  string   `yaml:"scope"`
+	Scopes []string `yaml:"scopes"`
+	scopes store.Set[string]
+}
+
+type Claim interface {
+	GetName() string
+	GetValues() any
 }
 
 // Client defines the general client entry in the configuration.
@@ -130,7 +138,6 @@ type Client struct {
 	Redirects               []string `yaml:"redirects"`
 	OpaqueToken             bool     `yaml:"opaqueToken"`
 	PasswordFallbackAllowed bool     `yaml:"passwordFallbackAllowed"`
-	Claims                  []Claim  `yaml:"claims"`
 	Audience                []string `yaml:"audience"`
 	PrivateKey              string   `yaml:"privateKey"`
 	RolesClaim              string   `yaml:"rolesClaim"`
@@ -149,12 +156,26 @@ type UI struct {
 	ExpiredLoginMessage       string `yaml:"expiredLoginMessage"`
 }
 
+type Classification struct {
+	User      string   `yaml:"user"`
+	Users     []string `yaml:"users"`
+	Client    string   `yaml:"client"`
+	Clients   []string `yaml:"clients"`
+	Scope     string   `yaml:"scope"`
+	Scopes    []string `yaml:"scopes"`
+	Claims    []claim  `yaml:"claims"`
+	usernames store.Set[string]
+	clientIds store.Set[string]
+	scopes    store.Set[string]
+}
+
 // Config defines the root entry for the configuration.
 type Config struct {
-	Server            Server   `yaml:"server"`
-	Clients           []Client `yaml:"clients"`
-	Users             []User   `yaml:"users"`
-	UI                UI       `yaml:"ui"`
+	Server            Server           `yaml:"server"`
+	Clients           []Client         `yaml:"clients"`
+	Users             []User           `yaml:"users"`
+	UI                UI               `yaml:"ui"`
+	Classification    []Classification `yaml:"classification"`
 	generatedSecret   string
 	userMap           map[string]*User
 	clientMap         map[string]*Client
@@ -252,6 +273,23 @@ func Initialize(config *Config) error {
 		log.Info("Forward auth client created")
 	}
 
+	// because range config.Classification would copy the struct and not provide access to existing one
+	for i := 0; i < len(config.Classification); i++ {
+		classification := &config.Classification[i]
+		validString := func(s *string) bool {
+			return s != nil && *s != ""
+		}
+		classification.usernames = mergeIntoSet(classification.Users, &classification.User, validString)
+		classification.clientIds = mergeIntoSet(classification.Clients, &classification.Client, validString)
+		classification.scopes = mergeIntoSet(classification.Scopes, &classification.Scope, validString)
+
+		for j := 0; j < len(classification.Claims); j++ {
+			currentClaim := &classification.Claims[j]
+			currentClaim.scopes = mergeIntoSet(currentClaim.Scopes, &currentClaim.Scope, validString)
+		}
+
+	}
+
 	configSingleton = config
 
 	return nil
@@ -313,6 +351,15 @@ func (config *Config) Validate() error {
 
 	if config.GetForwardAuthCookieName() == config.GetMessageCookieName() {
 		return errors.New("forward auth cookie name should not equal message cookie name")
+	}
+
+	for i := 0; i < len(config.Classification); i++ {
+		classification := &config.Classification[i]
+		for _, currentClaim := range classification.Claims {
+			if currentClaim.Value != "" && len(currentClaim.Values) > 0 {
+				return errors.New("claim can only be single value or multiple values, not both at the same time")
+			}
+		}
 	}
 
 	return nil
@@ -460,6 +507,51 @@ func (config *Config) GetForwardAuthClient() (*Client, bool) {
 	return nil, false
 }
 
+// GetClaims returns an array of claims related to the username, client id and scopes.
+func (config *Config) GetClaims(username string, clientId string, scopes []string) []*Claim {
+	result := make([]*Claim, 0)
+	for _, classification := range config.Classification {
+		matchesUser := false
+		if !classification.usernames.IsEmpty() {
+			matchesUser = classification.usernames.Contains(&username)
+		}
+
+		matchesClient := false
+		if !classification.clientIds.IsEmpty() {
+			matchesClient = classification.clientIds.Contains(&clientId)
+		}
+		matchesGlobalScopes := false
+		if !classification.scopes.IsEmpty() {
+			for _, scope := range scopes {
+				matchesScope := classification.scopes.Contains(&scope)
+				matchesGlobalScopes = matchesGlobalScopes || matchesScope
+			}
+		} else {
+			matchesGlobalScopes = true
+		}
+
+		for _, currentClaim := range classification.Claims {
+			matchesClaimScopes := false
+			if !currentClaim.scopes.IsEmpty() {
+				for _, scope := range scopes {
+					matchesScope := currentClaim.scopes.Contains(&scope)
+					matchesClaimScopes = matchesClaimScopes || matchesScope
+				}
+			} else {
+				matchesClaimScopes = true
+			}
+
+			if matchesUser && matchesClient && matchesGlobalScopes && matchesClaimScopes {
+				var c Claim
+				c = &currentClaim
+				result = append(result, &c)
+			}
+		}
+	}
+
+	return result
+}
+
 // GetRolesClaim returns the name of the claim uses to provide User roles in a Client.
 // When no name is provided a default value will be returned.
 func (client *Client) GetRolesClaim() string {
@@ -550,9 +642,17 @@ func (user *User) GetFormattedAddress() string {
 	return ""
 }
 
-// GetRoles returns the roles configured for the User for a given clientId.
-func (user *User) GetRoles(clientId string) []string {
-	return user.Roles[clientId]
+// GetValues returns the value or values associated with the claim.
+func (claim *claim) GetValues() any {
+	if claim.Value != "" {
+		return claim.Value
+	}
+	return claim.Values
+}
+
+// GetName returns the name of the claim.
+func (claim *claim) GetName() string {
+	return claim.Name
 }
 
 // validateRedirect validated a given redirect against an array of redirects. Given clientId is used for logging.
@@ -615,4 +715,16 @@ func removeLeadingSlash(s string) string {
 		return s[1:]
 	}
 	return s
+}
+
+// mergeIntoSet merges an array and a single value into a string based [store.Set]
+func mergeIntoSet[T any](values []T, value *T, valid func(*T) bool) store.Set[T] {
+	set := store.NewSet[T]()
+	for _, v := range values {
+		set.Add(&v)
+	}
+	if valid(value) {
+		set.Add(value)
+	}
+	return set
 }

@@ -37,9 +37,6 @@ clients:
     - http://localhost:8080/session/callback
     - http://localhost:5173/reporting/oidc-callback*
     - http://localhost:8082/health
-  claims:
-    - name: foo
-      value: bar
 - id: testclient2
   clientSecret: deb920477e822d9373831d5521749d3685a3c359504139eb3ff61c7d2fe91986b1978aa1a7834bb304762699b05da2700319e5d60c1183f6f9f66f9c6e73e34e
   salt: abc
@@ -77,3 +74,16 @@ users:
       city: Sometown
       postalCode: 12345
       country: Boom
+classification:
+  - user: foo
+    users: ['foo', 'bar', 'moo']
+    client: testclient
+    scope: my_scope
+    claims:
+      - name: some
+        value: some_value
+        scope: blabla
+      - name: other
+        values:
+          - abc
+          - def

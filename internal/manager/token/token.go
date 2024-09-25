@@ -364,10 +364,6 @@ func generateIdToken(requestData *internalHttp.RequestData, config *config.Confi
 	addStringClaimOpenId(builder, oidc.ClaimAtHash, atHash)
 	addStringClaimOpenId(builder, oidc.ClaimNonce, nonce)
 	builder.Claim(oidc.ClaimAuthTime, authTime.Unix())
-	roles := user.GetRoles(client.Id)
-	if len(roles) != 0 {
-		builder.Claim(client.GetRolesClaim(), roles)
-	}
 
 	if slices.Contains(scopes, oidc.ScopeProfile) {
 		builder.Name(user.GetName())
@@ -407,6 +403,14 @@ func generateIdToken(requestData *internalHttp.RequestData, config *config.Confi
 		builder.PhoneNumberVerified(user.UserInformation.PhoneVerified)
 	}
 
+	claims := config.GetClaims(user.Username, client.Id, scopes)
+	for _, claim := range claims {
+		currentClaim := *claim
+		name := currentClaim.GetName()
+		values := currentClaim.GetValues()
+		builder.Claim(name, values)
+	}
+
 	token, builderError := builder.Build()
 
 	if builderError != nil {
@@ -420,11 +424,6 @@ func generateAccessToken(requestData *internalHttp.RequestData, config *config.C
 	builder := jwt.NewBuilder().
 		Expiration(time.Now().Add(duration)). // https://www.rfc-editor.org/rfc/rfc7519.html#section-4.1.4
 		IssuedAt(time.Now())                  // https://www.rfc-editor.org/rfc/rfc7519.html#section-4.1.6
-
-	for claimIndex := range client.Claims {
-		claim := client.Claims[claimIndex]
-		addStringClaim(builder, claim.Name, claim.Value)
-	}
 
 	// https://www.rfc-editor.org/rfc/rfc7519.html#section-4.1.7
 	builder.JwtID(tokenId)
