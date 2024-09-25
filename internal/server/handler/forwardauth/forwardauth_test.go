@@ -124,6 +124,7 @@ func createTestConfig(t *testing.T) *config.Config {
 	testConfig := &config.Config{
 		Server: config.Server{
 			ForwardAuth: config.ForwardAuth{
+				Enabled:     true,
 				ExternalUrl: "http://foo.com",
 			},
 		},

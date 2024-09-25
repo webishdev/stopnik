@@ -148,6 +148,7 @@ func Test_SimpleServerConfiguration(t *testing.T) {
 				RevokeScope:           "r:b",
 				SessionTimeoutSeconds: 4200,
 				ForwardAuth: ForwardAuth{
+					Enabled:       true,
 					Endpoint:      "/fa",
 					ExternalUrl:   "http://forward.example.com",
 					ParameterName: "bla_blub",
@@ -237,6 +238,360 @@ func Test_SimpleServerConfiguration(t *testing.T) {
 	if forwardAuthClient != nil {
 		redirects := forwardAuthClient.Redirects
 		reflect.DeepEqual(redirects, []string{"http://foo.example.com/callback"})
+	}
+}
+
+func Test_ForwardAuthMissingExternalUrl(t *testing.T) {
+	configLoader := NewConfigLoader(func(filename string) ([]byte, error) {
+		return make([]byte, 10), nil
+	}, func(in []byte, out interface{}) (err error) {
+		origin := out.(*Config)
+		*origin = Config{
+			Server: Server{
+				Addr: ":8080",
+				ForwardAuth: ForwardAuth{
+					Enabled: true,
+				},
+			},
+		}
+		return nil
+	})
+
+	err := configLoader.LoadConfig("foo.txt", true)
+
+	if err == nil {
+		t.Error("expected error when loading config because of empty external url in forward auth")
+	}
+}
+
+func Test_SameCookieNameAuthAndMessage(t *testing.T) {
+	configLoader := NewConfigLoader(func(filename string) ([]byte, error) {
+		return make([]byte, 10), nil
+	}, func(in []byte, out interface{}) (err error) {
+		origin := out.(*Config)
+		*origin = Config{
+			Server: Server{
+				Addr: ":8080",
+				Cookies: Cookies{
+					AuthName:    "foo",
+					MessageName: "foo",
+				},
+			},
+		}
+		return nil
+	})
+
+	err := configLoader.LoadConfig("foo.txt", true)
+
+	if err == nil {
+		t.Error("expected error when loading config because of auth and message cookie with same name")
+	}
+}
+
+func Test_SameCookieNameForwardAuthAndMessage(t *testing.T) {
+	configLoader := NewConfigLoader(func(filename string) ([]byte, error) {
+		return make([]byte, 10), nil
+	}, func(in []byte, out interface{}) (err error) {
+		origin := out.(*Config)
+		*origin = Config{
+			Server: Server{
+				Addr: ":8080",
+				Cookies: Cookies{
+					ForwardAuthName: "foo",
+					MessageName:     "foo",
+				},
+			},
+		}
+		return nil
+	})
+
+	err := configLoader.LoadConfig("foo.txt", true)
+
+	if err == nil {
+		t.Error("expected error when loading config because of forward auth and message cookie with same name")
+	}
+}
+
+func Test_SameCookieNameForwardAuthAndAuth(t *testing.T) {
+	configLoader := NewConfigLoader(func(filename string) ([]byte, error) {
+		return make([]byte, 10), nil
+	}, func(in []byte, out interface{}) (err error) {
+		origin := out.(*Config)
+		*origin = Config{
+			Server: Server{
+				Addr: ":8080",
+				Cookies: Cookies{
+					ForwardAuthName: "foo",
+					AuthName:        "foo",
+				},
+			},
+		}
+		return nil
+	})
+
+	err := configLoader.LoadConfig("foo.txt", true)
+
+	if err == nil {
+		t.Error("expected error when loading config because of forward auth and auth cookie with same name")
+	}
+}
+
+func Test_SimpleClassificationConfiguration(t *testing.T) {
+	configLoader := NewConfigLoader(func(filename string) ([]byte, error) {
+		return make([]byte, 10), nil
+	}, func(in []byte, out interface{}) (err error) {
+		origin := out.(*Config)
+		*origin = Config{
+			Clients: []Client{
+				{
+					Id:           "foo",
+					ClientSecret: "d82c4eb5261cb9c8aa9855edd67d1bd10482f41529858d925094d173fa662aa91ff39bc5b188615273484021dfb16fd8284cf684ccf0fc795be3aa2fc1e6c181",
+					Redirects:    []string{"http://localhost:8080/callback"},
+				},
+			},
+			Users: []User{
+				{
+					Username: "bar",
+					Password: "3c9909afec25354d551dae21590bb26e38d53f2173b8d3dc3eee4c047e7ab1c1eb8b85103e3be7ba613b31bb5c9c36214dc9f14a42fd7a2fdb84856bca5c44c2",
+				},
+			},
+			Classification: []Classification{
+				{
+					User:   "bar",
+					Client: "foo",
+					Claims: []claim{
+						{Name: "first_claim", Value: "fist_value"},
+					},
+				},
+				{
+					User:   "bar",
+					Users:  []string{"bar"},
+					Client: "foo",
+					Scope:  "main:scope",
+					Claims: []claim{
+						{Name: "second_claim", Value: "second_value", Scope: "claim:scope"},
+					},
+				},
+				{
+					User:   "bar",
+					Client: "foo",
+					Claims: []claim{
+						{Name: "third_claim", Values: []string{"third_value1", "third_value2"}, Scope: "other:scope"},
+					},
+				},
+			},
+		}
+		return nil
+	})
+
+	err := configLoader.LoadConfig("foo.txt", false)
+
+	if err != nil {
+		t.Errorf("did not expect error when loading config, %v", err)
+	}
+
+	config := GetConfigInstance()
+
+	if config == nil {
+		t.Fatal("config was nil")
+	}
+
+	claims := config.GetClaims("bar", "foo", []string{})
+
+	if len(claims) != 1 {
+		t.Error("expected claim to exists")
+	}
+
+	if (*claims[0]).GetName() != "first_claim" {
+		t.Error("expected first_claim claim")
+	}
+
+	if !reflect.DeepEqual((*claims[0]).GetValues(), "fist_value") {
+		t.Error("expected first_claim to have correct values")
+	}
+
+	claims = config.GetClaims("abc", "foo", []string{})
+
+	if len(claims) != 0 {
+		t.Error("expected claim not to exists")
+	}
+
+	claims = config.GetClaims("bar", "foo", []string{"main:scope"})
+
+	if len(claims) != 1 {
+		t.Error("expected claim to exists")
+	}
+
+	if (*claims[0]).GetName() != "first_claim" {
+		t.Error("expected first_claim claim")
+	}
+
+	claims = config.GetClaims("bar", "foo", []string{"claim:scope"})
+
+	if len(claims) != 1 {
+		t.Error("expected claim to exists")
+	}
+
+	if (*claims[0]).GetName() != "first_claim" {
+		t.Error("expected first_claim claim")
+	}
+
+	claims = config.GetClaims("bar", "foo", []string{"main:scope", "claim:scope"})
+
+	if len(claims) != 2 {
+		t.Error("expected both claims to exists")
+	}
+
+	if (*claims[0]).GetName() != "first_claim" {
+		t.Error("expected first_claim claim")
+	}
+
+	if (*claims[1]).GetName() != "second_claim" {
+		t.Error("expected second_claim claim")
+	}
+
+	claims = config.GetClaims("bar", "foo", []string{"other:scope"})
+
+	if len(claims) != 2 {
+		t.Error("expected both claims to exists")
+	}
+
+	if (*claims[0]).GetName() != "first_claim" {
+		t.Error("expected first_claim claim")
+	}
+
+	if (*claims[1]).GetName() != "third_claim" {
+		t.Error("expected third_claim claim")
+	}
+
+	if !reflect.DeepEqual((*claims[1]).GetValues(), []string{"third_value1", "third_value2"}) {
+		t.Error("expected third_claim to have correct values")
+	}
+}
+
+func Test_ClassificationWithEmptyClaimName(t *testing.T) {
+	configLoader := NewConfigLoader(func(filename string) ([]byte, error) {
+		return make([]byte, 10), nil
+	}, func(in []byte, out interface{}) (err error) {
+		origin := out.(*Config)
+		*origin = Config{
+			Server: Server{
+				Addr: ":8080",
+			},
+			Clients: []Client{
+				{
+					Id:           "foo",
+					ClientSecret: "d82c4eb5261cb9c8aa9855edd67d1bd10482f41529858d925094d173fa662aa91ff39bc5b188615273484021dfb16fd8284cf684ccf0fc795be3aa2fc1e6c181",
+					Redirects:    []string{"http://localhost:8080/callback"},
+				},
+			},
+			Users: []User{
+				{
+					Username: "bar",
+					Password: "3c9909afec25354d551dae21590bb26e38d53f2173b8d3dc3eee4c047e7ab1c1eb8b85103e3be7ba613b31bb5c9c36214dc9f14a42fd7a2fdb84856bca5c44c2",
+				},
+			},
+			Classification: []Classification{
+				{
+					User:   "bar",
+					Client: "foo",
+					Claims: []claim{
+						{Value: "first_name"},
+					},
+				},
+			},
+		}
+		return nil
+	})
+
+	err := configLoader.LoadConfig("foo.txt", true)
+
+	if err == nil {
+		t.Error("expected error when loading config because claim name is missing")
+	}
+}
+
+func Test_ClassificationWithEmptyClaimValues(t *testing.T) {
+	configLoader := NewConfigLoader(func(filename string) ([]byte, error) {
+		return make([]byte, 10), nil
+	}, func(in []byte, out interface{}) (err error) {
+		origin := out.(*Config)
+		*origin = Config{
+			Server: Server{
+				Addr: ":8080",
+			},
+			Clients: []Client{
+				{
+					Id:           "foo",
+					ClientSecret: "d82c4eb5261cb9c8aa9855edd67d1bd10482f41529858d925094d173fa662aa91ff39bc5b188615273484021dfb16fd8284cf684ccf0fc795be3aa2fc1e6c181",
+					Redirects:    []string{"http://localhost:8080/callback"},
+				},
+			},
+			Users: []User{
+				{
+					Username: "bar",
+					Password: "3c9909afec25354d551dae21590bb26e38d53f2173b8d3dc3eee4c047e7ab1c1eb8b85103e3be7ba613b31bb5c9c36214dc9f14a42fd7a2fdb84856bca5c44c2",
+				},
+			},
+			Classification: []Classification{
+				{
+					User:   "bar",
+					Client: "foo",
+					Claims: []claim{
+						{Name: "first_name"},
+					},
+				},
+			},
+		}
+		return nil
+	})
+
+	err := configLoader.LoadConfig("foo.txt", true)
+
+	if err == nil {
+		t.Error("expected error when loading config because claim value is missing")
+	}
+}
+
+func Test_ClassificationWithBothClaimValues(t *testing.T) {
+	configLoader := NewConfigLoader(func(filename string) ([]byte, error) {
+		return make([]byte, 10), nil
+	}, func(in []byte, out interface{}) (err error) {
+		origin := out.(*Config)
+		*origin = Config{
+			Server: Server{
+				Addr: ":8080",
+			},
+			Clients: []Client{
+				{
+					Id:           "foo",
+					ClientSecret: "d82c4eb5261cb9c8aa9855edd67d1bd10482f41529858d925094d173fa662aa91ff39bc5b188615273484021dfb16fd8284cf684ccf0fc795be3aa2fc1e6c181",
+					Redirects:    []string{"http://localhost:8080/callback"},
+				},
+			},
+			Users: []User{
+				{
+					Username: "bar",
+					Password: "3c9909afec25354d551dae21590bb26e38d53f2173b8d3dc3eee4c047e7ab1c1eb8b85103e3be7ba613b31bb5c9c36214dc9f14a42fd7a2fdb84856bca5c44c2",
+				},
+			},
+			Classification: []Classification{
+				{
+					User:   "bar",
+					Client: "foo",
+					Claims: []claim{
+						{Name: "first_name", Value: "foo", Values: []string{"bar"}},
+					},
+				},
+			},
+		}
+		return nil
+	})
+
+	err := configLoader.LoadConfig("foo.txt", true)
+
+	if err == nil {
+		t.Error("expected error when loading config because claim value and values is set")
 	}
 }
 

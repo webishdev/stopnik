@@ -40,6 +40,7 @@ type Cookies struct {
 // ForwardAuth defines the configuration related to Traefik Forward Auth,
 // only used when ExternalUrl is provided.
 type ForwardAuth struct {
+	Enabled       bool     `yaml:"enabled"`
 	Endpoint      string   `yaml:"endpoint"`
 	ExternalUrl   string   `yaml:"externalUrl"`
 	ParameterName string   `yaml:"parameterName"`
@@ -263,7 +264,7 @@ func Initialize(config *Config) error {
 		config.logoImage = &bs
 	}
 
-	if config.Server.ForwardAuth.ExternalUrl != "" {
+	if config.GetForwardAuthEnabled() {
 		config.forwardAuthClient = &Client{
 			Id:            uuid.NewString(),
 			isForwardAuth: true,
@@ -308,6 +309,22 @@ func (config *Config) Validate() error {
 		return errors.New("certificate for TLS is missing")
 	}
 
+	if config.Server.ForwardAuth.Enabled && config.Server.ForwardAuth.ExternalUrl == "" {
+		return errors.New("external url in forward auth is missing or empty")
+	}
+
+	if config.GetAuthCookieName() == config.GetForwardAuthCookieName() {
+		return errors.New("auth cookie name should not equal forward auth cookie name")
+	}
+
+	if config.GetAuthCookieName() == config.GetMessageCookieName() {
+		return errors.New("auth cookie name should not equal message cookie name")
+	}
+
+	if config.GetForwardAuthCookieName() == config.GetMessageCookieName() {
+		return errors.New("forward auth cookie name should not equal message cookie name")
+	}
+
 	if len(config.Users) == 0 {
 		return errors.New("no users configured, add at least one user")
 	}
@@ -340,22 +357,12 @@ func (config *Config) Validate() error {
 		}
 	}
 
-	if config.GetAuthCookieName() == config.GetForwardAuthCookieName() {
-		return errors.New("auth cookie name should not equal forward auth cookie name")
-	}
-
-	if config.GetAuthCookieName() == config.GetMessageCookieName() {
-		return errors.New("auth cookie name should not equal message cookie name")
-	}
-
-	if config.GetForwardAuthCookieName() == config.GetMessageCookieName() {
-		return errors.New("forward auth cookie name should not equal message cookie name")
-	}
-
 	for i := 0; i < len(config.Classification); i++ {
 		classification := &config.Classification[i]
 		for _, currentClaim := range classification.Claims {
-			if currentClaim.Value != "" && len(currentClaim.Values) > 0 {
+			if currentClaim.Name == "" {
+				return errors.New("claim is missing a name")
+			} else if currentClaim.Value != "" && len(currentClaim.Values) > 0 {
 				return errors.New("claim can only be single value or multiple values, not both at the same time")
 			} else if currentClaim.Value == "" && len(currentClaim.Values) == 0 {
 				return errors.New("claim must contain at least one value, or a list of values")
@@ -484,7 +491,7 @@ func (config *Config) GetIssuer(requestData *internalHttp.RequestData) string {
 // GetForwardAuthEnabled returns whether Traefik Forward Auth is enabled or not.
 // Check in general whether the ForwardAuth ExternalUrl value is set.
 func (config *Config) GetForwardAuthEnabled() bool {
-	return config.Server.ForwardAuth.ExternalUrl != ""
+	return config.Server.ForwardAuth.ExternalUrl != "" && config.Server.ForwardAuth.Enabled
 }
 
 // GetForwardAuthEndpoint returns the endpoint which will use used for Traefik Forward Auth.
