@@ -31,16 +31,16 @@ Root entry named `server`
 | Property                      | Description                                                                                       | Required |
 |-------------------------------|---------------------------------------------------------------------------------------------------|----------|
 | `logLevel`                    | Log level                                                                                         | No       |
-| [`cookies`](#cookies)         | Configuration related to cookie names                                                             | No       |
 | `addr`                        | [Go like address](https://pkg.go.dev/net#Dial), may contain IP and port                           | Yes      |
+| [`cookies`](#cookies)         | Configuration related to cookie names                                                             | No       |
 | `secret`                      | Server secret                                                                                     | No       |
 | `privateKey`                  | General RSA or EC private key (can be overwritten for each client) to sign tokens                 | No       |
-| `issuer`                      | Issuer                                                                                            | No       |
 | [`tls`](#tls)                 | Configuration for TLS                                                                             | No       |
 | `logoutRedirect`              | Where to redirect user after logout                                                               | No       |
 | `introspectScope`             | Scope which allows token introspection                                                            | No       |
 | `revokeScopeScope`            | Scope which allows token revocation                                                               | No       |
 | `sessionTimeoutSeconds`       | Seconds until session will end                                                                    | No       |
+| `issuer`                      | Issuer                                                                                            | No       |
 | [`forwardAuth`](#forwardauth) | [Traefik ForwardAuth](https://doc.traefik.io/traefik/middlewares/http/forwardauth/) configuration | No       |
 
 #### TLS
@@ -49,10 +49,10 @@ Public and private keys to sign tokens
 
 Entry `server.tls`
 
-| Property | Description                                                             | Required |
-|----------|-------------------------------------------------------------------------|----------|
-| `addr`   | [Go like address](https://pkg.go.dev/net#Dial), may contain IP and port | Yes      |
-| `keys`   | Public and private keys for TLS                                         | Yes      |
+| Property            | Description                                                             | Required |
+|---------------------|-------------------------------------------------------------------------|----------|
+| `addr`              | [Go like address](https://pkg.go.dev/net#Dial), may contain IP and port | Yes      |
+| [`keys`](#tls-keys) | Public and private keys for TLS                                         | Yes      |
 
 ##### TLS keys
 
@@ -71,10 +71,11 @@ Public and private keys to sign tokens
 
 Entry `server.cookies`
 
-| Property      | Description                      | Required |
-|---------------|----------------------------------|----------|
-| `authName`    | Name of the authorization cookie | No       |
-| `messageName` | Name of internal message cookie  | No       |
+| Property          | Description                                         | Required |
+|-------------------|-----------------------------------------------------|----------|
+| `authName`        | Name of the authorization cookie                    | No       |
+| `messageName`     | Name of internal message cookie                     | No       |
+| `forwardAuthName` | Name of internal [ForwardAuth](#forwardauth) cookie | No       |
 
 #### ForwardAuth
 
@@ -93,14 +94,16 @@ Entry `server.forwardAuth`
 
 Root entry named `ui`
 
-| Property          | Description                                                                                                                                 | Required |
-|-------------------|---------------------------------------------------------------------------------------------------------------------------------------------|----------|
-| `logoImage`       | Path of additional logo image                                                                                                               | No       |
-| `hideFooter`      | Will hide the **STOPnik** footer                                                                                                            | No       |
-| `hideMascot`      | Will hide the **STOPnik** mascot                                                                                                            | No       |
-| `footerText`      | The footer text                                                                                                                             | No       |
-| `title`           | Title displayed above the forms                                                                                                             | No       |
-| `htmlTitle`       | HTML title                                                                                                                                  | No       |
+| Property                    | Description                             | Required |
+|-----------------------------|-----------------------------------------|----------|
+| `hideFooter`                | Will hide the **STOPnik** footer        | No       |
+| `hideLogo`                  | Will hide the **STOPnik** logo          | No       |
+| `htmlTitle`                 | HTML page title                         | No       |
+| `title`                     | Title displayed above the forms         | No       |
+| `footerText`                | The footer text                         | No       |
+| `logoImage`                 | Path of additional logo image           | No       |
+| `invalidCredentialsMessage` | Message to show for invalid credentials | No       |
+| `expiredLoginMessage`       | Message to show when login expired      | No       |
 
 ### Clients
 
@@ -115,10 +118,10 @@ Each entry may contain the following options
 | `id`                      | The id of the client                                    | Yes      |
 | `clientSecret`            | SHA512 hashed secret                                    | No       |
 | `salt`                    | Optional salt for secret to avoid identical hash values | No       |
+| `oidc`                    | Flag to allow an client to handle OpenId Connect        | No       |
 | `accessTTL`               | Access token time to live                               | No       |
 | `refreshTTL`              | Refresh token time to live                              | No       |
 | `idTTL`                   | OpenId Connect ID token time to live                    | No       |
-| `oidc`                    | Flag to allow an client to handle OpenId Connect        | No       |
 | `introspect`              | Introspection scope                                     | No       |
 | `revoke`                  | Revocation scope                                        | No       |
 | `redirects`               | List of redirects URIs                                  | No       |
@@ -139,12 +142,13 @@ Root entry `users`
 
 Each entry may contain the following options
 
-| Property                   | Description                                                        | Required |
-|----------------------------|--------------------------------------------------------------------|----------|
-| `username`                 | Username                                                           | Yes      |
-| `password`                 | SHA512 hashed password                                             | Yes      |
-| `salt`                     | Optional salt for password to avoid identical hash values          | No       |
-| [`profile`](#user-profile) | User profile which will be used for OpenId Connect UserInfo        | No       |
+| Property                               | Description                                                     | Required |
+|----------------------------------------|-----------------------------------------------------------------|----------|
+| `username`                             | Username                                                        | Yes      |
+| `password`                             | SHA512 hashed password                                          | Yes      |
+| `salt`                                 | Optional salt for password to avoid identical hash values       | No       |
+| [`userProfile`](#user-profile)         | User profile which will be used for OpenId Connect UserInfo     | No       |
+| [`userInformation`](#user-information) | User information which will be used for OpenId Connect UserInfo | No       |
 
 For `password` and `salt` see, [Command line - Password](../advanced/cmd.md#password)
 
@@ -152,34 +156,45 @@ For `password` and `salt` see, [Command line - Password](../advanced/cmd.md#pass
 
 User profile which will be used for OpenId Connect UserInfo
 
-Entry `users[n].profile`
+Entry `users[n].userProfile`
+
+Each entry may contain the following options
+
+| Property            | Description         | Required |
+|---------------------|---------------------|----------|
+| `givenName`         | Given name          | No       |
+| `familyName`        | Family name         | No       |
+| `nickname`          | Nickname            | No       |
+| `preferredUserName` | Preferred username  | No       |
+| `gender`            | Gender              | No       |
+| `birthDate`         | Birthdate           | No       |
+| `zoneInfo`          | Zone information    | No       |
+| `locale`            | locale              | No       |
+| `website`           | Website URL         | No       |
+| `profile`           | Profile URL         | No       |
+| `picture`           | Profile picture URL | No       |
+
+#### User information
+
+User information which will be used for OpenId Connect UserInfo
+
+Entry `users[n].userInformation`
 
 Each entry may contain the following options
 
 | Property                   | Description                      | Required |
 |----------------------------|----------------------------------|----------|
-| `givenName`                | Given name                       | No       |
-| `familyName`               | Family name                      | No       |
-| `nickname`                 | Nickname                         | No       |
-| `preferredUserName`        | Preferred username               | No       |
 | `email`                    | E-Mail address                   | No       |
 | `emailVerified`            | E-Mail address verification flag | No       |
-| `gender`                   | Gender                           | No       |
-| `birthDate`                | Birthdate                        | No       |
-| `zoneInfo`                 | Zone information                 | No       |
-| `locale`                   | locale                           | No       |
 | `phoneNumber`              | Phone number                     | No       |
 | `phoneVerified`            | Phone number verification flag   | No       |
-| `website`                  | Website URL                      | No       |
-| `profile`                  | Profile URL                      | No       |
-| `profilePicture`           | Profile picture URL              | No       |
 | [`address`](#user-address) | User address                     | No       |
 
 #### User address
 
 User address which will be used for OpenId Connect UserInfo
 
-Entry `users[n].profile.address`
+Entry `users[n].userInformation.address`
 
 Each entry may contain the following options
 
