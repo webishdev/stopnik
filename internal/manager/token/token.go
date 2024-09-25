@@ -140,7 +140,7 @@ func (tokenManager *Manager) CreateAccessTokenResponse(r *http.Request, username
 	authorizationCodeStore := *tokenManager.clientStores[client.Id].authorizationCodeStore
 
 	accessTokenDuration := time.Minute * time.Duration(client.GetAccessTTL())
-	accessTokenKey := tokenManager.CreateAccessToken(r, username, client, accessTokenDuration)
+	accessTokenKey := tokenManager.CreateAccessToken(r, username, client, scopes, accessTokenDuration)
 	accessToken := &oauth2.AccessToken{
 		Key:       accessTokenKey,
 		TokenType: oauth2.TtBearer,
@@ -159,7 +159,7 @@ func (tokenManager *Manager) CreateAccessTokenResponse(r *http.Request, username
 
 	if (!client.Oidc && client.GetRefreshTTL() > 0) || (client.Oidc && oidc.HasOfflineAccessScope(scopes) && client.GetRefreshTTL() > 0) {
 		refreshTokenDuration := time.Minute * time.Duration(client.GetRefreshTTL())
-		refreshTokenKey := tokenManager.generateAccessToken(requestData, username, client, refreshTokenDuration)
+		refreshTokenKey := tokenManager.generateRefreshToken(requestData, username, client, scopes, refreshTokenDuration)
 		refreshToken := &oauth2.RefreshToken{
 			Key:      refreshTokenKey,
 			Username: username,
@@ -210,9 +210,9 @@ func (tokenManager *Manager) createIdToken(r *http.Request, idTokenInput IdToken
 	return ""
 }
 
-func (tokenManager *Manager) CreateAccessToken(r *http.Request, username string, client *config.Client, accessTokenDuration time.Duration) string {
+func (tokenManager *Manager) CreateAccessToken(r *http.Request, username string, client *config.Client, scopes []string, accessTokenDuration time.Duration) string {
 	requestData := internalHttp.NewRequestData(r)
-	return tokenManager.generateAccessToken(requestData, username, client, accessTokenDuration)
+	return tokenManager.generateAccessToken(requestData, username, client, scopes, accessTokenDuration)
 }
 
 func (tokenManager *Manager) CreateAccessTokenHash(client *config.Client, accessTokenKey string) string {
@@ -278,13 +278,17 @@ func (tokenManager *Manager) generateIdToken(requestData *internalHttp.RequestDa
 	return tokenManager.generateJWTToken(client, idToken)
 }
 
-func (tokenManager *Manager) generateAccessToken(requestData *internalHttp.RequestData, username string, client *config.Client, duration time.Duration) string {
+func (tokenManager *Manager) generateAccessToken(requestData *internalHttp.RequestData, username string, client *config.Client, scopes []string, duration time.Duration) string {
 	tokenId := uuid.New()
 	if client.OpaqueToken {
 		return tokenManager.generateOpaqueAccessToken(tokenId.String())
 	}
-	accessToken := generateAccessToken(requestData, tokenManager.config, client, tokenId.String(), duration, username)
+	accessToken := generateAccessToken(requestData, tokenManager.config, client, tokenId.String(), duration, username, scopes)
 	return tokenManager.generateJWTToken(client, accessToken)
+}
+
+func (tokenManager *Manager) generateRefreshToken(requestData *internalHttp.RequestData, username string, client *config.Client, scopes []string, duration time.Duration) string {
+	return tokenManager.generateAccessToken(requestData, username, client, scopes, duration)
 }
 
 func (tokenManager *Manager) generateOpaqueAccessToken(tokenId string) string {
@@ -420,7 +424,7 @@ func generateIdToken(requestData *internalHttp.RequestData, config *config.Confi
 	return token
 }
 
-func generateAccessToken(requestData *internalHttp.RequestData, config *config.Config, client *config.Client, tokenId string, duration time.Duration, username string) jwt.Token {
+func generateAccessToken(requestData *internalHttp.RequestData, config *config.Config, client *config.Client, tokenId string, duration time.Duration, username string, scopes []string) jwt.Token {
 	builder := jwt.NewBuilder().
 		Expiration(time.Now().Add(duration)). // https://www.rfc-editor.org/rfc/rfc7519.html#section-4.1.4
 		IssuedAt(time.Now())                  // https://www.rfc-editor.org/rfc/rfc7519.html#section-4.1.6
@@ -436,6 +440,14 @@ func generateAccessToken(requestData *internalHttp.RequestData, config *config.C
 
 	// https://www.rfc-editor.org/rfc/rfc7519.html#section-4.1.3
 	builder.Audience(client.GetAudience())
+
+	claims := config.GetClaims(username, client.Id, scopes)
+	for _, claim := range claims {
+		currentClaim := *claim
+		name := currentClaim.GetName()
+		values := currentClaim.GetValues()
+		builder.Claim(name, values)
+	}
 
 	token, builderError := builder.Build()
 
