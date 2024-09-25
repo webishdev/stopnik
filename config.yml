@@ -76,7 +76,7 @@ users:
       country: Boom
 classification:
   - user: foo
-    users: ['foo', 'bar', 'moo']
+    users: ['foo', 'bar', 'moo'] # 2nd definition of 'foo', will only be used once
     client: testclient
     scope: my_scope
     claims:

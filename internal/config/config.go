@@ -140,7 +140,6 @@ type Client struct {
 	PasswordFallbackAllowed bool     `yaml:"passwordFallbackAllowed"`
 	Audience                []string `yaml:"audience"`
 	PrivateKey              string   `yaml:"privateKey"`
-	RolesClaim              string   `yaml:"rolesClaim"`
 	isForwardAuth           bool
 }
 
@@ -358,6 +357,8 @@ func (config *Config) Validate() error {
 		for _, currentClaim := range classification.Claims {
 			if currentClaim.Value != "" && len(currentClaim.Values) > 0 {
 				return errors.New("claim can only be single value or multiple values, not both at the same time")
+			} else if currentClaim.Value == "" && len(currentClaim.Values) == 0 {
+				return errors.New("claim must contain at least one value, or a list of values")
 			}
 		}
 	}
@@ -542,20 +543,13 @@ func (config *Config) GetClaims(username string, clientId string, scopes []strin
 			}
 
 			if matchesUser && matchesClient && matchesGlobalScopes && matchesClaimScopes {
-				var c Claim
-				c = &currentClaim
+				var c Claim = &currentClaim
 				result = append(result, &c)
 			}
 		}
 	}
 
 	return result
-}
-
-// GetRolesClaim returns the name of the claim uses to provide User roles in a Client.
-// When no name is provided a default value will be returned.
-func (client *Client) GetRolesClaim() string {
-	return cmp.Or(client.RolesClaim, "roles")
 }
 
 // GetAccessTTL returns access token time to live.

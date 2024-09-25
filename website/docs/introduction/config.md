@@ -6,6 +6,12 @@ By default **STOPnik** will use the `config.yml` in the same directory as the ex
 
 The possible configuration options are listed in the next section.
 
+:::warning
+
+As **STOPnik** is under heavy development right now, the configuration may change.
+
+:::
+
 ## Configuration file
 
 The configuration file (e.g. `config.yml`) may contain different root options which are described here as followed
@@ -16,6 +22,7 @@ The configuration file (e.g. `config.yml`) may contain different root options wh
 | [`ui`](#user-interface-configuration) | User interface configuration | No       |
 | [`clients`](#clients)                 | List of clients              | Yes      |
 | [`users`](#users)                     | List of users                | Yes      |
+| [`classification`](#classification)   | Classification               | No       |
 
 ### Server configuration
 
@@ -117,27 +124,12 @@ Each entry may contain the following options
 | `redirects`               | List of redirects URIs                                  | No       |
 | `opaqueToken`             | Use opaque token                                        | No       |
 | `passwordFallbackAllowed` | Form auth allowed                                       | No       |
-| [`claims`](#claims)       | List of claims                                          | No       |
 | `audience`                | Audience                                                | No       |
 | `privateKey`              | RSA or EC private key to sign tokens                    | No       |
-| `rolesClaim`              | Name for the claim used to provide roles                | No       |
 
 For `clientSecret` and `salt` see, [Command line - Password](../advanced/cmd.md#password)
 
 If no `clientSecret` is provided, the client is handled as public client, otherwise it will become a confidential client.
-
-#### Claims
-
-List of client claims
-
-Entry `clients[n].calims`
-
-Each entry may contain the following options
-
-| Property | Description | Required |
-|----------|-------------|----------|
-| `name`   | Name        | Yes      |
-| `value`  | Value       | Yes      |
 
 ### Users
 
@@ -153,7 +145,6 @@ Each entry may contain the following options
 | `password`                 | SHA512 hashed password                                             | Yes      |
 | `salt`                     | Optional salt for password to avoid identical hash values          | No       |
 | [`profile`](#user-profile) | User profile which will be used for OpenId Connect UserInfo        | No       |
-| `roles`                    | YAML map for roles, key of the map is the id of the related client | No       |
 
 For `password` and `salt` see, [Command line - Password](../advanced/cmd.md#password)
 
@@ -200,6 +191,60 @@ Each entry may contain the following options
 | `region`     | Region      | No       |
 | `country`    | Country     | No       |
 
+### Classification
+
+List of classification entries
+
+Root entry `classification`
+
+A classification entry allows to add specific claims to access token (if is a JWT), to ID token and to the user info endpoint described in [OpenID Connect Core 1.0](../advanced/endpoints.md#openid-connect-core-10)
+
+When `scope` or `scopes` are used, the listed `claims` will only be returned if the scope was requested.
+
+Each entry may contain the following options
+
+| Property            | Description       | Required |
+|---------------------|-------------------|----------|
+| `user`              | A specific user   | No       |
+| `users`             | List of users     | No       |
+| `client`            | A specific client | No       |
+| `clients`           | List of clients   | No       |
+| `scope`             | A specific scope  | No       |
+| `scopes`            | List of scopes    | No       |
+| [`claims`](#claims) | List of claims    | No       |
+
+The options for `user` + `users`, `client` + `clients`, `scope` + `scopes` will be merged into one specific list.
+
+So the single value may be considered as shortcut, if you do not need a list at all.
+
+Values for `user` + `users`, `client` + `clients`, `scope` + `scopes` will be used in a distinct manner.
+
+#### Claims
+
+List of client claims
+
+Entry `classification[n].calims`
+
+Each entry may contain the following options
+
+| Property | Description      | Required                  |
+|----------|------------------|---------------------------|
+| `name`   | Name             | Yes                       |
+| `scope`  | A specific scope | No                        |
+| `scopes` | List of scopes   | No                        |
+| `value`  | A specific value | Yes, if `values` not used |
+| `values` | List of value    | Yes, if `value` not used  |
+
+The options for `scope` + `scopes` will be merged into one list.
+
+So the single value may be considered as shortcut, if you do not need a list at all.
+
+Values for `scope` + `scopes` will be used in a distinct manner.
+
+When claim scopes are used, the listed claims will only be returned if the scope was requested.
+
+If the parent classification has set scopes the scopes are used in addition to the claim scopes.
+
 ## Examples
 
 ### Minimal configuration
@@ -244,8 +289,10 @@ server:
   #logoutRedirect: http://localhost:8080
   forwardAuth:
     externalUrl: http://localhost:9090
+    #externalUrl: http://stopnik.localhost:9090 #ext
     redirects:
       - http://localhost:9090*
+      - http://whoami.localhost:9090*
   secret: WRYldij9ebtDZ5VJSsxNAfCZ
   privateKey: ./.test_files/rsa256key.pem
   addr: :8082
@@ -273,9 +320,6 @@ clients:
       - http://localhost:8080/session/callback
       - http://localhost:5173/reporting/oidc-callback*
       - http://localhost:8082/health
-    claims:
-      - name: foo
-        value: bar
   - id: testclient2
     clientSecret: deb920477e822d9373831d5521749d3685a3c359504139eb3ff61c7d2fe91986b1978aa1a7834bb304762699b05da2700319e5d60c1183f6f9f66f9c6e73e34e
     salt: abc
@@ -300,12 +344,30 @@ users:
       testclient:
         - foo_role
         - bar_role
-    profile:
+    userProfile:
       givenName: John
       familyName: Doe
+    userInformation:
+      email: jone.doe@foo.com
+      emailVerified: true
+      phoneNumber: 555 1234 5678
+      phoneVerified: true
       address:
         street: Mainstreet 1
         city: Sometown
         postalCode: 12345
         country: Boom
+classification:
+  - user: foo
+    users: ['foo', 'bar', 'moo'] # 2nd definition of 'foo', will only be used once
+    client: testclient
+    scope: my_scope
+    claims:
+      - name: some
+        value: some_value
+        scope: blabla
+      - name: other
+        values:
+          - abc
+          - def
 ```

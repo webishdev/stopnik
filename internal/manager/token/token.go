@@ -468,12 +468,6 @@ func getAuthorizationHeaderValue(authorizationHeader string) *string {
 	return &result
 }
 
-func addStringClaim(builder *jwt.Builder, claimName string, claimValue string) {
-	if claimValue != "" {
-		builder.Claim(claimName, claimValue)
-	}
-}
-
 func addStringClaimOpenId(builder *openid.Builder, claimName string, claimValue string) {
 	if claimValue != "" {
 		builder.Claim(claimName, claimValue)

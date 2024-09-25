@@ -549,7 +549,6 @@ func Test_ValidClients(t *testing.T) {
 					AccessTTL:    20,
 					RefreshTTL:   60,
 					IdTTL:        40,
-					RolesClaim:   "groups",
 					Audience:     []string{"one", "two"},
 					Oidc:         true,
 				},
@@ -1133,11 +1132,6 @@ func assertClientValues(t *testing.T, config *Config, expected testExpectedClien
 	audience := client.GetAudience()
 	if !reflect.DeepEqual(audience, expected.expectedAudience) {
 		t.Errorf("expected audience to be '%s', got '%s'", expected.expectedAudience, audience)
-	}
-
-	rolesClaim := client.GetRolesClaim()
-	if rolesClaim != expected.expectedRolesClaim {
-		t.Errorf("expected expectedRoles claim to be '%s', got '%s'", expected.expectedRolesClaim, rolesClaim)
 	}
 
 	validRedirect := client.ValidateRedirect("http://localhost:8080/callback")
