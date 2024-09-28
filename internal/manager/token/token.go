@@ -281,17 +281,22 @@ func (tokenManager *Manager) generateIdToken(requestData *internalHttp.RequestDa
 func (tokenManager *Manager) generateAccessToken(requestData *internalHttp.RequestData, username string, client *config.Client, scopes []string, duration time.Duration) string {
 	tokenId := uuid.New()
 	if client.OpaqueToken {
-		return tokenManager.generateOpaqueAccessToken(tokenId.String())
+		return tokenManager.generateOpaqueToken(tokenId.String())
 	}
 	accessToken := generateAccessToken(requestData, tokenManager.config, client, tokenId.String(), duration, username, scopes)
 	return tokenManager.generateJWTToken(client, accessToken)
 }
 
 func (tokenManager *Manager) generateRefreshToken(requestData *internalHttp.RequestData, username string, client *config.Client, scopes []string, duration time.Duration) string {
-	return tokenManager.generateAccessToken(requestData, username, client, scopes, duration)
+	tokenId := uuid.New()
+	if client.OpaqueToken {
+		return tokenManager.generateOpaqueToken(tokenId.String())
+	}
+	accessToken := generateRefreshToken(requestData, tokenManager.config, client, tokenId.String(), duration, username, scopes)
+	return tokenManager.generateJWTToken(client, accessToken)
 }
 
-func (tokenManager *Manager) generateOpaqueAccessToken(tokenId string) string {
+func (tokenManager *Manager) generateOpaqueToken(tokenId string) string {
 	return base64.RawURLEncoding.EncodeToString([]byte(tokenId))
 }
 
@@ -448,6 +453,32 @@ func generateAccessToken(requestData *internalHttp.RequestData, config *config.C
 		values := currentClaim.GetValues()
 		builder.Claim(name, values)
 	}
+
+	token, builderError := builder.Build()
+
+	if builderError != nil {
+		system.Error(builderError)
+	}
+
+	return token
+}
+
+func generateRefreshToken(requestData *internalHttp.RequestData, config *config.Config, client *config.Client, tokenId string, duration time.Duration, username string, scopes []string) jwt.Token {
+	builder := jwt.NewBuilder().
+		Expiration(time.Now().Add(duration)). // https://www.rfc-editor.org/rfc/rfc7519.html#section-4.1.4
+		IssuedAt(time.Now())                  // https://www.rfc-editor.org/rfc/rfc7519.html#section-4.1.6
+
+	// https://www.rfc-editor.org/rfc/rfc7519.html#section-4.1.7
+	builder.JwtID(tokenId)
+
+	// https://www.rfc-editor.org/rfc/rfc7519.html#section-4.1.1
+	builder.Issuer(config.GetIssuer(requestData))
+
+	// https://www.rfc-editor.org/rfc/rfc7519.html#section-4.1.2
+	builder.Subject(username)
+
+	// https://www.rfc-editor.org/rfc/rfc7519.html#section-4.1.3
+	builder.Audience(client.GetAudience())
 
 	token, builderError := builder.Build()
 
