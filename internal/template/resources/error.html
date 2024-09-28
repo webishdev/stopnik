@@ -1,0 +1,9 @@
+{{ template "header" . }}
+<main>
+    {{ template "mascot" . }}
+    {{ if .ShowTitle }}
+    <div class="title">{{ .Title }}</div>
+    {{ end }}
+    <div class="error-message">{{ .ErrorMessage }}</div>
+</main>
+{{ template "footer" . }}

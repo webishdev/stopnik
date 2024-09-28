@@ -376,8 +376,9 @@ func generateIdToken(requestData *internalHttp.RequestData, config *config.Confi
 
 	if slices.Contains(scopes, oidc.ScopeProfile) {
 		builder.Name(user.GetName())
-		builder.FamilyName(user.UserProfile.FamilyName)
 		builder.GivenName(user.UserProfile.GivenName)
+		builder.MiddleName(user.UserProfile.MiddleName)
+		builder.FamilyName(user.UserProfile.FamilyName)
 		builder.Nickname(user.UserProfile.Nickname)
 		builder.PreferredUsername(user.GetPreferredUsername())
 		builder.Gender(user.UserProfile.Gender)
@@ -386,6 +387,9 @@ func generateIdToken(requestData *internalHttp.RequestData, config *config.Confi
 		builder.Website(user.UserProfile.Website)
 		builder.Profile(user.UserProfile.Profile)
 		builder.Picture(user.UserProfile.Picture)
+		if user.UserProfile.BirthDate != "" {
+			builder.Claim(openid.BirthdateKey, user.UserProfile.BirthDate)
+		}
 
 	}
 
@@ -402,10 +406,10 @@ func generateIdToken(requestData *internalHttp.RequestData, config *config.Confi
 		builder.Address(address)
 	}
 
-	if slices.Contains(scopes, oidc.ScopeEmail) {
-		builder.Email(user.UserInformation.Email)
-		builder.EmailVerified(user.UserInformation.EmailVerified)
-	}
+	//if slices.Contains(scopes, oidc.ScopeEmail) {
+	//	builder.Email(user.UserInformation.Email)
+	//	builder.EmailVerified(user.UserInformation.EmailVerified)
+	//}
 
 	if slices.Contains(scopes, oidc.ScopePhone) {
 		builder.PhoneNumber(user.UserInformation.PhoneNumber)

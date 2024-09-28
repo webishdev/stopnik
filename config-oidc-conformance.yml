@@ -18,8 +18,7 @@ clients:
   oidc: true
   privateKey: ./.test_files/ecdsa521key.pem
   redirects:
-    - https://localhost:8443/*
-    - https://localhost.emobix.co.uk:8443/test/a/instructions-example*
+    - https://localhost.emobix.co.uk:8443/test/a/instructions-example/callback
 - id: oidc2 # pw: foo
   clientSecret: d2994b96f7fafa7303a4bce00f7135e88f950ae87fdf8c0b95428803f6c78337ecfab4062e0ca68a177de97490660e5aa31981e5ee4b97b291301b2edbc0788f
   salt: 789
@@ -29,8 +28,7 @@ clients:
   oidc: true
   privateKey: ./.test_files/ecdsa521key.pem
   redirects:
-    - https://localhost:8443/*
-    - https://localhost.emobix.co.uk:8443/test/a/instructions-example*
+    - https://localhost.emobix.co.uk:8443/test/a/instructions-example/callback
 users:
 - username: foo
   password: 695e6f39f5ffd36ae60e0ade727c892d725531455a19c6035cb739d099e8f20e63d3fdfd3241888e38de1d8db85532dd65f817b12fe33ac7cdcc358ef6c8ea23
@@ -41,14 +39,30 @@ users:
       - bar_role
   userProfile:
     givenName: John
+    middleName: Ron
     familyName: Doe
+    nickname: foo
+    gender: other
+    birthDate: 1979-01-17
+    zoneInfo: Europe/Berlin
+    locale: de-DE
+    website: https://stopnik.webish.dev
+    profile: https://stopnik.webish.dev
+    picture: https://stopnik.webish.dev/img/stopnik.svg
   userInformation:
     email: jone.doe@foo.com
     emailVerified: true
     phoneNumber: 555 1234 5678
-    phoneVerified: true
+    phoneNumberVerified: true
     address:
       street: Mainstreet 1
       city: Sometown
       postalCode: 12345
       country: Boom
+classification:
+  - user: foo
+    claims:
+      - name: role
+        values:
+          - foo_role
+          - bar_role

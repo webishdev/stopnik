@@ -38,6 +38,7 @@ func (h *UserInfoHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			if slices.Contains(scopes, oidc.ScopeProfile) {
 				response.Name = user.GetName()
 				response.GivenName = user.UserProfile.GivenName
+				response.MiddleName = user.UserProfile.MiddleName
 				response.FamilyName = user.UserProfile.FamilyName
 				response.Nickname = user.UserProfile.Nickname
 				response.PreferredUserName = user.GetPreferredUsername()

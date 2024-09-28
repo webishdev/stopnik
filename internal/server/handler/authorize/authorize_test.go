@@ -456,8 +456,8 @@ func Test_AuthorizeInvalidRedirect(t *testing.T) {
 
 	var redirectTestParameters = []redirectTest{
 		{"://hahaNoURI", http.StatusBadRequest},
-		{"", http.StatusBadRequest},
-		{"http://example.com/foo", http.StatusBadRequest},
+		{"", http.StatusOK},
+		{"http://example.com/foo", http.StatusOK},
 	}
 
 	for _, test := range redirectTestParameters {
@@ -470,8 +470,9 @@ func Test_AuthorizeInvalidRedirect(t *testing.T) {
 
 			loginSessionManager := session.GetLoginSessionManagerInstance()
 			requestValidator := validation.NewRequestValidator()
+			templateManager := template.GetTemplateManagerInstance()
 
-			authorizeHandler := NewAuthorizeHandler(requestValidator, &cookie.Manager{}, &session.AuthManager{}, loginSessionManager, &token.Manager{}, &template.Manager{})
+			authorizeHandler := NewAuthorizeHandler(requestValidator, &cookie.Manager{}, &session.AuthManager{}, loginSessionManager, &token.Manager{}, templateManager)
 
 			rr := httptest.NewRecorder()
 
@@ -488,13 +489,14 @@ func Test_AuthorizeInvalidRedirect(t *testing.T) {
 func Test_AuthorizeInvalidClientId(t *testing.T) {
 	createTestConfig(t)
 	parsedUri := createUri(t, endpoint.Authorization, func(query url.Values) {
-		query.Set(oauth2.ParameterClientId, "bar")
+		query.Set(oauth2.ParameterClientId, "moo")
 	})
 
 	loginSessionManager := session.GetLoginSessionManagerInstance()
 	requestValidator := validation.NewRequestValidator()
+	templateManager := template.GetTemplateManagerInstance()
 
-	authorizeHandler := NewAuthorizeHandler(requestValidator, &cookie.Manager{}, &session.AuthManager{}, loginSessionManager, &token.Manager{}, &template.Manager{})
+	authorizeHandler := NewAuthorizeHandler(requestValidator, &cookie.Manager{}, &session.AuthManager{}, loginSessionManager, &token.Manager{}, templateManager)
 
 	rr := httptest.NewRecorder()
 

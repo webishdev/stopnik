@@ -24,6 +24,9 @@ var loginHtml []byte
 //go:embed resources/logout.html
 var logoutHtml []byte
 
+//go:embed resources/error.html
+var errorHtml []byte
+
 type Manager struct {
 	config *config.Config
 }
@@ -110,9 +113,9 @@ func (templateManager *Manager) LoginTemplate(id string, action string, message 
 func (templateManager *Manager) LogoutTemplate(username string, requestURI string) bytes.Buffer {
 	var tpl bytes.Buffer
 
-	logoutTemplate, loginParseError := template.New("logout").Parse(string(logoutHtml))
-	if loginParseError != nil {
-		system.Error(loginParseError)
+	logoutTemplate, logoutParseError := template.New("logout").Parse(string(logoutHtml))
+	if logoutParseError != nil {
+		system.Error(logoutParseError)
 	}
 
 	addTemplates(logoutTemplate)
@@ -140,6 +143,44 @@ func (templateManager *Manager) LogoutTemplate(username string, requestURI strin
 	}
 
 	templateExecuteError := logoutTemplate.Execute(&tpl, data)
+	if templateExecuteError != nil {
+		system.Error(templateExecuteError)
+	}
+
+	return tpl
+}
+
+func (templateManager *Manager) ErrorTemplate(message string) bytes.Buffer {
+	var tpl bytes.Buffer
+
+	errorTemplate, errorParseError := template.New("error").Parse(string(errorHtml))
+	if errorParseError != nil {
+		system.Error(errorParseError)
+	}
+
+	addTemplates(errorTemplate)
+
+	data := struct {
+		ErrorMessage  string
+		HideFooter    bool
+		HideMascot    bool
+		ShowHtmlTitle bool
+		HtmlTitle     string
+		ShowTitle     bool
+		Title         string
+		FooterText    string
+	}{
+		ErrorMessage:  message,
+		HideFooter:    templateManager.config.GetHideFooter(),
+		HideMascot:    templateManager.config.GetHideLogo(),
+		ShowHtmlTitle: templateManager.config.GetHtmlTitle() != "",
+		HtmlTitle:     templateManager.config.GetHtmlTitle(),
+		ShowTitle:     templateManager.config.GetTitle() != "",
+		Title:         templateManager.config.GetTitle(),
+		FooterText:    templateManager.config.GetFooterText(),
+	}
+
+	templateExecuteError := errorTemplate.Execute(&tpl, data)
 	if templateExecuteError != nil {
 		system.Error(templateExecuteError)
 	}

@@ -72,6 +72,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) handleGetRequest(w http.ResponseWriter, r *http.Request) {
+	// OAuth2
 	clientIdParameter := r.URL.Query().Get(oauth2.ParameterClientId)
 	stateParameter := r.URL.Query().Get(oauth2.ParameterState)
 	responseTypeParameter := r.URL.Query().Get(oauth2.ParameterResponseType)
@@ -307,14 +308,20 @@ func (h *Handler) validateLogin(w http.ResponseWriter, r *http.Request) (*config
 }
 
 func (h *Handler) validateRedirect(client *config.Client, redirect string) func(w http.ResponseWriter, r *http.Request) {
-	validRedirect := client.ValidateRedirect(redirect)
-
-	if !validRedirect {
-		return h.errorHandler.BadRequestHandler
-	}
 	if redirect == "" {
 		log.Error("Redirect provided for client %s was empty", client.Id)
+		return func(w http.ResponseWriter, r *http.Request) {
+			h.sendErrorPage(w, r, "No redirect provided")
+		}
+	}
 
+	validRedirect := client.ValidateRedirect(redirect)
+	if !validRedirect {
+		log.Error("Invalid redirect to %s for client %s", redirect, client.Id)
+		message := fmt.Sprintf("Invalid redirect: %s", redirect)
+		return func(w http.ResponseWriter, r *http.Request) {
+			h.sendErrorPage(w, r, message)
+		}
 	}
 
 	return nil
@@ -358,28 +365,6 @@ func (h *Handler) forceLogin(loginSession *session.LoginSession, promptType *oid
 	return false
 }
 
-func (h *Handler) sendLogin(w http.ResponseWriter, r *http.Request, authSessionId string) {
-	message := h.cookieManager.GetMessageCookieValue(r)
-
-	query := r.URL.Query()
-	encodedQuery := query.Encode()
-	authorization := endpoint.Authorization[1:]
-	formAction := fmt.Sprintf("%s?%s", authorization, encodedQuery)
-	loginToken := h.validator.NewLoginToken(authSessionId)
-	loginTemplate := h.templateManager.LoginTemplate(loginToken, formAction, message)
-
-	requestData := internalHttp.NewRequestData(r)
-	responseWriter := internalHttp.NewResponseWriter(w, requestData)
-
-	responseWriter.SetEncodingHeader()
-
-	_, writeError := responseWriter.Write(loginTemplate.Bytes())
-	if writeError != nil {
-		h.errorHandler.InternalServerErrorHandler(w, r, writeError)
-		return
-	}
-}
-
 func (h *Handler) getResponseTypes(responseTypeQueryParameter string) ([]oauth2.ResponseType, bool) {
 	var responseTypes []oauth2.ResponseType
 	responseTypeQueryParameters := strings.Split(responseTypeQueryParameter, " ")
@@ -407,6 +392,43 @@ func setImplicitGrantParameter(query url.Values, accessTokenResponse oauth2.Acce
 
 func setIdTokenParameter(query url.Values, idToken string) {
 	query.Set(oidc.ParameterIdToken, idToken)
+}
+
+func (h *Handler) sendLogin(w http.ResponseWriter, r *http.Request, authSessionId string) {
+	message := h.cookieManager.GetMessageCookieValue(r)
+
+	query := r.URL.Query()
+	encodedQuery := query.Encode()
+	authorization := endpoint.Authorization[1:]
+	formAction := fmt.Sprintf("%s?%s", authorization, encodedQuery)
+	loginToken := h.validator.NewLoginToken(authSessionId)
+	loginTemplate := h.templateManager.LoginTemplate(loginToken, formAction, message)
+
+	requestData := internalHttp.NewRequestData(r)
+	responseWriter := internalHttp.NewResponseWriter(w, requestData)
+
+	responseWriter.SetEncodingHeader()
+
+	_, writeError := responseWriter.Write(loginTemplate.Bytes())
+	if writeError != nil {
+		h.errorHandler.InternalServerErrorHandler(w, r, writeError)
+		return
+	}
+}
+
+func (h *Handler) sendErrorPage(w http.ResponseWriter, r *http.Request, message string) {
+	errorTemplate := h.templateManager.ErrorTemplate(message)
+
+	requestData := internalHttp.NewRequestData(r)
+	responseWriter := internalHttp.NewResponseWriter(w, requestData)
+
+	responseWriter.SetEncodingHeader()
+
+	_, writeError := responseWriter.Write(errorTemplate.Bytes())
+	if writeError != nil {
+		h.errorHandler.InternalServerErrorHandler(w, r, writeError)
+		return
+	}
 }
 
 func (h *Handler) sendRetryLocation(w http.ResponseWriter, r *http.Request, message string) {
