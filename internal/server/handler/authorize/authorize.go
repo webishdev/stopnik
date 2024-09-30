@@ -26,6 +26,19 @@ import (
 	"time"
 )
 
+type authorizeRequestValues struct {
+	clientIdParameter            string
+	redirectParameter            string
+	responseTypeParameter        string
+	stateParameter               string
+	codeChallengeParameter       string
+	codeChallengeMethodParameter string
+	scopeParameter               string
+	nonceParameter               string
+	promptParameter              string
+	maxAgeParameter              string
+}
+
 type Handler struct {
 	validator           *validation.RequestValidator
 	cookieManager       *cookie.Manager
@@ -88,153 +101,20 @@ func (h *Handler) handleGetRequest(w http.ResponseWriter, r *http.Request) {
 	promptParameter := r.URL.Query().Get(oidc.ParameterPrompt)
 	maxAgeParameter := r.URL.Query().Get(oidc.ParameterMaxAge)
 
-	client, exists := h.validator.ValidateClientId(clientIdParameter)
-	if !exists {
-		log.Error("Invalid client id %s", clientIdParameter)
-		h.errorHandler.BadRequestHandler(w, r)
-		return
+	authorizeRequest := &authorizeRequestValues{
+		clientIdParameter:            clientIdParameter,
+		redirectParameter:            redirectParameter,
+		responseTypeParameter:        responseTypeParameter,
+		stateParameter:               stateParameter,
+		codeChallengeParameter:       codeChallengeParameter,
+		codeChallengeMethodParameter: codeChallengeMethodParameter,
+		scopeParameter:               scopeParameter,
+		nonceParameter:               nonceParameter,
+		promptParameter:              promptParameter,
+		maxAgeParameter:              maxAgeParameter,
 	}
 
-	redirectURL, urlParseError := url.Parse(redirectParameter)
-	if urlParseError != nil {
-		log.Error("Could not parse redirect URI %s for client %s", redirectParameter, client.Id)
-		h.errorHandler.BadRequestHandler(w, r)
-		return
-	}
-
-	invalidRedirectErrorHandler := h.validateRedirect(client, redirectParameter)
-	if invalidRedirectErrorHandler != nil {
-		invalidRedirectErrorHandler(w, r)
-		return
-	}
-
-	responseTypes, validResponseTypes := h.getResponseTypes(responseTypeParameter)
-	if !validResponseTypes {
-		log.Error("Invalid %s parameter with value %s for client %s", oauth2.ParameterResponseType, responseTypeParameter, client.Id)
-
-		errorMessage := fmt.Sprintf("Invalid %s parameter value", oauth2.ParameterResponseType)
-		authorizeError := &oauth2.AuthorizationErrorResponseParameter{Error: oauth2.AuthorizationEtInvalidRequest, Description: errorMessage}
-		oauth2.AuthorizationErrorResponseHandler(w, redirectURL, stateParameter, authorizeError)
-		return
-	}
-
-	if !slices.Contains(responseTypes, oauth2.RtCode) && codeChallengeParameter != "" && codeChallengeMethodParameter != "" {
-		errorMessage := fmt.Sprintf("Code challenge should only be used for response type %s", oauth2.RtCode)
-		authorizeError := &oauth2.AuthorizationErrorResponseParameter{Error: oauth2.AuthorizationEtInvalidRequest, Description: errorMessage}
-		oauth2.AuthorizationErrorResponseHandler(w, redirectURL, stateParameter, authorizeError)
-		return
-	}
-
-	if log.IsDebug() {
-		log.Debug("Response types: %v", responseTypes)
-		log.Debug("Redirect URI: %s", redirectParameter)
-		log.Debug("State: %s", stateParameter)
-		log.Debug("Scope: %s", scopeParameter)
-	}
-
-	scopes := strings.Split(scopeParameter, " ")
-
-	id := uuid.NewString()
-	authSession := &session.AuthSession{
-		Id:                  id,
-		Redirect:            redirectParameter,
-		AuthURI:             r.URL.RequestURI(),
-		CodeChallenge:       codeChallengeParameter,
-		CodeChallengeMethod: codeChallengeMethodParameter,
-		ClientId:            clientIdParameter,
-		ResponseTypes:       responseTypes,
-		Scopes:              scopes,
-		State:               stateParameter,
-	}
-
-	if client.Oidc && oidc.HasOidcScope(scopes) && nonceParameter != "" {
-		authSession.Nonce = nonceParameter
-	} else if nonceParameter != "" {
-		log.Error("Nonce used without OpenID Connect setting for client with id %s", client.Id)
-		oauth2.AuthorizationErrorResponseHandler(w, redirectURL, stateParameter, &oauth2.AuthorizationErrorResponseParameter{Error: oauth2.AuthorizationEtInvalidRequest})
-		return
-	}
-
-	idTokenRequest := slices.Contains(responseTypes, oauth2.RtIdToken) && len(responseTypes) == 1
-
-	if !idTokenRequest {
-		h.authSessionManager.StartSession(authSession)
-	}
-
-	user, loginSession, validCookie := h.cookieManager.ValidateAuthCookie(r)
-
-	var promptType *oidc.PromptType
-	if client.Oidc && oidc.HasOidcScope(scopes) && promptParameter != "" {
-		var authorizationErrorResponse *oauth2.AuthorizationErrorResponseParameter
-		promptType, authorizationErrorResponse = h.getPromptType(validCookie, promptParameter)
-		if authorizationErrorResponse != nil {
-			oauth2.AuthorizationErrorResponseHandler(w, redirectURL, stateParameter, authorizationErrorResponse)
-			return
-		}
-	} else if promptParameter != "" {
-		log.Error("Prompt used without OpenID Connect setting for client with id %s", client.Id)
-		oauth2.AuthorizationErrorResponseHandler(w, redirectURL, stateParameter, &oauth2.AuthorizationErrorResponseParameter{Error: oauth2.AuthorizationEtInvalidRequest})
-		return
-	}
-
-	var maxAge *int
-	if client.Oidc && oidc.HasOidcScope(scopes) && maxAgeParameter != "" {
-		maxAgeResult, maxAgeError := strconv.Atoi(maxAgeParameter)
-		if maxAgeError != nil {
-			oauth2.AuthorizationErrorResponseHandler(w, redirectURL, stateParameter, &oauth2.AuthorizationErrorResponseParameter{Error: oauth2.AuthorizationEtInvalidRequest})
-			return
-		}
-		maxAge = &maxAgeResult
-	} else if maxAgeParameter != "" {
-		log.Error("Max age used without OpenID Connect setting for client with id %s", client.Id)
-		oauth2.AuthorizationErrorResponseHandler(w, redirectURL, stateParameter, &oauth2.AuthorizationErrorResponseParameter{Error: oauth2.AuthorizationEtInvalidRequest})
-		return
-	}
-
-	if validCookie && !h.forceLogin(loginSession, promptType, maxAge) {
-		authSession.Username = user.Username
-		authSession.AuthTime = loginSession.StartTime
-
-		query, authorizationErrorResponse := h.createQuery(r, redirectURL, user, client, scopes, authSession, loginSession, responseTypes, id, idTokenRequest, stateParameter)
-		if authorizationErrorResponse != nil {
-			oauth2.AuthorizationErrorResponseHandler(w, redirectURL, stateParameter, authorizationErrorResponse)
-			return
-		}
-
-		sendFound(w, redirectURL, query)
-	} else {
-		// Show login page
-		h.sendLogin(w, r, authSession.Id)
-	}
-}
-
-func (h *Handler) createQuery(r *http.Request, redirectURL *url.URL, user *config.User, client *config.Client, scopes []string, authSession *session.AuthSession, loginSession *session.LoginSession, responseTypes []oauth2.ResponseType, id string, idTokenRequest bool, stateParameter string) (url.Values, *oauth2.AuthorizationErrorResponseParameter) {
-	query := redirectURL.Query()
-
-	var idToken string
-	accessTokenResponse := h.tokenManager.CreateAccessTokenResponse(r, user.Username, client, &loginSession.StartTime, scopes, authSession.Nonce, "")
-	if slices.Contains(responseTypes, oauth2.RtToken) {
-		setImplicitGrantParameter(query, accessTokenResponse)
-	} else if slices.Contains(responseTypes, oauth2.RtCode) {
-		setAuthorizationGrantParameter(query, id)
-	} else if idTokenRequest {
-		if accessTokenResponse.IdTokenValue == "" {
-			system.CriticalError(errors.New("no id_token found in response"))
-		}
-		idToken = accessTokenResponse.IdTokenValue
-	} else {
-		log.Error("Invalid response type %v", responseTypes)
-		return nil, &oauth2.AuthorizationErrorResponseParameter{Error: oauth2.AuthorizationEtUnsupportedResponseType}
-	}
-
-	if stateParameter != "" {
-		query.Set(oauth2.ParameterState, stateParameter)
-	}
-
-	if idToken != "" {
-		setIdTokenParameter(query, idToken)
-	}
-	return query, nil
+	h.handleAuthorizeRequest(w, r, authorizeRequest)
 }
 
 func (h *Handler) handlePostRequest(w http.ResponseWriter, r *http.Request, user *config.User) {
@@ -297,6 +177,131 @@ func (h *Handler) handlePostRequest(w http.ResponseWriter, r *http.Request, user
 	sendFound(w, redirectURL, query)
 }
 
+func (h *Handler) handleAuthorizeRequest(w http.ResponseWriter, r *http.Request, authorizeRequest *authorizeRequestValues) {
+	if authorizeRequest == nil {
+		h.errorHandler.InternalServerErrorHandler(w, r, errors.New("no authorization values provided"))
+		return
+	}
+	client, exists := h.validator.ValidateClientId(authorizeRequest.clientIdParameter)
+	if !exists {
+		log.Error("Invalid client id %s", authorizeRequest.clientIdParameter)
+		h.errorHandler.BadRequestHandler(w, r)
+		return
+	}
+
+	redirectURL, urlParseError := url.Parse(authorizeRequest.redirectParameter)
+	if urlParseError != nil {
+		log.Error("Could not parse redirect URI %s for client %s", authorizeRequest.redirectParameter, client.Id)
+		h.errorHandler.BadRequestHandler(w, r)
+		return
+	}
+
+	invalidRedirectErrorHandler := h.validateRedirect(client, authorizeRequest.redirectParameter)
+	if invalidRedirectErrorHandler != nil {
+		invalidRedirectErrorHandler(w, r)
+		return
+	}
+
+	responseTypes, validResponseTypes := h.getResponseTypes(authorizeRequest.responseTypeParameter)
+	if !validResponseTypes {
+		log.Error("Invalid %s parameter with value %s for client %s", oauth2.ParameterResponseType, authorizeRequest.responseTypeParameter, client.Id)
+
+		errorMessage := fmt.Sprintf("Invalid %s parameter value", oauth2.ParameterResponseType)
+		authorizeError := &oauth2.AuthorizationErrorResponseParameter{Error: oauth2.AuthorizationEtInvalidRequest, Description: errorMessage}
+		oauth2.AuthorizationErrorResponseHandler(w, redirectURL, authorizeRequest.stateParameter, authorizeError)
+		return
+	}
+
+	if !slices.Contains(responseTypes, oauth2.RtCode) && authorizeRequest.codeChallengeParameter != "" && authorizeRequest.codeChallengeMethodParameter != "" {
+		errorMessage := fmt.Sprintf("Code challenge should only be used for response type %s", oauth2.RtCode)
+		authorizeError := &oauth2.AuthorizationErrorResponseParameter{Error: oauth2.AuthorizationEtInvalidRequest, Description: errorMessage}
+		oauth2.AuthorizationErrorResponseHandler(w, redirectURL, authorizeRequest.stateParameter, authorizeError)
+		return
+	}
+
+	if log.IsDebug() {
+		log.Debug("Response types: %v", responseTypes)
+		log.Debug("Redirect URI: %s", authorizeRequest.redirectParameter)
+		log.Debug("State: %s", authorizeRequest.stateParameter)
+		log.Debug("Scope: %s", authorizeRequest.scopeParameter)
+	}
+
+	scopes := strings.Split(authorizeRequest.scopeParameter, " ")
+
+	id := uuid.NewString()
+	authSession := &session.AuthSession{
+		Id:                  id,
+		Redirect:            authorizeRequest.redirectParameter,
+		AuthURI:             r.URL.RequestURI(),
+		CodeChallenge:       authorizeRequest.codeChallengeParameter,
+		CodeChallengeMethod: authorizeRequest.codeChallengeMethodParameter,
+		ClientId:            authorizeRequest.clientIdParameter,
+		ResponseTypes:       responseTypes,
+		Scopes:              scopes,
+		State:               authorizeRequest.stateParameter,
+	}
+
+	if client.Oidc && oidc.HasOidcScope(scopes) && authorizeRequest.nonceParameter != "" {
+		authSession.Nonce = authorizeRequest.nonceParameter
+	} else if authorizeRequest.nonceParameter != "" {
+		log.Error("Nonce used without OpenID Connect setting for client with id %s", client.Id)
+		oauth2.AuthorizationErrorResponseHandler(w, redirectURL, authorizeRequest.stateParameter, &oauth2.AuthorizationErrorResponseParameter{Error: oauth2.AuthorizationEtInvalidRequest})
+		return
+	}
+
+	idTokenRequest := slices.Contains(responseTypes, oauth2.RtIdToken) && len(responseTypes) == 1
+
+	if !idTokenRequest {
+		h.authSessionManager.StartSession(authSession)
+	}
+
+	user, loginSession, validCookie := h.cookieManager.ValidateAuthCookie(r)
+
+	var promptType *oidc.PromptType
+	if client.Oidc && oidc.HasOidcScope(scopes) && authorizeRequest.promptParameter != "" {
+		var authorizationErrorResponse *oauth2.AuthorizationErrorResponseParameter
+		promptType, authorizationErrorResponse = h.getPromptType(validCookie, authorizeRequest.promptParameter)
+		if authorizationErrorResponse != nil {
+			oauth2.AuthorizationErrorResponseHandler(w, redirectURL, authorizeRequest.stateParameter, authorizationErrorResponse)
+			return
+		}
+	} else if authorizeRequest.promptParameter != "" {
+		log.Error("Prompt used without OpenID Connect setting for client with id %s", client.Id)
+		oauth2.AuthorizationErrorResponseHandler(w, redirectURL, authorizeRequest.stateParameter, &oauth2.AuthorizationErrorResponseParameter{Error: oauth2.AuthorizationEtInvalidRequest})
+		return
+	}
+
+	var maxAge *int
+	if client.Oidc && oidc.HasOidcScope(scopes) && authorizeRequest.maxAgeParameter != "" {
+		maxAgeResult, maxAgeError := strconv.Atoi(authorizeRequest.maxAgeParameter)
+		if maxAgeError != nil {
+			oauth2.AuthorizationErrorResponseHandler(w, redirectURL, authorizeRequest.stateParameter, &oauth2.AuthorizationErrorResponseParameter{Error: oauth2.AuthorizationEtInvalidRequest})
+			return
+		}
+		maxAge = &maxAgeResult
+	} else if authorizeRequest.maxAgeParameter != "" {
+		log.Error("Max age used without OpenID Connect setting for client with id %s", client.Id)
+		oauth2.AuthorizationErrorResponseHandler(w, redirectURL, authorizeRequest.stateParameter, &oauth2.AuthorizationErrorResponseParameter{Error: oauth2.AuthorizationEtInvalidRequest})
+		return
+	}
+
+	if validCookie && !h.forceLogin(loginSession, promptType, maxAge) {
+		authSession.Username = user.Username
+		authSession.AuthTime = loginSession.StartTime
+
+		query, authorizationErrorResponse := h.createLocationResponseQuery(r, redirectURL, user, client, scopes, authSession, loginSession, responseTypes, id, idTokenRequest, authorizeRequest.stateParameter)
+		if authorizationErrorResponse != nil {
+			oauth2.AuthorizationErrorResponseHandler(w, redirectURL, authorizeRequest.stateParameter, authorizationErrorResponse)
+			return
+		}
+
+		sendFound(w, redirectURL, query)
+	} else {
+		// Show login page
+		h.sendLogin(w, r, authSession.Id)
+	}
+}
+
 func (h *Handler) validateLogin(w http.ResponseWriter, r *http.Request) (*config.User, bool) {
 	// Handle Post from Login
 	user, loginError := h.validator.ValidateFormLogin(r)
@@ -325,6 +330,35 @@ func (h *Handler) validateRedirect(client *config.Client, redirect string) func(
 	}
 
 	return nil
+}
+
+func (h *Handler) createLocationResponseQuery(r *http.Request, redirectURL *url.URL, user *config.User, client *config.Client, scopes []string, authSession *session.AuthSession, loginSession *session.LoginSession, responseTypes []oauth2.ResponseType, id string, idTokenRequest bool, stateParameter string) (url.Values, *oauth2.AuthorizationErrorResponseParameter) {
+	query := redirectURL.Query()
+
+	var idToken string
+	accessTokenResponse := h.tokenManager.CreateAccessTokenResponse(r, user.Username, client, &loginSession.StartTime, scopes, authSession.Nonce, "")
+	if slices.Contains(responseTypes, oauth2.RtToken) {
+		setImplicitGrantParameter(query, accessTokenResponse)
+	} else if slices.Contains(responseTypes, oauth2.RtCode) {
+		setAuthorizationGrantParameter(query, id)
+	} else if idTokenRequest {
+		if accessTokenResponse.IdTokenValue == "" {
+			system.CriticalError(errors.New("no id_token found in response"))
+		}
+		idToken = accessTokenResponse.IdTokenValue
+	} else {
+		log.Error("Invalid response type %v", responseTypes)
+		return nil, &oauth2.AuthorizationErrorResponseParameter{Error: oauth2.AuthorizationEtUnsupportedResponseType}
+	}
+
+	if stateParameter != "" {
+		query.Set(oauth2.ParameterState, stateParameter)
+	}
+
+	if idToken != "" {
+		setIdTokenParameter(query, idToken)
+	}
+	return query, nil
 }
 
 func (h *Handler) getPromptType(validCookie bool, promptQueryParameter string) (*oidc.PromptType, *oauth2.AuthorizationErrorResponseParameter) {
