@@ -39,7 +39,7 @@ type oidcConfigurationResponse struct {
 	ClaimsSupported                                    []string                   `json:"claims_supported,omitempty"`
 	ClaimsLocalesSupported                             []string                   `json:"claims_locales_supported,omitempty"`
 	ClaimsParameterSupported                           []string                   `json:"claims_parameter_supported,omitempty"`
-	RequestParameterSupported                          []string                   `json:"request_parameter_supported,omitempty"`
+	RequestParameterSupported                          bool                       `json:"request_parameter_supported,omitempty"`
 	RequestUriParameterSupported                       []string                   `json:"request_uri_parameter_supported,omitempty"`
 	RequireRequestUriRegistration                      []string                   `json:"require_request_uri_registration,omitempty"`
 	TokenEndpointAuthMethodsSupported                  []string                   `json:"token_endpoint_auth_methods_supported,omitempty"`
@@ -137,6 +137,7 @@ func (h *DiscoveryHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			RevocationEndpointAuthMethodsSupported:             authMethodsSupported,
 			RevocationEndpointAuthSigningAlgValuesSupported:    signatureAlgorithmSupported,
 			IdTokenSigningAlgValuesSupported:                   signatureAlgorithmSupported,
+			RequestParameterSupported:                          true,
 			SubjectTypesSupported:                              []string{"public"},
 			ScopesSupported:                                    []string{oidc.ScopeOpenId, oidc.ScopeProfile, oidc.ScopeAddress, oidc.ScopeEmail, oidc.ScopePhone, oidc.ScopeOfflineAccess},
 		}

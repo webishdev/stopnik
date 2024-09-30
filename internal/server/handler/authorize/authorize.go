@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/google/uuid"
+	"github.com/lestrrat-go/jwx/v2/jwt"
 	"github.com/webishdev/stopnik/internal/config"
 	"github.com/webishdev/stopnik/internal/endpoint"
 	internalHttp "github.com/webishdev/stopnik/internal/http"
@@ -72,12 +73,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodGet {
 		h.handleGetRequest(w, r)
 	} else if r.Method == http.MethodPost {
-		user, failed := h.validateLogin(w, r)
-		if failed {
-			return
-		}
-
-		h.handlePostRequest(w, r, user)
+		h.handlePostRequest(w, r)
 	} else {
 		h.errorHandler.MethodNotAllowedHandler(w, r)
 		return
@@ -85,96 +81,169 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) handleGetRequest(w http.ResponseWriter, r *http.Request) {
-	// OAuth2
-	clientIdParameter := r.URL.Query().Get(oauth2.ParameterClientId)
-	stateParameter := r.URL.Query().Get(oauth2.ParameterState)
-	responseTypeParameter := r.URL.Query().Get(oauth2.ParameterResponseType)
-	redirectParameter := r.URL.Query().Get(oauth2.ParameterRedirectUri)
-	scopeParameter := r.URL.Query().Get(oauth2.ParameterScope)
+	requestParameter := r.URL.Query().Get("request")
+	if requestParameter != "" {
+		parse, err := jwt.Parse([]byte(requestParameter), jwt.WithVerify(false))
+		if err != nil {
+			log.Error("%v", err)
+		} else {
+			log.Info("%v", parse)
+		}
 
-	// PKCE
-	codeChallengeParameter := r.URL.Query().Get(pkce.ParameterCodeChallenge)
-	codeChallengeMethodParameter := r.URL.Query().Get(pkce.ParameterCodeChallengeMethod)
+		scopeParameter, _ := parse.Get("scope")
+		responseTypeParameter, _ := parse.Get("response_type")
+		redirectParameter, _ := parse.Get("redirect_uri")
+		stateParameter, _ := parse.Get("state")
+		nonceParameter, _ := parse.Get("nonce")
+		clientIdParameter, _ := parse.Get("client_id")
 
-	// OpenId Connect
-	nonceParameter := r.URL.Query().Get(oidc.ParameterNonce)
-	promptParameter := r.URL.Query().Get(oidc.ParameterPrompt)
-	maxAgeParameter := r.URL.Query().Get(oidc.ParameterMaxAge)
+		authorizeRequest := &authorizeRequestValues{
+			clientIdParameter:            fmt.Sprintf("%s", clientIdParameter),
+			redirectParameter:            fmt.Sprintf("%s", redirectParameter),
+			responseTypeParameter:        fmt.Sprintf("%s", responseTypeParameter),
+			stateParameter:               fmt.Sprintf("%s", stateParameter),
+			codeChallengeParameter:       "",
+			codeChallengeMethodParameter: "",
+			scopeParameter:               fmt.Sprintf("%s", scopeParameter),
+			nonceParameter:               fmt.Sprintf("%s", nonceParameter),
+			promptParameter:              "",
+			maxAgeParameter:              "",
+		}
 
-	authorizeRequest := &authorizeRequestValues{
-		clientIdParameter:            clientIdParameter,
-		redirectParameter:            redirectParameter,
-		responseTypeParameter:        responseTypeParameter,
-		stateParameter:               stateParameter,
-		codeChallengeParameter:       codeChallengeParameter,
-		codeChallengeMethodParameter: codeChallengeMethodParameter,
-		scopeParameter:               scopeParameter,
-		nonceParameter:               nonceParameter,
-		promptParameter:              promptParameter,
-		maxAgeParameter:              maxAgeParameter,
+		h.handleAuthorizeRequest(w, r, authorizeRequest)
+	} else {
+
+		// OAuth2
+		clientIdParameter := r.URL.Query().Get(oauth2.ParameterClientId)
+		stateParameter := r.URL.Query().Get(oauth2.ParameterState)
+		responseTypeParameter := r.URL.Query().Get(oauth2.ParameterResponseType)
+		redirectParameter := r.URL.Query().Get(oauth2.ParameterRedirectUri)
+		scopeParameter := r.URL.Query().Get(oauth2.ParameterScope)
+
+		// PKCE
+		codeChallengeParameter := r.URL.Query().Get(pkce.ParameterCodeChallenge)
+		codeChallengeMethodParameter := r.URL.Query().Get(pkce.ParameterCodeChallengeMethod)
+
+		// OpenId Connect
+		nonceParameter := r.URL.Query().Get(oidc.ParameterNonce)
+		promptParameter := r.URL.Query().Get(oidc.ParameterPrompt)
+		maxAgeParameter := r.URL.Query().Get(oidc.ParameterMaxAge)
+
+		authorizeRequest := &authorizeRequestValues{
+			clientIdParameter:            clientIdParameter,
+			redirectParameter:            redirectParameter,
+			responseTypeParameter:        responseTypeParameter,
+			stateParameter:               stateParameter,
+			codeChallengeParameter:       codeChallengeParameter,
+			codeChallengeMethodParameter: codeChallengeMethodParameter,
+			scopeParameter:               scopeParameter,
+			nonceParameter:               nonceParameter,
+			promptParameter:              promptParameter,
+			maxAgeParameter:              maxAgeParameter,
+		}
+
+		h.handleAuthorizeRequest(w, r, authorizeRequest)
 	}
-
-	h.handleAuthorizeRequest(w, r, authorizeRequest)
 }
 
-func (h *Handler) handlePostRequest(w http.ResponseWriter, r *http.Request, user *config.User) {
-	loginSession := &session.LoginSession{
-		Id:       uuid.NewString(),
-		Username: user.Username,
-	}
-	h.loginSessionManager.StartSession(loginSession)
-	authCookie, authCookieError := h.cookieManager.CreateAuthCookie(user.Username, loginSession.Id)
-	if authCookieError != nil {
-		h.errorHandler.InternalServerErrorHandler(w, r, authCookieError)
-		return
-	}
-
+func (h *Handler) handlePostRequest(w http.ResponseWriter, r *http.Request) {
 	authSessionForm := r.PostFormValue("stopnik_auth_session")
-	loginToken, loginTokenError := h.validator.GetLoginToken(authSessionForm)
-	if loginTokenError != nil {
-		h.errorHandler.BadRequestHandler(w, r)
-		return
-	}
-	authSessionId := loginToken.Subject()
-	authSession, authSessionExists := h.authSessionManager.GetSession(authSessionId)
-	if !authSessionExists {
-		h.sendRetryLocation(w, r, "")
-		return
-	}
+	if authSessionForm != "" {
+		user, loginError := h.validator.ValidateFormLogin(r)
+		if loginError != nil {
+			h.sendRetryLocation(w, r, *loginError)
+			return
+		}
 
-	authSession.Username = user.Username
-	authSession.AuthTime = loginSession.StartTime
-	redirectURL, urlParseError := url.Parse(authSession.Redirect)
-	if urlParseError != nil {
-		h.errorHandler.InternalServerErrorHandler(w, r, urlParseError)
-		return
-	}
+		loginSession := &session.LoginSession{
+			Id:       uuid.NewString(),
+			Username: user.Username,
+		}
+		h.loginSessionManager.StartSession(loginSession)
+		authCookie, authCookieError := h.cookieManager.CreateAuthCookie(user.Username, loginSession.Id)
+		if authCookieError != nil {
+			h.errorHandler.InternalServerErrorHandler(w, r, authCookieError)
+			return
+		}
 
-	http.SetCookie(w, &authCookie)
-
-	responseTypes := authSession.ResponseTypes
-
-	query := redirectURL.Query()
-	if slices.Contains(responseTypes, oauth2.RtToken) {
-		client, clientExists := h.validator.ValidateClientId(authSession.ClientId)
-		if !clientExists {
+		loginToken, loginTokenError := h.validator.GetLoginToken(authSessionForm)
+		if loginTokenError != nil {
 			h.errorHandler.BadRequestHandler(w, r)
 			return
 		}
-		accessTokenResponse := h.tokenManager.CreateAccessTokenResponse(r, user.Username, client, &loginSession.StartTime, authSession.Scopes, authSession.Nonce, "")
-		setImplicitGrantParameter(query, accessTokenResponse)
-	} else if slices.Contains(responseTypes, oauth2.RtCode) {
-		setAuthorizationGrantParameter(query, authSession.Id)
+		authSessionId := loginToken.Subject()
+		authSession, authSessionExists := h.authSessionManager.GetSession(authSessionId)
+		if !authSessionExists {
+			h.sendRetryLocation(w, r, "")
+			return
+		}
+
+		authSession.Username = user.Username
+		authSession.AuthTime = loginSession.StartTime
+		redirectURL, urlParseError := url.Parse(authSession.Redirect)
+		if urlParseError != nil {
+			h.errorHandler.InternalServerErrorHandler(w, r, urlParseError)
+			return
+		}
+
+		http.SetCookie(w, &authCookie)
+
+		responseTypes := authSession.ResponseTypes
+
+		query := redirectURL.Query()
+		if slices.Contains(responseTypes, oauth2.RtToken) {
+			client, clientExists := h.validator.ValidateClientId(authSession.ClientId)
+			if !clientExists {
+				h.errorHandler.BadRequestHandler(w, r)
+				return
+			}
+			accessTokenResponse := h.tokenManager.CreateAccessTokenResponse(r, user.Username, client, &loginSession.StartTime, authSession.Scopes, authSession.Nonce, "")
+			setImplicitGrantParameter(query, accessTokenResponse)
+		} else if slices.Contains(responseTypes, oauth2.RtCode) {
+			setAuthorizationGrantParameter(query, authSession.Id)
+		} else {
+			oauth2.AuthorizationErrorResponseHandler(w, redirectURL, authSession.State, &oauth2.AuthorizationErrorResponseParameter{Error: oauth2.AuthorizationEtUnsupportedResponseType})
+			return
+		}
+
+		if authSession.State != "" {
+			query.Set(oauth2.ParameterState, authSession.State)
+		}
+
+		sendFound(w, redirectURL, query)
 	} else {
-		oauth2.AuthorizationErrorResponseHandler(w, redirectURL, authSession.State, &oauth2.AuthorizationErrorResponseParameter{Error: oauth2.AuthorizationEtUnsupportedResponseType})
-		return
+		// OAuth2
+		clientIdParameter := r.PostFormValue(oauth2.ParameterClientId)
+		stateParameter := r.PostFormValue(oauth2.ParameterState)
+		responseTypeParameter := r.PostFormValue(oauth2.ParameterResponseType)
+		redirectParameter := r.PostFormValue(oauth2.ParameterRedirectUri)
+		scopeParameter := r.PostFormValue(oauth2.ParameterScope)
+
+		// PKCE
+		codeChallengeParameter := r.PostFormValue(pkce.ParameterCodeChallenge)
+		codeChallengeMethodParameter := r.PostFormValue(pkce.ParameterCodeChallengeMethod)
+
+		// OpenId Connect
+		nonceParameter := r.PostFormValue(oidc.ParameterNonce)
+		promptParameter := r.PostFormValue(oidc.ParameterPrompt)
+		maxAgeParameter := r.PostFormValue(oidc.ParameterMaxAge)
+
+		authorizeRequest := &authorizeRequestValues{
+			clientIdParameter:            clientIdParameter,
+			redirectParameter:            redirectParameter,
+			responseTypeParameter:        responseTypeParameter,
+			stateParameter:               stateParameter,
+			codeChallengeParameter:       codeChallengeParameter,
+			codeChallengeMethodParameter: codeChallengeMethodParameter,
+			scopeParameter:               scopeParameter,
+			nonceParameter:               nonceParameter,
+			promptParameter:              promptParameter,
+			maxAgeParameter:              maxAgeParameter,
+		}
+
+		h.handleAuthorizeRequest(w, r, authorizeRequest)
 	}
 
-	if authSession.State != "" {
-		query.Set(oauth2.ParameterState, authSession.State)
-	}
-
-	sendFound(w, redirectURL, query)
 }
 
 func (h *Handler) handleAuthorizeRequest(w http.ResponseWriter, r *http.Request, authorizeRequest *authorizeRequestValues) {
@@ -302,16 +371,6 @@ func (h *Handler) handleAuthorizeRequest(w http.ResponseWriter, r *http.Request,
 	}
 }
 
-func (h *Handler) validateLogin(w http.ResponseWriter, r *http.Request) (*config.User, bool) {
-	// Handle Post from Login
-	user, loginError := h.validator.ValidateFormLogin(r)
-	if loginError != nil {
-		h.sendRetryLocation(w, r, *loginError)
-		return nil, true
-	}
-	return user, false
-}
-
 func (h *Handler) validateRedirect(client *config.Client, redirect string) func(w http.ResponseWriter, r *http.Request) {
 	if redirect == "" {
 		log.Error("Redirect provided for client %s was empty", client.Id)
@@ -431,10 +490,7 @@ func setIdTokenParameter(query url.Values, idToken string) {
 func (h *Handler) sendLogin(w http.ResponseWriter, r *http.Request, authSessionId string) {
 	message := h.cookieManager.GetMessageCookieValue(r)
 
-	query := r.URL.Query()
-	encodedQuery := query.Encode()
-	authorization := endpoint.Authorization[1:]
-	formAction := fmt.Sprintf("%s?%s", authorization, encodedQuery)
+	formAction := endpoint.Authorization[1:]
 	loginToken := h.validator.NewLoginToken(authSessionId)
 	loginTemplate := h.templateManager.LoginTemplate(loginToken, formAction, message)
 

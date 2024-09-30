@@ -16,6 +16,7 @@ clients:
   refreshTTL: 45
   idTTL: 45
   oidc: true
+  passwordFallbackAllowed: true
   privateKey: ./.test_files/ecdsa521key.pem
   redirects:
     - https://localhost.emobix.co.uk:8443/test/a/instructions-example/callback

@@ -32,6 +32,7 @@ clients:
   idTTL: 15
   oidc: true
   introspect: true
+  passwordFallbackAllowed: true
   redirects:
     - https://oauth.pstmn.io/v1/callback
     - http://localhost:8080/session/callback
