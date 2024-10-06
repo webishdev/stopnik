@@ -32,10 +32,10 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 		healthResponse := Health{Ping: "pong"}
 
-		user, _, scopes, valid := h.tokenManager.ValidateAccessTokenRequest(r)
+		validAccessToken, valid := h.tokenManager.ValidateAccessTokenRequest(r)
 		if valid {
-			healthResponse.Username = user.Username
-			healthResponse.Scopes = scopes
+			healthResponse.Username = validAccessToken.User.Username
+			healthResponse.Scopes = validAccessToken.Scopes
 		}
 
 		jsonError := internalHttp.SendJson(healthResponse, w, r)

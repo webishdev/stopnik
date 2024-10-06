@@ -3,6 +3,7 @@ package session
 import (
 	"github.com/webishdev/stopnik/internal/config"
 	"github.com/webishdev/stopnik/internal/oauth2"
+	"github.com/webishdev/stopnik/internal/oidc"
 	"github.com/webishdev/stopnik/internal/store"
 	"sync"
 	"time"
@@ -20,6 +21,7 @@ type AuthSession struct {
 	Scopes              []string
 	State               string
 	Nonce               string // OpenId Connect
+	RequestedClaims     *oidc.ClaimsParameter
 	AuthTime            time.Time
 }
 

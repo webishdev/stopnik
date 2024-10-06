@@ -1,7 +1,6 @@
 package oidc
 
 import (
-	"github.com/webishdev/stopnik/internal/config"
 	"strings"
 )
 
@@ -21,11 +20,6 @@ var promptTypeMap = map[string]PromptType{
 	"login":          PtLogin,
 	"consent":        PtConsent,
 	"select_account": PtSelectAccount,
-}
-
-type UserInfoResponse struct {
-	config.UserProfile
-	config.UserInformation
 }
 
 func PromptTypeFromString(value string) (PromptType, bool) {

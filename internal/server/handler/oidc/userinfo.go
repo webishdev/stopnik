@@ -13,6 +13,11 @@ import (
 	"slices"
 )
 
+type UserInfoResponse struct {
+	config.UserProfile
+	config.UserInformation
+}
+
 type UserInfoHandler struct {
 	config       *config.Config
 	tokenManager *token.Manager
@@ -31,9 +36,12 @@ func NewOidcUserInfoHandler(tokenManager *token.Manager) *UserInfoHandler {
 func (h *UserInfoHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	log.AccessLogRequest(r)
 	if r.Method == http.MethodGet || r.Method == http.MethodPost {
-		response := &oidc.UserInfoResponse{}
-		user, client, scopes, valid := h.tokenManager.ValidateAccessTokenRequest(r)
+		response := &UserInfoResponse{}
+		validAccessToken, valid := h.tokenManager.ValidateAccessTokenRequest(r)
 		if valid {
+			user := validAccessToken.User
+			client := validAccessToken.Client
+			scopes := validAccessToken.Scopes
 			response.Subject = user.Username
 			if slices.Contains(scopes, oidc.ScopeProfile) {
 				response.Name = user.GetName()
@@ -72,28 +80,28 @@ func (h *UserInfoHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				response.PhoneVerified = user.UserInformation.PhoneVerified
 			}
 
+			var result interface{}
+			result = response
+
+			claims := h.config.GetClaims(user.Username, client.Id, scopes)
+			for _, claim := range claims {
+				currentClaim := *claim
+				name := currentClaim.GetName()
+				values := currentClaim.GetValues()
+				updateResult, updateError := updateResponse(result, name, values)
+				if updateError == nil {
+					result = updateResult
+				}
+			}
+
+			jsonError := internalHttp.SendJson(result, w, r)
+			if jsonError != nil {
+				h.errorHandler.InternalServerErrorHandler(w, r, jsonError)
+				return
+			}
+
 		} else {
 			h.errorHandler.BadRequestHandler(w, r)
-			return
-		}
-
-		var result interface{}
-		result = response
-
-		claims := h.config.GetClaims(user.Username, client.Id, scopes)
-		for _, claim := range claims {
-			currentClaim := *claim
-			name := currentClaim.GetName()
-			values := currentClaim.GetValues()
-			updateResult, updateError := updateResponse(result, name, values)
-			if updateError == nil {
-				result = updateResult
-			}
-		}
-
-		jsonError := internalHttp.SendJson(result, w, r)
-		if jsonError != nil {
-			h.errorHandler.InternalServerErrorHandler(w, r, jsonError)
 			return
 		}
 	} else {

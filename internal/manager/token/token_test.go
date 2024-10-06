@@ -57,7 +57,7 @@ func Test_AccessTokenResponse(t *testing.T) {
 			}
 
 			request := httptest.NewRequest(http.MethodPost, endpoint.Token, nil)
-			accessTokenResponse := tokenManager.CreateAccessTokenResponse(request, "foo", client, nil, requestScopes, "", test.authCode)
+			accessTokenResponse := tokenManager.CreateAccessTokenResponse(request, "foo", client, nil, requestScopes, nil, "", test.authCode)
 
 			assertTokenResponse(t, accessTokenResponse, test, client)
 
@@ -122,9 +122,9 @@ func Test_InvalidUserInToken(t *testing.T) {
 	}
 
 	request := httptest.NewRequest(http.MethodPost, endpoint.Token, nil)
-	accessTokenResponse := tokenManager.CreateAccessTokenResponse(request, "bar", client, nil, []string{"abc", "def"}, "", "")
+	accessTokenResponse := tokenManager.CreateAccessTokenResponse(request, "bar", client, nil, []string{"abc", "def"}, nil, "", "")
 
-	_, _, _, valid := tokenManager.validateAccessTokenHeader(fmt.Sprintf("%s %s", internalHttp.AuthBearer, accessTokenResponse.AccessTokenValue))
+	_, valid := tokenManager.validateAccessTokenHeader(fmt.Sprintf("%s %s", internalHttp.AuthBearer, accessTokenResponse.AccessTokenValue))
 
 	if valid {
 		t.Error("should not be valid")
@@ -136,7 +136,7 @@ func Test_ValidAccessToken(t *testing.T) {
 		createTestConfig(t, false, 0, 0, "")
 		tokenManager := GetTokenManagerInstance()
 
-		_, _, _, valid := tokenManager.validateAccessTokenHeader("foooo")
+		_, valid := tokenManager.validateAccessTokenHeader("foooo")
 
 		if valid {
 			t.Error("should not be valid")
@@ -147,7 +147,7 @@ func Test_ValidAccessToken(t *testing.T) {
 		createTestConfig(t, false, 0, 0, "")
 		tokenManager := GetTokenManagerInstance()
 
-		_, _, _, valid := tokenManager.validateAccessTokenHeader(fmt.Sprintf("%s %s", internalHttp.AuthBearer, "foo"))
+		_, valid := tokenManager.validateAccessTokenHeader(fmt.Sprintf("%s %s", internalHttp.AuthBearer, "foo"))
 
 		if valid {
 			t.Error("should not be valid")
@@ -181,10 +181,12 @@ func Test_HashToken(t *testing.T) {
 }
 
 func assertAuthorizationHeader(t *testing.T, tokenManager *Manager, authorizationHeader string, requestScopes []string) {
-	user, _, scopes, valid := tokenManager.validateAccessTokenHeader(authorizationHeader)
+	validAccessToken, valid := tokenManager.validateAccessTokenHeader(authorizationHeader)
 	if !valid {
 		t.Error("user does not exist")
 	}
+	user := validAccessToken.User
+	scopes := validAccessToken.Scopes
 
 	if user.Username != "foo" {
 		t.Error("wrong username")

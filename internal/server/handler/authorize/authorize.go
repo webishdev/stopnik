@@ -141,7 +141,7 @@ func (h *Handler) handlePostRequest(w http.ResponseWriter, r *http.Request) {
 				h.errorHandler.BadRequestHandler(w, r)
 				return
 			}
-			accessTokenResponse := h.tokenManager.CreateAccessTokenResponse(r, user.Username, client, &loginSession.StartTime, authSession.Scopes, authSession.Nonce, "")
+			accessTokenResponse := h.tokenManager.CreateAccessTokenResponse(r, user.Username, client, &loginSession.StartTime, authSession.Scopes, authSession.RequestedClaims, authSession.Nonce, "")
 			setImplicitGrantParameter(query, accessTokenResponse)
 		} else if slices.Contains(responseTypes, oauth2.RtCode) {
 			setAuthorizationGrantParameter(query, authSession.Id)
@@ -232,6 +232,14 @@ func (h *Handler) handleAuthorizeRequest(w http.ResponseWriter, r *http.Request,
 		return
 	}
 
+	if client.Oidc && oidc.HasOidcScope(authorizeRequest.requestedScopes) && authSession.RequestedClaims != nil {
+		authSession.RequestedClaims = authorizeRequest.requestedClaims
+	} else if authSession.RequestedClaims != nil {
+		log.Error("Requested claims used without OpenID Connect setting for client with id %s", client.Id)
+		oauth2.AuthorizationErrorResponseHandler(w, redirectURL, authorizeRequest.stateParameter, &oauth2.AuthorizationErrorResponseParameter{Error: oauth2.AuthorizationEtInvalidRequest})
+		return
+	}
+
 	idTokenRequest := slices.Contains(responseTypes, oauth2.RtIdToken) && len(responseTypes) == 1
 
 	if !idTokenRequest {
@@ -309,7 +317,7 @@ func (h *Handler) createLocationResponseQuery(r *http.Request, redirectURL *url.
 	query := redirectURL.Query()
 
 	var idToken string
-	accessTokenResponse := h.tokenManager.CreateAccessTokenResponse(r, user.Username, client, &loginSession.StartTime, scopes, authSession.Nonce, "")
+	accessTokenResponse := h.tokenManager.CreateAccessTokenResponse(r, user.Username, client, &loginSession.StartTime, scopes, authSession.RequestedClaims, authSession.Nonce, "")
 	if slices.Contains(responseTypes, oauth2.RtToken) {
 		setImplicitGrantParameter(query, accessTokenResponse)
 	} else if slices.Contains(responseTypes, oauth2.RtCode) {

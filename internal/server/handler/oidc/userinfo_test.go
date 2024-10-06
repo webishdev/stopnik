@@ -70,7 +70,7 @@ func testOidcUserInfo(t *testing.T, testConfig *config.Config) {
 		}
 
 		request := httptest.NewRequest(http.MethodPost, endpoint.Token, nil)
-		tokenResponse := tokenManager.CreateAccessTokenResponse(request, "foo", client, nil, []string{"a:foo", "b:bar", oidc.ScopeProfile, oidc.ScopeEmail, oidc.ScopePhone, oidc.ScopeAddress}, "", "")
+		tokenResponse := tokenManager.CreateAccessTokenResponse(request, "foo", client, nil, []string{"a:foo", "b:bar", oidc.ScopeProfile, oidc.ScopeEmail, oidc.ScopePhone, oidc.ScopeAddress}, nil, "", "")
 
 		oidcDiscoveryHandler := NewOidcUserInfoHandler(tokenManager)
 
@@ -171,7 +171,7 @@ func testOidcUserInfoNotAllowedHttpMethods(t *testing.T) {
 	}
 }
 
-func testOidcUserInfoParse(t *testing.T, r *http.Response) oidc.UserInfoResponse {
+func testOidcUserInfoParse(t *testing.T, r *http.Response) UserInfoResponse {
 	responseBody, bodyReadErr := io.ReadAll(r.Body)
 
 	if bodyReadErr != nil {
@@ -182,7 +182,7 @@ func testOidcUserInfoParse(t *testing.T, r *http.Response) oidc.UserInfoResponse
 		t.Errorf("oidcConfigurationResponse body was nil")
 	}
 
-	userProfileResponse := oidc.UserInfoResponse{}
+	userProfileResponse := UserInfoResponse{}
 	jsonParseError := json.Unmarshal(responseBody, &userProfileResponse)
 	if jsonParseError != nil {
 		t.Errorf("could not parse oidcConfigurationResponse body: %v", jsonParseError)

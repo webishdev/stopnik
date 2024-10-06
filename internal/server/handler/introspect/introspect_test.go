@@ -249,7 +249,7 @@ func testIntrospect(t *testing.T, testConfig *config.Config) {
 			tokenManager := token.GetTokenManagerInstance()
 			sessionManager.StartSession(authSession)
 			request := httptest.NewRequest(http.MethodPost, endpoint.Token, nil)
-			accessTokenResponse := tokenManager.CreateAccessTokenResponse(request, user.Username, client, nil, scopes, "", "")
+			accessTokenResponse := tokenManager.CreateAccessTokenResponse(request, user.Username, client, nil, scopes, nil, "", "")
 
 			introspectHandler := NewIntrospectHandler(requestValidator, tokenManager)
 
@@ -322,7 +322,7 @@ func testIntrospectWithoutHint(t *testing.T, testConfig *config.Config) {
 			tokenManager := token.GetTokenManagerInstance()
 			sessionManager.StartSession(authSession)
 			request := httptest.NewRequest(http.MethodPost, endpoint.Token, nil)
-			accessTokenResponse := tokenManager.CreateAccessTokenResponse(request, user.Username, client, nil, scopes, "", "")
+			accessTokenResponse := tokenManager.CreateAccessTokenResponse(request, user.Username, client, nil, scopes, nil, "", "")
 
 			introspectHandler := NewIntrospectHandler(requestValidator, tokenManager)
 
@@ -394,7 +394,7 @@ func testIntrospectDisabled(t *testing.T, testConfig *config.Config) {
 			tokenManager := token.GetTokenManagerInstance()
 			sessionManager.StartSession(authSession)
 			request := httptest.NewRequest(http.MethodPost, endpoint.Token, nil)
-			accessTokenResponse := tokenManager.CreateAccessTokenResponse(request, user.Username, client, nil, scopes, "", "")
+			accessTokenResponse := tokenManager.CreateAccessTokenResponse(request, user.Username, client, nil, scopes, nil, "", "")
 
 			introspectHandler := NewIntrospectHandler(requestValidator, tokenManager)
 

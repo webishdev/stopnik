@@ -5,6 +5,7 @@ import (
 	"github.com/webishdev/stopnik/internal/manager/session"
 	"github.com/webishdev/stopnik/internal/manager/token"
 	"github.com/webishdev/stopnik/internal/oauth2"
+	"github.com/webishdev/stopnik/internal/oidc"
 	"github.com/webishdev/stopnik/internal/pkce"
 	"github.com/webishdev/stopnik/internal/server/handler/error"
 	"github.com/webishdev/stopnik/internal/server/validation"
@@ -61,6 +62,7 @@ func (h *Handler) handlePostRequest(w http.ResponseWriter, r *http.Request) {
 
 	var scopes []string
 	var username string
+	var requestedClaims *oidc.ClaimsParameter
 	nonce := ""
 	authCode := ""
 	var authTime time.Time
@@ -92,6 +94,7 @@ func (h *Handler) handlePostRequest(w http.ResponseWriter, r *http.Request) {
 		scopes = authSession.Scopes
 		username = authSession.Username
 		nonce = authSession.Nonce
+		requestedClaims = authSession.RequestedClaims
 		authTime = authSession.AuthTime
 		authCode = code
 		h.authSessionManager.DeleteSession(authSession.Id)
@@ -138,7 +141,7 @@ func (h *Handler) handlePostRequest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	accessTokenResponse := h.tokenManager.CreateAccessTokenResponse(r, username, client, &authTime, scopes, nonce, authCode)
+	accessTokenResponse := h.tokenManager.CreateAccessTokenResponse(r, username, client, &authTime, scopes, requestedClaims, nonce, authCode)
 
 	jsonError := internalHttp.SendJson(accessTokenResponse, w, r)
 	if jsonError != nil {

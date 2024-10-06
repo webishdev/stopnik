@@ -30,6 +30,12 @@ type clientStores struct {
 	authorizationCodeStore *store.ExpiringStore[string]
 }
 
+type ValidAccessToken struct {
+	User   *config.User
+	Client *config.Client
+	Scopes []string
+}
+
 type Manager struct {
 	config       *config.Config
 	keyLoader    crypto.KeyLoader
@@ -37,13 +43,14 @@ type Manager struct {
 }
 
 type IdTokenInput struct {
-	Username string
-	User     *config.User
-	Client   *config.Client
-	Scopes   []string
-	Nonce    string
-	AtHash   string
-	AuthTime time.Time
+	Username        string
+	User            *config.User
+	Client          *config.Client
+	RequestedClaims *oidc.ClaimsParameter
+	Scopes          []string
+	Nonce           string
+	AtHash          string
+	AuthTime        time.Time
 }
 
 var tokenManagerLock = &sync.Mutex{}
@@ -131,7 +138,7 @@ func (tokenManager *Manager) RevokeAccessTokenByAuthorizationCode(authorizationC
 	}
 }
 
-func (tokenManager *Manager) CreateAccessTokenResponse(r *http.Request, username string, client *config.Client, authTime *time.Time, scopes []string, nonce string, authorizationCode string) oauth2.AccessTokenResponse {
+func (tokenManager *Manager) CreateAccessTokenResponse(r *http.Request, username string, client *config.Client, authTime *time.Time, scopes []string, requestedClaims *oidc.ClaimsParameter, nonce string, authorizationCode string) oauth2.AccessTokenResponse {
 	log.Debug("Creating new access token for %s, access TTL %d, refresh TTL %d", client.Id, client.GetAccessTTL(), client.GetRefreshTTL())
 
 	requestData := internalHttp.NewRequestData(r)
@@ -147,6 +154,9 @@ func (tokenManager *Manager) CreateAccessTokenResponse(r *http.Request, username
 		Username:  username,
 		ClientId:  client.Id,
 		Scopes:    scopes,
+	}
+	if client.Oidc && requestedClaims != nil {
+		accessToken.RequestedClaims = requestedClaims
 	}
 
 	accessTokenStore.SetWithDuration(accessToken.Key, accessToken, accessTokenDuration)
@@ -170,6 +180,9 @@ func (tokenManager *Manager) CreateAccessTokenResponse(r *http.Request, username
 		if authTime != nil {
 			refreshToken.AuthTime = *authTime
 		}
+		if client.Oidc && requestedClaims != nil {
+			refreshToken.RequestedClaims = requestedClaims
+		}
 
 		refreshTokenStore.SetWithDuration(refreshToken.Key, refreshToken, refreshTokenDuration)
 
@@ -187,6 +200,9 @@ func (tokenManager *Manager) CreateAccessTokenResponse(r *http.Request, username
 				Scopes:   scopes,
 				Nonce:    nonce,
 				AtHash:   accessTokenHash,
+			}
+			if requestedClaims != nil {
+				idTokenInput.RequestedClaims = requestedClaims
 			}
 			if authTime != nil {
 				idTokenInput.AuthTime = *authTime
@@ -226,7 +242,7 @@ func (tokenManager *Manager) CreateAccessTokenHash(client *config.Client, access
 }
 
 // ValidateAccessTokenRequest  implements https://datatracker.ietf.org/doc/html/rfc6750#section-2
-func (tokenManager *Manager) ValidateAccessTokenRequest(r *http.Request) (*config.User, *config.Client, []string, bool) {
+func (tokenManager *Manager) ValidateAccessTokenRequest(r *http.Request) (*ValidAccessToken, bool) {
 	// https://datatracker.ietf.org/doc/html/rfc6750#section-2.1
 	log.Debug("Checking authorization request header field")
 	authorizationHeader := r.Header.Get(internalHttp.Authorization)
@@ -240,36 +256,42 @@ func (tokenManager *Manager) ValidateAccessTokenRequest(r *http.Request) (*confi
 	}
 }
 
-func (tokenManager *Manager) validateAccessTokenHeader(authorizationHeader string) (*config.User, *config.Client, []string, bool) {
+func (tokenManager *Manager) validateAccessTokenHeader(authorizationHeader string) (*ValidAccessToken, bool) {
 	headerValue := getAuthorizationHeaderValue(authorizationHeader)
 	if headerValue == nil {
-		return nil, nil, []string{}, false
+		return &ValidAccessToken{}, false
 	}
 	return tokenManager.validateAccessToken(*headerValue)
 }
 
-func (tokenManager *Manager) validateAccessToken(accessTokenValue string) (*config.User, *config.Client, []string, bool) {
+func (tokenManager *Manager) validateAccessToken(accessTokenValue string) (*ValidAccessToken, bool) {
 	log.Debug("Validating access token")
 	accessToken, accessTokenExists := tokenManager.GetAccessToken(accessTokenValue)
 	if !accessTokenExists {
-		return nil, nil, []string{}, false
+		return &ValidAccessToken{}, false
 	}
 
 	username := accessToken.Username
 	user, userExists := tokenManager.config.GetUser(username)
 
 	if !userExists {
-		return nil, nil, []string{}, false
+		return &ValidAccessToken{}, false
 	}
 
 	clientId := accessToken.ClientId
 	client, clientExists := tokenManager.config.GetClient(clientId)
 
 	if !clientExists {
-		return nil, nil, []string{}, false
+		return &ValidAccessToken{}, false
 	}
 
-	return user, client, accessToken.Scopes, true
+	validAccessToken := &ValidAccessToken{
+		User:   user,
+		Client: client,
+		Scopes: accessToken.Scopes,
+	}
+
+	return validAccessToken, true
 }
 
 func (tokenManager *Manager) generateIdToken(requestData *internalHttp.RequestData, idTokenInput IdTokenInput) string {
@@ -300,21 +322,6 @@ func (tokenManager *Manager) generateOpaqueToken(tokenId string) string {
 	return base64.RawURLEncoding.EncodeToString([]byte(tokenId))
 }
 
-// switch to github.com/golang-jwt/jwt/v5
-// https://datatracker.ietf.org/doc/html/rfc9068
-// https://www.iana.org/assignments/jwt/jwt.xhtml
-/*
-{
-  "iss": "https://authorization-server.com/",
-  "exp": 1637344572,
-  "aud": "api://default",
-  "sub": "1000",
-  "client_id": "https://example-app.com",
-  "iat": 1637337372,
-  "jti": "1637337372.2051.620f5a3dc0ebaa097312",
-  "scope": "read write"
-}
-*/
 func (tokenManager *Manager) generateJWTToken(client *config.Client, token jwt.Token) string {
 
 	loader := tokenManager.keyLoader

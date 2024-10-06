@@ -1,20 +1,25 @@
 package oauth2
 
-import "time"
+import (
+	"github.com/webishdev/stopnik/internal/oidc"
+	"time"
+)
 
 type AccessToken struct {
-	Key       string
-	TokenType TokenType
-	Username  string
-	ClientId  string
-	Scopes    []string
+	Key             string
+	TokenType       TokenType
+	Username        string
+	ClientId        string
+	Scopes          []string
+	RequestedClaims *oidc.ClaimsParameter
 }
 type RefreshToken struct {
-	Key      string
-	Username string
-	ClientId string
-	Scopes   []string
-	AuthTime time.Time
+	Key             string
+	Username        string
+	ClientId        string
+	Scopes          []string
+	RequestedClaims *oidc.ClaimsParameter
+	AuthTime        time.Time
 }
 
 // AccessTokenResponse as described in https://datatracker.ietf.org/doc/html/rfc6749#section-4.1.4
