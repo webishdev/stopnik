@@ -1,6 +1,7 @@
 package authorize
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/google/uuid"
@@ -34,13 +35,15 @@ type authorizeRequestValues struct {
 	stateParameter               string
 	codeChallengeParameter       string
 	codeChallengeMethodParameter string
-	scopeParameter               string
 	nonceParameter               string
 	promptParameter              string
 	maxAgeParameter              string
+	requestedScopes              []string
+	requestedClaims              *oidc.ClaimsParameter
 }
 
 type Handler struct {
+	config              *config.Config
 	validator           *validation.RequestValidator
 	cookieManager       *cookie.Manager
 	authSessionManager  session.Manager[session.AuthSession]
@@ -57,7 +60,9 @@ func NewAuthorizeHandler(
 	loginSessionManager session.Manager[session.LoginSession],
 	tokenManager *token.Manager,
 	templateManager *template.Manager) *Handler {
+	currentConfig := config.GetConfigInstance()
 	return &Handler{
+		config:              currentConfig,
 		validator:           validator,
 		cookieManager:       cookieManager,
 		authSessionManager:  authSessionManager,
@@ -81,69 +86,8 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) handleGetRequest(w http.ResponseWriter, r *http.Request) {
-	requestParameter := r.URL.Query().Get("request")
-	if requestParameter != "" {
-		parse, err := jwt.Parse([]byte(requestParameter), jwt.WithVerify(false))
-		if err != nil {
-			log.Error("%v", err)
-		} else {
-			log.Info("%v", parse)
-		}
-
-		scopeParameter, _ := parse.Get("scope")
-		responseTypeParameter, _ := parse.Get("response_type")
-		redirectParameter, _ := parse.Get("redirect_uri")
-		stateParameter, _ := parse.Get("state")
-		nonceParameter, _ := parse.Get("nonce")
-		clientIdParameter, _ := parse.Get("client_id")
-
-		authorizeRequest := &authorizeRequestValues{
-			clientIdParameter:            fmt.Sprintf("%s", clientIdParameter),
-			redirectParameter:            fmt.Sprintf("%s", redirectParameter),
-			responseTypeParameter:        fmt.Sprintf("%s", responseTypeParameter),
-			stateParameter:               fmt.Sprintf("%s", stateParameter),
-			codeChallengeParameter:       "",
-			codeChallengeMethodParameter: "",
-			scopeParameter:               fmt.Sprintf("%s", scopeParameter),
-			nonceParameter:               fmt.Sprintf("%s", nonceParameter),
-			promptParameter:              "",
-			maxAgeParameter:              "",
-		}
-
-		h.handleAuthorizeRequest(w, r, authorizeRequest)
-	} else {
-
-		// OAuth2
-		clientIdParameter := r.URL.Query().Get(oauth2.ParameterClientId)
-		stateParameter := r.URL.Query().Get(oauth2.ParameterState)
-		responseTypeParameter := r.URL.Query().Get(oauth2.ParameterResponseType)
-		redirectParameter := r.URL.Query().Get(oauth2.ParameterRedirectUri)
-		scopeParameter := r.URL.Query().Get(oauth2.ParameterScope)
-
-		// PKCE
-		codeChallengeParameter := r.URL.Query().Get(pkce.ParameterCodeChallenge)
-		codeChallengeMethodParameter := r.URL.Query().Get(pkce.ParameterCodeChallengeMethod)
-
-		// OpenId Connect
-		nonceParameter := r.URL.Query().Get(oidc.ParameterNonce)
-		promptParameter := r.URL.Query().Get(oidc.ParameterPrompt)
-		maxAgeParameter := r.URL.Query().Get(oidc.ParameterMaxAge)
-
-		authorizeRequest := &authorizeRequestValues{
-			clientIdParameter:            clientIdParameter,
-			redirectParameter:            redirectParameter,
-			responseTypeParameter:        responseTypeParameter,
-			stateParameter:               stateParameter,
-			codeChallengeParameter:       codeChallengeParameter,
-			codeChallengeMethodParameter: codeChallengeMethodParameter,
-			scopeParameter:               scopeParameter,
-			nonceParameter:               nonceParameter,
-			promptParameter:              promptParameter,
-			maxAgeParameter:              maxAgeParameter,
-		}
-
-		h.handleAuthorizeRequest(w, r, authorizeRequest)
-	}
+	authorizeRequest := h.parseRequest(r)
+	h.handleAuthorizeRequest(w, r, authorizeRequest)
 }
 
 func (h *Handler) handlePostRequest(w http.ResponseWriter, r *http.Request) {
@@ -212,35 +156,7 @@ func (h *Handler) handlePostRequest(w http.ResponseWriter, r *http.Request) {
 
 		sendFound(w, redirectURL, query)
 	} else {
-		// OAuth2
-		clientIdParameter := r.PostFormValue(oauth2.ParameterClientId)
-		stateParameter := r.PostFormValue(oauth2.ParameterState)
-		responseTypeParameter := r.PostFormValue(oauth2.ParameterResponseType)
-		redirectParameter := r.PostFormValue(oauth2.ParameterRedirectUri)
-		scopeParameter := r.PostFormValue(oauth2.ParameterScope)
-
-		// PKCE
-		codeChallengeParameter := r.PostFormValue(pkce.ParameterCodeChallenge)
-		codeChallengeMethodParameter := r.PostFormValue(pkce.ParameterCodeChallengeMethod)
-
-		// OpenId Connect
-		nonceParameter := r.PostFormValue(oidc.ParameterNonce)
-		promptParameter := r.PostFormValue(oidc.ParameterPrompt)
-		maxAgeParameter := r.PostFormValue(oidc.ParameterMaxAge)
-
-		authorizeRequest := &authorizeRequestValues{
-			clientIdParameter:            clientIdParameter,
-			redirectParameter:            redirectParameter,
-			responseTypeParameter:        responseTypeParameter,
-			stateParameter:               stateParameter,
-			codeChallengeParameter:       codeChallengeParameter,
-			codeChallengeMethodParameter: codeChallengeMethodParameter,
-			scopeParameter:               scopeParameter,
-			nonceParameter:               nonceParameter,
-			promptParameter:              promptParameter,
-			maxAgeParameter:              maxAgeParameter,
-		}
-
+		authorizeRequest := h.parseRequest(r)
 		h.handleAuthorizeRequest(w, r, authorizeRequest)
 	}
 
@@ -292,10 +208,8 @@ func (h *Handler) handleAuthorizeRequest(w http.ResponseWriter, r *http.Request,
 		log.Debug("Response types: %v", responseTypes)
 		log.Debug("Redirect URI: %s", authorizeRequest.redirectParameter)
 		log.Debug("State: %s", authorizeRequest.stateParameter)
-		log.Debug("Scope: %s", authorizeRequest.scopeParameter)
+		log.Debug("Scope: %v", authorizeRequest.requestedScopes)
 	}
-
-	scopes := strings.Split(authorizeRequest.scopeParameter, " ")
 
 	id := uuid.NewString()
 	authSession := &session.AuthSession{
@@ -306,11 +220,11 @@ func (h *Handler) handleAuthorizeRequest(w http.ResponseWriter, r *http.Request,
 		CodeChallengeMethod: authorizeRequest.codeChallengeMethodParameter,
 		ClientId:            authorizeRequest.clientIdParameter,
 		ResponseTypes:       responseTypes,
-		Scopes:              scopes,
+		Scopes:              authorizeRequest.requestedScopes,
 		State:               authorizeRequest.stateParameter,
 	}
 
-	if client.Oidc && oidc.HasOidcScope(scopes) && authorizeRequest.nonceParameter != "" {
+	if client.Oidc && oidc.HasOidcScope(authorizeRequest.requestedScopes) && authorizeRequest.nonceParameter != "" {
 		authSession.Nonce = authorizeRequest.nonceParameter
 	} else if authorizeRequest.nonceParameter != "" {
 		log.Error("Nonce used without OpenID Connect setting for client with id %s", client.Id)
@@ -327,7 +241,7 @@ func (h *Handler) handleAuthorizeRequest(w http.ResponseWriter, r *http.Request,
 	user, loginSession, validCookie := h.cookieManager.ValidateAuthCookie(r)
 
 	var promptType *oidc.PromptType
-	if client.Oidc && oidc.HasOidcScope(scopes) && authorizeRequest.promptParameter != "" {
+	if client.Oidc && oidc.HasOidcScope(authorizeRequest.requestedScopes) && authorizeRequest.promptParameter != "" {
 		var authorizationErrorResponse *oauth2.AuthorizationErrorResponseParameter
 		promptType, authorizationErrorResponse = h.getPromptType(validCookie, authorizeRequest.promptParameter)
 		if authorizationErrorResponse != nil {
@@ -341,7 +255,7 @@ func (h *Handler) handleAuthorizeRequest(w http.ResponseWriter, r *http.Request,
 	}
 
 	var maxAge *int
-	if client.Oidc && oidc.HasOidcScope(scopes) && authorizeRequest.maxAgeParameter != "" {
+	if client.Oidc && oidc.HasOidcScope(authorizeRequest.requestedScopes) && authorizeRequest.maxAgeParameter != "" {
 		maxAgeResult, maxAgeError := strconv.Atoi(authorizeRequest.maxAgeParameter)
 		if maxAgeError != nil {
 			oauth2.AuthorizationErrorResponseHandler(w, redirectURL, authorizeRequest.stateParameter, &oauth2.AuthorizationErrorResponseParameter{Error: oauth2.AuthorizationEtInvalidRequest})
@@ -358,7 +272,7 @@ func (h *Handler) handleAuthorizeRequest(w http.ResponseWriter, r *http.Request,
 		authSession.Username = user.Username
 		authSession.AuthTime = loginSession.StartTime
 
-		query, authorizationErrorResponse := h.createLocationResponseQuery(r, redirectURL, user, client, scopes, authSession, loginSession, responseTypes, id, idTokenRequest, authorizeRequest.stateParameter)
+		query, authorizationErrorResponse := h.createLocationResponseQuery(r, redirectURL, user, client, authorizeRequest.requestedScopes, authSession, loginSession, responseTypes, id, idTokenRequest, authorizeRequest.stateParameter)
 		if authorizationErrorResponse != nil {
 			oauth2.AuthorizationErrorResponseHandler(w, redirectURL, authorizeRequest.stateParameter, authorizationErrorResponse)
 			return
@@ -535,4 +449,130 @@ func sendFound(w http.ResponseWriter, redirectURL *url.URL, query url.Values) {
 
 	w.Header().Set(internalHttp.Location, redirectURL.String())
 	w.WriteHeader(http.StatusFound)
+}
+
+func (h *Handler) parseRequest(r *http.Request) *authorizeRequestValues {
+	var clientIdParameter string
+	var stateParameter string
+	var responseTypeParameter string
+	var redirectParameter string
+	var scopeParameter string
+	var codeChallengeParameter string
+	var codeChallengeMethodParameter string
+	var nonceParameter string
+	var promptParameter string
+	var maxAgeParameter string
+	var requestParameter string
+	var claimsParameter string
+	var requestedClaims *oidc.ClaimsParameter
+
+	if r.Method == http.MethodGet {
+		// OAuth2
+		clientIdParameter = r.URL.Query().Get(oauth2.ParameterClientId)
+		stateParameter = r.URL.Query().Get(oauth2.ParameterState)
+		responseTypeParameter = r.URL.Query().Get(oauth2.ParameterResponseType)
+		redirectParameter = r.URL.Query().Get(oauth2.ParameterRedirectUri)
+		scopeParameter = r.URL.Query().Get(oauth2.ParameterScope)
+
+		// PKCE
+		codeChallengeParameter = r.URL.Query().Get(pkce.ParameterCodeChallenge)
+		codeChallengeMethodParameter = r.URL.Query().Get(pkce.ParameterCodeChallengeMethod)
+
+		// OpenId Connect
+		nonceParameter = r.URL.Query().Get(oidc.ParameterNonce)
+		promptParameter = r.URL.Query().Get(oidc.ParameterPrompt)
+		maxAgeParameter = r.URL.Query().Get(oidc.ParameterMaxAge)
+		claimsParameter = r.URL.Query().Get(oidc.ParameterClaims)
+
+		// https://openid.net/specs/openid-connect-core-1_0.html#RequestObject
+		requestParameter = r.URL.Query().Get(oidc.ParameterRequest)
+	} else if r.Method == http.MethodPost {
+		// OAuth2
+		clientIdParameter = r.PostFormValue(oauth2.ParameterClientId)
+		stateParameter = r.PostFormValue(oauth2.ParameterState)
+		responseTypeParameter = r.PostFormValue(oauth2.ParameterResponseType)
+		redirectParameter = r.PostFormValue(oauth2.ParameterRedirectUri)
+		scopeParameter = r.PostFormValue(oauth2.ParameterScope)
+
+		// PKCE
+		codeChallengeParameter = r.PostFormValue(pkce.ParameterCodeChallenge)
+		codeChallengeMethodParameter = r.PostFormValue(pkce.ParameterCodeChallengeMethod)
+
+		// OpenId Connect
+		nonceParameter = r.PostFormValue(oidc.ParameterNonce)
+		promptParameter = r.PostFormValue(oidc.ParameterPrompt)
+		maxAgeParameter = r.PostFormValue(oidc.ParameterMaxAge)
+		claimsParameter = r.PostFormValue(oidc.ParameterClaims)
+
+		// https://openid.net/specs/openid-connect-core-1_0.html#RequestObject
+		requestParameter = r.PostFormValue(oidc.ParameterRequest)
+	}
+
+	scopes := strings.Split(scopeParameter, " ")
+
+	if h.config.GetOidc() && oidc.HasOidcScope(scopes) && requestParameter != "" {
+		parsedRequestToken, requestParameterParseError := jwt.Parse([]byte(requestParameter), jwt.WithVerify(true))
+		if requestParameterParseError == nil {
+			// OAuth2
+			clientIdParameter = getClaimFromToken(parsedRequestToken, oauth2.ParameterClientId, clientIdParameter)
+			stateParameter = getClaimFromToken(parsedRequestToken, oauth2.ParameterState, stateParameter)
+			responseTypeParameter = getClaimFromToken(parsedRequestToken, oauth2.ParameterResponseType, responseTypeParameter)
+			redirectParameter = getClaimFromToken(parsedRequestToken, oauth2.ParameterRedirectUri, redirectParameter)
+			scopeParameter = getClaimFromToken(parsedRequestToken, oauth2.ParameterScope, scopeParameter)
+
+			// PKCE
+			codeChallengeParameter = getClaimFromToken(parsedRequestToken, pkce.ParameterCodeChallenge, codeChallengeParameter)
+			codeChallengeMethodParameter = getClaimFromToken(parsedRequestToken, pkce.ParameterCodeChallengeMethod, codeChallengeMethodParameter)
+
+			// OpenId Connect
+			nonceParameter = getClaimFromToken(parsedRequestToken, oidc.ParameterNonce, nonceParameter)
+			promptParameter = getClaimFromToken(parsedRequestToken, oidc.ParameterPrompt, promptParameter)
+			maxAgeParameter = getClaimFromToken(parsedRequestToken, oidc.ParameterMaxAge, maxAgeParameter)
+
+			requestedClaimsValue, requestedClaimsValueExists := parsedRequestToken.Get(oidc.ParameterClaims)
+			if requestedClaimsValueExists {
+				parameter, ok := requestedClaimsValue.(oidc.ClaimsParameter)
+				if ok {
+					requestedClaims = &parameter
+				} else {
+					log.Error("Could not extract claims from request object")
+				}
+			}
+		}
+	}
+
+	scopes = strings.Split(scopeParameter, " ")
+
+	if h.config.GetOidc() && claimsParameter != "" {
+		requestedClaims = &oidc.ClaimsParameter{}
+		claimsParameterParseError := json.Unmarshal([]byte(claimsParameter), requestedClaims)
+		if claimsParameterParseError != nil {
+			log.Error("Could not parse claims parameter %v", claimsParameterParseError)
+		}
+	}
+
+	return &authorizeRequestValues{
+		clientIdParameter:            clientIdParameter,
+		redirectParameter:            redirectParameter,
+		responseTypeParameter:        responseTypeParameter,
+		stateParameter:               stateParameter,
+		codeChallengeParameter:       codeChallengeParameter,
+		codeChallengeMethodParameter: codeChallengeMethodParameter,
+		nonceParameter:               nonceParameter,
+		promptParameter:              promptParameter,
+		maxAgeParameter:              maxAgeParameter,
+		requestedScopes:              scopes,
+		requestedClaims:              requestedClaims,
+	}
+}
+
+func getClaimFromToken(token jwt.Token, claim string, defaultValue string) string {
+	value, exists := token.Get(claim)
+	if exists {
+		valueAsString := fmt.Sprintf("%s", value)
+		if valueAsString != "" {
+			return valueAsString
+		}
+	}
+	return defaultValue
 }
