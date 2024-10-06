@@ -6,9 +6,9 @@
 
 Currently, **STOPnik** only depends on
 
-- [github.com/google/uuid v1.6.0](https://pkg.go.dev/github.com/google/uuid@v1.6.0)
-- [github.com/lestrrat-go/jwx/v2  v2.1.1](https://pkg.go.dev/github.com/lestrrat-go/jwx/v2@v2.1.1)
-- [gopkg.in/yaml.v3 v3.0.1](https://pkg.go.dev/gopkg.in/yaml.v3@v3.0.1)
+- [github.com/google/uuid v1.6.0](https://pkg.go.dev/github.com/google/uuid@v1.6.0) (generate UUID)
+- [github.com/lestrrat-go/jwx/v2  v2.1.1](https://pkg.go.dev/github.com/lestrrat-go/jwx/v2@v2.1.1) (handle JWT, JWK, JWE, etc&hellip;)
+- [gopkg.in/yaml.v3 v3.0.1](https://pkg.go.dev/gopkg.in/yaml.v3@v3.0.1) (parse YAML files)
 
 ## Related specifications
 

@@ -104,11 +104,13 @@ For the binary variant just put a `config.yml` into the same directory as the bi
 
 For the container variant the `config.yml` should be mounted into the container. It may be also necessary to mount the necessery TLS certificates and private keys used for signing tokens.
 
+The following command line show how to start the container when the Git repository was cloned and the provided `config.yml` and the test certificates (inside `.test_files` folder) are used.
+
 <Tabs>
   <TabItem value="docker" label="Docker">
 Starting with Docker
 ```bash
-> docker run --rm -p 8080:8080 -p 8081:8081 -v ${PWD}/config.yml:/config.yml -v ${PWD}/rsa256key.pem:/rsa256key.pem -v ${PWD}/ecdsa521key.pem:/ecdsa521key.pem  ghcr.io/webishdev/stopnik:latest
+> docker run --rm -p 8080:8080 -p 8081:8081 -v ${PWD}/config.yml:/config.yml -v ${PWD}/.test_files:/.test_files ghcr.io/webishdev/stopnik:latest
 time=2024-08-23T10:30:15.774Z level=INFO msg="Config loaded from config.yml"
 time=2024-08-23T10:30:15.780Z level=INFO msg="Will accept TLS connections at [::]:8081"
 time=2024-08-23T10:30:15.780Z level=ERROR msg="Error starting server: open server.crt: no such file or directory"
@@ -118,7 +120,7 @@ time=2024-08-23T10:30:15.780Z level=INFO msg="Will accept connections at [::]:80
   <TabItem value="podman" label="Podman">
 Starting with Podman
 ```bash
-> podman run --rm -p 8080:8080 -p 8081:8081 -v ${PWD}/config.yml:/config.yml -v ${PWD}/rsa256key.pem:/rsa256key.pem -v ${PWD}/ecdsa521key.pem:/ecdsa521key.pem  ghcr.io/webishdev/stopnik:latest
+> podman run --rm -p 8080:8080 -p 8081:8081 -v ${PWD}/config.yml:/config.yml -v ${PWD}/.test_files:/.test_files ghcr.io/webishdev/stopnik:latest
 time=2024-08-23T10:30:15.774Z level=INFO msg="Config loaded from config.yml"
 time=2024-08-23T10:30:15.780Z level=INFO msg="Will accept TLS connections at [::]:8081"
 time=2024-08-23T10:30:15.780Z level=ERROR msg="Error starting server: open server.crt: no such file or directory"
