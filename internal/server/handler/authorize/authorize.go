@@ -235,7 +235,7 @@ func (h *Handler) handleAuthorizeRequest(w http.ResponseWriter, r *http.Request,
 		return
 	}
 
-	maxAge, invalidMaxAgeHandler := h.validateMaxAge(w, client, authorizeRequest, redirectURL)
+	maxAge, invalidMaxAgeHandler := h.validateMaxAge(client, authorizeRequest, redirectURL)
 	if invalidMaxAgeHandler != nil {
 		invalidMaxAgeHandler.ServeHTTP(w, r)
 		return
@@ -258,7 +258,7 @@ func (h *Handler) handleAuthorizeRequest(w http.ResponseWriter, r *http.Request,
 	}
 }
 
-func (h *Handler) validateMaxAge(w http.ResponseWriter, client *config.Client, authorizeRequest *authorizeRequestValues, redirectURL *url.URL) (*int, http.Handler) {
+func (h *Handler) validateMaxAge(client *config.Client, authorizeRequest *authorizeRequestValues, redirectURL *url.URL) (*int, http.Handler) {
 	var maxAge *int
 	if client.Oidc && oidc.HasOidcScope(authorizeRequest.requestedScopes) && authorizeRequest.maxAgeParameter != "" {
 		maxAgeResult, maxAgeError := strconv.Atoi(authorizeRequest.maxAgeParameter)
