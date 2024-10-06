@@ -31,9 +31,10 @@ type clientStores struct {
 }
 
 type ValidAccessToken struct {
-	User   *config.User
-	Client *config.Client
-	Scopes []string
+	User            *config.User
+	Client          *config.Client
+	Scopes          []string
+	RequestedClaims *oidc.ClaimsParameter
 }
 
 type Manager struct {
@@ -286,9 +287,10 @@ func (tokenManager *Manager) validateAccessToken(accessTokenValue string) (*Vali
 	}
 
 	validAccessToken := &ValidAccessToken{
-		User:   user,
-		Client: client,
-		Scopes: accessToken.Scopes,
+		User:            user,
+		Client:          client,
+		Scopes:          accessToken.Scopes,
+		RequestedClaims: accessToken.RequestedClaims,
 	}
 
 	return validAccessToken, true

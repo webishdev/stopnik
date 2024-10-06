@@ -637,6 +637,7 @@ func createAuthSession(id string, authorizeRequest *authorizeRequestValues, r *h
 		ResponseTypes:       responseTypes,
 		Scopes:              authorizeRequest.requestedScopes,
 		State:               authorizeRequest.stateParameter,
+		RequestedClaims:     authorizeRequest.requestedClaims,
 	}
 }
 
