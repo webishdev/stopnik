@@ -183,24 +183,19 @@ func (h *Handler) handleAuthorizeRequest(w http.ResponseWriter, r *http.Request,
 
 	invalidRedirectErrorHandler := h.validateRedirect(client, authorizeRequest.redirectParameter)
 	if invalidRedirectErrorHandler != nil {
-		invalidRedirectErrorHandler(w, r)
+		invalidRedirectErrorHandler.ServeHTTP(w, r)
 		return
 	}
 
-	responseTypes, validResponseTypes := h.getResponseTypes(authorizeRequest.responseTypeParameter)
-	if !validResponseTypes {
-		log.Error("Invalid %s parameter with value %s for client %s", oauth2.ParameterResponseType, authorizeRequest.responseTypeParameter, client.Id)
-
-		errorMessage := fmt.Sprintf("Invalid %s parameter value", oauth2.ParameterResponseType)
-		authorizeError := &oauth2.AuthorizationErrorResponseParameter{Error: oauth2.AuthorizationEtInvalidRequest, Description: errorMessage}
-		oauth2.AuthorizationErrorResponseHandler(w, redirectURL, authorizeRequest.stateParameter, authorizeError)
+	responseTypes, invalidResponseTypeHandler := h.validResponseTypes(authorizeRequest, client, redirectURL)
+	if invalidResponseTypeHandler != nil {
+		invalidResponseTypeHandler.ServeHTTP(w, r)
 		return
 	}
 
-	if !slices.Contains(responseTypes, oauth2.RtCode) && authorizeRequest.codeChallengeParameter != "" && authorizeRequest.codeChallengeMethodParameter != "" {
-		errorMessage := fmt.Sprintf("Code challenge should only be used for response type %s", oauth2.RtCode)
-		authorizeError := &oauth2.AuthorizationErrorResponseParameter{Error: oauth2.AuthorizationEtInvalidRequest, Description: errorMessage}
-		oauth2.AuthorizationErrorResponseHandler(w, redirectURL, authorizeRequest.stateParameter, authorizeError)
+	invalidCodeChallengeHandler := h.validateCodeChallenge(responseTypes, authorizeRequest, redirectURL)
+	if invalidCodeChallengeHandler != nil {
+		invalidCodeChallengeHandler.ServeHTTP(w, r)
 		return
 	}
 
@@ -212,31 +207,17 @@ func (h *Handler) handleAuthorizeRequest(w http.ResponseWriter, r *http.Request,
 	}
 
 	id := uuid.NewString()
-	authSession := &session.AuthSession{
-		Id:                  id,
-		Redirect:            authorizeRequest.redirectParameter,
-		AuthURI:             r.URL.RequestURI(),
-		CodeChallenge:       authorizeRequest.codeChallengeParameter,
-		CodeChallengeMethod: authorizeRequest.codeChallengeMethodParameter,
-		ClientId:            authorizeRequest.clientIdParameter,
-		ResponseTypes:       responseTypes,
-		Scopes:              authorizeRequest.requestedScopes,
-		State:               authorizeRequest.stateParameter,
-	}
+	authSession := createAuthSession(id, authorizeRequest, r, responseTypes)
 
-	if client.Oidc && oidc.HasOidcScope(authorizeRequest.requestedScopes) && authorizeRequest.nonceParameter != "" {
-		authSession.Nonce = authorizeRequest.nonceParameter
-	} else if authorizeRequest.nonceParameter != "" {
-		log.Error("Nonce used without OpenID Connect setting for client with id %s", client.Id)
-		oauth2.AuthorizationErrorResponseHandler(w, redirectURL, authorizeRequest.stateParameter, &oauth2.AuthorizationErrorResponseParameter{Error: oauth2.AuthorizationEtInvalidRequest})
+	invalidNonceHandler := h.validateNonce(client, authorizeRequest, authSession, redirectURL)
+	if invalidNonceHandler != nil {
+		invalidNonceHandler.ServeHTTP(w, r)
 		return
 	}
 
-	if client.Oidc && oidc.HasOidcScope(authorizeRequest.requestedScopes) && authSession.RequestedClaims != nil {
-		authSession.RequestedClaims = authorizeRequest.requestedClaims
-	} else if authSession.RequestedClaims != nil {
-		log.Error("Requested claims used without OpenID Connect setting for client with id %s", client.Id)
-		oauth2.AuthorizationErrorResponseHandler(w, redirectURL, authorizeRequest.stateParameter, &oauth2.AuthorizationErrorResponseParameter{Error: oauth2.AuthorizationEtInvalidRequest})
+	invalidRequestedClaimsHandler := h.validateRequestedClaims(client, authorizeRequest, authSession, redirectURL)
+	if invalidRequestedClaimsHandler != nil {
+		invalidRequestedClaimsHandler.ServeHTTP(w, r)
 		return
 	}
 
@@ -248,31 +229,15 @@ func (h *Handler) handleAuthorizeRequest(w http.ResponseWriter, r *http.Request,
 
 	user, loginSession, validCookie := h.cookieManager.ValidateAuthCookie(r)
 
-	var promptType *oidc.PromptType
-	if client.Oidc && oidc.HasOidcScope(authorizeRequest.requestedScopes) && authorizeRequest.promptParameter != "" {
-		var authorizationErrorResponse *oauth2.AuthorizationErrorResponseParameter
-		promptType, authorizationErrorResponse = h.getPromptType(validCookie, authorizeRequest.promptParameter)
-		if authorizationErrorResponse != nil {
-			oauth2.AuthorizationErrorResponseHandler(w, redirectURL, authorizeRequest.stateParameter, authorizationErrorResponse)
-			return
-		}
-	} else if authorizeRequest.promptParameter != "" {
-		log.Error("Prompt used without OpenID Connect setting for client with id %s", client.Id)
-		oauth2.AuthorizationErrorResponseHandler(w, redirectURL, authorizeRequest.stateParameter, &oauth2.AuthorizationErrorResponseParameter{Error: oauth2.AuthorizationEtInvalidRequest})
+	promptType, invalidPromptTypeHandler := h.validatePromptType(client, authorizeRequest, validCookie, redirectURL)
+	if invalidPromptTypeHandler != nil {
+		invalidPromptTypeHandler.ServeHTTP(w, r)
 		return
 	}
 
-	var maxAge *int
-	if client.Oidc && oidc.HasOidcScope(authorizeRequest.requestedScopes) && authorizeRequest.maxAgeParameter != "" {
-		maxAgeResult, maxAgeError := strconv.Atoi(authorizeRequest.maxAgeParameter)
-		if maxAgeError != nil {
-			oauth2.AuthorizationErrorResponseHandler(w, redirectURL, authorizeRequest.stateParameter, &oauth2.AuthorizationErrorResponseParameter{Error: oauth2.AuthorizationEtInvalidRequest})
-			return
-		}
-		maxAge = &maxAgeResult
-	} else if authorizeRequest.maxAgeParameter != "" {
-		log.Error("Max age used without OpenID Connect setting for client with id %s", client.Id)
-		oauth2.AuthorizationErrorResponseHandler(w, redirectURL, authorizeRequest.stateParameter, &oauth2.AuthorizationErrorResponseParameter{Error: oauth2.AuthorizationEtInvalidRequest})
+	maxAge, invalidMaxAgeHandler := h.validateMaxAge(w, client, authorizeRequest, redirectURL)
+	if invalidMaxAgeHandler != nil {
+		invalidMaxAgeHandler.ServeHTTP(w, r)
 		return
 	}
 
@@ -280,7 +245,7 @@ func (h *Handler) handleAuthorizeRequest(w http.ResponseWriter, r *http.Request,
 		authSession.Username = user.Username
 		authSession.AuthTime = loginSession.StartTime
 
-		query, authorizationErrorResponse := h.createLocationResponseQuery(r, redirectURL, user, client, authorizeRequest.requestedScopes, authSession, loginSession, responseTypes, id, idTokenRequest, authorizeRequest.stateParameter)
+		query, authorizationErrorResponse := h.createLocationResponseQuery(r, redirectURL, user, client, authorizeRequest.requestedScopes, authSession, loginSession, responseTypes, authSession.Id, idTokenRequest, authorizeRequest.stateParameter)
 		if authorizationErrorResponse != nil {
 			oauth2.AuthorizationErrorResponseHandler(w, redirectURL, authorizeRequest.stateParameter, authorizationErrorResponse)
 			return
@@ -293,21 +258,108 @@ func (h *Handler) handleAuthorizeRequest(w http.ResponseWriter, r *http.Request,
 	}
 }
 
-func (h *Handler) validateRedirect(client *config.Client, redirect string) func(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) validateMaxAge(w http.ResponseWriter, client *config.Client, authorizeRequest *authorizeRequestValues, redirectURL *url.URL) (*int, http.Handler) {
+	var maxAge *int
+	if client.Oidc && oidc.HasOidcScope(authorizeRequest.requestedScopes) && authorizeRequest.maxAgeParameter != "" {
+		maxAgeResult, maxAgeError := strconv.Atoi(authorizeRequest.maxAgeParameter)
+		if maxAgeError != nil {
+			return nil, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				oauth2.AuthorizationErrorResponseHandler(w, redirectURL, authorizeRequest.stateParameter, &oauth2.AuthorizationErrorResponseParameter{Error: oauth2.AuthorizationEtInvalidRequest})
+			})
+		}
+		maxAge = &maxAgeResult
+	} else if authorizeRequest.maxAgeParameter != "" {
+		log.Error("Max age used without OpenID Connect setting for client with id %s", client.Id)
+		return nil, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			oauth2.AuthorizationErrorResponseHandler(w, redirectURL, authorizeRequest.stateParameter, &oauth2.AuthorizationErrorResponseParameter{Error: oauth2.AuthorizationEtInvalidRequest})
+		})
+	}
+	return maxAge, nil
+}
+
+func (h *Handler) validatePromptType(client *config.Client, authorizeRequest *authorizeRequestValues, validCookie bool, redirectURL *url.URL) (*oidc.PromptType, http.Handler) {
+	var promptType *oidc.PromptType
+	if client.Oidc && oidc.HasOidcScope(authorizeRequest.requestedScopes) && authorizeRequest.promptParameter != "" {
+		var authorizationErrorResponse *oauth2.AuthorizationErrorResponseParameter
+		promptType, authorizationErrorResponse = h.getPromptType(validCookie, authorizeRequest.promptParameter)
+		if authorizationErrorResponse != nil {
+			return nil, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				oauth2.AuthorizationErrorResponseHandler(w, redirectURL, authorizeRequest.stateParameter, authorizationErrorResponse)
+			})
+		}
+	} else if authorizeRequest.promptParameter != "" {
+		log.Error("Prompt used without OpenID Connect setting for client with id %s", client.Id)
+		return nil, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			oauth2.AuthorizationErrorResponseHandler(w, redirectURL, authorizeRequest.stateParameter, &oauth2.AuthorizationErrorResponseParameter{Error: oauth2.AuthorizationEtInvalidRequest})
+		})
+	}
+	return promptType, nil
+}
+
+func (h *Handler) validateRequestedClaims(client *config.Client, authorizeRequest *authorizeRequestValues, authSession *session.AuthSession, redirectURL *url.URL) http.Handler {
+	if client.Oidc && oidc.HasOidcScope(authorizeRequest.requestedScopes) && authSession.RequestedClaims != nil {
+		authSession.RequestedClaims = authorizeRequest.requestedClaims
+	} else if authSession.RequestedClaims != nil {
+		log.Error("Requested claims used without OpenID Connect setting for client with id %s", client.Id)
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			oauth2.AuthorizationErrorResponseHandler(w, redirectURL, authorizeRequest.stateParameter, &oauth2.AuthorizationErrorResponseParameter{Error: oauth2.AuthorizationEtInvalidRequest})
+		})
+	}
+	return nil
+}
+
+func (h *Handler) validateNonce(client *config.Client, authorizeRequest *authorizeRequestValues, authSession *session.AuthSession, redirectURL *url.URL) http.Handler {
+	if client.Oidc && oidc.HasOidcScope(authorizeRequest.requestedScopes) && authorizeRequest.nonceParameter != "" {
+		authSession.Nonce = authorizeRequest.nonceParameter
+	} else if authorizeRequest.nonceParameter != "" {
+		log.Error("Nonce used without OpenID Connect setting for client with id %s", client.Id)
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			oauth2.AuthorizationErrorResponseHandler(w, redirectURL, authorizeRequest.stateParameter, &oauth2.AuthorizationErrorResponseParameter{Error: oauth2.AuthorizationEtInvalidRequest})
+		})
+	}
+	return nil
+}
+
+func (h *Handler) validateCodeChallenge(responseTypes []oauth2.ResponseType, authorizeRequest *authorizeRequestValues, redirectURL *url.URL) http.Handler {
+	isUnexpectedCodeChallenge := !slices.Contains(responseTypes, oauth2.RtCode) && authorizeRequest.codeChallengeParameter != "" && authorizeRequest.codeChallengeMethodParameter != ""
+	if isUnexpectedCodeChallenge {
+		errorMessage := fmt.Sprintf("Code challenge should only be used for response type %s", oauth2.RtCode)
+		authorizeError := &oauth2.AuthorizationErrorResponseParameter{Error: oauth2.AuthorizationEtInvalidRequest, Description: errorMessage}
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			oauth2.AuthorizationErrorResponseHandler(w, redirectURL, authorizeRequest.stateParameter, authorizeError)
+		})
+	}
+	return nil
+}
+
+func (h *Handler) validResponseTypes(authorizeRequest *authorizeRequestValues, client *config.Client, redirectURL *url.URL) ([]oauth2.ResponseType, http.Handler) {
+	responseTypes, validResponseTypes := h.getResponseTypes(authorizeRequest.responseTypeParameter)
+	if !validResponseTypes {
+		log.Error("Invalid %s parameter with value %s for client %s", oauth2.ParameterResponseType, authorizeRequest.responseTypeParameter, client.Id)
+		errorMessage := fmt.Sprintf("Invalid %s parameter value", oauth2.ParameterResponseType)
+		authorizeError := &oauth2.AuthorizationErrorResponseParameter{Error: oauth2.AuthorizationEtInvalidRequest, Description: errorMessage}
+		return nil, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			oauth2.AuthorizationErrorResponseHandler(w, redirectURL, authorizeRequest.stateParameter, authorizeError)
+		})
+	}
+	return responseTypes, nil
+}
+
+func (h *Handler) validateRedirect(client *config.Client, redirect string) http.Handler {
 	if redirect == "" {
 		log.Error("Redirect provided for client %s was empty", client.Id)
-		return func(w http.ResponseWriter, r *http.Request) {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			h.sendErrorPage(w, r, "No redirect provided")
-		}
+		})
 	}
 
 	validRedirect := client.ValidateRedirect(redirect)
 	if !validRedirect {
 		log.Error("Invalid redirect to %s for client %s", redirect, client.Id)
 		message := fmt.Sprintf("Invalid redirect: %s", redirect)
-		return func(w http.ResponseWriter, r *http.Request) {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			h.sendErrorPage(w, r, message)
-		}
+		})
 	}
 
 	return nil
@@ -571,6 +623,20 @@ func (h *Handler) parseRequest(r *http.Request) *authorizeRequestValues {
 		maxAgeParameter:              maxAgeParameter,
 		requestedScopes:              scopes,
 		requestedClaims:              requestedClaims,
+	}
+}
+
+func createAuthSession(id string, authorizeRequest *authorizeRequestValues, r *http.Request, responseTypes []oauth2.ResponseType) *session.AuthSession {
+	return &session.AuthSession{
+		Id:                  id,
+		Redirect:            authorizeRequest.redirectParameter,
+		AuthURI:             r.URL.RequestURI(),
+		CodeChallenge:       authorizeRequest.codeChallengeParameter,
+		CodeChallengeMethod: authorizeRequest.codeChallengeMethodParameter,
+		ClientId:            authorizeRequest.clientIdParameter,
+		ResponseTypes:       responseTypes,
+		Scopes:              authorizeRequest.requestedScopes,
+		State:               authorizeRequest.stateParameter,
 	}
 }
 
