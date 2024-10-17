@@ -1,3 +1,7 @@
 {{ if not .HideMascot }}
+{{ if .ShowTitle }}
+<div class="logo"><img src="assets/logo.png" title="{{ .Title }}" alt="{{ .Title }}" /></div>
+{{ else }}
 <div class="logo"><img src="assets/logo.png" title="STOPnik mascot" alt="STOPnik mascot" /></div>
+{{ end }}
 {{ end }}
