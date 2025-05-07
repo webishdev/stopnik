@@ -85,6 +85,7 @@ Entry `server.forwardAuth`
 
 | Property        | Description                                         | Required |
 |-----------------|-----------------------------------------------------|----------|
+| `enabled`       | Whether to enable ForwardAuth or not                | No       |
 | `endpoint`      | Internal endpoint to be called by Traefik           | No       |
 | `externalUrl`   | URL of **STOPnik** to redirect the user for a login | No       |
 | `parameterName` | URL parameter used by **STOPnik** for ForwardAuth   | No       |
@@ -303,11 +304,12 @@ server:
     messageName: stopnik_message
   #logoutRedirect: http://localhost:8080
   forwardAuth:
+    enabled: true
     externalUrl: http://localhost:9090
     #externalUrl: http://stopnik.localhost:9090 #ext
     redirects:
-      - http://localhost:9090*
-      - http://whoami.localhost:9090*
+      - http://localhost:9090/*
+      - http://whoami.localhost:9090/*
   secret: WRYldij9ebtDZ5VJSsxNAfCZ
   privateKey: ./.test_files/rsa256key.pem
   addr: :8082
