@@ -113,6 +113,50 @@ func Test_AccessTokenResponse(t *testing.T) {
 	}
 }
 
+func Test_ForwardAuthClientId(t *testing.T) {
+	var opaqueTokenParameter = []tokenTestParameter{
+		{true, 0, 0, ""},
+		{true, 0, 0, "abcd"},
+		{false, 0, 0, ""},
+		{false, 0, 0, "abcd"},
+		{true, 0, 0, ""},
+		{true, 0, 0, "abcd"},
+		{false, 0, 0, ""},
+		{false, 0, 0, "abcd"},
+		{false, 0, 0, ""},
+		{false, 0, 0, "abcd"},
+		{false, 0, 0, ""},
+		{false, 0, 0, "abcd"},
+		{false, 0, 0, ""},
+		{false, 0, 0, "abcd"},
+	}
+
+	for _, test := range opaqueTokenParameter {
+		testMessage := fmt.Sprintf("Valid token opaque %t", test.opaque)
+		t.Run(testMessage, func(t *testing.T) {
+			testConfig := createTestConfig(t, test.opaque, 0, 0, "../../../.test_files/ecdsa521key.pem")
+			forwardAuthClient, forwardAuthClientExists := testConfig.GetForwardAuthClient()
+			if !forwardAuthClientExists {
+				t.Fatal("forward auth client does not exist")
+			}
+
+			tokenManagerSingleton = nil
+
+			tokenManager := GetTokenManagerInstance()
+
+			requestScopes := []string{"abc", "def"}
+			if test.idTTL > 0 {
+				requestScopes = append(requestScopes, oidc.ScopeOpenId, oidc.ScopeOfflineAccess, oidc.ScopeProfile, oidc.ScopeAddress, oidc.ScopeEmail, oidc.ScopePhone)
+			}
+
+			request := httptest.NewRequest(http.MethodPost, endpoint.Token, nil)
+			accessTokenResponse := tokenManager.CreateAccessTokenResponse(request, "foo", forwardAuthClient, nil, requestScopes, nil, "", test.authCode)
+
+			assertTokenResponse(t, accessTokenResponse, test, forwardAuthClient)
+		})
+	}
+}
+
 func Test_InvalidUserInToken(t *testing.T) {
 	testConfig := createTestConfig(t, false, 0, 0, "")
 	tokenManager := GetTokenManagerInstance()
@@ -241,6 +285,12 @@ func assertTokenResponse(t *testing.T, accessTokenResponse oauth2.AccessTokenRes
 func createTestConfig(t *testing.T, opaque bool, refreshTokenTTL int, idTTokenTTL int, keyPath string) *config.Config {
 	var isOidc = idTTokenTTL > 0
 	testConfig := &config.Config{
+		Server: config.Server{
+			ForwardAuth: config.ForwardAuth{
+				Enabled:     true,
+				ExternalUrl: "http://localhost:8082",
+			},
+		},
 		Clients: []config.Client{
 			{
 				Id:           "foo",

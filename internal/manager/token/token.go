@@ -69,7 +69,16 @@ func GetTokenManagerInstance() *Manager {
 			clientStores: make(map[string]*clientStores),
 		}
 
-		for _, client := range currentConfig.Clients {
+		var allClients []config.Client
+
+		forwardAuthClient, forwardAuthClientExists := currentConfig.GetForwardAuthClient()
+		if forwardAuthClientExists {
+			allClients = append(currentConfig.Clients, *forwardAuthClient)
+		} else {
+			allClients = currentConfig.Clients
+		}
+
+		for _, client := range allClients {
 			accessStoreTime := time.Minute*time.Duration(client.GetAccessTTL()) + time.Minute*time.Duration(1)
 			refreshStoreTime := time.Minute*time.Duration(client.GetRefreshTTL()) + time.Minute*time.Duration(1)
 			accessTokenStore := store.NewTimedStore[oauth2.AccessToken](accessStoreTime)
