@@ -65,7 +65,7 @@ func AccessLogResult(r *http.Request, status int, message string) {
 func AccessLogInvalidLogin(r *http.Request, format string, v ...any) {
 	addr := getAddrFromRequest(r)
 	logEntry := fmt.Sprintf(format, v...)
-	accessLogger.Printf("%s - %s", addr, logEntry)
+	accessLogger.Printf("%s - %s", logEntry, addr)
 }
 
 func getAddrFromRequest(r *http.Request) string {
