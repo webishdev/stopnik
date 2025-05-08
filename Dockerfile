@@ -6,8 +6,6 @@ ARG TARGETARCH
 
 ARG STOPNIK_VERSION=dev
 
-RUN apk add --no-cache --no-progress ca-certificates tzdata
-
 COPY ./dist/stopnik.$STOPNIK_VERSION-$TARGETOS-$TARGETARCH /stopnik
 
 EXPOSE 8080
