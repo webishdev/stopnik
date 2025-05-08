@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1.2
-FROM alpine:3.20
+FROM gcr.io/distroless/static-debian12
 
 ARG TARGETOS
 ARG TARGETARCH
