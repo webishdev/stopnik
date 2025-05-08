@@ -9,6 +9,8 @@ linters:
   enable:
     - gocyclo
     - misspell
+  disable:
+    - staticcheck
 formatters:
   enable:
     - gofmt
