@@ -1,10 +1,14 @@
+version: "2"
 output:
   formats:
-    - format: html
+    text:
+      print-linter-name: true
+    html:
       path: .lint_result/lint-report.html
-    - format: colored-line-number
 linters:
   enable:
-    - gofmt
     - gocyclo
     - misspell
+formatters:
+  enable:
+    - gofmt
