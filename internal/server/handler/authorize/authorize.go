@@ -93,9 +93,21 @@ func (h *Handler) handleGetRequest(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) handlePostRequest(w http.ResponseWriter, r *http.Request) {
 	authSessionForm := r.PostFormValue("stopnik_auth_session")
 	if authSessionForm != "" {
+		loginToken, loginTokenError := h.validator.GetLoginToken(authSessionForm)
+		if loginTokenError != nil {
+			h.errorHandler.BadRequestHandler(w, r)
+			return
+		}
+		authSessionId := loginToken.Subject()
+		authSession, authSessionExists := h.authSessionManager.GetSession(authSessionId)
+		if !authSessionExists {
+			h.sendRetryLocation(w, r, "")
+			return
+		}
+
 		user, loginError := h.validator.ValidateFormLogin(r)
 		if loginError != nil {
-			h.sendRetryLocation(w, r, *loginError)
+			h.sendDifferentRetryLocation(w, r, authSession.AuthURI, *loginError)
 			return
 		}
 
@@ -107,18 +119,6 @@ func (h *Handler) handlePostRequest(w http.ResponseWriter, r *http.Request) {
 		authCookie, authCookieError := h.cookieManager.CreateAuthCookie(user.Username, loginSession.Id)
 		if authCookieError != nil {
 			h.errorHandler.InternalServerErrorHandler(w, r, authCookieError)
-			return
-		}
-
-		loginToken, loginTokenError := h.validator.GetLoginToken(authSessionForm)
-		if loginTokenError != nil {
-			h.errorHandler.BadRequestHandler(w, r)
-			return
-		}
-		authSessionId := loginToken.Subject()
-		authSession, authSessionExists := h.authSessionManager.GetSession(authSessionId)
-		if !authSessionExists {
-			h.sendRetryLocation(w, r, "")
 			return
 		}
 
@@ -501,6 +501,15 @@ func (h *Handler) sendRetryLocation(w http.ResponseWriter, r *http.Request, mess
 		http.SetCookie(w, &messageCookie)
 	}
 	w.Header().Set(internalHttp.Location, r.RequestURI)
+	w.WriteHeader(http.StatusSeeOther)
+}
+
+func (h *Handler) sendDifferentRetryLocation(w http.ResponseWriter, r *http.Request, uri string, message string) {
+	if message != "" {
+		messageCookie := h.cookieManager.CreateMessageCookie("Invalid credentials")
+		http.SetCookie(w, &messageCookie)
+	}
+	w.Header().Set(internalHttp.Location, uri)
 	w.WriteHeader(http.StatusSeeOther)
 }
 

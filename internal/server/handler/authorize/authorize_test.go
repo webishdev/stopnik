@@ -51,16 +51,20 @@ func Test_AuthorizeInvalidLogin(t *testing.T) {
 					query.Set(oauth2.ParameterScope, test.scope)
 				}
 			})
+			requestValidator := validation.NewRequestValidator()
+			authSessionManager := session.GetAuthSessionManagerInstance()
 			cookieManager := cookie.GetCookieManagerInstance()
 			loginSessionManager := session.GetLoginSessionManagerInstance()
-			requestValidator := validation.NewRequestValidator()
+			tokenManager := token.GetTokenManagerInstance()
 
-			authorizeHandler := NewAuthorizeHandler(requestValidator, cookieManager, &session.AuthManager{}, loginSessionManager, &token.Manager{}, &template.Manager{})
+			authorizeHandler := NewAuthorizeHandler(requestValidator, cookieManager, authSessionManager, loginSessionManager, tokenManager, &template.Manager{})
+
+			loginToken := requestValidator.NewLoginToken(uuid.NewString())
 
 			rr := httptest.NewRecorder()
 
 			bodyString := testCreateBody(
-				"stopnik_auth_session", uuid.NewString(),
+				"stopnik_auth_session", loginToken,
 				"stopnik_username", "foo",
 				"stopnik_password", "xxx",
 			)
@@ -140,16 +144,20 @@ func Test_AuthorizeEmptyLogin(t *testing.T) {
 					query.Set(oauth2.ParameterScope, test.scope)
 				}
 			})
+			requestValidator := validation.NewRequestValidator()
+			authSessionManager := session.GetAuthSessionManagerInstance()
 			cookieManager := cookie.GetCookieManagerInstance()
 			loginSessionManager := session.GetLoginSessionManagerInstance()
-			requestValidator := validation.NewRequestValidator()
+			tokenManager := token.GetTokenManagerInstance()
 
-			authorizeHandler := NewAuthorizeHandler(requestValidator, cookieManager, &session.AuthManager{}, loginSessionManager, &token.Manager{}, &template.Manager{})
+			authorizeHandler := NewAuthorizeHandler(requestValidator, cookieManager, authSessionManager, loginSessionManager, tokenManager, &template.Manager{})
+
+			loginToken := requestValidator.NewLoginToken(uuid.NewString())
 
 			rr := httptest.NewRecorder()
 
 			bodyString := testCreateBody(
-				"stopnik_auth_session", uuid.NewString(),
+				"stopnik_auth_session", loginToken,
 			)
 			body := strings.NewReader(bodyString)
 

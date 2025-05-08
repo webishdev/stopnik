@@ -74,14 +74,14 @@ func (validator *RequestValidator) ValidateFormLogin(r *http.Request) (*config.U
 
 		if username == "" || password == "" || loginToken == "" {
 			loginError := validator.config.GetInvalidCredentialsMessage()
-			log.Error("Account login failed: %s", loginError)
+			log.AccessLogInvalidLogin(r, "Account login failed: %s", loginError)
 			return nil, &loginError
 		}
 
 		_, tokenError := validator.GetLoginToken(loginToken)
 		if tokenError != nil {
 			loginError := validator.config.GetExpiredLoginMessage()
-			log.Error("Account login failed: %s", loginError)
+			log.AccessLogInvalidLogin(r, "Account login failed: %s", loginError)
 			return nil, &loginError
 		}
 
@@ -92,7 +92,7 @@ func (validator *RequestValidator) ValidateFormLogin(r *http.Request) (*config.U
 		user, valid := validator.ValidateUserPassword(username, password)
 		if !valid {
 			loginError := validator.config.GetInvalidCredentialsMessage()
-			log.Error("Account login failed: %s", loginError)
+			log.AccessLogInvalidLogin(r, "Account login failed for user %s: %s", username, loginError)
 			return nil, &loginError
 		}
 
