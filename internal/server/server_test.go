@@ -3,14 +3,15 @@ package server
 import (
 	"errors"
 	"fmt"
-	"github.com/webishdev/stopnik/internal/config"
-	"github.com/webishdev/stopnik/internal/endpoint"
 	"net"
 	"net/http"
 	"slices"
 	"sync"
 	"sync/atomic"
 	"testing"
+
+	"github.com/webishdev/stopnik/internal/config"
+	"github.com/webishdev/stopnik/internal/endpoint"
 )
 
 func Test_Server(t *testing.T) {
@@ -71,19 +72,46 @@ func Test_Server(t *testing.T) {
 		}
 
 		// Server
-		slices.Contains(*patterns, endpoint.Health)
-		slices.Contains(*patterns, endpoint.Account)
-		slices.Contains(*patterns, endpoint.Logout)
+		healthPattern := slices.Contains(*patterns, endpoint.Health)
+		if !healthPattern {
+			t.Errorf("Health endpoint not registered")
+		}
+		accountPattern := slices.Contains(*patterns, endpoint.Account)
+		if !accountPattern {
+			t.Errorf("Account endpoint not registered")
+		}
+		logoutPattern := slices.Contains(*patterns, endpoint.Logout)
+		if !logoutPattern {
+			t.Errorf("Logout endpoint not registered")
+		}
 
 		// OAuth2
-		slices.Contains(*patterns, endpoint.Authorization)
-		slices.Contains(*patterns, endpoint.Token)
+		authorizationPattern := slices.Contains(*patterns, endpoint.Authorization)
+		if !authorizationPattern {
+			t.Errorf("Authorization endpoint not registered")
+		}
+		tokenPattern := slices.Contains(*patterns, endpoint.Token)
+		if !tokenPattern {
+			t.Errorf("Token endpoint not registered")
+		}
 
 		// OAuth2 extensions
-		slices.Contains(*patterns, endpoint.Introspect)
-		slices.Contains(*patterns, endpoint.Revoke)
-		slices.Contains(*patterns, endpoint.Metadata)
-		slices.Contains(*patterns, endpoint.Keys)
+		introspectPattern := slices.Contains(*patterns, endpoint.Introspect)
+		if !introspectPattern {
+			t.Errorf("Introspect endpoint not registered")
+		}
+		revokePattern := slices.Contains(*patterns, endpoint.Revoke)
+		if !revokePattern {
+			t.Errorf("Revoke endpoint not registered")
+		}
+		metadataPattern := slices.Contains(*patterns, endpoint.Metadata)
+		if !metadataPattern {
+			t.Errorf("Metadata endpoint not registered")
+		}
+		keysPattern := slices.Contains(*patterns, endpoint.Keys)
+		if !keysPattern {
+			t.Errorf("Keys endpoint not registered")
+		}
 	})
 
 	for _, test := range testConfigParameters {
