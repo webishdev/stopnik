@@ -80,7 +80,7 @@ clean:
 clean-test:
 	@echo "Cleaning test results"
 	@rm -f testresults.json
-	@rm -rf ./test_coverage
+	@rm -rf .test_coverage/
 
 clean-lint:
 	@echo "Cleaning lint result"
