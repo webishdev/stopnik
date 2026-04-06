@@ -20,11 +20,6 @@ on:
       - go.mod
       - go.sum
       - .golangci.yml
-  workflow_call:
-    inputs:
-      stopnik_version:
-        default: ci
-        type: string
 
 permissions:
   contents: read
@@ -35,10 +30,7 @@ env:
 jobs:
 
   build:
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        os: [ ubuntu-latest, macos-latest ]
+    runs-on: ubuntu-latest
 
     steps:
     - uses: actions/checkout@v6
@@ -51,16 +43,20 @@ jobs:
     - name: Display Go version
       run: go version
 
-    - name: Tests
-      run: ./test.sh coverage
-
     - name: golangci-lint
       uses: golangci/golangci-lint-action@v9
       with:
         version: v2.11.4
 
+    - name: Test
+      run: |
+        make test-ci
+    - uses: actions/upload-artifact@v4
+      if: ${{ !cancelled() }}
+      with:
+        name: test-results
+        path: testresults.json
+
     - name: Build
       run: |
-        VERSION_INPUT=${{ inputs.stopnik_version }}
-        CURRENT_VERSION=${VERSION_INPUT:-"ci"}
-        ./build.sh build_ci $CURRENT_VERSION ${{ matrix.os }}
+        make build
