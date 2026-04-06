@@ -89,9 +89,6 @@ clean-lint:
 clean-all: clean clean-lint clean-test
 
 # Show help
-# ... existing code ...
-
-# Show help
 help:
 	@echo "Available targets:"
 	@echo "  all                 Run tests and linting"
