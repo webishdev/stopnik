@@ -89,5 +89,26 @@ clean-lint:
 clean-all: clean clean-lint clean-test
 
 # Show help
+# ... existing code ...
+
+# Show help
 help:
-	@echo "not implemented yet"
+	@echo "Available targets:"
+	@echo "  all                 Run tests and linting"
+	@echo "  build               Build for the current GOOS/GOARCH"
+	@echo "  build-all           Build binaries for all supported platforms"
+	@echo "  build-ci            Build the platform(s) for the current CI OS"
+	@echo "  build-linux-intel   Build linux/amd64"
+	@echo "  build-linux-arm     Build linux/arm64"
+	@echo "  build-macos-intel   Build darwin/amd64"
+	@echo "  build-macos-arm     Build darwin/arm64"
+	@echo "  build-windows-intel Build windows/amd64"
+	@echo "  build-windows-arm   Build windows/arm64"
+	@echo "  lint                Run golangci-lint if installed"
+	@echo "  test                Run all Go tests"
+	@echo "  test-ci             Run tests and write testresults.json"
+	@echo "  clean               Remove build artifacts"
+	@echo "  clean-test          Remove test results and coverage output"
+	@echo "  clean-lint          Remove lint output"
+	@echo "  clean-all           Run clean, clean-lint, and clean-test"
+
