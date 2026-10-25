@@ -5,9 +5,9 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"errors"
-	"github.com/lestrrat-go/jwx/v2/jwa"
-	"github.com/lestrrat-go/jwx/v2/jwk"
-	"github.com/lestrrat-go/jwx/v2/jwt"
+	"github.com/lestrrat-go/jwx/v4/jwa"
+	"github.com/lestrrat-go/jwx/v4/jwk"
+	"github.com/lestrrat-go/jwx/v4/jwt"
 	"github.com/webishdev/stopnik/internal/config"
 	"os"
 )
@@ -60,9 +60,9 @@ func NewServerSecretLoader() ServerSecretLoader {
 	return &serverSecret{secret: currentConfig.GetServerSecret()}
 }
 
-// GetServerKey returns the server secret as jwa.HS256 key.
+// GetServerKey returns the server secret as jwa.HS256() key.
 func (s *serverSecret) GetServerKey() jwt.SignEncryptParseOption {
-	return jwt.WithKey(jwa.HS256, []byte(s.secret))
+	return jwt.WithKey(jwa.HS256(), []byte(s.secret))
 }
 
 // LoadPrivateKey loads a private key from a given filename.
@@ -81,7 +81,7 @@ func LoadPrivateKey(filename string) (*SigningPrivateKey, error) {
 	if pkcs8Error == nil {
 		return &SigningPrivateKey{
 			PrivateKey:         parsedPKCS8.(*rsa.PrivateKey),
-			SignatureAlgorithm: jwa.RS256,
+			SignatureAlgorithm: jwa.RS256(),
 			HashAlgorithm:      SHA256,
 		}, nil
 	}
@@ -90,7 +90,7 @@ func LoadPrivateKey(filename string) (*SigningPrivateKey, error) {
 	if pkcs1Error == nil {
 		return &SigningPrivateKey{
 			PrivateKey:         parsedPKCS1,
-			SignatureAlgorithm: jwa.RS256,
+			SignatureAlgorithm: jwa.RS256(),
 			HashAlgorithm:      SHA256,
 		}, nil
 	}
@@ -105,18 +105,18 @@ func LoadPrivateKey(filename string) (*SigningPrivateKey, error) {
 		var hashAlgorithm HashAlgorithm
 		switch curveParams.Name {
 		case "P-256":
-			signatureAlgorithm = jwa.ES256
+			signatureAlgorithm = jwa.ES256()
 			hashAlgorithm = SHA256
 		case "P-384":
-			signatureAlgorithm = jwa.ES384
+			signatureAlgorithm = jwa.ES384()
 			hashAlgorithm = SHA384
 		case "P-521":
-			signatureAlgorithm = jwa.ES512
+			signatureAlgorithm = jwa.ES512()
 			hashAlgorithm = SHA512
 		default:
 			break
 		}
-		if signatureAlgorithm != "" {
+		if signatureAlgorithm.String() != "" {
 			return &SigningPrivateKey{
 				PrivateKey:         parsedEC,
 				SignatureAlgorithm: signatureAlgorithm,

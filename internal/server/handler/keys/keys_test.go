@@ -3,7 +3,7 @@ package keys
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/lestrrat-go/jwx/v2/jwa"
+	"github.com/lestrrat-go/jwx/v4/jwa"
 	"github.com/webishdev/stopnik/internal/config"
 	"github.com/webishdev/stopnik/internal/endpoint"
 	"github.com/webishdev/stopnik/internal/manager/key"
@@ -78,7 +78,7 @@ func Test_Keys(t *testing.T) {
 	}
 
 	containsES512 := slices.ContainsFunc(keys.Keys, func(r responseKeys) bool {
-		return r.Alg == string(jwa.ES512) && r.Kty == "EC"
+		return r.Alg == jwa.ES512().String() && r.Kty == "EC"
 	})
 
 	if !containsES512 {
@@ -86,7 +86,7 @@ func Test_Keys(t *testing.T) {
 	}
 
 	containsES256 := slices.ContainsFunc(keys.Keys, func(r responseKeys) bool {
-		return r.Alg == string(jwa.ES256) && r.Kty == "EC"
+		return r.Alg == jwa.ES256().String() && r.Kty == "EC"
 	})
 
 	if !containsES256 {
@@ -94,7 +94,7 @@ func Test_Keys(t *testing.T) {
 	}
 
 	containsRSA256 := slices.ContainsFunc(keys.Keys, func(r responseKeys) bool {
-		return r.Alg == string(jwa.RS256) && r.Kty == "RSA"
+		return r.Alg == jwa.RS256().String() && r.Kty == "RSA"
 	})
 
 	if !containsRSA256 {

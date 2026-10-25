@@ -2,7 +2,7 @@ package token
 
 import (
 	"fmt"
-	"github.com/lestrrat-go/jwx/v2/jwt"
+	"github.com/lestrrat-go/jwx/v4/jwt"
 	"github.com/webishdev/stopnik/internal/config"
 	"github.com/webishdev/stopnik/internal/crypto"
 	"github.com/webishdev/stopnik/internal/endpoint"
@@ -272,7 +272,8 @@ func assertTokenResponse(t *testing.T, accessTokenResponse oauth2.AccessTokenRes
 			t.Error(idTokenParseError)
 		}
 
-		if parsedIdToken.Subject() != "foo" {
+		subject, _ := parsedIdToken.Subject()
+		if subject != "foo" {
 			t.Error("expected subject to be 'foo'")
 		}
 	}

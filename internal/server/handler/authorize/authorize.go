@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/google/uuid"
-	"github.com/lestrrat-go/jwx/v2/jwt"
+	"github.com/lestrrat-go/jwx/v4/jwt"
 	"github.com/webishdev/stopnik/internal/config"
 	"github.com/webishdev/stopnik/internal/endpoint"
 	internalHttp "github.com/webishdev/stopnik/internal/http"
@@ -98,7 +98,7 @@ func (h *Handler) handlePostRequest(w http.ResponseWriter, r *http.Request) {
 			h.errorHandler.BadRequestHandler(w, r)
 			return
 		}
-		authSessionId := loginToken.Subject()
+		authSessionId, _ := loginToken.Subject()
 		authSession, authSessionExists := h.authSessionManager.GetSession(authSessionId)
 		if !authSessionExists {
 			h.sendRetryLocation(w, r, "")
@@ -598,7 +598,7 @@ func (h *Handler) parseRequest(r *http.Request) *authorizeRequestValues {
 			promptParameter = getClaimFromToken(parsedRequestToken, oidc.ParameterPrompt, promptParameter)
 			maxAgeParameter = getClaimFromToken(parsedRequestToken, oidc.ParameterMaxAge, maxAgeParameter)
 
-			requestedClaimsValue, requestedClaimsValueExists := parsedRequestToken.Get(oidc.ParameterClaims)
+			requestedClaimsValue, requestedClaimsValueExists := parsedRequestToken.Field(oidc.ParameterClaims)
 			if requestedClaimsValueExists {
 				parameter, ok := requestedClaimsValue.(oidc.ClaimsParameter)
 				if ok {
@@ -651,7 +651,7 @@ func createAuthSession(id string, authorizeRequest *authorizeRequestValues, r *h
 }
 
 func getClaimFromToken(token jwt.Token, claim string, defaultValue string) string {
-	value, exists := token.Get(claim)
+	value, exists := token.Field(claim)
 	if exists {
 		valueAsString := fmt.Sprintf("%s", value)
 		if valueAsString != "" {

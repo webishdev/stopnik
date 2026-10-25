@@ -6,8 +6,8 @@ import (
 	"encoding/base64"
 	"fmt"
 	"github.com/google/uuid"
-	"github.com/lestrrat-go/jwx/v2/jwt"
-	"github.com/lestrrat-go/jwx/v2/jwt/openid"
+	"github.com/lestrrat-go/jwx/v4/jwt"
+	"github.com/lestrrat-go/jwx/v4/jwt/openid"
 	"github.com/webishdev/stopnik/internal/config"
 	"github.com/webishdev/stopnik/internal/crypto"
 	internalHttp "github.com/webishdev/stopnik/internal/http"
@@ -349,7 +349,8 @@ func (tokenManager *Manager) generateJWTToken(client *config.Client, token jwt.T
 	} else {
 		currentKey := *managedKey.Key
 
-		options := jwt.WithKey(currentKey.Algorithm(), currentKey)
+		algorithm, _ := currentKey.Algorithm()
+		options := jwt.WithKey(algorithm, currentKey)
 
 		tokenString, tokenError := jwt.Sign(token, options)
 		if tokenError != nil {

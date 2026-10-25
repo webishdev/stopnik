@@ -2,7 +2,7 @@ package crypto
 
 import (
 	"fmt"
-	"github.com/lestrrat-go/jwx/v2/jwt"
+	"github.com/lestrrat-go/jwx/v4/jwt"
 	"github.com/webishdev/stopnik/internal/config"
 	"testing"
 )
@@ -53,12 +53,14 @@ func testServerKeyLoader(t *testing.T) {
 			t.Fatal(parseError)
 		}
 
-		if parsedToken.Subject() != "foo" {
-			t.Errorf("parsed token subject does not match, expected foo but got %s", parsedToken.Subject())
+		subject, _ := parsedToken.Subject()
+		if subject != "foo" {
+			t.Errorf("parsed token subject does not match, expected foo but got %s", subject)
 		}
 
-		if parsedToken.Issuer() != "bar" {
-			t.Errorf("parsed token issuer does not match, expected bar but got %s", parsedToken.Issuer())
+		issuer, _ := parsedToken.Issuer()
+		if issuer != "bar" {
+			t.Errorf("parsed token issuer does not match, expected bar but got %s", issuer)
 		}
 	})
 }
