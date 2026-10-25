@@ -1,7 +1,7 @@
 package metadata
 
 import (
-	"github.com/lestrrat-go/jwx/v2/jwa"
+	"github.com/lestrrat-go/jwx/v4/jwa"
 	"github.com/webishdev/stopnik/internal/endpoint"
 	internalHttp "github.com/webishdev/stopnik/internal/http"
 	"github.com/webishdev/stopnik/internal/oauth2"
@@ -71,11 +71,11 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 
 		signatureAlgorithmSupported := []jwa.SignatureAlgorithm{
-			jwa.RS256,
-			jwa.ES256,
-			jwa.ES384,
-			jwa.ES512,
-			jwa.HS256,
+			jwa.RS256(),
+			jwa.ES256(),
+			jwa.ES384(),
+			jwa.ES512(),
+			jwa.HS256(),
 		}
 
 		metadataResponse := &response{

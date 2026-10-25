@@ -1,18 +1,21 @@
 {{ template "header" . }}
 <main>
-    {{ template "mascot" . }}
-    {{ if .ShowTitle }}
-    <div class="title">{{ .Title }}</div>
-    {{ end }}
-    <form method="POST" action="logout">
-        <input type="hidden" name="stopnik_logout_redirect" value="{{ .RequestURI }}" />
-        <div class="input">
-            <label for="stopnik_username">Username</label>
-            <input id="stopnik_username" type="text" name="stopnik_username" value="{{ .Username }}" readonly />
-        </div>
-        <div class="input">
-            <button type="submit">Logout</button>
-        </div>
-    </form>
+    <div class="card">
+        <header class="card-header">
+            {{ template "mascot" . }}
+            <h1>Sign out</h1>
+            <p class="subtitle">You are currently signed in as</p>
+        </header>
+        <form method="POST" action="logout">
+            <input type="hidden" name="stopnik_logout_redirect" value="{{ .RequestURI }}" />
+            <div class="account">
+                <svg class="icon" viewBox="0 0 20 20" aria-hidden="true"><path fill="currentColor" d="M10 10a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm0 1.8c-3.6 0-7 1.9-7 4.6 0 .9.7 1.6 1.6 1.6h10.8c.9 0 1.6-.7 1.6-1.6 0-2.7-3.4-4.6-7-4.6Z"/></svg>
+                <span>{{ .Username }}</span>
+            </div>
+            <div class="input">
+                <button type="submit">Sign out</button>
+            </div>
+        </form>
+    </div>
 </main>
 {{ template "footer" . }}

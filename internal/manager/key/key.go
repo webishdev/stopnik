@@ -6,7 +6,7 @@ import (
 	"crypto/x509"
 	"encoding/base64"
 	"fmt"
-	"github.com/lestrrat-go/jwx/v2/jwk"
+	"github.com/lestrrat-go/jwx/v4/jwk"
 	"github.com/webishdev/stopnik/internal/config"
 	"github.com/webishdev/stopnik/internal/crypto"
 	"github.com/webishdev/stopnik/internal/store"
@@ -133,7 +133,7 @@ func (km *Manger) convert(signingPrivateKey *crypto.SigningPrivateKey) (*crypto.
 	base64String := base64.StdEncoding.EncodeToString(keyAsBytes)
 	kid := crypto.Sha1Hash(base64String)
 
-	key, jwkError := jwk.FromRaw(signingPrivateKey.PrivateKey)
+	key, jwkError := jwk.Import[jwk.Key](signingPrivateKey.PrivateKey)
 	if jwkError != nil {
 		return nil, jwkError
 	}

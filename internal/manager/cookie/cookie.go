@@ -2,7 +2,7 @@ package cookie
 
 import (
 	"fmt"
-	"github.com/lestrrat-go/jwx/v2/jwt"
+	"github.com/lestrrat-go/jwx/v4/jwt"
 	"github.com/webishdev/stopnik/internal/config"
 	"github.com/webishdev/stopnik/internal/crypto"
 	"github.com/webishdev/stopnik/internal/manager/session"
@@ -132,7 +132,7 @@ func (cookieManager *Manager) validateAuthCookieValue(cookie *http.Cookie) (*con
 		return &config.User{}, &session.LoginSession{}, false
 	}
 
-	loginClaim, loginClaimExists := token.Get("login")
+	loginClaim, loginClaimExists := token.Field("login")
 	if !loginClaimExists {
 		return &config.User{}, &session.LoginSession{}, false
 	}
@@ -145,7 +145,11 @@ func (cookieManager *Manager) validateAuthCookieValue(cookie *http.Cookie) (*con
 	}
 
 	// https://stackoverflow.com/a/61284284/4094586
-	username := token.Subject()
+	username, usernameExists := token.Subject()
+	if !usernameExists {
+		return &config.User{}, &session.LoginSession{}, false
+	}
+
 	user, userExists := cookieManager.config.GetUser(username)
 	return user, loginSession, userExists
 }

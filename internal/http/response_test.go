@@ -1,8 +1,10 @@
 package http
 
 import (
+	"bytes"
+	"compress/gzip"
 	"fmt"
-	"github.com/webishdev/stopnik/log"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -46,14 +48,12 @@ func Test_SetEncodingHeader(t *testing.T) {
 func Test_Write(t *testing.T) {
 	type encodingParameter struct {
 		encodingMethod string
-		expectedBytes  int
 		expected       bool
 	}
 
 	var encodingParameters = []encodingParameter{
-		// unfortunately for a small string the gzipped version is larger because of overhead
-		{encodingMethod: string(CompressionMethodGZip), expectedBytes: 71, expected: true},
-		{encodingMethod: "", expectedBytes: 49, expected: false},
+		{encodingMethod: string(CompressionMethodGZip), expected: true},
+		{encodingMethod: "", expected: false},
 	}
 
 	for _, test := range encodingParameters {
@@ -76,16 +76,25 @@ func Test_Write(t *testing.T) {
 				t.Fatal(writeError)
 			}
 
-			if rr.Body != nil {
-				responseBytes := rr.Body.Bytes()
-				log.Info("%v", len(responseBytes))
-				if len(responseBytes) != test.expectedBytes {
-					t.Errorf("expected %d bytes, got %d", test.expectedBytes, len(responseBytes))
-				}
-			} else {
-				t.Error("response body is empty")
+			if rr.Body == nil {
+				t.Fatal("response body is empty")
 			}
 
+			body := rr.Body.Bytes()
+			if test.expected {
+				gzipReader, gzipError := gzip.NewReader(bytes.NewReader(body))
+				if gzipError != nil {
+					t.Fatal(gzipError)
+				}
+				body, gzipError = io.ReadAll(gzipReader)
+				if gzipError != nil {
+					t.Fatal(gzipError)
+				}
+			}
+
+			if !bytes.Equal(body, value) {
+				t.Errorf("expected body %q, got %q", value, body)
+			}
 		})
 	}
 

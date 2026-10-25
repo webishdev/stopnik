@@ -1,25 +1,31 @@
 {{ template "header" . }}
 <main>
-    {{ template "mascot" . }}
-    {{ if .ShowTitle }}
-    <div class="title">{{ .Title }}</div>
-    {{ end }}
-    <form method="POST" action="{{ .Action }}">
-        <input type="hidden" name="stopnik_auth_session" value="{{ .Token }}" />
-        <div class="input">
-            <label for="stopnik_username">Username</label>
-            <input id="stopnik_username" type="text" name="stopnik_username" autofocus />
-        </div>
-        <div class="input">
-            <label for="stopnik_password">Password</label>
-            <input id="stopnik_password" type="password" name="stopnik_password" />
-        </div>
-        {{ if .ShowMessage }}
-        <div class="error-message">{{ .Message }}</div>
-        {{ end }}
-        <div class="input">
-            <button type="submit">Login</button>
-        </div>
-    </form>
+    <div class="card">
+        <header class="card-header">
+            {{ template "mascot" . }}
+            <h1>Sign in</h1>
+            <p class="subtitle">Enter your credentials to continue</p>
+        </header>
+        <form method="POST" action="{{ .Action }}">
+            <input type="hidden" name="stopnik_auth_session" value="{{ .Token }}" />
+            {{ if .ShowMessage }}
+            <div class="error-message" role="alert">
+                <svg class="icon" viewBox="0 0 20 20" aria-hidden="true"><path fill="currentColor" d="M10 1.5a8.5 8.5 0 1 0 0 17 8.5 8.5 0 0 0 0-17Zm0 4a.9.9 0 0 1 .9.9v4.2a.9.9 0 0 1-1.8 0V6.4a.9.9 0 0 1 .9-.9Zm0 9.3a1.1 1.1 0 1 1 0-2.2 1.1 1.1 0 0 1 0 2.2Z"/></svg>
+                <span>{{ .Message }}</span>
+            </div>
+            {{ end }}
+            <div class="input">
+                <label for="stopnik_username">Username</label>
+                <input id="stopnik_username" type="text" name="stopnik_username" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" required autofocus />
+            </div>
+            <div class="input">
+                <label for="stopnik_password">Password</label>
+                <input id="stopnik_password" type="password" name="stopnik_password" autocomplete="current-password" required />
+            </div>
+            <div class="input">
+                <button type="submit">Sign in</button>
+            </div>
+        </form>
+    </div>
 </main>
 {{ template "footer" . }}

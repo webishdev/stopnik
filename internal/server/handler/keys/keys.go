@@ -1,7 +1,7 @@
 package keys
 
 import (
-	"github.com/lestrrat-go/jwx/v2/jwk"
+	"github.com/lestrrat-go/jwx/v4/jwk"
 	"github.com/webishdev/stopnik/internal/config"
 	"github.com/webishdev/stopnik/internal/crypto"
 	http2 "github.com/webishdev/stopnik/internal/http"
