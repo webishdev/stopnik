@@ -60,8 +60,7 @@ build:
 
 lint: clean-lint
 	@echo "Linting"
-	@command -v golangci-lint >/dev/null 2>&1 && golangci-lint run || \
-        echo "golangci-lint not installed; skipping"
+	go tool golangci-lint run
 
 # Run tests
 test:
@@ -101,7 +100,7 @@ help:
 	@echo "  build-macos-arm     Build darwin/arm64"
 	@echo "  build-windows-intel Build windows/amd64"
 	@echo "  build-windows-arm   Build windows/arm64"
-	@echo "  lint                Run golangci-lint if installed"
+	@echo "  lint                Run golangci-lint as tool"
 	@echo "  test                Run all Go tests"
 	@echo "  test-ci             Run tests and write testresults.json"
 	@echo "  clean               Remove build artifacts"

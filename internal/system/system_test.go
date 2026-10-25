@@ -16,8 +16,10 @@ func Test_CriticalError(t *testing.T) {
 
 	CriticalError(errors.New("foo"))
 
-	if exitCode == nil || *exitCode != 1 {
-		t.Errorf("Expected exit code 1, got %d", exitCode)
+	if exitCode == nil {
+		t.Error("Expected exit code 1, got none")
+	} else if *exitCode != 1 {
+		t.Errorf("Expected exit code 1, got %d", *exitCode)
 	}
 }
 

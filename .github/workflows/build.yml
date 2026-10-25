@@ -45,10 +45,9 @@ jobs:
     - name: Display Go version
       run: go version
 
-    - name: golangci-lint
-      uses: golangci/golangci-lint-action@v9
-      with:
-        version: v2.11.4
+    - name: Lint
+      run: |
+        make lint
 
     - name: Test
       run: |
