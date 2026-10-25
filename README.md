@@ -2,7 +2,7 @@
     <picture>
       <source media="(prefers-color-scheme: dark)" srcset="docs/content/assets/stopnik_250.png">
       <source media="(prefers-color-scheme: light)" srcset="docs/content/assets/stopnik_250.png">
-      <img alt="STOPnik" title="Traefik" src="docs/content/assets/stopnik_250.png">
+      <img alt="STOPnik" title="STOPnik" src="docs/content/assets/stopnik_250.png">
     </picture>
 </p>
 
@@ -62,16 +62,28 @@ They add features like persistence and access to user directories like LDAP.
 
 More details about **STOPnik** can be found at https://stopnik.webish.dev/
 
+## Run with Docker
+
+Docker images for `linux/amd64` and `linux/arm64` are published to the GitHub Container Registry with every release.
+
+The image expects the configuration file at `/config.yml`, e.g. to run with the [minimal configuration](minimal-config.yml)
+
+```bash
+docker run --rm -p 8080:8080 -v "$(pwd)/minimal-config.yml:/config.yml:ro" ghcr.io/webishdev/stopnik:latest
+```
+
+Prebuilt binaries for Linux, macOS and Windows can be downloaded from the [releases](https://github.com/webishdev/stopnik/releases).
+
 ## Build
 
-Requires [Git](https://git-scm.com/) and [Go >=1.23](https://go.dev/) to be installed.
+Requires [Git](https://git-scm.com/), [Go >=1.27](https://go.dev/) and [Make](https://www.gnu.org/software/make/) to be installed.
 
 To build **STOPnik** the repository should be cloned and the build command executed.
 
 ```bash
 git clone https://github.com/webishdev/stopnik.git
 cd stopnik
-go build github.com/webishdev/stopnik/cmd/stopnik
+go build ./cmd/stopnik
 ```
 
 And then start **STOPnik** with
@@ -80,21 +92,46 @@ And then start **STOPnik** with
 ./stopnik
 ```
 
+By default the configuration is read from `config.yml` in the current folder, another file can be used with `./stopnik -file my-config.yml`.
+
+Release binaries for specific platforms are built with the `Makefile` into the `bin` folder, e.g.
+
+```bash
+make build-macos-arm               # a single platform, see make help for all of them
+make build-all VERSION=v1.0.0      # all supported platforms
+```
+
+All available targets are listed with `make help`.
+
 ## Test
 
 Execute tests inside the repository root folder with
 
 ```bash
-go test ./...
+make test
 ```
 
-To get access to the HTML coverage report the following script can be executed
+To get access to the HTML coverage report execute
 
 ```bash
-./test.sh html
+make coverage
 ```
 
-The coverage report will be created in the `.test_coverage` folder
+The coverage report will be created in the `.test_coverage` folder.
+
+## Lint
+
+The code is checked with [golangci-lint](https://golangci-lint.run/), which is managed as a Go tool in `go.mod`, so no separate installation is needed.
+
+```bash
+make lint
+```
+
+## Release
+
+Releases are created by publishing a new release with a `vX.Y.Z` tag on GitHub.
+The [release workflow](.github/workflows/release.yml) then runs the tests and linter, builds the binaries for all platforms,
+pushes the Docker images and attaches the archives with their `SHA256SUMS` to the release.
 
 ## License
 

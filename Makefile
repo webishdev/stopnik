@@ -67,6 +67,14 @@ test:
 	@echo "Running tests"
 	go test ./...
 
+# Run tests and create an HTML coverage report
+coverage: clean-test
+	@echo "Running tests with coverage"
+	@mkdir -p .test_coverage
+	go test ./... -coverprofile .test_coverage/coverage.out -covermode count
+	go tool cover -func=.test_coverage/coverage.out
+	go tool cover -html=.test_coverage/coverage.out -o .test_coverage/test-coverage.html
+
 test-ci:
 	@echo "Running tests for CI/CD"
 	go test ./... -json > testresults.json
@@ -102,6 +110,7 @@ help:
 	@echo "  build-windows-arm   Build windows/arm64"
 	@echo "  lint                Run golangci-lint as tool"
 	@echo "  test                Run all Go tests"
+	@echo "  coverage            Run tests and create an HTML coverage report"
 	@echo "  test-ci             Run tests and write testresults.json"
 	@echo "  clean               Remove build artifacts"
 	@echo "  clean-test          Remove test results and coverage output"
