@@ -145,7 +145,11 @@ func (cookieManager *Manager) validateAuthCookieValue(cookie *http.Cookie) (*con
 	}
 
 	// https://stackoverflow.com/a/61284284/4094586
-	username, _ := token.Subject()
+	username, usernameExists := token.Subject()
+	if !usernameExists {
+		return &config.User{}, &session.LoginSession{}, false
+	}
+
 	user, userExists := cookieManager.config.GetUser(username)
 	return user, loginSession, userExists
 }

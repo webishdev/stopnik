@@ -98,7 +98,11 @@ func (h *Handler) handlePostRequest(w http.ResponseWriter, r *http.Request) {
 			h.errorHandler.BadRequestHandler(w, r)
 			return
 		}
-		authSessionId, _ := loginToken.Subject()
+		authSessionId, authSessionIdExists := loginToken.Subject()
+		if !authSessionIdExists {
+			h.errorHandler.BadRequestHandler(w, r)
+			return
+		}
 		authSession, authSessionExists := h.authSessionManager.GetSession(authSessionId)
 		if !authSessionExists {
 			h.sendRetryLocation(w, r, "")
