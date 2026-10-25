@@ -1,12 +1,8 @@
 # syntax=docker/dockerfile:1.2
 FROM gcr.io/distroless/static-debian12
 
-ARG TARGETOS
-ARG TARGETARCH
-
-ARG STOPNIK_VERSION=dev
-
-COPY ./dist/stopnik.$STOPNIK_VERSION-$TARGETOS-$TARGETARCH /stopnik
+ARG TARGETPLATFORM
+COPY --chmod=755 ./bin/${TARGETPLATFORM}/stopnik /stopnik
 
 EXPOSE 8080
 EXPOSE 8081
