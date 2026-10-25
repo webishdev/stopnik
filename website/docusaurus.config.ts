@@ -7,6 +7,11 @@ const config: Config = {
   tagline: 'The simple and small OAuth2 | OpenId Connect server that secures applications without hassle',
   favicon: 'img/favicon.ico',
 
+  // Future flags, see https://docusaurus.io/docs/api/docusaurus-config#future
+  future: {
+    v4: true, // Improve compatibility with the upcoming Docusaurus v4
+  },
+
   // Set the production url of your site here
   url: 'https://stopnik.webish.dev',
   // Set the /<baseUrl>/ pathname under which your site is served
@@ -19,7 +24,12 @@ const config: Config = {
   projectName: 'stopnik', // Usually your repo name.
 
   onBrokenLinks: 'throw',
-  onBrokenMarkdownLinks: 'warn',
+
+  markdown: {
+    hooks: {
+      onBrokenMarkdownLinks: 'warn',
+    },
+  },
 
   // Even if you don't use internationalization, you can use this field to set
   // useful metadata like html lang. For example, if your site is Chinese, you
