@@ -2,7 +2,6 @@ package cookie
 
 import (
 	"fmt"
-	"github.com/google/uuid"
 	"github.com/webishdev/stopnik/internal/config"
 	"github.com/webishdev/stopnik/internal/endpoint"
 	"github.com/webishdev/stopnik/internal/manager/session"
@@ -10,6 +9,7 @@ import (
 	"net/http/httptest"
 	"testing"
 	"time"
+	"uuid"
 )
 
 func Test_Cookie(t *testing.T) {
@@ -34,7 +34,7 @@ func Test_Cookie(t *testing.T) {
 		loginSessionManager := session.GetLoginSessionManagerInstance()
 
 		loginSession := &session.LoginSession{
-			Id:       uuid.NewString(),
+			Id:       uuid.New().String(),
 			Username: "foo",
 		}
 		loginSessionManager.StartSession(loginSession)

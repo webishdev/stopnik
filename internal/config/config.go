@@ -5,7 +5,6 @@ import (
 	"cmp"
 	"errors"
 	"fmt"
-	"github.com/google/uuid"
 	internalHttp "github.com/webishdev/stopnik/internal/http"
 	"github.com/webishdev/stopnik/internal/oauth2"
 	"github.com/webishdev/stopnik/internal/store"
@@ -16,6 +15,7 @@ import (
 	"os"
 	"strings"
 	"sync"
+	"uuid"
 )
 
 // Keys defines path to TSL certificate and key file.
@@ -267,7 +267,7 @@ func Initialize(config *Config) error {
 
 	if config.GetForwardAuthEnabled() {
 		config.forwardAuthClient = &Client{
-			Id:            uuid.NewString(),
+			Id:            uuid.New().String(),
 			isForwardAuth: true,
 			Redirects:     config.Server.ForwardAuth.Redirects,
 		}

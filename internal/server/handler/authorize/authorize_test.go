@@ -2,7 +2,6 @@ package authorize
 
 import (
 	"fmt"
-	"github.com/google/uuid"
 	"github.com/webishdev/stopnik/internal/config"
 	"github.com/webishdev/stopnik/internal/endpoint"
 	internalHttp "github.com/webishdev/stopnik/internal/http"
@@ -22,6 +21,7 @@ import (
 	"strings"
 	"testing"
 	"time"
+	"uuid"
 )
 
 func Test_AuthorizeInvalidLogin(t *testing.T) {
@@ -59,7 +59,7 @@ func Test_AuthorizeInvalidLogin(t *testing.T) {
 
 			authorizeHandler := NewAuthorizeHandler(requestValidator, cookieManager, authSessionManager, loginSessionManager, tokenManager, &template.Manager{})
 
-			loginToken := requestValidator.NewLoginToken(uuid.NewString())
+			loginToken := requestValidator.NewLoginToken(uuid.New().String())
 
 			rr := httptest.NewRecorder()
 
@@ -152,7 +152,7 @@ func Test_AuthorizeEmptyLogin(t *testing.T) {
 
 			authorizeHandler := NewAuthorizeHandler(requestValidator, cookieManager, authSessionManager, loginSessionManager, tokenManager, &template.Manager{})
 
-			loginToken := requestValidator.NewLoginToken(uuid.NewString())
+			loginToken := requestValidator.NewLoginToken(uuid.New().String())
 
 			rr := httptest.NewRecorder()
 
@@ -243,7 +243,7 @@ func Test_AuthorizeValidLoginNoSession(t *testing.T) {
 
 			authorizeHandler := NewAuthorizeHandler(requestValidator, cookieManager, authSessionManager, loginSessionManager, tokenManager, &template.Manager{})
 
-			loginToken := requestValidator.NewLoginToken(uuid.NewString())
+			loginToken := requestValidator.NewLoginToken(uuid.New().String())
 
 			rr := httptest.NewRecorder()
 
@@ -580,7 +580,7 @@ func Test_AuthorizeAuthorizationGrant(t *testing.T) {
 
 			user, _ := testConfig.GetUser("foo")
 			loginSession := &session.LoginSession{
-				Id:       uuid.NewString(),
+				Id:       uuid.New().String(),
 				Username: user.Username,
 			}
 			loginSessionManager.StartSession(loginSession)
@@ -644,7 +644,7 @@ func Test_AuthorizeAuthorizationGrantPromptLogin(t *testing.T) {
 		query.Set(oauth2.ParameterResponseType, oauth2.ParameterCode)
 		query.Set(oauth2.ParameterState, "some_state")
 		query.Set(oauth2.ParameterScope, oidc.ScopeOpenId)
-		pkceCodeChallenge = pkce.CalculatePKCE(pkce.S256, uuid.NewString())
+		pkceCodeChallenge = pkce.CalculatePKCE(pkce.S256, uuid.New().String())
 		query.Set(pkce.ParameterCodeChallenge, pkceCodeChallenge)
 		query.Set(oidc.ParameterPrompt, string(oidc.PtLogin))
 	})
@@ -657,7 +657,7 @@ func Test_AuthorizeAuthorizationGrantPromptLogin(t *testing.T) {
 
 	user, _ := testConfig.GetUser("foo")
 	loginSession := &session.LoginSession{
-		Id:       uuid.NewString(),
+		Id:       uuid.New().String(),
 		Username: user.Username,
 	}
 	loginSessionManager.StartSession(loginSession)
@@ -703,7 +703,7 @@ func Test_AuthorizeAuthorizationGrantUnknownPrompt(t *testing.T) {
 		query.Set(oauth2.ParameterResponseType, oauth2.ParameterCode)
 		query.Set(oauth2.ParameterState, "some_state")
 		query.Set(oauth2.ParameterScope, oidc.ScopeOpenId)
-		pkceCodeChallenge = pkce.CalculatePKCE(pkce.S256, uuid.NewString())
+		pkceCodeChallenge = pkce.CalculatePKCE(pkce.S256, uuid.New().String())
 		query.Set(pkce.ParameterCodeChallenge, pkceCodeChallenge)
 		query.Set(oidc.ParameterPrompt, "foo_bar")
 	})
@@ -716,7 +716,7 @@ func Test_AuthorizeAuthorizationGrantUnknownPrompt(t *testing.T) {
 
 	user, _ := testConfig.GetUser("foo")
 	loginSession := &session.LoginSession{
-		Id:       uuid.NewString(),
+		Id:       uuid.New().String(),
 		Username: user.Username,
 	}
 	loginSessionManager.StartSession(loginSession)
@@ -786,7 +786,7 @@ func Test_AuthorizeImplicitGrant(t *testing.T) {
 			client, _ := testConfig.GetClient("foo")
 			user, _ := testConfig.GetUser("foo")
 			loginSession := &session.LoginSession{
-				Id:       uuid.NewString(),
+				Id:       uuid.New().String(),
 				Username: user.Username,
 			}
 			loginSessionManager.StartSession(loginSession)
@@ -868,7 +868,7 @@ func Test_AuthorizeValidLoginAuthorizationGrant(t *testing.T) {
 
 			client, _ := testConfig.GetClient("foo")
 
-			id := uuid.NewString()
+			id := uuid.New().String()
 			authSession := &session.AuthSession{
 				Id:                  id,
 				Redirect:            "https://example.com/callback",
@@ -961,7 +961,7 @@ func Test_AuthorizeValidLoginImplicitGrant(t *testing.T) {
 
 			client, _ := testConfig.GetClient("foo")
 
-			id := uuid.NewString()
+			id := uuid.New().String()
 			authSession := &session.AuthSession{
 				Id:                  id,
 				Redirect:            "https://example.com/callback",

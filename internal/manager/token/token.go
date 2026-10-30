@@ -5,7 +5,6 @@ import (
 	"crypto/sha512"
 	"encoding/base64"
 	"fmt"
-	"github.com/google/uuid"
 	"github.com/lestrrat-go/jwx/v4/jwt"
 	"github.com/lestrrat-go/jwx/v4/jwt/openid"
 	"github.com/webishdev/stopnik/internal/config"
@@ -22,6 +21,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"uuid"
 )
 
 type clientStores struct {
@@ -370,7 +370,7 @@ func generateIdToken(requestData *internalHttp.RequestData, config *config.Confi
 	authTime := idTokenInput.AuthTime
 	scopes := idTokenInput.Scopes
 	idTokenDuration := time.Minute * time.Duration(idTokenInput.Client.GetIdTTL())
-	tokenId := uuid.NewString()
+	tokenId := uuid.New().String()
 	builder := openid.NewBuilder().
 		Expiration(time.Now().Add(idTokenDuration)). // https://www.rfc-editor.org/rfc/rfc7519.html#section-4.1.4
 		IssuedAt(time.Now())                         // https://www.rfc-editor.org/rfc/rfc7519.html#section-4.1.6

@@ -3,7 +3,6 @@ module github.com/webishdev/stopnik
 go 1.27.3
 
 require (
-	github.com/google/uuid v1.6.0
 	github.com/lestrrat-go/jwx/v4 v4.6.0
 	gopkg.in/yaml.v3 v3.0.1
 )
