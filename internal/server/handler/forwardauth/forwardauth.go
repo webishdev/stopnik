@@ -2,7 +2,6 @@ package forwardauth
 
 import (
 	"fmt"
-	"github.com/google/uuid"
 	"github.com/webishdev/stopnik/internal/config"
 	"github.com/webishdev/stopnik/internal/endpoint"
 	internalHttp "github.com/webishdev/stopnik/internal/http"
@@ -15,6 +14,7 @@ import (
 	"github.com/webishdev/stopnik/log"
 	"net/http"
 	"net/url"
+	"uuid"
 )
 
 const forwardAuthScope = "forward:auth"
@@ -103,10 +103,10 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	codeChallenge := uuid.NewString()
+	codeChallenge := uuid.New().String()
 	codeChallengeVerifier := pkce.CalculatePKCE(pkce.S256, codeChallenge)
-	forwardSessionId := uuid.NewString()
-	forwardSessionState := uuid.NewString()
+	forwardSessionId := uuid.New().String()
+	forwardSessionState := uuid.New().String()
 
 	redirectUri, redirectUriError := createUri(forwardString, "", func(query url.Values) {
 		query.Set(forwardAuthParameterName, forwardSessionId)
@@ -163,7 +163,7 @@ func (h *Handler) validateAndCreateAuthCookie(code string, state string, forward
 	authSession, forwardSession, valid := h.validatePKCEAndState(code, state, forwardSessionId)
 	if valid {
 		loginSession := &session.LoginSession{
-			Id:       uuid.NewString(),
+			Id:       uuid.New().String(),
 			Username: authSession.Username,
 		}
 		h.loginSessionManager.StartSession(loginSession)

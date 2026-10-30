@@ -1,7 +1,6 @@
 package account
 
 import (
-	"github.com/google/uuid"
 	internalHttp "github.com/webishdev/stopnik/internal/http"
 	"github.com/webishdev/stopnik/internal/manager/cookie"
 	"github.com/webishdev/stopnik/internal/manager/session"
@@ -10,6 +9,7 @@ import (
 	"github.com/webishdev/stopnik/internal/template"
 	"github.com/webishdev/stopnik/log"
 	"net/http"
+	"uuid"
 )
 
 type Handler struct {
@@ -55,7 +55,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		} else {
 			message := h.cookieManager.GetMessageCookieValue(r)
 
-			id := uuid.NewString()
+			id := uuid.New().String()
 			loginToken := h.validator.NewLoginToken(id)
 			loginTemplate := h.templateManager.LoginTemplate(loginToken, "account", message)
 
@@ -83,7 +83,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 
 		loginSession := &session.LoginSession{
-			Id:       uuid.NewString(),
+			Id:       uuid.New().String(),
 			Username: user.Username,
 		}
 		h.loginSessionManager.StartSession(loginSession)

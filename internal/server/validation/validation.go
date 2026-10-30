@@ -1,7 +1,6 @@
 package validation
 
 import (
-	"github.com/google/uuid"
 	"github.com/lestrrat-go/jwx/v4/jwt"
 	"github.com/webishdev/stopnik/internal/config"
 	"github.com/webishdev/stopnik/internal/crypto"
@@ -10,6 +9,7 @@ import (
 	"github.com/webishdev/stopnik/log"
 	"net/http"
 	"time"
+	"uuid"
 )
 
 type now func() time.Time
@@ -35,7 +35,7 @@ func newRequestValidator(now now) *RequestValidator {
 
 func (validator *RequestValidator) NewLoginToken(id string) string {
 	duration := time.Minute * time.Duration(5)
-	tokenId := uuid.NewString()
+	tokenId := uuid.New().String()
 	builder := jwt.NewBuilder().
 		JwtID(tokenId).
 		Subject(id).

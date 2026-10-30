@@ -2,7 +2,6 @@ package logout
 
 import (
 	"fmt"
-	"github.com/google/uuid"
 	"github.com/webishdev/stopnik/internal/config"
 	"github.com/webishdev/stopnik/internal/endpoint"
 	internalHttp "github.com/webishdev/stopnik/internal/http"
@@ -12,6 +11,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"uuid"
 )
 
 func Test_Logout(t *testing.T) {
@@ -91,7 +91,7 @@ func testLogout(t *testing.T, testConfig *config.Config) {
 
 			user, _ := testConfig.GetUser("foo")
 			loginSession := &session.LoginSession{
-				Id:       uuid.NewString(),
+				Id:       uuid.New().String(),
 				Username: user.Username,
 			}
 			loginSessionManager.StartSession(loginSession)

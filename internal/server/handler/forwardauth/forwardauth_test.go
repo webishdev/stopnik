@@ -1,7 +1,6 @@
 package forwardauth
 
 import (
-	"github.com/google/uuid"
 	"github.com/webishdev/stopnik/internal/config"
 	internalHttp "github.com/webishdev/stopnik/internal/http"
 	"github.com/webishdev/stopnik/internal/manager/cookie"
@@ -10,6 +9,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"uuid"
 )
 
 func Test_ForwardAuthWithoutCookie(t *testing.T) {
@@ -50,7 +50,7 @@ func Test_ForwardAuthWithCookie(t *testing.T) {
 
 	user, _ := testConfig.GetUser("foo")
 	loginSession := &session.LoginSession{
-		Id:       uuid.NewString(),
+		Id:       uuid.New().String(),
 		Username: user.Username,
 	}
 	loginSessionManager.StartSession(loginSession)

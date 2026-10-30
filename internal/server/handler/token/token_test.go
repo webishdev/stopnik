@@ -4,7 +4,6 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"github.com/google/uuid"
 	"github.com/webishdev/stopnik/internal/config"
 	"github.com/webishdev/stopnik/internal/endpoint"
 	internalHttp "github.com/webishdev/stopnik/internal/http"
@@ -18,6 +17,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"uuid"
 )
 
 func Test_Token(t *testing.T) {

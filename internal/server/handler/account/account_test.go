@@ -2,7 +2,6 @@ package account
 
 import (
 	"fmt"
-	"github.com/google/uuid"
 	"github.com/webishdev/stopnik/internal/config"
 	"github.com/webishdev/stopnik/internal/endpoint"
 	internalHttp "github.com/webishdev/stopnik/internal/http"
@@ -15,6 +14,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"uuid"
 )
 
 func Test_AccountWithCookie(t *testing.T) {
@@ -27,7 +27,7 @@ func Test_AccountWithCookie(t *testing.T) {
 
 	user, _ := testConfig.GetUser("foo")
 	loginSession := &session.LoginSession{
-		Id:       uuid.NewString(),
+		Id:       uuid.New().String(),
 		Username: user.Username,
 	}
 	loginSessionManager.StartSession(loginSession)
@@ -123,7 +123,7 @@ func Test_AccountLogin(t *testing.T) {
 
 			accountHandler := NewAccountHandler(requestValidator, cookieManager, loginSessionManager, templateManager)
 
-			loginToken := requestValidator.NewLoginToken(uuid.NewString())
+			loginToken := requestValidator.NewLoginToken(uuid.New().String())
 
 			rr := httptest.NewRecorder()
 

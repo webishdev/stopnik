@@ -2,12 +2,12 @@ package validation
 
 import (
 	"fmt"
-	"github.com/google/uuid"
 	"github.com/webishdev/stopnik/internal/config"
 	"github.com/webishdev/stopnik/internal/oauth2"
 	"net/http"
 	"testing"
 	"time"
+	"uuid"
 )
 
 func Test_ValidateClientCredentials(t *testing.T) {
@@ -89,7 +89,7 @@ func Test_ValidateFormLogin(t *testing.T) {
 					},
 				}
 
-				loginToken := requestValidator.NewLoginToken(uuid.NewString())
+				loginToken := requestValidator.NewLoginToken(uuid.New().String())
 				httpRequest.PostForm["stopnik_auth_session"] = []string{loginToken}
 
 				_, loginError := requestValidator.ValidateFormLogin(httpRequest)
@@ -178,7 +178,7 @@ func Test_ValidateFormLoginExpiredLoginToken(t *testing.T) {
 					},
 				}
 
-				loginToken := requestValidator.NewLoginToken(uuid.NewString())
+				loginToken := requestValidator.NewLoginToken(uuid.New().String())
 				httpRequest.PostForm["stopnik_auth_session"] = []string{loginToken}
 
 				_, loginError := requestValidator.ValidateFormLogin(httpRequest)

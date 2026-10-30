@@ -6,9 +6,16 @@
 
 Currently, **STOPnik** only depends on
 
-- [github.com/google/uuid v1.6.0](https://pkg.go.dev/github.com/google/uuid@v1.6.0) (generate UUID)
-- [github.com/lestrrat-go/jwx/v2  v2.1.1](https://pkg.go.dev/github.com/lestrrat-go/jwx/v2@v2.1.1) (handle JWT, JWK, JWE, etc&hellip;)
+- [github.com/lestrrat-go/jwx/v4 v4.6.0](https://pkg.go.dev/github.com/lestrrat-go/jwx/v4@v4.6.0) (handle JWT, JWK, JWE, etc&hellip;)
 - [gopkg.in/yaml.v3 v3.0.1](https://pkg.go.dev/gopkg.in/yaml.v3@v3.0.1) (parse YAML files)
+
+#### Development tools
+
+For development, **STOPnik** uses [golangci-lint v2.15.0](https://golangci-lint.run/) to lint the code (`make lint`).
+It is registered as a [Go tool dependency](https://go.dev/doc/modules/managing-dependencies#tools) via the `tool` directive and runs with `go tool golangci-lint`.
+
+Because of this, the `go.mod` file lists many indirect dependencies.
+They are only needed by golangci-lint and are not compiled into the **STOPnik** binary.
 
 ## Related specifications
 

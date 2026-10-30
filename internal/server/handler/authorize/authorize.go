@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/google/uuid"
 	"github.com/lestrrat-go/jwx/v4/jwt"
 	"github.com/webishdev/stopnik/internal/config"
 	"github.com/webishdev/stopnik/internal/endpoint"
@@ -26,6 +25,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"uuid"
 )
 
 type authorizeRequestValues struct {
@@ -116,7 +116,7 @@ func (h *Handler) handlePostRequest(w http.ResponseWriter, r *http.Request) {
 		}
 
 		loginSession := &session.LoginSession{
-			Id:       uuid.NewString(),
+			Id:       uuid.New().String(),
 			Username: user.Username,
 		}
 		h.loginSessionManager.StartSession(loginSession)
@@ -210,7 +210,7 @@ func (h *Handler) handleAuthorizeRequest(w http.ResponseWriter, r *http.Request,
 		log.Debug("Scope: %v", authorizeRequest.requestedScopes)
 	}
 
-	id := uuid.NewString()
+	id := uuid.New().String()
 	authSession := createAuthSession(id, authorizeRequest, r, responseTypes)
 
 	invalidNonceHandler := h.validateNonce(client, authorizeRequest, authSession, redirectURL)
