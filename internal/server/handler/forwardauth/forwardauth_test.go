@@ -1,10 +1,13 @@
 package forwardauth
 
 import (
+	"fmt"
 	"github.com/webishdev/stopnik/internal/config"
 	internalHttp "github.com/webishdev/stopnik/internal/http"
 	"github.com/webishdev/stopnik/internal/manager/cookie"
 	"github.com/webishdev/stopnik/internal/manager/session"
+	"github.com/webishdev/stopnik/internal/oauth2"
+	"github.com/webishdev/stopnik/internal/pkce"
 	"github.com/webishdev/stopnik/internal/template"
 	"net/http"
 	"net/http/httptest"
@@ -117,6 +120,80 @@ func Test_ForwardAuthInvalidHeaders(t *testing.T) {
 
 	if rr.Code != http.StatusInternalServerError {
 		t.Errorf("handler returned wrong status code: got %v want %v", rr.Code, http.StatusInternalServerError)
+	}
+}
+
+func Test_ForwardAuthCodeUsage(t *testing.T) {
+	type codeUsageParameter struct {
+		name         string
+		username     string
+		otherClient  bool
+		expectedCode int
+	}
+
+	var codeUsageParameters = []codeUsageParameter{
+		{"Valid code", "foo", false, http.StatusTemporaryRedirect},
+		{"User not logged in", "", false, http.StatusBadRequest},
+		{"Code issued for other client", "foo", true, http.StatusBadRequest},
+	}
+
+	for _, test := range codeUsageParameters {
+		t.Run(test.name, func(t *testing.T) {
+			testConfig := createTestConfig(t)
+			forwardAuthClient, _ := testConfig.GetForwardAuthClient()
+			cookieManager := cookie.GetCookieManagerInstance()
+			authSessionManager := session.GetAuthSessionManagerInstance()
+			forwardSessionManager := session.GetForwardSessionManagerInstance()
+			loginSessionManager := session.GetLoginSessionManagerInstance()
+			templateManager := template.GetTemplateManagerInstance()
+
+			codeVerifier := uuid.New().String()
+			clientId := forwardAuthClient.Id
+			if test.otherClient {
+				clientId = "foo"
+			}
+			authSession := &session.AuthSession{
+				Id:                  uuid.New().String(),
+				ClientId:            clientId,
+				Username:            test.username,
+				CodeChallenge:       codeVerifier,
+				CodeChallengeMethod: string(pkce.S256),
+			}
+			authSessionManager.StartSession(authSession)
+			forwardSession := &session.ForwardSession{
+				Id:                    uuid.New().String(),
+				CodeChallengeVerifier: pkce.CalculatePKCE(pkce.S256, codeVerifier),
+				RedirectUri:           "http://localhost:8080/blabla",
+				State:                 "xyz",
+			}
+			forwardSessionManager.StartSession(forwardSession)
+
+			forwardAuthHandler := NewForwardAuthHandler(cookieManager, authSessionManager, forwardSessionManager, loginSessionManager, templateManager)
+
+			forwardUri := fmt.Sprintf("/blabla?%s=%s&%s=%s&%s=%s", oauth2.ParameterCode, authSession.Id, oauth2.ParameterState, forwardSession.State, testConfig.GetForwardAuthParameterName(), forwardSession.Id)
+			createRequest := func() *http.Request {
+				request := httptest.NewRequest(http.MethodGet, testConfig.GetForwardAuthEndpoint(), nil)
+				request.Header.Set(internalHttp.XForwardProtocol, "http")
+				request.Header.Set(internalHttp.XForwardHost, "localhost:8080")
+				request.Header.Set(internalHttp.XForwardUri, forwardUri)
+				return request
+			}
+
+			rr := httptest.NewRecorder()
+			forwardAuthHandler.ServeHTTP(rr, createRequest())
+
+			if rr.Code != test.expectedCode {
+				t.Errorf("handler returned wrong status code: got %v want %v", rr.Code, test.expectedCode)
+			}
+
+			// A code can only be used once
+			replay := httptest.NewRecorder()
+			forwardAuthHandler.ServeHTTP(replay, createRequest())
+
+			if replay.Code != http.StatusBadRequest {
+				t.Errorf("replay returned wrong status code: got %v want %v", replay.Code, http.StatusBadRequest)
+			}
+		})
 	}
 }
 

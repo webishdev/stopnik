@@ -241,6 +241,7 @@ func Test_TokenAuthorizationCodeGrantType(t *testing.T) {
 				CodeChallenge:       pkceCodeChallenge,
 				CodeChallengeMethod: pkceCodeChallengeMethod,
 				ClientId:            "foo",
+				Username:            "foo",
 				ResponseTypes:       []oauth2.ResponseType{oauth2.RtCode},
 				Scopes:              []string{"foo:bar", "moo:abc"},
 				State:               test.state,
@@ -258,11 +259,13 @@ func Test_TokenAuthorizationCodeGrantType(t *testing.T) {
 			bodyString := testCreateBody(
 				oauth2.ParameterGrantType, oauth2.GtAuthorizationCode,
 				oauth2.ParameterCode, id.String(),
+				oauth2.ParameterRedirectUri, "https://example.com/callback",
 			)
 			if test.pkceCodeChallenge != "" && test.pkceCodeChallengeMethod != nil {
 				bodyString = testCreateBody(
 					oauth2.ParameterGrantType, oauth2.GtAuthorizationCode,
 					oauth2.ParameterCode, id.String(),
+					oauth2.ParameterRedirectUri, "https://example.com/callback",
 					pkce.ParameterCodeVerifier, test.pkceCodeChallenge,
 				)
 			}
@@ -281,6 +284,80 @@ func Test_TokenAuthorizationCodeGrantType(t *testing.T) {
 			response := rr.Result()
 
 			testTokenValidate(t, tokenManager, response)
+		})
+	}
+}
+
+func Test_TokenAuthorizationCodeGrantTypeInvalidCodeUsage(t *testing.T) {
+	type invalidCodeUsageParameter struct {
+		name          string
+		clientId      string
+		clientSecret  string
+		username      string
+		codeChallenge string
+		redirectUri   string
+		codeVerifier  string
+	}
+
+	codeChallenge := pkce.CalculatePKCE(pkce.S256, "foobar")
+
+	var invalidCodeUsageParameters = []invalidCodeUsageParameter{
+		{"Code issued for other client", "bar", "", "foo", "", "https://example.com/callback", ""},
+		{"Missing redirect URI", "foo", "bar", "foo", "", "", ""},
+		{"Different redirect URI", "foo", "bar", "foo", "", "https://example.com/other", ""},
+		{"User not logged in", "foo", "bar", "", "", "https://example.com/callback", ""},
+		{"Missing code verifier", "foo", "bar", "foo", codeChallenge, "https://example.com/callback", ""},
+	}
+
+	for _, test := range invalidCodeUsageParameters {
+		t.Run(test.name, func(t *testing.T) {
+			id := uuid.New()
+			codeChallengeMethod := ""
+			if test.codeChallenge != "" {
+				codeChallengeMethod = string(pkce.S256)
+			}
+			authSession := &session.AuthSession{
+				Id:                  id.String(),
+				Redirect:            "https://example.com/callback",
+				AuthURI:             "https://example.com/auth",
+				CodeChallenge:       test.codeChallenge,
+				CodeChallengeMethod: codeChallengeMethod,
+				ClientId:            "foo",
+				Username:            test.username,
+				ResponseTypes:       []oauth2.ResponseType{oauth2.RtCode},
+				Scopes:              []string{"foo:bar"},
+			}
+
+			requestValidator := validation.NewRequestValidator()
+			sessionManager := session.GetAuthSessionManagerInstance()
+			tokenManager := token.GetTokenManagerInstance()
+			sessionManager.StartSession(authSession)
+
+			tokenHandler := NewTokenHandler(requestValidator, sessionManager, tokenManager)
+
+			rr := httptest.NewRecorder()
+
+			bodyString := testCreateBody(
+				oauth2.ParameterGrantType, oauth2.GtAuthorizationCode,
+				oauth2.ParameterCode, id.String(),
+				oauth2.ParameterRedirectUri, test.redirectUri,
+			)
+			body := strings.NewReader(bodyString)
+
+			request := httptest.NewRequest(http.MethodPost, endpoint.Token, body)
+			request.Header.Add(internalHttp.Authorization, fmt.Sprintf("Basic %s", testTokenCreateBasicAuth(test.clientId, test.clientSecret)))
+			request.Header.Add(internalHttp.ContentType, "application/x-www-form-urlencoded")
+
+			tokenHandler.ServeHTTP(rr, request)
+
+			if rr.Code != http.StatusBadRequest {
+				t.Errorf("handler returned wrong status code: got %v want %v", rr.Code, http.StatusBadRequest)
+			}
+
+			_, sessionExists := sessionManager.GetSession(id.String())
+			if sessionExists {
+				t.Errorf("authorization code was not invalidated after failed usage")
+			}
 		})
 	}
 }
@@ -315,6 +392,63 @@ func Test_TokenPasswordGrantType(t *testing.T) {
 	response := rr.Result()
 
 	testTokenValidate(t, tokenManager, response)
+}
+
+func Test_TokenNotAllowedGrantTypeOrScope(t *testing.T) {
+	type notAllowedParameter struct {
+		name          string
+		clientId      string
+		clientSecret  string
+		grantType     oauth2.GrantType
+		scope         string
+		expectedError oauth2.TokenErrorType
+	}
+
+	var notAllowedParameters = []notAllowedParameter{
+		{"Reserved introspect scope", "foo", "bar", oauth2.GtPassword, "foo:bar stopnik:introspect", oauth2.TokenEtInvalidScope},
+		{"Reserved revoke scope", "foo", "bar", oauth2.GtPassword, "stopnik:revoke", oauth2.TokenEtInvalidScope},
+		{"Reserved scope with client credentials", "foo", "bar", oauth2.GtClientCredentials, "stopnik:revoke", oauth2.TokenEtInvalidScope},
+		{"Client credentials for public client", "bar", "", oauth2.GtClientCredentials, "foo:bar", oauth2.TokenEtUnauthorizedClient},
+	}
+
+	for _, test := range notAllowedParameters {
+		t.Run(test.name, func(t *testing.T) {
+			requestValidator := validation.NewRequestValidator()
+			sessionManager := session.GetAuthSessionManagerInstance()
+			tokenManager := token.GetTokenManagerInstance()
+
+			tokenHandler := NewTokenHandler(requestValidator, sessionManager, tokenManager)
+
+			rr := httptest.NewRecorder()
+
+			bodyString := testCreateBody(
+				oauth2.ParameterGrantType, test.grantType,
+				oauth2.ParameterUsername, "foo",
+				oauth2.ParameterPassword, "bar",
+				oauth2.ParameterScope, test.scope,
+			)
+			body := strings.NewReader(bodyString)
+
+			request := httptest.NewRequest(http.MethodPost, endpoint.Token, body)
+			request.Header.Add(internalHttp.Authorization, fmt.Sprintf("Basic %s", testTokenCreateBasicAuth(test.clientId, test.clientSecret)))
+			request.Header.Add(internalHttp.ContentType, "application/x-www-form-urlencoded")
+
+			tokenHandler.ServeHTTP(rr, request)
+
+			if rr.Code != http.StatusBadRequest {
+				t.Errorf("handler returned wrong status code: got %v want %v", rr.Code, http.StatusBadRequest)
+			}
+
+			errorResponse := oauth2.TokenErrorResponseParameter{}
+			jsonError := json.Unmarshal(rr.Body.Bytes(), &errorResponse)
+			if jsonError != nil {
+				t.Fatal(jsonError)
+			}
+			if errorResponse.Error != test.expectedError {
+				t.Errorf("wrong error: got %v want %v", errorResponse.Error, test.expectedError)
+			}
+		})
+	}
 }
 
 func Test_TokenClientCredentialsGrantType(t *testing.T) {
@@ -397,6 +531,18 @@ func testTokenRefreshTokenGrantType(t *testing.T, testConfig *config.Config) {
 		response := rr.Result()
 
 		testTokenValidate(t, tokenManager, response)
+
+		// Refresh tokens are rotated, so the used refresh token is no longer valid
+		replay := httptest.NewRecorder()
+		replayRequest := httptest.NewRequest(http.MethodPost, endpoint.Token, strings.NewReader(bodyString))
+		replayRequest.Header.Add(internalHttp.Authorization, fmt.Sprintf("Basic %s", testTokenCreateBasicAuth("foo", "bar")))
+		replayRequest.Header.Add(internalHttp.ContentType, "application/x-www-form-urlencoded")
+
+		tokenHandler.ServeHTTP(replay, replayRequest)
+
+		if replay.Code != http.StatusBadRequest {
+			t.Errorf("handler returned wrong status code for reused refresh token: got %v want %v", replay.Code, http.StatusBadRequest)
+		}
 	})
 }
 

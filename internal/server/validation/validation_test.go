@@ -5,6 +5,7 @@ import (
 	"github.com/webishdev/stopnik/internal/config"
 	"github.com/webishdev/stopnik/internal/oauth2"
 	"net/http"
+	"net/http/httptest"
 	"testing"
 	"time"
 	"uuid"
@@ -222,6 +223,38 @@ func Test_ValidateUserPassword(t *testing.T) {
 	}
 }
 
+func Test_ValidateUserPasswordAlwaysHashes(t *testing.T) {
+	createValidationTestConfig(t)
+
+	originalVerifySecret := verifySecret
+	defer func() {
+		verifySecret = originalVerifySecret
+	}()
+
+	hashCalls := 0
+	verifySecret = func(secret string, salt string, expectedHash string) bool {
+		hashCalls++
+		return originalVerifySecret(secret, salt, expectedHash)
+	}
+
+	// Existing and unknown users must cost the same, so timing does not reveal which users exist
+	var usernames = []string{"foo", "unknown"}
+
+	for _, username := range usernames {
+		testMessage := fmt.Sprintf("Hash calculated for user %s", username)
+		t.Run(testMessage, func(t *testing.T) {
+			hashCalls = 0
+			requestValidator := NewRequestValidator()
+
+			requestValidator.ValidateUserPassword(username, "xxx")
+
+			if hashCalls != 1 {
+				t.Errorf("hash was calculated %d times, expected 1", hashCalls)
+			}
+		})
+	}
+}
+
 func Test_ValidateClientCredentialsDisabledFallback(t *testing.T) {
 	httpRequest := &http.Request{
 		Method: http.MethodPost,
@@ -269,5 +302,86 @@ func createValidationTestConfig(t *testing.T) {
 	initializationError := config.Initialize(testConfig)
 	if initializationError != nil {
 		t.Fatal(initializationError)
+	}
+}
+
+func Test_ValidateUserPasswordBlockedAfterFailedAttempts(t *testing.T) {
+	createValidationTestConfig(t)
+
+	originalLimiter := credentialLimiter
+	defer func() {
+		credentialLimiter = originalLimiter
+	}()
+	credentialLimiter = newAttemptLimiter(2, time.Minute)
+
+	requestValidator := NewRequestValidator()
+
+	requestValidator.ValidateUserPassword("foo", "xxx")
+	requestValidator.ValidateUserPassword("foo", "xxx")
+
+	_, valid := requestValidator.ValidateUserPassword("foo", "bar")
+	if valid {
+		t.Errorf("user should be blocked after too many failed attempts")
+	}
+
+	// Unknown users are blocked the same way, so blocking does not reveal existing users
+	requestValidator.ValidateUserPassword("unknown", "xxx")
+	requestValidator.ValidateUserPassword("unknown", "xxx")
+	if !credentialLimiter.blocked("user:unknown") {
+		t.Errorf("unknown user should be blocked after too many failed attempts")
+	}
+}
+
+func Test_ValidateUserPasswordResetAfterSuccess(t *testing.T) {
+	createValidationTestConfig(t)
+
+	originalLimiter := credentialLimiter
+	defer func() {
+		credentialLimiter = originalLimiter
+	}()
+	credentialLimiter = newAttemptLimiter(2, time.Minute)
+
+	requestValidator := NewRequestValidator()
+
+	requestValidator.ValidateUserPassword("foo", "xxx")
+	requestValidator.ValidateUserPassword("foo", "bar")
+	requestValidator.ValidateUserPassword("foo", "xxx")
+
+	_, valid := requestValidator.ValidateUserPassword("foo", "bar")
+	if !valid {
+		t.Errorf("failed attempts should be reset after successful login")
+	}
+}
+
+func Test_ValidateSameOrigin(t *testing.T) {
+	type originParameter struct {
+		name          string
+		secFetchSite  string
+		origin        string
+		expectedValid bool
+	}
+
+	var originParameters = []originParameter{
+		{"No browser headers", "", "", true},
+		{"Same origin", "same-origin", "", true},
+		{"Cross site", "cross-site", "", false},
+		{"Cross origin via Origin header", "", "https://evil.com", false},
+		{"Same host via Origin header", "", "http://example.com", true},
+	}
+
+	for _, test := range originParameters {
+		t.Run(test.name, func(t *testing.T) {
+			request := httptest.NewRequest(http.MethodPost, "http://example.com/account", nil)
+			if test.secFetchSite != "" {
+				request.Header.Set("Sec-Fetch-Site", test.secFetchSite)
+			}
+			if test.origin != "" {
+				request.Header.Set("Origin", test.origin)
+			}
+
+			if valid := ValidateSameOrigin(request); valid != test.expectedValid {
+				t.Errorf("result %t did not match %t", valid, test.expectedValid)
+			}
+		})
 	}
 }

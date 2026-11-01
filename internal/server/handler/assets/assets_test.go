@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"strings"
 	"testing"
 )
 
@@ -80,6 +81,37 @@ func Test_Assets(t *testing.T) {
 
 			if matches != test.matches {
 				t.Errorf("matching values is wrong, %v != %v", test.matches, matches)
+			}
+		})
+	}
+}
+
+func Test_AssetsContentType(t *testing.T) {
+	type assetContentTypeParameter struct {
+		path                string
+		expectedContentType string
+	}
+
+	var assetContentTypeParameters = []assetContentTypeParameter{
+		{path: "/assets/styles.css", expectedContentType: "text/css"},
+		{path: "/assets/logo.png", expectedContentType: "image/png"},
+		{path: "/assets/favicon.ico", expectedContentType: "image/"},
+	}
+
+	assetsHandler := NewAssetHandler()
+
+	for _, test := range assetContentTypeParameters {
+		testMessage := fmt.Sprintf("Content type of compressed asset %s", test.path)
+		t.Run(testMessage, func(t *testing.T) {
+			request := httptest.NewRequest(http.MethodGet, test.path, nil)
+			request.Header.Set("Accept-Encoding", "gzip, deflate, br")
+			rr := httptest.NewRecorder()
+
+			assetsHandler.ServeHTTP(rr, request)
+
+			contentType := rr.Header().Get("Content-Type")
+			if !strings.HasPrefix(contentType, test.expectedContentType) {
+				t.Errorf("content type %q does not start with %q", contentType, test.expectedContentType)
 			}
 		})
 	}

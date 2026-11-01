@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"net/http/httptest"
 	"slices"
 	"sync"
 	"sync/atomic"
@@ -166,4 +167,24 @@ func Test_Server(t *testing.T) {
 		server.Shutdown()
 	})
 
+}
+
+func Test_SetSecurityHeaders(t *testing.T) {
+	rr := httptest.NewRecorder()
+
+	setSecurityHeaders(rr)
+
+	expectedHeaders := map[string]string{
+		"X-Frame-Options":         "DENY",
+		"Content-Security-Policy": "frame-ancestors 'none'",
+		"X-Content-Type-Options":  "nosniff",
+		"Referrer-Policy":         "no-referrer",
+		"Cache-Control":           "no-store",
+	}
+
+	for name, expected := range expectedHeaders {
+		if value := rr.Header().Get(name); value != expected {
+			t.Errorf("header %s was %q, expected %q", name, value, expected)
+		}
+	}
 }

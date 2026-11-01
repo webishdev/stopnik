@@ -5,6 +5,7 @@ import (
 	"errors"
 	"github.com/webishdev/stopnik/internal/config"
 	"github.com/webishdev/stopnik/internal/endpoint"
+	internalHttp "github.com/webishdev/stopnik/internal/http"
 	"github.com/webishdev/stopnik/internal/manager/cookie"
 	"github.com/webishdev/stopnik/internal/manager/key"
 	"github.com/webishdev/stopnik/internal/manager/session"
@@ -38,11 +39,22 @@ type middlewareHandler struct {
 }
 
 func (mh middlewareHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	setSecurityHeaders(w)
 	if mh.assets.Matches(r) {
 		mh.assets.ServeHTTP(w, r)
 	} else {
 		mh.next.ServeHTTP(w, r)
 	}
+}
+
+// setSecurityHeaders sets headers which protect the login and logout pages against clickjacking and content sniffing.
+// Responses are not cached by default, handlers like the assets handler may overwrite the Cache-Control header.
+func setSecurityHeaders(w http.ResponseWriter) {
+	w.Header().Set(internalHttp.XFrameOptions, "DENY")
+	w.Header().Set(internalHttp.ContentSecurityPolicy, "frame-ancestors 'none'")
+	w.Header().Set(internalHttp.XContentTypeOptions, "nosniff")
+	w.Header().Set(internalHttp.ReferrerPolicy, "no-referrer")
+	w.Header().Set(internalHttp.CacheControl, "no-store")
 }
 
 type StopnikServer struct {

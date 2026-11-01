@@ -38,7 +38,7 @@ func newCookieManagerWithTime(now Now) *Manager {
 	return &Manager{
 		config:       configInstance,
 		loginSession: session.GetLoginSessionManagerInstance(),
-		keyFallback:  crypto.NewServerSecretLoader(),
+		keyFallback:  crypto.NewPurposeServerSecretLoader(crypto.PurposeCookie),
 		now:          now,
 	}
 }
@@ -52,6 +52,7 @@ func (cookieManager *Manager) CreateMessageCookie(message string) http.Cookie {
 		Path:     "/",
 		MaxAge:   1,
 		HttpOnly: true,
+		Secure:   cookieManager.config.GetSecureCookie(),
 		SameSite: http.SameSiteLaxMode,
 	}
 }
@@ -73,6 +74,7 @@ func (cookieManager *Manager) DeleteAuthCookie() http.Cookie {
 		Path:     "/",
 		MaxAge:   -1,
 		HttpOnly: true,
+		Secure:   cookieManager.config.GetSecureCookie(),
 		SameSite: http.SameSiteLaxMode,
 	}
 }
@@ -112,6 +114,7 @@ func (cookieManager *Manager) createAuthCookie(name string, username string, log
 		Path:     "/",
 		MaxAge:   cookieManager.config.GetSessionTimeoutSeconds(),
 		HttpOnly: true,
+		Secure:   cookieManager.config.GetSecureCookie(),
 		SameSite: http.SameSiteLaxMode,
 	}, nil
 }

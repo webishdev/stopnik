@@ -56,6 +56,12 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			result = data
 		}
 
+		// The system may not know all extensions, e.g. without MIME database in a container image,
+		// as browsers do not sniff the content (X-Content-Type-Options: nosniff), a content type is required
+		if contentType == "" {
+			contentType = http.DetectContentType(result)
+		}
+
 		requestData := internalHttp.NewRequestData(r)
 		responseWriter := internalHttp.NewResponseWriter(w, requestData)
 

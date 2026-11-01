@@ -809,19 +809,23 @@ func Test_AuthorizeImplicitGrant(t *testing.T) {
 				t.Errorf("location was not provied: %v", locationError)
 			}
 
-			accessTokenQueryParameter := location.Query().Get(oauth2.ParameterAccessToken)
+			accessTokenQueryParameter := testFragmentValues(t, location).Get(oauth2.ParameterAccessToken)
 
 			if accessTokenQueryParameter == "" {
 				t.Errorf("access token query parameter was not set")
 			}
 
-			tokenTypeQueryParameter := location.Query().Get(oauth2.ParameterTokenType)
+			if location.Query().Get(oauth2.ParameterAccessToken) != "" {
+				t.Errorf("access token must not be part of the query")
+			}
+
+			tokenTypeQueryParameter := testFragmentValues(t, location).Get(oauth2.ParameterTokenType)
 
 			if tokenTypeQueryParameter != string(oauth2.TtBearer) {
 				t.Errorf("token type parameter %v did not match: %v", tokenTypeQueryParameter, oauth2.TtBearer)
 			}
 
-			expiresInTypeQueryParameter := location.Query().Get(oauth2.ParameterExpiresIn)
+			expiresInTypeQueryParameter := testFragmentValues(t, location).Get(oauth2.ParameterExpiresIn)
 			expiresIn, expiresParseError := strconv.Atoi(expiresInTypeQueryParameter)
 			if expiresParseError != nil {
 				t.Errorf("expires query parameter was not parsed: %v", expiresParseError)
@@ -1008,19 +1012,23 @@ func Test_AuthorizeValidLoginImplicitGrant(t *testing.T) {
 				t.Errorf("location was not provied: %v", locationError)
 			}
 
-			accessTokenQueryParameter := location.Query().Get(oauth2.ParameterAccessToken)
+			accessTokenQueryParameter := testFragmentValues(t, location).Get(oauth2.ParameterAccessToken)
 
 			if accessTokenQueryParameter == "" {
 				t.Errorf("access token query parameter was not set")
 			}
 
-			tokenTypeQueryParameter := location.Query().Get(oauth2.ParameterTokenType)
+			if location.Query().Get(oauth2.ParameterAccessToken) != "" {
+				t.Errorf("access token must not be part of the query")
+			}
+
+			tokenTypeQueryParameter := testFragmentValues(t, location).Get(oauth2.ParameterTokenType)
 
 			if tokenTypeQueryParameter != string(oauth2.TtBearer) {
 				t.Errorf("token type parameter %v did not match: %v", tokenTypeQueryParameter, oauth2.TtBearer)
 			}
 
-			expiresInTypeQueryParameter := location.Query().Get(oauth2.ParameterExpiresIn)
+			expiresInTypeQueryParameter := testFragmentValues(t, location).Get(oauth2.ParameterExpiresIn)
 			expiresIn, expiresParseError := strconv.Atoi(expiresInTypeQueryParameter)
 			if expiresParseError != nil {
 				t.Errorf("expires query parameter was not parsed: %v", expiresParseError)
@@ -1033,6 +1041,170 @@ func Test_AuthorizeValidLoginImplicitGrant(t *testing.T) {
 				t.Errorf("expires in parameter %v did not match %v", expiresIn, expectedExpiresIn)
 			}
 		})
+	}
+}
+
+func Test_AuthorizePublicClientRequiresCodeChallenge(t *testing.T) {
+	createTestConfig(t)
+
+	type codeChallengeParameter struct {
+		codeChallenge string
+		expectedCode  int
+	}
+
+	var codeChallengeParameters = []codeChallengeParameter{
+		{"", http.StatusFound},
+		{pkce.CalculatePKCE(pkce.S256, "foobar"), http.StatusOK},
+	}
+
+	for _, test := range codeChallengeParameters {
+		testMessage := fmt.Sprintf("Public client with code challenge %q", test.codeChallenge)
+		t.Run(testMessage, func(t *testing.T) {
+			parsedUri := createUri(t, endpoint.Authorization, func(query url.Values) {
+				query.Set(oauth2.ParameterClientId, "public")
+				query.Set(oauth2.ParameterRedirectUri, "https://example.com/callback")
+				query.Set(oauth2.ParameterResponseType, oauth2.ParameterCode)
+				if test.codeChallenge != "" {
+					query.Set(pkce.ParameterCodeChallenge, test.codeChallenge)
+					query.Set(pkce.ParameterCodeChallengeMethod, string(pkce.S256))
+				}
+			})
+			requestValidator := validation.NewRequestValidator()
+			authSessionManager := session.GetAuthSessionManagerInstance()
+			loginSessionManager := session.GetLoginSessionManagerInstance()
+			cookieManager := cookie.GetCookieManagerInstance()
+			templateManager := template.GetTemplateManagerInstance()
+
+			authorizeHandler := NewAuthorizeHandler(requestValidator, cookieManager, authSessionManager, loginSessionManager, &token.Manager{}, templateManager)
+
+			rr := httptest.NewRecorder()
+
+			authorizeHandler.ServeHTTP(rr, httptest.NewRequest(http.MethodGet, parsedUri.String(), nil))
+
+			if rr.Code != test.expectedCode {
+				t.Errorf("handler returned wrong status code: got %v want %v", rr.Code, test.expectedCode)
+			}
+
+			if test.expectedCode == http.StatusFound {
+				location, locationError := rr.Result().Location()
+				if locationError != nil {
+					t.Fatalf("location was not provided: %v", locationError)
+				}
+				errorQueryParameter := location.Query().Get(oauth2.ParameterError)
+				if errorQueryParameter != string(oauth2.AuthorizationEtInvalidRequest) {
+					t.Errorf("error query parameter %v did not match: %v", errorQueryParameter, oauth2.AuthorizationEtInvalidRequest)
+				}
+			}
+		})
+	}
+}
+
+func Test_AuthorizeLoginPageCompressedContentType(t *testing.T) {
+	createTestConfig(t)
+	parsedUri := createUri(t, endpoint.Authorization, func(query url.Values) {
+		query.Set(oauth2.ParameterClientId, "foo")
+		query.Set(oauth2.ParameterRedirectUri, "https://example.com/callback")
+		query.Set(oauth2.ParameterResponseType, oauth2.ParameterCode)
+	})
+	requestValidator := validation.NewRequestValidator()
+	authSessionManager := session.GetAuthSessionManagerInstance()
+	loginSessionManager := session.GetLoginSessionManagerInstance()
+	cookieManager := cookie.GetCookieManagerInstance()
+	templateManager := template.GetTemplateManagerInstance()
+
+	authorizeHandler := NewAuthorizeHandler(requestValidator, cookieManager, authSessionManager, loginSessionManager, &token.Manager{}, templateManager)
+
+	rr := httptest.NewRecorder()
+
+	// Browsers accept compressed responses, Go does not detect the content type for compressed responses
+	request := httptest.NewRequest(http.MethodGet, parsedUri.String(), nil)
+	request.Header.Set(internalHttp.AcceptEncoding, "gzip, deflate, br")
+
+	authorizeHandler.ServeHTTP(rr, request)
+
+	if rr.Header().Get(internalHttp.ContentEncoding) != "gzip" {
+		t.Errorf("response was not compressed")
+	}
+
+	contentType := rr.Header().Get(internalHttp.ContentType)
+	if contentType != internalHttp.ContentTypeHTML {
+		t.Errorf("content type was not text/html: %v", contentType)
+	}
+}
+
+func Test_AuthorizeTooManySessions(t *testing.T) {
+	createTestConfig(t)
+
+	originalMaxAuthSessions := maxAuthSessions
+	defer func() {
+		maxAuthSessions = originalMaxAuthSessions
+	}()
+	maxAuthSessions = 0
+
+	parsedUri := createUri(t, endpoint.Authorization, func(query url.Values) {
+		query.Set(oauth2.ParameterClientId, "foo")
+		query.Set(oauth2.ParameterRedirectUri, "https://example.com/callback")
+		query.Set(oauth2.ParameterResponseType, oauth2.ParameterCode)
+	})
+	requestValidator := validation.NewRequestValidator()
+	authSessionManager := session.GetAuthSessionManagerInstance()
+	loginSessionManager := session.GetLoginSessionManagerInstance()
+	cookieManager := cookie.GetCookieManagerInstance()
+	templateManager := template.GetTemplateManagerInstance()
+
+	authorizeHandler := NewAuthorizeHandler(requestValidator, cookieManager, authSessionManager, loginSessionManager, &token.Manager{}, templateManager)
+
+	rr := httptest.NewRecorder()
+
+	authorizeHandler.ServeHTTP(rr, httptest.NewRequest(http.MethodGet, parsedUri.String(), nil))
+
+	if rr.Code != http.StatusFound {
+		t.Errorf("handler returned wrong status code: got %v want %v", rr.Code, http.StatusFound)
+	}
+
+	location, locationError := rr.Result().Location()
+	if locationError != nil {
+		t.Fatalf("location was not provided: %v", locationError)
+	}
+	errorQueryParameter := location.Query().Get(oauth2.ParameterError)
+	if errorQueryParameter != string(oauth2.AuthorizationEtTemporaryUnavailable) {
+		t.Errorf("error query parameter %v did not match: %v", errorQueryParameter, oauth2.AuthorizationEtTemporaryUnavailable)
+	}
+}
+
+func Test_AuthorizeRequestObjectNotSupported(t *testing.T) {
+	createTestConfig(t)
+
+	parsedUri := createUri(t, endpoint.Authorization, func(query url.Values) {
+		query.Set(oauth2.ParameterClientId, "bar")
+		query.Set(oauth2.ParameterRedirectUri, "https://example.com/callback")
+		query.Set(oauth2.ParameterResponseType, oauth2.ParameterCode)
+		query.Set(oauth2.ParameterScope, "openid")
+		query.Set(oidc.ParameterRequest, "eyJhbGciOiJub25lIn0.eyJjbGllbnRfaWQiOiJldmlsIn0.")
+	})
+	requestValidator := validation.NewRequestValidator()
+	authSessionManager := session.GetAuthSessionManagerInstance()
+	loginSessionManager := session.GetLoginSessionManagerInstance()
+	cookieManager := cookie.GetCookieManagerInstance()
+	templateManager := template.GetTemplateManagerInstance()
+
+	authorizeHandler := NewAuthorizeHandler(requestValidator, cookieManager, authSessionManager, loginSessionManager, &token.Manager{}, templateManager)
+
+	rr := httptest.NewRecorder()
+
+	authorizeHandler.ServeHTTP(rr, httptest.NewRequest(http.MethodGet, parsedUri.String(), nil))
+
+	if rr.Code != http.StatusFound {
+		t.Errorf("handler returned wrong status code: got %v want %v", rr.Code, http.StatusFound)
+	}
+
+	location, locationError := rr.Result().Location()
+	if locationError != nil {
+		t.Fatalf("location was not provided: %v", locationError)
+	}
+	errorQueryParameter := location.Query().Get(oauth2.ParameterError)
+	if errorQueryParameter != string(oauth2.AuthorizationEtRequestNotSupported) {
+		t.Errorf("error query parameter %v did not match: %v", errorQueryParameter, oauth2.AuthorizationEtRequestNotSupported)
 	}
 }
 
@@ -1049,6 +1221,10 @@ func createTestConfig(t *testing.T) *config.Config {
 				ClientSecret: "d82c4eb5261cb9c8aa9855edd67d1bd10482f41529858d925094d173fa662aa91ff39bc5b188615273484021dfb16fd8284cf684ccf0fc795be3aa2fc1e6c181",
 				Redirects:    []string{"https://example.com/callback"},
 				Oidc:         true,
+			},
+			{
+				Id:        "public",
+				Redirects: []string{"https://example.com/callback"},
 			},
 		},
 		Users: []config.User{
@@ -1092,4 +1268,12 @@ func testCreateBody(values ...any) string {
 		}
 	}
 	return result
+}
+
+func testFragmentValues(t *testing.T, location *url.URL) url.Values {
+	values, parseError := url.ParseQuery(location.Fragment)
+	if parseError != nil {
+		t.Fatalf("could not parse fragment: %v", parseError)
+	}
+	return values
 }

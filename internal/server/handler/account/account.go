@@ -46,6 +46,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			responseWriter := internalHttp.NewResponseWriter(w, requestData)
 
 			responseWriter.SetEncodingHeader()
+			w.Header().Set(internalHttp.ContentType, internalHttp.ContentTypeHTML)
 
 			_, writeError := responseWriter.Write(logoutTemplate.Bytes())
 			if writeError != nil {
@@ -63,6 +64,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			responseWriter := internalHttp.NewResponseWriter(w, requestData)
 
 			responseWriter.SetEncodingHeader()
+			w.Header().Set(internalHttp.ContentType, internalHttp.ContentTypeHTML)
 
 			_, writeError := responseWriter.Write(loginTemplate.Bytes())
 			if writeError != nil {
@@ -72,6 +74,10 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 	} else if r.Method == http.MethodPost {
 		// Handle POST from login
+		if !validation.ValidateSameOrigin(r) {
+			h.errorHandler.ForbiddenHandler(w, r)
+			return
+		}
 		user, loginError := h.validator.ValidateFormLogin(r)
 		if loginError != nil {
 			messageCookie := h.cookieManager.CreateMessageCookie(*loginError)

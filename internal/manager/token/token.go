@@ -126,6 +126,18 @@ func (tokenManager *Manager) GetRefreshToken(token string) (*oauth2.RefreshToken
 	return nil, false
 }
 
+// TakeRefreshToken returns and removes the refresh token, so it can only be used once.
+func (tokenManager *Manager) TakeRefreshToken(token string) (*oauth2.RefreshToken, bool) {
+	for _, currentClientStores := range tokenManager.clientStores {
+		refreshTokenStore := *currentClientStores.refreshTokenStore
+		refreshToken, refreshTokenExists := refreshTokenStore.Take(token)
+		if refreshTokenExists {
+			return refreshToken, true
+		}
+	}
+	return nil, false
+}
+
 func (tokenManager *Manager) RevokeRefreshToken(refreshToken *oauth2.RefreshToken) {
 	if refreshToken != nil {
 		for _, currentClientStores := range tokenManager.clientStores {
@@ -546,10 +558,10 @@ func hashToken(algorithm crypto.HashAlgorithm, token string) string {
 	case crypto.SHA256:
 		hashed := sha256.Sum256(tokenBytes)
 		hashedAccessKey = hashed[:]
-	case crypto.SHA512:
+	case crypto.SHA384:
 		hashed := sha512.Sum384(tokenBytes)
 		hashedAccessKey = hashed[:]
-	case crypto.SHA384:
+	case crypto.SHA512:
 		hashed := sha512.Sum512(tokenBytes)
 		hashedAccessKey = hashed[:]
 	default:

@@ -39,8 +39,12 @@ type Store[T any] interface {
 	Set(key string, value *T)
 	// Get retrieves the value from the store by the given key.
 	Get(key string) (*T, bool)
+	// Take retrieves and removes the value from the store by the given key in one atomic step.
+	Take(key string) (*T, bool)
 	// GetValues retrieves all values from the store.
 	GetValues() []*T
+	// Len returns the number of stored values.
+	Len() int
 }
 
 type ExpiringStore[T any] interface {
@@ -131,7 +135,8 @@ func (ts *timedStore[T]) Delete(key string) {
 	ts.mux.Lock()
 	defer ts.mux.Unlock()
 	if log.IsDebug() {
-		log.Debug("Removing %s", key)
+		// Keys may be tokens or authorization codes, so only the type is logged
+		log.Debug("Removing %T", *new(T))
 	}
 	delete(ts.storeMap, key)
 }
@@ -160,6 +165,24 @@ func (ts *timedStore[T]) Get(key string) (*T, bool) {
 	return value.value, exists
 }
 
+func (ts *timedStore[T]) Take(key string) (*T, bool) {
+	ts.mux.Lock()
+	defer ts.mux.Unlock()
+	value, exists := ts.storeMap[key]
+	delete(ts.storeMap, key)
+	if ts.expiredNow(value) {
+		var none T
+		return &none, false
+	}
+	return value.value, exists
+}
+
+func (ts *timedStore[T]) Len() int {
+	ts.mux.RLock()
+	defer ts.mux.RUnlock()
+	return len(ts.storeMap)
+}
+
 func (ts *timedStore[T]) GetValues() []*T {
 	ts.mux.RLock()
 	defer ts.mux.RUnlock()
@@ -176,7 +199,8 @@ func (s *store[T]) Delete(key string) {
 	s.mux.Lock()
 	defer s.mux.Unlock()
 	if log.IsDebug() {
-		log.Debug("Removing %s", key)
+		// Keys may be tokens or authorization codes, so only the type is logged
+		log.Debug("Removing %T", *new(T))
 	}
 	delete(s.storeMap, key)
 }
@@ -192,6 +216,20 @@ func (s *store[T]) Get(key string) (*T, bool) {
 	defer s.mux.RUnlock()
 	value, exists := s.storeMap[key]
 	return value, exists
+}
+
+func (s *store[T]) Take(key string) (*T, bool) {
+	s.mux.Lock()
+	defer s.mux.Unlock()
+	value, exists := s.storeMap[key]
+	delete(s.storeMap, key)
+	return value, exists
+}
+
+func (s *store[T]) Len() int {
+	s.mux.RLock()
+	defer s.mux.RUnlock()
+	return len(s.storeMap)
 }
 
 func (s *store[T]) GetValues() []*T {

@@ -49,3 +49,13 @@ func (forwardManager *ForwardManager) DeleteSession(id string) {
 	forwardSessionStore := *forwardManager.forwardSessionStore
 	forwardSessionStore.Delete(id)
 }
+
+func (forwardManager *ForwardManager) TakeSession(id string) (*ForwardSession, bool) {
+	forwardSessionStore := *forwardManager.forwardSessionStore
+	return forwardSessionStore.Take(id)
+}
+
+func (forwardManager *ForwardManager) SessionCount() int {
+	forwardSessionStore := *forwardManager.forwardSessionStore
+	return forwardSessionStore.Len()
+}

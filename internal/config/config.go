@@ -10,9 +10,11 @@ import (
 	"github.com/webishdev/stopnik/internal/store"
 	"github.com/webishdev/stopnik/internal/system"
 	"github.com/webishdev/stopnik/log"
+	"golang.org/x/crypto/bcrypt"
 	"io"
 	"net/url"
 	"os"
+	"slices"
 	"strings"
 	"sync"
 	"uuid"
@@ -52,6 +54,7 @@ type Server struct {
 	LogLevel              string      `yaml:"logLevel"`
 	Addr                  string      `yaml:"addr"`
 	Cookies               Cookies     `yaml:"cookies"`
+	SecureCookie          *bool       `yaml:"secureCookie"`
 	Secret                string      `yaml:"secret"`
 	PrivateKey            string      `yaml:"privateKey"`
 	TLS                   TLS         `yaml:"tls"`
@@ -142,6 +145,8 @@ type Client struct {
 	PasswordFallbackAllowed bool     `yaml:"passwordFallbackAllowed"`
 	Audience                []string `yaml:"audience"`
 	PrivateKey              string   `yaml:"privateKey"`
+	Scopes                  []string `yaml:"scopes"`
+	GrantTypes              []string `yaml:"grantTypes"`
 	isForwardAuth           bool
 }
 
@@ -340,8 +345,8 @@ func (config *Config) Validate() error {
 			return errors.New(invalidUser)
 		}
 
-		if len(user.Password) != 128 {
-			invalidUser := fmt.Sprintf("user configuration invalid for user %d with username %s, missing password %v", userIndex, user.Username, user)
+		if !isSupportedHash(user.Password) {
+			invalidUser := fmt.Sprintf("user configuration invalid for user %d with username %s, missing password or not a bcrypt or SHA512 hash", userIndex, user.Username)
 			return errors.New(invalidUser)
 		}
 	}
@@ -352,9 +357,21 @@ func (config *Config) Validate() error {
 			return errors.New(invalidClient)
 		}
 
+		if client.ClientSecret != "" && !isSupportedHash(client.ClientSecret) {
+			invalidClient := fmt.Sprintf("client configuration invalid, for client %d with id %s, client secret is not a bcrypt or SHA512 hash", clientIndex, client.Id)
+			return errors.New(invalidClient)
+		}
+
 		if len(client.Redirects) == 0 {
 			invalidClient := fmt.Sprintf("client configuration invalid, for client %d with id %s, missing redirects, %v", clientIndex, client.Id, client)
 			return errors.New(invalidClient)
+		}
+
+		for _, grantType := range client.GrantTypes {
+			if _, validGrantType := oauth2.GrantTypeFromString(grantType); !validGrantType {
+				invalidClient := fmt.Sprintf("client configuration invalid, for client %d with id %s, unknown grant type %s", clientIndex, client.Id, grantType)
+				return errors.New(invalidClient)
+			}
 		}
 	}
 
@@ -409,6 +426,12 @@ func (config *Config) GetForwardAuthCookieName() string {
 	return cmp.Or(config.Server.Cookies.ForwardAuthName, "stopnik_forward_auth")
 }
 
+// GetSecureCookie returns whether cookies should only be sent via HTTPS.
+// When no value is provided, cookies will be secure.
+func (config *Config) GetSecureCookie() bool {
+	return config.Server.SecureCookie == nil || *config.Server.SecureCookie
+}
+
 // GetSessionTimeoutSeconds returns the session timeout in seconds.
 // When no session timeout is provided a default value will be returned.
 func (config *Config) GetSessionTimeoutSeconds() int {
@@ -425,6 +448,29 @@ func (config *Config) GetIntrospectScope() string {
 // When no scope is provided a default value will be returned.
 func (config *Config) GetRevokeScope() string {
 	return cmp.Or(config.Server.RevokeScope, "stopnik:revoke")
+}
+
+// GetDisallowedScopes returns the scopes from the given list, which the Client is not allowed to request.
+// When the Client has a list of scopes configured, only these scopes are allowed.
+// Otherwise, all scopes are allowed except reserved STOPnik scopes, such as the introspect and revoke scopes.
+func (config *Config) GetDisallowedScopes(client *Client, scopes []string) []string {
+	var disallowedScopes []string
+	for _, scope := range scopes {
+		if scope == "" {
+			continue
+		}
+		if len(client.Scopes) > 0 && !slices.Contains(client.Scopes, scope) {
+			disallowedScopes = append(disallowedScopes, scope)
+		} else if len(client.Scopes) == 0 && config.isReservedScope(scope) {
+			disallowedScopes = append(disallowedScopes, scope)
+		}
+	}
+	return disallowedScopes
+}
+
+// isReservedScope returns whether the scope is reserved for STOPnik and must be explicitly allowed for a Client.
+func (config *Config) isReservedScope(scope string) bool {
+	return strings.HasPrefix(scope, "stopnik:") || scope == config.GetIntrospectScope() || scope == config.GetRevokeScope()
 }
 
 // GetServerSecret returns the server secret.
@@ -595,6 +641,23 @@ func (client *Client) GetClientType() oauth2.ClientType {
 	}
 }
 
+// IsGrantTypeAllowed returns whether the Client is allowed to use the given grant type.
+// When the Client has a list of grant types configured, only these grant types are allowed.
+// Otherwise, all grant types are allowed, except client credentials for public clients.
+func (client *Client) IsGrantTypeAllowed(grantType oauth2.GrantType) bool {
+	// https://datatracker.ietf.org/doc/html/rfc6749#section-4.4
+	// The client credentials grant type MUST only be used by confidential clients.
+	if grantType == oauth2.GtClientCredentials && client.GetClientType() == oauth2.CtPublic {
+		return false
+	}
+	if len(client.GrantTypes) == 0 {
+		return true
+	}
+	return slices.ContainsFunc(client.GrantTypes, func(configuredGrantType string) bool {
+		return strings.EqualFold(configuredGrantType, string(grantType))
+	})
+}
+
 // ValidateRedirect returns whether the redirect is valid for a given Client or not.
 func (client *Client) ValidateRedirect(redirect string) bool {
 	return validateRedirect(client.Id, client.Redirects, redirect)
@@ -709,6 +772,23 @@ func redirectMatches(clientRedirect *url.URL, redirect *url.URL) bool {
 		matchesPath = parsedRedirectPath == parsedClientRedirectPath
 	}
 	return matchesScheme && matchesHost && matchesPath
+}
+
+// isSupportedHash checks whether the given value is a bcrypt hash or a hex encoded SHA512 hash.
+func isSupportedHash(value string) bool {
+	if strings.HasPrefix(value, "$2") {
+		_, costError := bcrypt.Cost([]byte(value))
+		return costError == nil
+	}
+	if len(value) != 128 {
+		return false
+	}
+	for _, c := range value {
+		if !strings.ContainsRune("0123456789abcdef", c) {
+			return false
+		}
+	}
+	return true
 }
 
 // removeLeadingSlash removes the leading "/" if existing

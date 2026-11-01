@@ -1504,3 +1504,85 @@ func assertClientValues(t *testing.T, config *Config, expected testExpectedClien
 		t.Errorf("expected client type to be '%s', got '%s'", expected.expectedClientType, clientType)
 	}
 }
+
+func Test_GetDisallowedScopes(t *testing.T) {
+	testConfig := &Config{
+		Server: Server{
+			IntrospectScope: "custom:introspect",
+		},
+	}
+
+	type scopeParameter struct {
+		name     string
+		client   Client
+		scopes   []string
+		expected []string
+	}
+
+	var scopeParameters = []scopeParameter{
+		{"All scopes allowed by default", Client{}, []string{"", "openid", "foo:bar"}, nil},
+		{"Reserved scopes not allowed by default", Client{}, []string{"openid", "stopnik:revoke", "stopnik:other"}, []string{"stopnik:revoke", "stopnik:other"}},
+		{"Configured introspect scope is reserved", Client{}, []string{"custom:introspect"}, []string{"custom:introspect"}},
+		{"Only configured scopes allowed", Client{Scopes: []string{"openid", "stopnik:introspect"}}, []string{"openid", "stopnik:introspect", "foo:bar"}, []string{"foo:bar"}},
+	}
+
+	for _, test := range scopeParameters {
+		t.Run(test.name, func(t *testing.T) {
+			disallowedScopes := testConfig.GetDisallowedScopes(&test.client, test.scopes)
+			if !reflect.DeepEqual(disallowedScopes, test.expected) {
+				t.Errorf("disallowed scopes %v did not match %v", disallowedScopes, test.expected)
+			}
+		})
+	}
+}
+
+func Test_IsGrantTypeAllowed(t *testing.T) {
+	type grantTypeParameter struct {
+		name      string
+		client    Client
+		grantType oauth2.GrantType
+		expected  bool
+	}
+
+	var grantTypeParameters = []grantTypeParameter{
+		{"All grant types allowed by default", Client{ClientSecret: "abc"}, oauth2.GtPassword, true},
+		{"Client credentials allowed for confidential client", Client{ClientSecret: "abc"}, oauth2.GtClientCredentials, true},
+		{"Client credentials not allowed for public client", Client{}, oauth2.GtClientCredentials, false},
+		{"Only configured grant types allowed", Client{GrantTypes: []string{"authorization_code"}}, oauth2.GtPassword, false},
+		{"Configured grant types are case insensitive", Client{GrantTypes: []string{"Authorization_Code"}}, oauth2.GtAuthorizationCode, true},
+	}
+
+	for _, test := range grantTypeParameters {
+		t.Run(test.name, func(t *testing.T) {
+			if allowed := test.client.IsGrantTypeAllowed(test.grantType); allowed != test.expected {
+				t.Errorf("result %t did not match %t", allowed, test.expected)
+			}
+		})
+	}
+}
+
+func Test_GetSecureCookie(t *testing.T) {
+	secure := true
+	insecure := false
+
+	type secureCookieParameter struct {
+		name         string
+		secureCookie *bool
+		expected     bool
+	}
+
+	var secureCookieParameters = []secureCookieParameter{
+		{"Secure by default", nil, true},
+		{"Secure configured", &secure, true},
+		{"Insecure configured", &insecure, false},
+	}
+
+	for _, test := range secureCookieParameters {
+		t.Run(test.name, func(t *testing.T) {
+			testConfig := &Config{Server: Server{SecureCookie: test.secureCookie}}
+			if result := testConfig.GetSecureCookie(); result != test.expected {
+				t.Errorf("result %t did not match %t", result, test.expected)
+			}
+		})
+	}
+}

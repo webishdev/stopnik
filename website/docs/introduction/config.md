@@ -33,6 +33,7 @@ Root entry named `server`
 | `logLevel`                    | Log level                                                                                         | No       |
 | `addr`                        | [Go like address](https://pkg.go.dev/net#Dial), may contain IP and port                           | Yes      |
 | [`cookies`](#cookies)         | Configuration related to cookie names                                                             | No       |
+| `secureCookie`                | Only send cookies via HTTPS, defaults to `true`                                                   | No       |
 | `secret`                      | Server secret                                                                                     | No       |
 | `privateKey`                  | General RSA or EC private key (can be overwritten for each client) to sign tokens                 | No       |
 | [`tls`](#tls)                 | Configuration for TLS                                                                             | No       |
@@ -40,8 +41,21 @@ Root entry named `server`
 | `introspectScope`             | Scope which allows token introspection                                                            | No       |
 | `revokeScopeScope`            | Scope which allows token revocation                                                               | No       |
 | `sessionTimeoutSeconds`       | Seconds until session will end                                                                    | No       |
-| `issuer`                      | Issuer                                                                                            | No       |
+| `issuer`                      | Issuer, see [Issuer](#issuer)                                                                     | No       |
 | [`forwardAuth`](#forwardauth) | [Traefik ForwardAuth](https://doc.traefik.io/traefik/middlewares/http/forwardauth/) configuration | No       |
+
+#### Issuer
+
+The issuer is used as `iss` value in tokens and in the metadata endpoints.
+
+When no `issuer` is configured, the issuer will be derived from the `Host` header of each request,
+which can be manipulated by a client. **STOPnik** will log a warning on startup in this case.
+Configure an `issuer` for production use.
+
+#### Secure cookies
+
+By default, all cookies are marked as `Secure` and will only be sent by browsers via HTTPS (and for `localhost`).
+Set `secureCookie: false` only for local development via plain HTTP on other hosts than `localhost`.
 
 #### TLS
 
@@ -91,6 +105,13 @@ Entry `server.forwardAuth`
 | `parameterName` | URL parameter used by **STOPnik** for ForwardAuth   | No       |
 | `redirects`     | List of redirects URIs                              | No       |
 
+:::warning
+
+The ForwardAuth endpoint trusts the `X-Forwarded-Proto`, `X-Forwarded-Host` and `X-Forwarded-Uri` headers.
+Make sure the endpoint is only reachable through Traefik and not directly by clients.
+
+:::
+
 ### User interface configuration
 
 Root entry named `ui`
@@ -117,8 +138,8 @@ Each entry may contain the following options
 | Property                  | Description                                             | Required |
 |---------------------------|---------------------------------------------------------|----------|
 | `id`                      | The id of the client                                    | Yes      |
-| `clientSecret`            | SHA512 hashed secret                                    | No       |
-| `salt`                    | Optional salt for secret to avoid identical hash values | No       |
+| `clientSecret`            | bcrypt or SHA512 hashed secret                          | No       |
+| `salt`                    | Optional salt, only used for SHA512 hashed secrets      | No       |
 | `oidc`                    | Flag to allow an client to handle OpenId Connect        | No       |
 | `accessTTL`               | Access token time to live                               | No       |
 | `refreshTTL`              | Refresh token time to live                              | No       |
@@ -130,10 +151,34 @@ Each entry may contain the following options
 | `passwordFallbackAllowed` | Form auth allowed                                       | No       |
 | `audience`                | Audience                                                | No       |
 | `privateKey`              | RSA or EC private key to sign tokens                    | No       |
+| `scopes`                  | List of scopes the client is allowed to request         | No       |
+| `grantTypes`              | List of grant types the client is allowed to use        | No       |
 
 For `clientSecret` and `salt` see, [Command line - Password](../advanced/cmd.md#password)
 
 If no `clientSecret` is provided, the client is handled as public client, otherwise it will become a confidential client.
+Public clients must use [PKCE](https://datatracker.ietf.org/doc/html/rfc7636) for the authorization code grant.
+
+#### Scopes
+
+When `scopes` is not configured, a client may request any scope, except the reserved scopes for
+token introspection and revocation (`server.introspectScope`, `server.revokeScopeScope`, by default `stopnik:introspect`
+and `stopnik:revoke`) and all other scopes starting with `stopnik:`.
+
+When `scopes` is configured, a client may only request the listed scopes.
+Reserved scopes have to be listed explicitly to allow a client to request them.
+Do not forget to list scopes like `openid` or `offline_access` when using OpenId Connect.
+
+Requests for scopes which are not allowed are rejected with `invalid_scope`.
+
+#### Grant types
+
+When `grantTypes` is not configured, a client may use all grant types, except `client_credentials` for public clients.
+
+When `grantTypes` is configured, a client may only use the listed grant types.
+Possible values are `authorization_code`, `implicit`, `password`, `client_credentials` and `refresh_token`.
+
+Requests for grant types which are not allowed are rejected with `unauthorized_client`.
 
 ### Users
 
@@ -146,12 +191,15 @@ Each entry may contain the following options
 | Property                               | Description                                                     | Required |
 |----------------------------------------|-----------------------------------------------------------------|----------|
 | `username`                             | Username                                                        | Yes      |
-| `password`                             | SHA512 hashed password                                          | Yes      |
-| `salt`                                 | Optional salt for password to avoid identical hash values       | No       |
+| `password`                             | bcrypt or SHA512 hashed password                                | Yes      |
+| `salt`                                 | Optional salt, only used for SHA512 hashed passwords            | No       |
 | [`userProfile`](#user-profile)         | User profile which will be used for OpenId Connect UserInfo     | No       |
 | [`userInformation`](#user-information) | User information which will be used for OpenId Connect UserInfo | No       |
 
 For `password` and `salt` see, [Command line - Password](../advanced/cmd.md#password)
+
+After 10 failed login attempts within 5 minutes, further logins for the username are blocked for the rest of the 5 minutes.
+The same applies to failed client authentications for a client id.
 
 #### User profile
 
@@ -269,6 +317,8 @@ The shown `config.yml` is the minimal version possible.
 
 It only defines the HTTP port **STOPnik** should listen on, one client and one user.
 
+Client secret and user password are both the bcrypt hash for `bar`.
+
 After starting locally with this configuration, **STOPnik** will be accessible at
 
 - http://localhost:8080/account
@@ -279,12 +329,12 @@ server:
   addr: :8080
 clients:
   - id: testclient
-    clientSecret: d82c4eb5261cb9c8aa9855edd67d1bd10482f41529858d925094d173fa662aa91ff39bc5b188615273484021dfb16fd8284cf684ccf0fc795be3aa2fc1e6c181
+    clientSecret: $2a$10$xchSl0M6Yk43/6Lvvqzx5..sWJcgOp1wCPYUOVPGW4XBh.duYU4I6
     redirects:
       - https://oauth.pstmn.io/v1/callback
 users:
   - username: foo
-    password: d82c4eb5261cb9c8aa9855edd67d1bd10482f41529858d925094d173fa662aa91ff39bc5b188615273484021dfb16fd8284cf684ccf0fc795be3aa2fc1e6c181
+    password: $2a$10$xchSl0M6Yk43/6Lvvqzx5..sWJcgOp1wCPYUOVPGW4XBh.duYU4I6
 ```
 
 ### Development configuration

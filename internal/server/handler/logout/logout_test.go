@@ -82,6 +82,10 @@ func testLogout(t *testing.T, testConfig *config.Config) {
 		{"", "", endpoint.Logout},
 		{"/foo", "", "/foo"},
 		{"", "/bar", "/bar"},
+		{"", "https://evil.com", endpoint.Logout},
+		{"/foo", "https://evil.com", "/foo"},
+		{"", "//evil.com", endpoint.Logout},
+		{"", "/\\evil.com", endpoint.Logout},
 	}
 	for _, test := range logoutParameters {
 		testMessage := fmt.Sprintf("Logout handler redirect %v, form redirect %v", test.handlerRedirect, test.formRedirect)

@@ -14,6 +14,23 @@ import (
 
 type now func() time.Time
 
+// crossOriginProtection detects cross-origin form submissions via Sec-Fetch-Site and Origin headers.
+var crossOriginProtection = http.NewCrossOriginProtection()
+
+// ValidateSameOrigin returns whether a request was not sent cross-origin.
+// Used for login and logout forms, to prevent other sites from logging users in or out (login CSRF).
+func ValidateSameOrigin(r *http.Request) bool {
+	checkError := crossOriginProtection.Check(r)
+	if checkError != nil {
+		log.Warn("Rejected cross-origin request: %v", checkError)
+		return false
+	}
+	return true
+}
+
+// verifySecret checks passwords and client secrets against their configured hash.
+var verifySecret = crypto.VerifySecret
+
 type RequestValidator struct {
 	config             *config.Config
 	now                now
@@ -29,7 +46,7 @@ func newRequestValidator(now now) *RequestValidator {
 	return &RequestValidator{
 		config:             currentConfig,
 		now:                now,
-		serverSecretLoader: crypto.NewServerSecretLoader(),
+		serverSecretLoader: crypto.NewPurposeServerSecretLoader(crypto.PurposeLoginToken),
 	}
 }
 
@@ -122,8 +139,17 @@ func (validator *RequestValidator) ValidateClientCredentials(r *http.Request) (*
 			return nil, usingFallback, false
 		}
 
+		limiterKey := "client:" + clientId
+		if credentialLimiter.blocked(limiterKey) {
+			log.Warn("Too many failed attempts for client with id %s, client is blocked temporarily", clientId)
+			return nil, usingFallback, false
+		}
+
 		client, clientExists := validator.ValidateClientId(clientId)
 		if !clientExists {
+			// Verify anyway, so timing does not reveal whether the client exists
+			verifySecret(clientSecret, "", "")
+			credentialLimiter.failed(limiterKey)
 			return nil, usingFallback, false
 		}
 
@@ -138,12 +164,12 @@ func (validator *RequestValidator) ValidateClientCredentials(r *http.Request) (*
 			return nil, usingFallback, false
 		}
 
-		secretHash := crypto.Sha512SaltedHash(clientSecret, client.Salt)
-
-		if secretHash != client.ClientSecret {
+		if !verifySecret(clientSecret, client.Salt, client.ClientSecret) {
+			credentialLimiter.failed(limiterKey)
 			return nil, usingFallback, false
 		}
 
+		credentialLimiter.succeeded(limiterKey)
 		return client, usingFallback, true
 	}
 	return nil, false, false
@@ -154,14 +180,24 @@ func (validator *RequestValidator) ValidateClientId(clientId string) (*config.Cl
 }
 
 func (validator *RequestValidator) ValidateUserPassword(username string, password string) (*config.User, bool) {
-	user, exists := validator.config.GetUser(username)
-	if !exists {
-		return nil, false
-	}
-	passwordHash := crypto.Sha512SaltedHash(password, user.Salt)
-	if passwordHash != user.Password {
+	limiterKey := "user:" + username
+	if credentialLimiter.blocked(limiterKey) {
+		log.Warn("Too many failed login attempts for user %s, user is blocked temporarily", username)
 		return nil, false
 	}
 
+	user, exists := validator.config.GetUser(username)
+	if !exists {
+		// Verify anyway, so timing does not reveal whether the user exists
+		verifySecret(password, "", "")
+		credentialLimiter.failed(limiterKey)
+		return nil, false
+	}
+	if !verifySecret(password, user.Salt, user.Password) {
+		credentialLimiter.failed(limiterKey)
+		return nil, false
+	}
+
+	credentialLimiter.succeeded(limiterKey)
 	return user, true
 }

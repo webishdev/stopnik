@@ -174,6 +174,10 @@ func testAuthCookieValues(t *testing.T, cookie http.Cookie, maxAge int) {
 		t.Error("Cookie httpOnly should be true")
 	}
 
+	if !cookie.Secure {
+		t.Error("Cookie secure should be true by default")
+	}
+
 	if cookie.Path != "/" {
 		t.Error("Cookie path is wrong")
 	}
