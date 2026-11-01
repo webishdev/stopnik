@@ -1,7 +1,9 @@
 package crypto
 
 import (
+	"crypto/hkdf"
 	"crypto/rsa"
+	"crypto/sha256"
 	"crypto/x509"
 	"encoding/pem"
 	"errors"
@@ -9,6 +11,7 @@ import (
 	"github.com/lestrrat-go/jwx/v4/jwk"
 	"github.com/lestrrat-go/jwx/v4/jwt"
 	"github.com/webishdev/stopnik/internal/config"
+	"github.com/webishdev/stopnik/internal/system"
 	"os"
 )
 
@@ -58,6 +61,24 @@ type KeyLoader interface {
 func NewServerSecretLoader() ServerSecretLoader {
 	currentConfig := config.GetConfigInstance()
 	return &serverSecret{secret: currentConfig.GetServerSecret()}
+}
+
+// Purposes for which separate keys are derived from the server secret.
+const (
+	PurposeLoginToken = "stopnik login token"
+	PurposeCookie     = "stopnik cookie"
+)
+
+// NewPurposeServerSecretLoader creates a ServerSecretLoader with a key derived from the server secret for the given purpose.
+// Separate keys ensure that e.g. a login token can not be used as cookie value or as access token and vice versa.
+// The plain server secret is still used to sign tokens, when no private key is configured.
+func NewPurposeServerSecretLoader(purpose string) ServerSecretLoader {
+	currentConfig := config.GetConfigInstance()
+	derivedKey, deriveError := hkdf.Key(sha256.New, []byte(currentConfig.GetServerSecret()), nil, purpose, sha256.Size)
+	if deriveError != nil {
+		system.CriticalError(deriveError)
+	}
+	return &serverSecret{secret: string(derivedKey)}
 }
 
 // GetServerKey returns the server secret as jwa.HS256() key.

@@ -72,3 +72,54 @@ func Test_Sha1Hash(t *testing.T) {
 		})
 	}
 }
+
+func Test_VerifySecret(t *testing.T) {
+	bcryptHash, hashError := BcryptHash("bar")
+	if hashError != nil {
+		t.Fatal(hashError)
+	}
+
+	type parameter struct {
+		name         string
+		secret       string
+		salt         string
+		expectedHash string
+		valid        bool
+	}
+
+	var parameters = []parameter{
+		{"bcrypt valid", "bar", "", bcryptHash, true},
+		{"bcrypt invalid", "xxx", "", bcryptHash, false},
+		{"bcrypt ignores salt", "bar", "moo", bcryptHash, true},
+		{"SHA512 valid", "bar", "", "d82c4eb5261cb9c8aa9855edd67d1bd10482f41529858d925094d173fa662aa91ff39bc5b188615273484021dfb16fd8284cf684ccf0fc795be3aa2fc1e6c181", true},
+		{"SHA512 salted valid", "bar", "moo", "695e6f39f5ffd36ae60e0ade727c892d725531455a19c6035cb739d099e8f20e63d3fdfd3241888e38de1d8db85532dd65f817b12fe33ac7cdcc358ef6c8ea23", true},
+		{"SHA512 invalid", "xxx", "", "d82c4eb5261cb9c8aa9855edd67d1bd10482f41529858d925094d173fa662aa91ff39bc5b188615273484021dfb16fd8284cf684ccf0fc795be3aa2fc1e6c181", false},
+		{"Unknown hash", "stopnik-unknown-secret", "", "", false},
+		{"Unsupported hash", "bar", "", "bar", false},
+	}
+
+	for _, test := range parameters {
+		t.Run(test.name, func(t *testing.T) {
+			if valid := VerifySecret(test.secret, test.salt, test.expectedHash); valid != test.valid {
+				t.Errorf("Result %t not equal to expected %t", valid, test.valid)
+			}
+		})
+	}
+}
+
+func Test_IsSupportedHash(t *testing.T) {
+	bcryptHash, hashError := BcryptHash("bar")
+	if hashError != nil {
+		t.Fatal(hashError)
+	}
+
+	if !IsSupportedHash(bcryptHash) {
+		t.Errorf("bcrypt hash should be supported")
+	}
+	if !IsSupportedHash(Sha512Hash("bar")) {
+		t.Errorf("SHA512 hash should be supported")
+	}
+	if IsSupportedHash("bar") {
+		t.Errorf("plain value should not be supported")
+	}
+}

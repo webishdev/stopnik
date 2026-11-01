@@ -61,3 +61,13 @@ func (authManager *AuthManager) DeleteSession(id string) {
 	authSessionStore := *authManager.authSessionStore
 	authSessionStore.Delete(id)
 }
+
+func (authManager *AuthManager) TakeSession(id string) (*AuthSession, bool) {
+	authSessionStore := *authManager.authSessionStore
+	return authSessionStore.Take(id)
+}
+
+func (authManager *AuthManager) SessionCount() int {
+	authSessionStore := *authManager.authSessionStore
+	return authSessionStore.Len()
+}

@@ -12,6 +12,10 @@ const (
 	XForwardProtocol         string = "X-Forwarded-Proto"
 	XForwardHost             string = "X-Forwarded-Host"
 	XForwardUri              string = "X-Forwarded-Uri"
+	XFrameOptions            string = "X-Frame-Options"
+	XContentTypeOptions      string = "X-Content-Type-Options"
+	ContentSecurityPolicy    string = "Content-Security-Policy"
+	ReferrerPolicy           string = "Referrer-Policy"
 )
 
 const (
@@ -21,4 +25,5 @@ const (
 
 const (
 	ContentTypeJSON string = "application/json"
+	ContentTypeHTML string = "text/html; charset=utf-8"
 )

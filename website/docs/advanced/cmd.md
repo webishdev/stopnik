@@ -30,20 +30,33 @@ otherwise **STOPnik** will try to read the `config.yml` from the working directo
 
 ## Password
 
-The `-password` parameter will prompt for password/secret and an optional salt.
+The `-password` parameter will prompt for a password/secret and print its bcrypt hash.
 The result can be used in the configuration file for client secret and user password.
+bcrypt hashes contain their own random salt, so no `salt` is needed in the configuration.
 
 :::warning
 
-The password and salt will be asked and shown using `stdin` and `stdout`,
-someone standing next to you can see them in your terminal application!
+The password will be asked and shown using `stdin` and `stdout`,
+someone standing next to you can see it in your terminal application!
 
 :::
 
 :::info
 
-When not using an additional salt value, a SHA 512 hash is used as user password or client secret. This value can also be created with other tools.
+bcrypt hashes can also be created with other tools, e.g. with `htpasswd` from the Apache HTTP Server utilities
 
+```bash
+htpasswd -nbBC 10 "" bar | cut -d: -f2
+```
+
+:::
+
+### SHA512 hashes
+
+Previous versions of **STOPnik** used (salted) SHA512 hashes, which are still supported.
+As SHA512 is fast to calculate, such hashes are easier to brute force and should be replaced by bcrypt hashes.
+
+When not using an additional salt value, the SHA512 hash can be created with other tools.
 To create the hash value for the password `bar` for example, the following command can be used
 
 ```bash
@@ -51,4 +64,4 @@ echo -n bar | shasum -a 512
 d82c4eb5261cb9c8aa9855edd67d1bd10482f41529858d925094d173fa662aa91ff39bc5b188615273484021dfb16fd8284cf684ccf0fc795be3aa2fc1e6c181  -
 ```
 
-:::
+With a salt, the hash is created for the value `<password>/!<salt>`.

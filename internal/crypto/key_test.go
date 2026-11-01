@@ -21,6 +21,8 @@ func Test_Key(t *testing.T) {
 
 	testServerKeyLoader(t)
 
+	testPurposeServerKeyLoader(t)
+
 	testLoadPrivateKey(t)
 
 	testLoadNotExistingPrivateKey(t)
@@ -120,6 +122,34 @@ func testLoadUnsupportedCurvePrivateKey(t *testing.T) {
 
 		if err == nil {
 			t.Errorf("Loaded private key from with unsupported curve")
+		}
+	})
+}
+
+func testPurposeServerKeyLoader(t *testing.T) {
+	t.Run("Purpose server key loader", func(t *testing.T) {
+		token, tokenError := jwt.NewBuilder().Subject("foo").Build()
+		if tokenError != nil {
+			t.Fatal(tokenError)
+		}
+		signedToken, signingError := jwt.Sign(token, NewPurposeServerSecretLoader(PurposeLoginToken).GetServerKey())
+		if signingError != nil {
+			t.Fatal(signingError)
+		}
+
+		_, parseError := jwt.Parse(signedToken, NewPurposeServerSecretLoader(PurposeLoginToken).GetServerKey())
+		if parseError != nil {
+			t.Errorf("token should be valid for same purpose: %v", parseError)
+		}
+
+		_, parseError = jwt.Parse(signedToken, NewPurposeServerSecretLoader(PurposeCookie).GetServerKey())
+		if parseError == nil {
+			t.Errorf("token should not be valid for other purpose")
+		}
+
+		_, parseError = jwt.Parse(signedToken, NewServerSecretLoader().GetServerKey())
+		if parseError == nil {
+			t.Errorf("token should not be valid with plain server secret")
 		}
 	})
 }

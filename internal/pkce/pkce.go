@@ -12,7 +12,7 @@ func ValidatePKCE(method CodeChallengeMethod, verifier string, value string) boo
 }
 
 func CalculatePKCE(method CodeChallengeMethod, value string) string {
-	log.Debug("Calculating PKCE: %s %s", method, value)
+	log.Debug("Calculating PKCE: %s", method)
 	switch method {
 	case S256:
 		valueHash := sha256.Sum256([]byte(value))

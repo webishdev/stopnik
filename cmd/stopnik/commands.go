@@ -24,17 +24,17 @@ func printHelp(version string, gitHash string) {
 	flag.Usage()
 }
 
-// readPassword reads password and salt from stdin and returns a crypto.Sha512SaltedHash result.
+// readPassword reads a password from stdin and prints a crypto.BcryptHash result.
 func readPassword() {
 	fmt.Printf("Password: ")
 	passwordScanner := bufio.NewScanner(os.Stdin)
 	passwordScanner.Scan()
 	password := passwordScanner.Text()
-	fmt.Printf("Salt: ")
-	saltScanner := bufio.NewScanner(os.Stdin)
-	saltScanner.Scan()
-	salt := saltScanner.Text()
-	result := crypto.Sha512SaltedHash(password, salt)
+	result, hashError := crypto.BcryptHash(password)
+	if hashError != nil {
+		fmt.Printf("Could not create hash: %v\n\n", hashError)
+		return
+	}
 	fmt.Printf("Hashed value is: %s\n\n", result)
 }
 
@@ -74,6 +74,9 @@ func readConfiguration(configurationFile *string, configLoader config.Loader) (*
 	logger.Info("Config loaded from %s", *configurationFile)
 	if currentConfig.GetOidc() {
 		logger.Info("OpenId Connect is enabled")
+	}
+	if currentConfig.Server.Issuer == "" {
+		logger.Warn("No issuer configured, the issuer will be derived from the Host header of each request, configure server.issuer to avoid manipulated issuer values")
 	}
 
 	return currentConfig, nil

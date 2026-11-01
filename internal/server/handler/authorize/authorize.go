@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/lestrrat-go/jwx/v4/jwt"
 	"github.com/webishdev/stopnik/internal/config"
 	"github.com/webishdev/stopnik/internal/endpoint"
 	internalHttp "github.com/webishdev/stopnik/internal/http"
@@ -28,6 +27,9 @@ import (
 	"uuid"
 )
 
+// maxAuthSessions limits the number of open authorization sessions.
+var maxAuthSessions = 100000
+
 type authorizeRequestValues struct {
 	clientIdParameter            string
 	redirectParameter            string
@@ -38,6 +40,7 @@ type authorizeRequestValues struct {
 	nonceParameter               string
 	promptParameter              string
 	maxAgeParameter              string
+	requestParameter             string
 	requestedScopes              []string
 	requestedClaims              *oidc.ClaimsParameter
 }
@@ -93,6 +96,10 @@ func (h *Handler) handleGetRequest(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) handlePostRequest(w http.ResponseWriter, r *http.Request) {
 	authSessionForm := r.PostFormValue("stopnik_auth_session")
 	if authSessionForm != "" {
+		if !validation.ValidateSameOrigin(r) {
+			h.errorHandler.ForbiddenHandler(w, r)
+			return
+		}
 		loginToken, loginTokenError := h.validator.GetLoginToken(authSessionForm)
 		if loginTokenError != nil {
 			h.errorHandler.BadRequestHandler(w, r)
@@ -138,7 +145,7 @@ func (h *Handler) handlePostRequest(w http.ResponseWriter, r *http.Request) {
 
 		responseTypes := authSession.ResponseTypes
 
-		query := redirectURL.Query()
+		query := newResponseParameters(redirectURL, responseTypes)
 		if slices.Contains(responseTypes, oauth2.RtToken) {
 			client, clientExists := h.validator.ValidateClientId(authSession.ClientId)
 			if !clientExists {
@@ -158,7 +165,7 @@ func (h *Handler) handlePostRequest(w http.ResponseWriter, r *http.Request) {
 			query.Set(oauth2.ParameterState, authSession.State)
 		}
 
-		sendFound(w, redirectURL, query)
+		sendFound(w, redirectURL, query, useFragment(responseTypes))
 	} else {
 		authorizeRequest := h.parseRequest(r)
 		h.handleAuthorizeRequest(w, r, authorizeRequest)
@@ -197,7 +204,21 @@ func (h *Handler) handleAuthorizeRequest(w http.ResponseWriter, r *http.Request,
 		return
 	}
 
-	invalidCodeChallengeHandler := h.validateCodeChallenge(responseTypes, authorizeRequest, redirectURL)
+	// https://openid.net/specs/openid-connect-core-1_0.html#AuthError
+	// Request objects are not supported, so they must not be silently ignored
+	if authorizeRequest.requestParameter != "" {
+		log.Error("Request object provided by client %s is not supported", client.Id)
+		oauth2.AuthorizationErrorResponseHandler(w, redirectURL, authorizeRequest.stateParameter, &oauth2.AuthorizationErrorResponseParameter{Error: oauth2.AuthorizationEtRequestNotSupported})
+		return
+	}
+
+	invalidGrantHandler := h.validateGrantAndScopes(client, responseTypes, authorizeRequest, redirectURL)
+	if invalidGrantHandler != nil {
+		invalidGrantHandler.ServeHTTP(w, r)
+		return
+	}
+
+	invalidCodeChallengeHandler := h.validateCodeChallenge(client, responseTypes, authorizeRequest, redirectURL)
 	if invalidCodeChallengeHandler != nil {
 		invalidCodeChallengeHandler.ServeHTTP(w, r)
 		return
@@ -206,7 +227,6 @@ func (h *Handler) handleAuthorizeRequest(w http.ResponseWriter, r *http.Request,
 	if log.IsDebug() {
 		log.Debug("Response types: %v", responseTypes)
 		log.Debug("Redirect URI: %s", authorizeRequest.redirectParameter)
-		log.Debug("State: %s", authorizeRequest.stateParameter)
 		log.Debug("Scope: %v", authorizeRequest.requestedScopes)
 	}
 
@@ -228,6 +248,12 @@ func (h *Handler) handleAuthorizeRequest(w http.ResponseWriter, r *http.Request,
 	idTokenRequest := slices.Contains(responseTypes, oauth2.RtIdToken) && len(responseTypes) == 1
 
 	if !idTokenRequest {
+		// Every authorization request creates a session, limit them to avoid running out of memory
+		if h.authSessionManager.SessionCount() >= maxAuthSessions {
+			log.Error("Too many open authorization sessions, rejecting authorization request for client %s", client.Id)
+			oauth2.AuthorizationErrorResponseHandler(w, redirectURL, authorizeRequest.stateParameter, &oauth2.AuthorizationErrorResponseParameter{Error: oauth2.AuthorizationEtTemporaryUnavailable})
+			return
+		}
 		h.authSessionManager.StartSession(authSession)
 	}
 
@@ -255,7 +281,7 @@ func (h *Handler) handleAuthorizeRequest(w http.ResponseWriter, r *http.Request,
 			return
 		}
 
-		sendFound(w, redirectURL, query)
+		sendFound(w, redirectURL, query, useFragment(responseTypes))
 	} else {
 		// Show login page
 		h.sendLogin(w, r, authSession.Id)
@@ -324,13 +350,47 @@ func (h *Handler) validateNonce(client *config.Client, authorizeRequest *authori
 	return nil
 }
 
-func (h *Handler) validateCodeChallenge(responseTypes []oauth2.ResponseType, authorizeRequest *authorizeRequestValues, redirectURL *url.URL) http.Handler {
+func (h *Handler) validateCodeChallenge(client *config.Client, responseTypes []oauth2.ResponseType, authorizeRequest *authorizeRequestValues, redirectURL *url.URL) http.Handler {
 	isUnexpectedCodeChallenge := !slices.Contains(responseTypes, oauth2.RtCode) && authorizeRequest.codeChallengeParameter != "" && authorizeRequest.codeChallengeMethodParameter != ""
 	if isUnexpectedCodeChallenge {
 		errorMessage := fmt.Sprintf("Code challenge should only be used for response type %s", oauth2.RtCode)
 		authorizeError := &oauth2.AuthorizationErrorResponseParameter{Error: oauth2.AuthorizationEtInvalidRequest, Description: errorMessage}
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			oauth2.AuthorizationErrorResponseHandler(w, redirectURL, authorizeRequest.stateParameter, authorizeError)
+		})
+	}
+
+	// https://datatracker.ietf.org/doc/html/rfc9700#section-2.1.1
+	// Public clients can not authenticate at the token endpoint, PKCE is their only protection against code injection
+	isMissingCodeChallenge := slices.Contains(responseTypes, oauth2.RtCode) && client.GetClientType() == oauth2.CtPublic && authorizeRequest.codeChallengeParameter == ""
+	if isMissingCodeChallenge {
+		log.Error("Missing code challenge for public client %s", client.Id)
+		errorMessage := "Code challenge is required for public clients"
+		authorizeError := &oauth2.AuthorizationErrorResponseParameter{Error: oauth2.AuthorizationEtInvalidRequest, Description: errorMessage}
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			oauth2.AuthorizationErrorResponseHandler(w, redirectURL, authorizeRequest.stateParameter, authorizeError)
+		})
+	}
+	return nil
+}
+
+func (h *Handler) validateGrantAndScopes(client *config.Client, responseTypes []oauth2.ResponseType, authorizeRequest *authorizeRequestValues, redirectURL *url.URL) http.Handler {
+	grantType := oauth2.GtImplicit
+	if slices.Contains(responseTypes, oauth2.RtCode) {
+		grantType = oauth2.GtAuthorizationCode
+	}
+	if !client.IsGrantTypeAllowed(grantType) {
+		log.Error("Grant type %s is not allowed for client %s", grantType, client.Id)
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			oauth2.AuthorizationErrorResponseHandler(w, redirectURL, authorizeRequest.stateParameter, &oauth2.AuthorizationErrorResponseParameter{Error: oauth2.AuthorizationEtUnauthorizedClient})
+		})
+	}
+
+	disallowedScopes := h.config.GetDisallowedScopes(client, authorizeRequest.requestedScopes)
+	if len(disallowedScopes) > 0 {
+		log.Error("Scopes %v are not allowed for client %s", disallowedScopes, client.Id)
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			oauth2.AuthorizationErrorResponseHandler(w, redirectURL, authorizeRequest.stateParameter, &oauth2.AuthorizationErrorResponseParameter{Error: oauth2.AuthorizationEtInvalidScope})
 		})
 	}
 	return nil
@@ -370,7 +430,7 @@ func (h *Handler) validateRedirect(client *config.Client, redirect string) http.
 }
 
 func (h *Handler) createLocationResponseQuery(r *http.Request, redirectURL *url.URL, user *config.User, client *config.Client, scopes []string, authSession *session.AuthSession, loginSession *session.LoginSession, responseTypes []oauth2.ResponseType, id string, idTokenRequest bool, stateParameter string) (url.Values, *oauth2.AuthorizationErrorResponseParameter) {
-	query := redirectURL.Query()
+	query := newResponseParameters(redirectURL, responseTypes)
 
 	var idToken string
 	accessTokenResponse := h.tokenManager.CreateAccessTokenResponse(r, user.Username, client, &loginSession.StartTime, scopes, authSession.RequestedClaims, authSession.Nonce, "")
@@ -476,6 +536,7 @@ func (h *Handler) sendLogin(w http.ResponseWriter, r *http.Request, authSessionI
 	responseWriter := internalHttp.NewResponseWriter(w, requestData)
 
 	responseWriter.SetEncodingHeader()
+	w.Header().Set(internalHttp.ContentType, internalHttp.ContentTypeHTML)
 
 	_, writeError := responseWriter.Write(loginTemplate.Bytes())
 	if writeError != nil {
@@ -491,6 +552,7 @@ func (h *Handler) sendErrorPage(w http.ResponseWriter, r *http.Request, message 
 	responseWriter := internalHttp.NewResponseWriter(w, requestData)
 
 	responseWriter.SetEncodingHeader()
+	w.Header().Set(internalHttp.ContentType, internalHttp.ContentTypeHTML)
 
 	_, writeError := responseWriter.Write(errorTemplate.Bytes())
 	if writeError != nil {
@@ -517,10 +579,33 @@ func (h *Handler) sendDifferentRetryLocation(w http.ResponseWriter, r *http.Requ
 	w.WriteHeader(http.StatusSeeOther)
 }
 
-func sendFound(w http.ResponseWriter, redirectURL *url.URL, query url.Values) {
-	redirectURL.RawQuery = query.Encode()
+// useFragment returns whether the response parameters must be added as fragment instead of query.
+// https://datatracker.ietf.org/doc/html/rfc6749#section-4.2.2
+// https://openid.net/specs/oauth-v2-multiple-response-types-1_0.html#ResponseModes
+// Tokens in the fragment are not sent to servers, so they do not end up in server logs or referrer headers.
+func useFragment(responseTypes []oauth2.ResponseType) bool {
+	return slices.Contains(responseTypes, oauth2.RtToken) || slices.Contains(responseTypes, oauth2.RtIdToken)
+}
 
-	w.Header().Set(internalHttp.Location, redirectURL.String())
+// newResponseParameters returns the values to which the response parameters will be added,
+// for query responses these are the existing query parameters of the redirect URI.
+func newResponseParameters(redirectURL *url.URL, responseTypes []oauth2.ResponseType) url.Values {
+	if useFragment(responseTypes) {
+		return url.Values{}
+	}
+	return redirectURL.Query()
+}
+
+func sendFound(w http.ResponseWriter, redirectURL *url.URL, parameters url.Values, fragment bool) {
+	location := *redirectURL
+	if fragment {
+		location.Fragment = ""
+		location.RawFragment = ""
+		w.Header().Set(internalHttp.Location, location.String()+"#"+parameters.Encode())
+	} else {
+		location.RawQuery = parameters.Encode()
+		w.Header().Set(internalHttp.Location, location.String())
+	}
 	w.WriteHeader(http.StatusFound)
 }
 
@@ -583,39 +668,6 @@ func (h *Handler) parseRequest(r *http.Request) *authorizeRequestValues {
 
 	scopes := strings.Split(scopeParameter, " ")
 
-	if h.config.GetOidc() && oidc.HasOidcScope(scopes) && requestParameter != "" {
-		parsedRequestToken, requestParameterParseError := jwt.Parse([]byte(requestParameter), jwt.WithVerify(true))
-		if requestParameterParseError == nil {
-			// OAuth2
-			clientIdParameter = getClaimFromToken(parsedRequestToken, oauth2.ParameterClientId, clientIdParameter)
-			stateParameter = getClaimFromToken(parsedRequestToken, oauth2.ParameterState, stateParameter)
-			responseTypeParameter = getClaimFromToken(parsedRequestToken, oauth2.ParameterResponseType, responseTypeParameter)
-			redirectParameter = getClaimFromToken(parsedRequestToken, oauth2.ParameterRedirectUri, redirectParameter)
-			scopeParameter = getClaimFromToken(parsedRequestToken, oauth2.ParameterScope, scopeParameter)
-
-			// PKCE
-			codeChallengeParameter = getClaimFromToken(parsedRequestToken, pkce.ParameterCodeChallenge, codeChallengeParameter)
-			codeChallengeMethodParameter = getClaimFromToken(parsedRequestToken, pkce.ParameterCodeChallengeMethod, codeChallengeMethodParameter)
-
-			// OpenId Connect
-			nonceParameter = getClaimFromToken(parsedRequestToken, oidc.ParameterNonce, nonceParameter)
-			promptParameter = getClaimFromToken(parsedRequestToken, oidc.ParameterPrompt, promptParameter)
-			maxAgeParameter = getClaimFromToken(parsedRequestToken, oidc.ParameterMaxAge, maxAgeParameter)
-
-			requestedClaimsValue, requestedClaimsValueExists := parsedRequestToken.Field(oidc.ParameterClaims)
-			if requestedClaimsValueExists {
-				parameter, ok := requestedClaimsValue.(oidc.ClaimsParameter)
-				if ok {
-					requestedClaims = &parameter
-				} else {
-					log.Error("Could not extract claims from request object")
-				}
-			}
-		}
-	}
-
-	scopes = strings.Split(scopeParameter, " ")
-
 	if h.config.GetOidc() && claimsParameter != "" {
 		requestedClaims = &oidc.ClaimsParameter{}
 		claimsParameterParseError := json.Unmarshal([]byte(claimsParameter), requestedClaims)
@@ -634,6 +686,7 @@ func (h *Handler) parseRequest(r *http.Request) *authorizeRequestValues {
 		nonceParameter:               nonceParameter,
 		promptParameter:              promptParameter,
 		maxAgeParameter:              maxAgeParameter,
+		requestParameter:             requestParameter,
 		requestedScopes:              scopes,
 		requestedClaims:              requestedClaims,
 	}
@@ -652,15 +705,4 @@ func createAuthSession(id string, authorizeRequest *authorizeRequestValues, r *h
 		State:               authorizeRequest.stateParameter,
 		RequestedClaims:     authorizeRequest.requestedClaims,
 	}
-}
-
-func getClaimFromToken(token jwt.Token, claim string, defaultValue string) string {
-	value, exists := token.Field(claim)
-	if exists {
-		valueAsString := fmt.Sprintf("%s", value)
-		if valueAsString != "" {
-			return valueAsString
-		}
-	}
-	return defaultValue
 }

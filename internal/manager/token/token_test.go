@@ -208,6 +208,8 @@ func Test_HashToken(t *testing.T) {
 
 	var hashTokenParameters = []hashTokenParameter{
 		{"dNZX1hEZ9wBCzNL40Upu646bdzQA", crypto.SHA256, "wfgvmE9VxjAudsl9lc6TqA"},
+		{"dNZX1hEZ9wBCzNL40Upu646bdzQA", crypto.SHA384, "phZaPQJosyg-qi-OIYyQ3xJB9wsHYEEz"},
+		{"dNZX1hEZ9wBCzNL40Upu646bdzQA", crypto.SHA512, "8xltSlOGYrWy8W9yNvRlEth1i_bXW-JROWPLvCv5zog"},
 		{"rvArgQKPbBDJkeTHwoIAOQVkV8J0_i8PhrRKyLDaKkk.iY6nzJoIb2dRXBoqHAa3Yb6gkHveTXbnM6PGtmoKXvo", crypto.SHA256, "glbC70G_oVT5IyHiFg6v1Q"},
 	}
 

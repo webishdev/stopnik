@@ -79,19 +79,20 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		return
 	} else if validCookie && codeParameter != "" && forwardIdParameter != "" && stateParameter != "" {
-		_, forwardSession, valid := h.validatePKCEAndState(codeParameter, stateParameter, forwardIdParameter)
-		if !valid {
-			h.errorHandler.BadRequestHandler(w, r)
-			return
-		} else {
-			w.Header().Set(internalHttp.Location, forwardSession.RedirectUri)
-			w.WriteHeader(http.StatusTemporaryRedirect)
-			return
-		}
+		// Already authenticated, e.g. when the callback URL is opened again, codes are only valid once,
+		// so just redirect to the requested URL without the parameters
+		query := forwardUri.Query()
+		query.Del(oauth2.ParameterCode)
+		query.Del(oauth2.ParameterState)
+		query.Del(forwardAuthParameterName)
+		forwardUri.RawQuery = query.Encode()
+		w.Header().Set(internalHttp.Location, forwardUri.String())
+		w.WriteHeader(http.StatusTemporaryRedirect)
+		return
 	}
 
 	if codeParameter != "" && forwardIdParameter != "" && stateParameter != "" {
-		authCookie, forwardSession, valid := h.validateAndCreateAuthCookie(codeParameter, stateParameter, forwardIdParameter)
+		authCookie, forwardSession, valid := h.validateAndCreateAuthCookie(forwardAuthClient, codeParameter, stateParameter, forwardIdParameter)
 		if !valid {
 			h.errorHandler.BadRequestHandler(w, r)
 			return
@@ -144,23 +145,30 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusTemporaryRedirect)
 }
 
-func (h *Handler) validatePKCEAndState(code string, state string, forwardSessionId string) (*session.AuthSession, *session.ForwardSession, bool) {
-	authSession, authSessionExists := h.authSessionManager.GetSession(code)
-	if authSessionExists {
-		codeChallengeMethod, codeChallengeMethodExists := pkce.CodeChallengeMethodFromString(authSession.CodeChallengeMethod)
-		forwardSession, forwardSessionExists := h.forwardSessionManager.GetSession(forwardSessionId)
-		if codeChallengeMethodExists && forwardSessionExists && forwardSession.State == state {
-			validatePKCE := pkce.ValidatePKCE(codeChallengeMethod, forwardSession.CodeChallengeVerifier, authSession.CodeChallenge)
-			if validatePKCE {
-				return authSession, forwardSession, true
-			}
+// validatePKCEAndState validates the code, state and PKCE for a forward session.
+// Auth and forward session are removed in any case, so code and forward session can only be used once.
+func (h *Handler) validatePKCEAndState(forwardAuthClient *config.Client, code string, state string, forwardSessionId string) (*session.AuthSession, *session.ForwardSession, bool) {
+	authSession, authSessionExists := h.authSessionManager.TakeSession(code)
+	forwardSession, forwardSessionExists := h.forwardSessionManager.TakeSession(forwardSessionId)
+	if !authSessionExists || !forwardSessionExists {
+		return nil, nil, false
+	}
+	// The code must be issued for the forward auth client to an authenticated user
+	if authSession.ClientId != forwardAuthClient.Id || authSession.Username == "" {
+		return nil, nil, false
+	}
+	codeChallengeMethod, codeChallengeMethodExists := pkce.CodeChallengeMethodFromString(authSession.CodeChallengeMethod)
+	if codeChallengeMethodExists && forwardSession.State == state {
+		validatePKCE := pkce.ValidatePKCE(codeChallengeMethod, forwardSession.CodeChallengeVerifier, authSession.CodeChallenge)
+		if validatePKCE {
+			return authSession, forwardSession, true
 		}
 	}
 	return nil, nil, false
 }
 
-func (h *Handler) validateAndCreateAuthCookie(code string, state string, forwardSessionId string) (*http.Cookie, *session.ForwardSession, bool) {
-	authSession, forwardSession, valid := h.validatePKCEAndState(code, state, forwardSessionId)
+func (h *Handler) validateAndCreateAuthCookie(forwardAuthClient *config.Client, code string, state string, forwardSessionId string) (*http.Cookie, *session.ForwardSession, bool) {
+	authSession, forwardSession, valid := h.validatePKCEAndState(forwardAuthClient, code, state, forwardSessionId)
 	if valid {
 		loginSession := &session.LoginSession{
 			Id:       uuid.New().String(),

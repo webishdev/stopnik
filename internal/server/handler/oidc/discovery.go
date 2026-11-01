@@ -137,7 +137,6 @@ func (h *DiscoveryHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			RevocationEndpointAuthMethodsSupported:             authMethodsSupported,
 			RevocationEndpointAuthSigningAlgValuesSupported:    signatureAlgorithmSupported,
 			IdTokenSigningAlgValuesSupported:                   signatureAlgorithmSupported,
-			RequestParameterSupported:                          true,
 			SubjectTypesSupported:                              []string{"public"},
 			ScopesSupported:                                    []string{oidc.ScopeOpenId, oidc.ScopeProfile, oidc.ScopeAddress, oidc.ScopeEmail, oidc.ScopePhone, oidc.ScopeOfflineAccess},
 		}

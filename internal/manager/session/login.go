@@ -94,3 +94,13 @@ func (loginManager *loginManager) SearchSession(username string) ([]*LoginSessio
 	}
 	return userSessions, exists
 }
+
+func (loginManager *loginManager) TakeSession(id string) (*LoginSession, bool) {
+	loginSessionStore := *loginManager.loginSessionStore
+	return loginSessionStore.Take(id)
+}
+
+func (loginManager *loginManager) SessionCount() int {
+	loginSessionStore := *loginManager.loginSessionStore
+	return loginSessionStore.Len()
+}

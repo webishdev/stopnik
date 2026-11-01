@@ -57,8 +57,7 @@ clients:
     - https://oauth.pstmn.io/v1/callback
 users:
 - username: foo
-  password: 695e6f39f5ffd36ae60e0ade727c892d725531455a19c6035cb739d099e8f20e63d3fdfd3241888e38de1d8db85532dd65f817b12fe33ac7cdcc358ef6c8ea23
-  salt: moo
+  password: '$2a$10$jvXVHUYe.kb5njbxI2QUOOY/TDDi880X0jC01h1CrhUNagGN.KcDq'
   roles:
     testclient:
       - foo_role

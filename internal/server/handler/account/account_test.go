@@ -100,6 +100,34 @@ func Test_AccountWithoutCookie(t *testing.T) {
 	}
 }
 
+func Test_AccountCompressedContentType(t *testing.T) {
+	testInitializeConfig(t)
+
+	requestValidator := validation.NewRequestValidator()
+	cookieManager := cookie.GetCookieManagerInstance()
+	loginSessionManager := session.GetLoginSessionManagerInstance()
+	templateManager := template.GetTemplateManagerInstance()
+
+	accountHandler := NewAccountHandler(requestValidator, cookieManager, loginSessionManager, templateManager)
+
+	rr := httptest.NewRecorder()
+
+	// Browsers accept compressed responses, Go does not detect the content type for compressed responses
+	request := httptest.NewRequest(http.MethodGet, endpoint.Account, nil)
+	request.Header.Set(internalHttp.AcceptEncoding, "gzip, deflate, br")
+
+	accountHandler.ServeHTTP(rr, request)
+
+	if rr.Header().Get(internalHttp.ContentEncoding) != "gzip" {
+		t.Errorf("response was not compressed")
+	}
+
+	contentType := rr.Header().Get(internalHttp.ContentType)
+	if contentType != internalHttp.ContentTypeHTML {
+		t.Errorf("content type was not text/html: %v", contentType)
+	}
+}
+
 func Test_AccountLogin(t *testing.T) {
 	testConfig := testInitializeConfig(t)
 
