@@ -13,21 +13,24 @@ import (
 
 func Test_Metadata(t *testing.T) {
 	type basePathParameter struct {
-		basePath       string
-		expectedIssuer string
+		basePath        string
+		issuer          string
+		expectedIssuer  string
+		expectedBaseURL string
 	}
 
 	var basePathParameters = []basePathParameter{
-		{basePath: "", expectedIssuer: "http://example.com"},
-		{basePath: "/", expectedIssuer: "http://example.com"},
-		{basePath: "/auth", expectedIssuer: "http://example.com/auth"},
-		{basePath: "auth/", expectedIssuer: "http://example.com/auth"},
+		{basePath: "", expectedIssuer: "http://example.com", expectedBaseURL: "http://example.com"},
+		{basePath: "/", expectedIssuer: "http://example.com", expectedBaseURL: "http://example.com"},
+		{basePath: "/auth", expectedIssuer: "http://example.com/auth", expectedBaseURL: "http://example.com/auth"},
+		{basePath: "auth/", expectedIssuer: "http://example.com/auth", expectedBaseURL: "http://example.com/auth"},
+		{basePath: "/auth", issuer: "https://issuer.example.com", expectedIssuer: "https://issuer.example.com", expectedBaseURL: "http://example.com/auth"},
 	}
 
 	for _, test := range basePathParameters {
-		testMessage := fmt.Sprintf("Metadata with base path '%s'", test.basePath)
+		testMessage := fmt.Sprintf("Metadata with base path '%s' and issuer '%s'", test.basePath, test.issuer)
 		t.Run(testMessage, func(t *testing.T) {
-			initializeConfig(t, test.basePath)
+			initializeConfig(t, test.basePath, test.issuer)
 			metadataHandler := NewMetadataHandler()
 
 			rr := httptest.NewRecorder()
@@ -47,23 +50,23 @@ func Test_Metadata(t *testing.T) {
 				t.Error("metadata issuer did not match")
 			}
 
-			if metadata.AuthorizationEndpoint != test.expectedIssuer+"/authorize" {
+			if metadata.AuthorizationEndpoint != test.expectedBaseURL+"/authorize" {
 				t.Error("metadata authorization_endpoint did not match")
 			}
 
-			if metadata.TokenEndpoint != test.expectedIssuer+"/token" {
+			if metadata.TokenEndpoint != test.expectedBaseURL+"/token" {
 				t.Error("metadata token_endpoint did not match")
 			}
 
-			if metadata.JWKsUri != test.expectedIssuer+"/keys" {
+			if metadata.JWKsUri != test.expectedBaseURL+"/keys" {
 				t.Error("metadata jwks_uri did not match")
 			}
 
-			if metadata.IntrospectionEndpoint != test.expectedIssuer+"/introspect" {
+			if metadata.IntrospectionEndpoint != test.expectedBaseURL+"/introspect" {
 				t.Error("metadata introspection_endpoint did not match")
 			}
 
-			if metadata.RevocationEndpoint != test.expectedIssuer+"/revoke" {
+			if metadata.RevocationEndpoint != test.expectedBaseURL+"/revoke" {
 				t.Error("metadata revocation_endpoint did not match")
 			}
 
@@ -85,7 +88,7 @@ func Test_MetadataNotAllowedHttpMethods(t *testing.T) {
 	for _, method := range testInvalidMetadataHttpMethods {
 		testMessage := fmt.Sprintf("Metadata with unsupported method %s", method)
 		t.Run(testMessage, func(t *testing.T) {
-			initializeConfig(t, "")
+			initializeConfig(t, "", "")
 			metadataHandler := NewMetadataHandler()
 
 			rr := httptest.NewRecorder()
@@ -119,10 +122,11 @@ func testMetadataParse(t *testing.T, r *http.Response) response {
 	return metadataResponse
 }
 
-func initializeConfig(t *testing.T, basePath string) {
+func initializeConfig(t *testing.T, basePath string, issuer string) {
 	testConfig := &config.Config{
 		Server: config.Server{
 			BasePath: basePath,
+			Issuer:   issuer,
 		},
 	}
 	initializationError := config.Initialize(testConfig)

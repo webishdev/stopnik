@@ -82,7 +82,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 
 		metadataResponse := &response{
-			Issuer:                urlFromRequest.String(),
+			Issuer:                h.config.GetIssuer(requestData),
 			AuthorizationEndpoint: authorizationEndpoint.String(),
 			TokenEndpoint:         tokenEndpoint.String(),
 			IntrospectionEndpoint: introspectEndpoint.String(),

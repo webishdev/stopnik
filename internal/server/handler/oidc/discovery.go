@@ -106,7 +106,7 @@ func (h *DiscoveryHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 
 		metadataResponse := &oidcConfigurationResponse{
-			Issuer:                urlFromRequest.String(),
+			Issuer:                h.config.GetIssuer(requestData),
 			AuthorizationEndpoint: authorizationEndpoint.String(),
 			TokenEndpoint:         tokenEndpoint.String(),
 			IntrospectionEndpoint: introspectEndpoint.String(),

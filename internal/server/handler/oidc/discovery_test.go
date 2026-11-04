@@ -13,21 +13,24 @@ import (
 
 func Test_OidcConfiguration(t *testing.T) {
 	type basePathParameter struct {
-		basePath       string
-		expectedIssuer string
+		basePath        string
+		issuer          string
+		expectedIssuer  string
+		expectedBaseURL string
 	}
 
 	var basePathParameters = []basePathParameter{
-		{basePath: "", expectedIssuer: "http://example.com"},
-		{basePath: "/", expectedIssuer: "http://example.com"},
-		{basePath: "/auth", expectedIssuer: "http://example.com/auth"},
-		{basePath: "auth/", expectedIssuer: "http://example.com/auth"},
+		{basePath: "", expectedIssuer: "http://example.com", expectedBaseURL: "http://example.com"},
+		{basePath: "/", expectedIssuer: "http://example.com", expectedBaseURL: "http://example.com"},
+		{basePath: "/auth", expectedIssuer: "http://example.com/auth", expectedBaseURL: "http://example.com/auth"},
+		{basePath: "auth/", expectedIssuer: "http://example.com/auth", expectedBaseURL: "http://example.com/auth"},
+		{basePath: "/auth", issuer: "https://issuer.example.com", expectedIssuer: "https://issuer.example.com", expectedBaseURL: "http://example.com/auth"},
 	}
 
 	for _, test := range basePathParameters {
-		testMessage := fmt.Sprintf("OIDC configuration with base path '%s'", test.basePath)
+		testMessage := fmt.Sprintf("OIDC configuration with base path '%s' and issuer '%s'", test.basePath, test.issuer)
 		t.Run(testMessage, func(t *testing.T) {
-			initializeConfig(t, test.basePath)
+			initializeConfig(t, test.basePath, test.issuer)
 			oidcDiscoveryHandler := NewOidcDiscoveryHandler()
 
 			rr := httptest.NewRecorder()
@@ -47,23 +50,23 @@ func Test_OidcConfiguration(t *testing.T) {
 				t.Error("oidcConfigurationParse issuer did not match")
 			}
 
-			if oidcConfigurationParse.AuthorizationEndpoint != test.expectedIssuer+"/authorize" {
+			if oidcConfigurationParse.AuthorizationEndpoint != test.expectedBaseURL+"/authorize" {
 				t.Error("oidcConfigurationParse authorization_endpoint did not match")
 			}
 
-			if oidcConfigurationParse.TokenEndpoint != test.expectedIssuer+"/token" {
+			if oidcConfigurationParse.TokenEndpoint != test.expectedBaseURL+"/token" {
 				t.Error("oidcConfigurationParse token_endpoint did not match")
 			}
 
-			if oidcConfigurationParse.JWKsUri != test.expectedIssuer+"/keys" {
+			if oidcConfigurationParse.JWKsUri != test.expectedBaseURL+"/keys" {
 				t.Error("oidcConfigurationParse jwks_uri did not match")
 			}
 
-			if oidcConfigurationParse.IntrospectionEndpoint != test.expectedIssuer+"/introspect" {
+			if oidcConfigurationParse.IntrospectionEndpoint != test.expectedBaseURL+"/introspect" {
 				t.Error("oidcConfigurationParse introspection_endpoint did not match")
 			}
 
-			if oidcConfigurationParse.RevocationEndpoint != test.expectedIssuer+"/revoke" {
+			if oidcConfigurationParse.RevocationEndpoint != test.expectedBaseURL+"/revoke" {
 				t.Error("oidcConfigurationParse revocation_endpoint did not match")
 			}
 
@@ -85,7 +88,7 @@ func Test_OidcConfigurationNotAllowedHttpMethods(t *testing.T) {
 	for _, method := range testInvalidOidcConfigurationHttpMethods {
 		testMessage := fmt.Sprintf("OIDC configuration with unsupported method %s", method)
 		t.Run(testMessage, func(t *testing.T) {
-			initializeConfig(t, "")
+			initializeConfig(t, "", "")
 			oidcDiscoveryHandler := NewOidcDiscoveryHandler()
 
 			rr := httptest.NewRecorder()
@@ -119,10 +122,11 @@ func testOidcConfigurationParse(t *testing.T, r *http.Response) oidcConfiguratio
 	return oidcConfigurationResponse
 }
 
-func initializeConfig(t *testing.T, basePath string) {
+func initializeConfig(t *testing.T, basePath string, issuer string) {
 	testConfig := &config.Config{
 		Server: config.Server{
 			BasePath: basePath,
+			Issuer:   issuer,
 		},
 	}
 	initializationError := config.Initialize(testConfig)
