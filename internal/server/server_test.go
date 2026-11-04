@@ -115,6 +115,44 @@ func Test_Server(t *testing.T) {
 		}
 	})
 
+	t.Run("Register handlers with base path", func(t *testing.T) {
+		basePathConfig := &config.Config{
+			Server: config.Server{
+				BasePath: "/auth/",
+				ForwardAuth: config.ForwardAuth{
+					Enabled:     true,
+					ExternalUrl: "http://localhost:9090",
+				},
+			},
+		}
+		initializationError := config.Initialize(basePathConfig)
+		if initializationError != nil {
+			t.Fatal(initializationError)
+		}
+		patterns := &[]string{}
+		reg := func(pattern string, handler http.Handler) {
+			*patterns = append(*patterns, pattern)
+		}
+		registerHandlers(basePathConfig, reg)
+
+		expectedPatterns := []string{
+			"/auth" + endpoint.Health,
+			"/auth" + endpoint.Account,
+			"/auth" + endpoint.Logout,
+			"/auth" + basePathConfig.GetForwardAuthEndpoint(),
+			"/auth" + endpoint.Authorization,
+			"/auth" + endpoint.Token,
+			"/auth" + endpoint.Introspect,
+			"/auth" + endpoint.Revoke,
+			"/auth" + endpoint.Metadata,
+			"/auth" + endpoint.Keys,
+		}
+
+		if !slices.Equal(*patterns, expectedPatterns) {
+			t.Errorf("Incorrect patterns registered, expected %v got %v", expectedPatterns, *patterns)
+		}
+	})
+
 	for _, test := range testConfigParameters {
 		initializationError := config.Initialize(test.config)
 		if initializationError != nil {

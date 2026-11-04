@@ -2,6 +2,7 @@ package metadata
 
 import (
 	"github.com/lestrrat-go/jwx/v4/jwa"
+	"github.com/webishdev/stopnik/internal/config"
 	"github.com/webishdev/stopnik/internal/endpoint"
 	internalHttp "github.com/webishdev/stopnik/internal/http"
 	"github.com/webishdev/stopnik/internal/oauth2"
@@ -37,11 +38,13 @@ type response struct {
 }
 
 type Handler struct {
+	config       *config.Config
 	errorHandler *errorHandler.Handler
 }
 
 func NewMetadataHandler() *Handler {
 	return &Handler{
+		config:       config.GetConfigInstance(),
 		errorHandler: errorHandler.NewErrorHandler(),
 	}
 }
@@ -50,7 +53,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	log.AccessLogRequest(r)
 	if r.Method == http.MethodGet {
 		requestData := internalHttp.NewRequestData(r)
-		urlFromRequest, parseError := requestData.URL()
+		urlFromRequest, parseError := requestData.BaseURL(h.config.GetBasePath())
 		if parseError != nil {
 			h.errorHandler.InternalServerErrorHandler(w, r, parseError)
 			return
@@ -79,7 +82,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 
 		metadataResponse := &response{
-			Issuer:                requestData.IssuerString(),
+			Issuer:                urlFromRequest.String(),
 			AuthorizationEndpoint: authorizationEndpoint.String(),
 			TokenEndpoint:         tokenEndpoint.String(),
 			IntrospectionEndpoint: introspectEndpoint.String(),

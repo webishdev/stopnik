@@ -143,3 +143,55 @@ func Test_AssetsNotAllowedHttpMethods(t *testing.T) {
 		})
 	}
 }
+
+func Test_AssetsWithBasePath(t *testing.T) {
+	testConfig := &config.Config{
+		Server: config.Server{
+			BasePath: "/auth",
+		},
+	}
+
+	initializationError := config.Initialize(testConfig)
+	if initializationError != nil {
+		t.Fatal(initializationError)
+	}
+
+	assetsHandler := NewAssetHandler()
+
+	type assetHttpParameter struct {
+		path         string
+		expectedCode int
+		matches      bool
+	}
+
+	var testAssetsHttpParameters = []assetHttpParameter{
+		{path: "/auth/assets/styles.css", expectedCode: http.StatusOK, matches: true},
+		{path: "/auth/assets/logo.png", expectedCode: http.StatusOK, matches: true},
+		{path: "/auth/assets/foo.css", expectedCode: http.StatusNotFound, matches: true},
+		{path: "/assets/styles.css", matches: false},
+		{path: "/foo/assets/styles.css", matches: false},
+	}
+
+	for _, test := range testAssetsHttpParameters {
+		testMessage := fmt.Sprintf("Access assets %s with base path", test.path)
+		t.Run(testMessage, func(t *testing.T) {
+			request := httptest.NewRequest(http.MethodGet, test.path, nil)
+
+			matches := assetsHandler.Matches(request)
+			if matches != test.matches {
+				t.Errorf("matching values is wrong, %v != %v", test.matches, matches)
+			}
+
+			if !test.matches {
+				return
+			}
+
+			rr := httptest.NewRecorder()
+			assetsHandler.ServeHTTP(rr, request)
+
+			if rr.Code != test.expectedCode {
+				t.Errorf("handler returned wrong status code, %v != %v", rr.Code, test.expectedCode)
+			}
+		})
+	}
+}

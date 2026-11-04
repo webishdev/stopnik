@@ -1,6 +1,7 @@
 # Endpoints
 
-**STOPnik** provides the following endpoints
+**STOPnik** provides the following endpoints.
+When `server.basePath` is configured, all endpoints are prefixed with it, e.g. `/auth/account`.
 
 ## STOPnik
 

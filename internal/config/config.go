@@ -53,6 +53,7 @@ type ForwardAuth struct {
 type Server struct {
 	LogLevel              string      `yaml:"logLevel"`
 	Addr                  string      `yaml:"addr"`
+	BasePath              string      `yaml:"basePath"`
 	Cookies               Cookies     `yaml:"cookies"`
 	SecureCookie          *bool       `yaml:"secureCookie"`
 	Secret                string      `yaml:"secret"`
@@ -303,32 +304,8 @@ func Initialize(config *Config) error {
 
 // Validate validates the current Config and returns an error when necessary values are missing.
 func (config *Config) Validate() error {
-	if config.Server.Addr == "" {
-		return errors.New("no server address provided")
-	}
-
-	if config.Server.TLS.Addr != "" && config.Server.TLS.Keys.Key == "" {
-		return errors.New("key for TLS is missing")
-	}
-
-	if config.Server.TLS.Addr != "" && config.Server.TLS.Keys.Cert == "" {
-		return errors.New("certificate for TLS is missing")
-	}
-
-	if config.Server.ForwardAuth.Enabled && config.Server.ForwardAuth.ExternalUrl == "" {
-		return errors.New("external url in forward auth is missing or empty")
-	}
-
-	if config.GetAuthCookieName() == config.GetForwardAuthCookieName() {
-		return errors.New("auth cookie name should not equal forward auth cookie name")
-	}
-
-	if config.GetAuthCookieName() == config.GetMessageCookieName() {
-		return errors.New("auth cookie name should not equal message cookie name")
-	}
-
-	if config.GetForwardAuthCookieName() == config.GetMessageCookieName() {
-		return errors.New("forward auth cookie name should not equal message cookie name")
+	if serverError := config.validateServer(); serverError != nil {
+		return serverError
 	}
 
 	if len(config.Users) == 0 {
@@ -386,6 +363,43 @@ func (config *Config) Validate() error {
 				return errors.New("claim must contain at least one value, or a list of values")
 			}
 		}
+	}
+
+	return nil
+}
+
+// validateServer validates the Server part of the current Config.
+func (config *Config) validateServer() error {
+	if config.Server.Addr == "" {
+		return errors.New("no server address provided")
+	}
+
+	if config.Server.TLS.Addr != "" && config.Server.TLS.Keys.Key == "" {
+		return errors.New("key for TLS is missing")
+	}
+
+	if config.Server.TLS.Addr != "" && config.Server.TLS.Keys.Cert == "" {
+		return errors.New("certificate for TLS is missing")
+	}
+
+	if !isValidBasePath(config.Server.BasePath) {
+		return fmt.Errorf("invalid base path '%s'", config.Server.BasePath)
+	}
+
+	if config.Server.ForwardAuth.Enabled && config.Server.ForwardAuth.ExternalUrl == "" {
+		return errors.New("external url in forward auth is missing or empty")
+	}
+
+	if config.GetAuthCookieName() == config.GetForwardAuthCookieName() {
+		return errors.New("auth cookie name should not equal forward auth cookie name")
+	}
+
+	if config.GetAuthCookieName() == config.GetMessageCookieName() {
+		return errors.New("auth cookie name should not equal message cookie name")
+	}
+
+	if config.GetForwardAuthCookieName() == config.GetMessageCookieName() {
+		return errors.New("forward auth cookie name should not equal message cookie name")
 	}
 
 	return nil
@@ -532,7 +546,22 @@ func (config *Config) GetIssuer(requestData *internalHttp.RequestData) string {
 	if requestData == nil || !requestData.Valid() {
 		return cmp.Or(config.Server.Issuer, "STOPnik")
 	}
-	return cmp.Or(config.Server.Issuer, requestData.IssuerString())
+	return cmp.Or(config.Server.Issuer, requestData.IssuerString()+config.GetBasePath())
+}
+
+// GetBasePath returns the normalized path prefix under which all endpoints are served.
+// The result is either empty or starts with a slash and has no trailing slash, e.g. /auth.
+func (config *Config) GetBasePath() string {
+	basePath := strings.Trim(config.Server.BasePath, "/")
+	if basePath == "" {
+		return ""
+	}
+	return "/" + basePath
+}
+
+// GetCookiePath returns the path used for STOPnik cookies, which is the base path or the root path.
+func (config *Config) GetCookiePath() string {
+	return cmp.Or(config.GetBasePath(), "/")
 }
 
 // GetForwardAuthEnabled returns whether Traefik Forward Auth is enabled or not.
@@ -809,4 +838,15 @@ func mergeIntoSet[T any](values []T, value *T, valid func(*T) bool) store.Set[T]
 		set.Add(value)
 	}
 	return set
+}
+
+func isValidBasePath(basePath string) bool {
+	if basePath == "" {
+		return true
+	}
+	if strings.ContainsAny(basePath, "?#\\ \t\r\n") || strings.Contains(basePath, "//") {
+		return false
+	}
+	parsedBasePath, parseError := url.Parse(basePath)
+	return parseError == nil && parsedBasePath.Scheme == "" && parsedBasePath.Host == ""
 }

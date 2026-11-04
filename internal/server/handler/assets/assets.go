@@ -30,7 +30,7 @@ func NewAssetHandler() *Handler {
 func (h *Handler) Matches(r *http.Request) bool {
 	currentPath, _ := path.Split(r.URL.Path)
 	currentPath = strings.TrimSuffix(currentPath, "/")
-	return strings.HasSuffix(currentPath, "/assets")
+	return currentPath == h.config.GetBasePath()+"/assets"
 }
 
 func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -83,21 +83,8 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// getAssetFSPath maps a requested asset to the embedded resources, e.g. /auth/assets/styles.css to resources/styles.css.
 func getAssetFSPath(value string) string {
-	currentPath, currentFile := path.Split(value)
-	currentPath = strings.TrimPrefix(currentPath, "/")
-	currentPath = strings.TrimSuffix(currentPath, "/")
-	parts := strings.Split(currentPath, "/")
-
-	for i := len(parts) - 1; i >= 0; i-- {
-		part := parts[i]
-		if part == "assets" {
-			parts[i] = "resources"
-			break
-		}
-	}
-
-	adjustedParts := append(parts, currentFile)
-
-	return strings.Join(adjustedParts, "/")
+	_, currentFile := path.Split(value)
+	return path.Join("resources", currentFile)
 }

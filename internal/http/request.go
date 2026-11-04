@@ -69,6 +69,11 @@ func (r *RequestData) IssuerString() string {
 	return fmt.Sprintf("%s://%s", r.scheme, r.host)
 }
 
+// BaseURL returns the URL consisting of scheme, host and the given base path, without the request path or query.
+func (r *RequestData) BaseURL(basePath string) (*url.URL, error) {
+	return url.Parse(r.IssuerString() + basePath)
+}
+
 func (r *RequestData) URL() (*url.URL, error) {
 	uri := fmt.Sprintf("%s://%s%s%s%s", r.scheme, r.host, r.path, r.query, r.fragment)
 

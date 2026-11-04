@@ -187,7 +187,15 @@ func shutdownServer(server *http.Server) {
 	}
 }
 
-func registerHandlers(config *config.Config, handle func(pattern string, handler http.Handler)) {
+func registerHandlers(config *config.Config, register func(pattern string, handler http.Handler)) {
+	basePath := config.GetBasePath()
+	if basePath != "" {
+		log.Info("Endpoints will be served with base path %s", basePath)
+	}
+	handle := func(pattern string, handler http.Handler) {
+		register(basePath+pattern, handler)
+	}
+
 	keyManger := key.GetKeyMangerInstance()
 	authSessionManager := session.GetAuthSessionManagerInstance()
 	tokenManager := token2.GetTokenManagerInstance()
