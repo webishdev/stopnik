@@ -69,12 +69,18 @@ type StopnikServer struct {
 	serve             *ListenAndServe
 	serveTLS          *ListenAndServe
 	rwMutex           *sync.RWMutex
+	closed            bool
 }
 
 func NewStopnikServer() *StopnikServer {
 	rwMutex := &sync.RWMutex{}
 	listenAndServe := func(stopnikServer *StopnikServer, listener *net.Listener, server *http.Server) error {
 		rwMutex.Lock()
+		if stopnikServer.closed {
+			rwMutex.Unlock()
+			_ = (*listener).Close()
+			return http.ErrServerClosed
+		}
 		stopnikServer.httpServer = server
 		rwMutex.Unlock()
 		log.Info("Will accept connections at %s", server.Addr)
@@ -82,6 +88,11 @@ func NewStopnikServer() *StopnikServer {
 	}
 	listenAndServeTLS := func(stopnikServer *StopnikServer, listener *net.Listener, server *http.Server) error {
 		rwMutex.Lock()
+		if stopnikServer.closed {
+			rwMutex.Unlock()
+			_ = (*listener).Close()
+			return http.ErrServerClosed
+		}
 		stopnikServer.httpsServer = server
 		rwMutex.Unlock()
 		if stopnikServer.config.Server.TLS.Keys.Cert == "" || stopnikServer.config.Server.TLS.Keys.Key == "" {
@@ -112,6 +123,19 @@ func newStopnikServerWithServe(rwMutex *sync.RWMutex, mux *http.ServeMux, serve 
 		serveTLS:          &serveTLS,
 		rwMutex:           rwMutex,
 	}
+}
+
+// ResetInstances resets all singletons which depend on the current config.Config,
+// they will be created again on next access.
+func ResetInstances() {
+	template.ResetTemplateManagerInstance()
+	cookie.ResetCookieManagerInstance()
+	token2.ResetTokenManagerInstance()
+	key.ResetDefaultKeyLoaderInstance()
+	key.ResetKeyManagerInstance()
+	session.ResetForwardSessionManagerInstance()
+	session.ResetAuthSessionManagerInstance()
+	session.ResetLoginSessionManagerInstance()
 }
 
 func (stopnikServer *StopnikServer) Start() {
@@ -147,8 +171,9 @@ func (stopnikServer *StopnikServer) Start() {
 
 func (stopnikServer *StopnikServer) Shutdown() {
 	log.Info("Shutting down STOPnik...")
-	stopnikServer.rwMutex.RLock()
-	defer stopnikServer.rwMutex.RUnlock()
+	stopnikServer.rwMutex.Lock()
+	defer stopnikServer.rwMutex.Unlock()
+	stopnikServer.closed = true
 	if stopnikServer.httpServer != nil {
 		shutdownServer(stopnikServer.httpServer)
 	}

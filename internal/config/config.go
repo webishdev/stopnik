@@ -22,106 +22,106 @@ import (
 
 // Keys defines path to TSL certificate and key file.
 type Keys struct {
-	Cert string `yaml:"cert"`
-	Key  string `yaml:"key"`
+	Cert string `toml:"cert"`
+	Key  string `toml:"key"`
 }
 
 // TLS defines the Go like address to listen to and references the necessary Keys.
 type TLS struct {
-	Addr string `yaml:"addr"`
-	Keys Keys   `yaml:"keys"`
+	Addr string `toml:"addr"`
+	Keys Keys   `toml:"keys"`
 }
 
 // Cookies defines the name for HTTP cookies used by STOPnik.
 type Cookies struct {
-	AuthName        string `yaml:"authName"`
-	MessageName     string `yaml:"messageName"`
-	ForwardAuthName string `yaml:"forwardAuthName"`
+	AuthName        string `toml:"authName"`
+	MessageName     string `toml:"messageName"`
+	ForwardAuthName string `toml:"forwardAuthName"`
 }
 
 // ForwardAuth defines the configuration related to Traefik Forward Auth,
 // only used when ExternalUrl is provided.
 type ForwardAuth struct {
-	Enabled       bool     `yaml:"enabled"`
-	Endpoint      string   `yaml:"endpoint"`
-	ExternalUrl   string   `yaml:"externalUrl"`
-	ParameterName string   `yaml:"parameterName"`
-	Redirects     []string `yaml:"redirects"`
+	Enabled       bool     `toml:"enabled"`
+	Endpoint      string   `toml:"endpoint"`
+	ExternalUrl   string   `toml:"externalUrl"`
+	ParameterName string   `toml:"parameterName"`
+	Redirects     []string `toml:"redirects"`
 }
 
 // Server defines the main STOPnik server configuration.
 type Server struct {
-	LogLevel              string      `yaml:"logLevel"`
-	Addr                  string      `yaml:"addr"`
-	BasePath              string      `yaml:"basePath"`
-	Cookies               Cookies     `yaml:"cookies"`
-	SecureCookie          *bool       `yaml:"secureCookie"`
-	Secret                string      `yaml:"secret"`
-	PrivateKey            string      `yaml:"privateKey"`
-	TLS                   TLS         `yaml:"tls"`
-	LogoutRedirect        string      `yaml:"logoutRedirect"`
-	IntrospectScope       string      `yaml:"introspectScope"`
-	RevokeScope           string      `yaml:"revokeScopeScope"`
-	SessionTimeoutSeconds int         `yaml:"sessionTimeoutSeconds"`
-	Issuer                string      `yaml:"issuer"`
-	ForwardAuth           ForwardAuth `yaml:"forwardAuth"`
+	LogLevel              string      `toml:"logLevel"`
+	Addr                  string      `toml:"addr"`
+	BasePath              string      `toml:"basePath"`
+	Cookies               Cookies     `toml:"cookies"`
+	SecureCookie          *bool       `toml:"secureCookie"`
+	Secret                string      `toml:"secret"`
+	PrivateKey            string      `toml:"privateKey"`
+	TLS                   TLS         `toml:"tls"`
+	LogoutRedirect        string      `toml:"logoutRedirect"`
+	IntrospectScope       string      `toml:"introspectScope"`
+	RevokeScope           string      `toml:"revokeScopeScope"`
+	SessionTimeoutSeconds int         `toml:"sessionTimeoutSeconds"`
+	Issuer                string      `toml:"issuer"`
+	ForwardAuth           ForwardAuth `toml:"forwardAuth"`
 }
 
 // UserAddress defines the address for a specific user,
-// the definition provided in the YAML file will be mapped into values inside a JSON response.
+// the definition provided in the TOML file will be mapped into values inside a JSON response.
 type UserAddress struct {
 	Formatted  string `json:"formatted,omitempty"`
-	Street     string `yaml:"street" json:"street_address,omitempty"`
-	City       string `yaml:"city" json:"locality,omitempty"`
-	PostalCode string `yaml:"postalCode" json:"postal_code,omitempty"`
-	Region     string `yaml:"region" json:"region,omitempty"`
-	Country    string `yaml:"country" json:"country,omitempty"`
+	Street     string `toml:"street" json:"street_address,omitempty"`
+	City       string `toml:"city" json:"locality,omitempty"`
+	PostalCode string `toml:"postalCode" json:"postal_code,omitempty"`
+	Region     string `toml:"region" json:"region,omitempty"`
+	Country    string `toml:"country" json:"country,omitempty"`
 }
 
 // UserProfile defines the profile for a specific user,
-// the definition provided in the YAML file will be mapped into values inside a JSON response.
+// the definition provided in the TOML file will be mapped into values inside a JSON response.
 type UserProfile struct {
 	Subject           string `json:"sub,omitempty"`
 	Name              string `json:"name,omitempty"`
-	GivenName         string `yaml:"givenName" json:"given_name,omitempty"`
-	MiddleName        string `yaml:"middleName" json:"middle_name,omitempty"`
-	FamilyName        string `yaml:"familyName" json:"family_name,omitempty"`
-	Nickname          string `yaml:"nickname" json:"nickname,omitempty"`
-	PreferredUserName string `yaml:"preferredUserName" json:"preferred_username,omitempty"`
-	Gender            string `yaml:"gender" json:"gender,omitempty"`
-	BirthDate         string `yaml:"birthDate" json:"birthdate,omitempty"`
-	ZoneInfo          string `yaml:"zoneInfo" json:"zoneinfo,omitempty"`
-	Locale            string `yaml:"locale" json:"locale,omitempty"`
-	Website           string `yaml:"website" json:"website,omitempty"`
-	Profile           string `yaml:"profile" json:"profile,omitempty"`
-	Picture           string `yaml:"picture" json:"picture,omitempty"`
+	GivenName         string `toml:"givenName" json:"given_name,omitempty"`
+	MiddleName        string `toml:"middleName" json:"middle_name,omitempty"`
+	FamilyName        string `toml:"familyName" json:"family_name,omitempty"`
+	Nickname          string `toml:"nickname" json:"nickname,omitempty"`
+	PreferredUserName string `toml:"preferredUserName" json:"preferred_username,omitempty"`
+	Gender            string `toml:"gender" json:"gender,omitempty"`
+	BirthDate         string `toml:"birthDate" json:"birthdate,omitempty"`
+	ZoneInfo          string `toml:"zoneInfo" json:"zoneinfo,omitempty"`
+	Locale            string `toml:"locale" json:"locale,omitempty"`
+	Website           string `toml:"website" json:"website,omitempty"`
+	Profile           string `toml:"profile" json:"profile,omitempty"`
+	Picture           string `toml:"picture" json:"picture,omitempty"`
 	UpdatedAt         int64  `json:"updated_at,omitempty"`
 }
 
 type UserInformation struct {
-	Email         string       `yaml:"email" json:"email,omitempty"`
-	EmailVerified bool         `yaml:"emailVerified" json:"email_verified,omitempty"`
-	PhoneNumber   string       `yaml:"phoneNumber" json:"phone_number,omitempty"`
-	PhoneVerified bool         `yaml:"phoneNumberVerified" json:"phone_number_verified,omitempty"`
-	Address       *UserAddress `yaml:"address" json:"address,omitempty"`
+	Email         string       `toml:"email" json:"email,omitempty"`
+	EmailVerified bool         `toml:"emailVerified" json:"email_verified,omitempty"`
+	PhoneNumber   string       `toml:"phoneNumber" json:"phone_number,omitempty"`
+	PhoneVerified bool         `toml:"phoneNumberVerified" json:"phone_number_verified,omitempty"`
+	Address       *UserAddress `toml:"address" json:"address,omitempty"`
 }
 
 // User defines the general user entry in the configuration.
 type User struct {
-	Username        string          `yaml:"username"`
-	Password        string          `yaml:"password"`
-	Salt            string          `yaml:"salt"`
-	UserProfile     UserProfile     `yaml:"userProfile"`
-	UserInformation UserInformation `yaml:"userInformation"`
+	Username        string          `toml:"username"`
+	Password        string          `toml:"password"`
+	Salt            string          `toml:"salt"`
+	UserProfile     UserProfile     `toml:"userProfile"`
+	UserInformation UserInformation `toml:"userInformation"`
 }
 
 // claim defines additional claims with name and value
 type claim struct {
-	Name   string   `yaml:"name"`
-	Value  string   `yaml:"value"`
-	Values []string `yaml:"values"`
-	Scope  string   `yaml:"scope"`
-	Scopes []string `yaml:"scopes"`
+	Name   string   `toml:"name"`
+	Value  string   `toml:"value"`
+	Values []string `toml:"values"`
+	Scope  string   `toml:"scope"`
+	Scopes []string `toml:"scopes"`
 	scopes store.Set[string]
 }
 
@@ -132,45 +132,45 @@ type Claim interface {
 
 // Client defines the general client entry in the configuration.
 type Client struct {
-	Id                      string   `yaml:"id"`
-	ClientSecret            string   `yaml:"clientSecret"`
-	Salt                    string   `yaml:"salt"`
-	Oidc                    bool     `yaml:"oidc"`
-	AccessTTL               int      `yaml:"accessTTL"`
-	RefreshTTL              int      `yaml:"refreshTTL"`
-	IdTTL                   int      `yaml:"idTTL"`
-	Introspect              bool     `yaml:"introspect"`
-	Revoke                  bool     `yaml:"revoke"`
-	Redirects               []string `yaml:"redirects"`
-	OpaqueToken             bool     `yaml:"opaqueToken"`
-	PasswordFallbackAllowed bool     `yaml:"passwordFallbackAllowed"`
-	Audience                []string `yaml:"audience"`
-	PrivateKey              string   `yaml:"privateKey"`
-	Scopes                  []string `yaml:"scopes"`
-	GrantTypes              []string `yaml:"grantTypes"`
+	Id                      string   `toml:"id"`
+	ClientSecret            string   `toml:"clientSecret"`
+	Salt                    string   `toml:"salt"`
+	Oidc                    bool     `toml:"oidc"`
+	AccessTTL               int      `toml:"accessTTL"`
+	RefreshTTL              int      `toml:"refreshTTL"`
+	IdTTL                   int      `toml:"idTTL"`
+	Introspect              bool     `toml:"introspect"`
+	Revoke                  bool     `toml:"revoke"`
+	Redirects               []string `toml:"redirects"`
+	OpaqueToken             bool     `toml:"opaqueToken"`
+	PasswordFallbackAllowed bool     `toml:"passwordFallbackAllowed"`
+	Audience                []string `toml:"audience"`
+	PrivateKey              string   `toml:"privateKey"`
+	Scopes                  []string `toml:"scopes"`
+	GrantTypes              []string `toml:"grantTypes"`
 	isForwardAuth           bool
 }
 
 // UI defines the general web user interface entry in the configuration.
 type UI struct {
-	HideFooter                bool   `yaml:"hideFooter"`
-	HideLogo                  bool   `yaml:"hideLogo"`
-	HtmlTitle                 string `yaml:"htmlTitle"`
-	Title                     string `yaml:"title"`
-	FooterText                string `yaml:"footerText"`
-	LogoImage                 string `yaml:"logoImage"`
-	InvalidCredentialsMessage string `yaml:"invalidCredentialsMessage"`
-	ExpiredLoginMessage       string `yaml:"expiredLoginMessage"`
+	HideFooter                bool   `toml:"hideFooter"`
+	HideLogo                  bool   `toml:"hideLogo"`
+	HtmlTitle                 string `toml:"htmlTitle"`
+	Title                     string `toml:"title"`
+	FooterText                string `toml:"footerText"`
+	LogoImage                 string `toml:"logoImage"`
+	InvalidCredentialsMessage string `toml:"invalidCredentialsMessage"`
+	ExpiredLoginMessage       string `toml:"expiredLoginMessage"`
 }
 
 type Classification struct {
-	User      string   `yaml:"user"`
-	Users     []string `yaml:"users"`
-	Client    string   `yaml:"client"`
-	Clients   []string `yaml:"clients"`
-	Scope     string   `yaml:"scope"`
-	Scopes    []string `yaml:"scopes"`
-	Claims    []claim  `yaml:"claims"`
+	User      string   `toml:"user"`
+	Users     []string `toml:"users"`
+	Client    string   `toml:"client"`
+	Clients   []string `toml:"clients"`
+	Scope     string   `toml:"scope"`
+	Scopes    []string `toml:"scopes"`
+	Claims    []claim  `toml:"claims"`
 	usernames store.Set[string]
 	clientIds store.Set[string]
 	scopes    store.Set[string]
@@ -178,11 +178,11 @@ type Classification struct {
 
 // Config defines the root entry for the configuration.
 type Config struct {
-	Server            Server           `yaml:"server"`
-	Clients           []Client         `yaml:"clients"`
-	Users             []User           `yaml:"users"`
-	UI                UI               `yaml:"ui"`
-	Classification    []Classification `yaml:"classification"`
+	Server            Server           `toml:"server"`
+	Clients           []Client         `toml:"clients"`
+	Users             []User           `toml:"users"`
+	UI                UI               `toml:"ui"`
+	Classification    []Classification `toml:"classification"`
 	generatedSecret   string
 	userMap           map[string]*User
 	clientMap         map[string]*Client
@@ -216,6 +216,30 @@ func GetConfigInstance() *Config {
 func Initialize(config *Config) error {
 	configLock.Lock()
 	defer configLock.Unlock()
+
+	prepareError := prepare(config)
+	if prepareError != nil {
+		return prepareError
+	}
+
+	configSingleton = config
+
+	return nil
+}
+
+// Activate sets an already prepared Config, e.g. provided by Loader.ReadConfig, as the current singleton.
+func Activate(config *Config) {
+	configLock.Lock()
+	defer configLock.Unlock()
+
+	configSingleton = config
+}
+
+// prepare prepares a given Config without making it the current singleton.
+func prepare(config *Config) error {
+	config.oidc = false
+	config.logoImage = nil
+	config.forwardAuthClient = nil
 
 	for _, client := range config.Clients {
 		config.oidc = config.oidc || client.Oidc
@@ -296,8 +320,6 @@ func Initialize(config *Config) error {
 		}
 
 	}
-
-	configSingleton = config
 
 	return nil
 }

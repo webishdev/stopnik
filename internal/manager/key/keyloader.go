@@ -28,6 +28,13 @@ func GetDefaultKeyLoaderInstance() crypto.KeyLoader {
 	return keyLoaderSingleton
 }
 
+// ResetDefaultKeyLoaderInstance resets the current default key loader singleton, a new one is created on next access.
+func ResetDefaultKeyLoaderInstance() {
+	keyLoaderLock.Lock()
+	defer keyLoaderLock.Unlock()
+	keyLoaderSingleton = nil
+}
+
 func (defaultKeyLoader *defaultKeyLoader) LoadKeys(client *config.Client) (*crypto.ManagedKey, bool) {
 	key := defaultKeyLoader.keyManager.getClientKey(client)
 	if key == nil {

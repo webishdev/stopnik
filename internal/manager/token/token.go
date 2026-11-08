@@ -95,6 +95,13 @@ func GetTokenManagerInstance() *Manager {
 	return tokenManagerSingleton
 }
 
+// ResetTokenManagerInstance resets the current token manager singleton, a new one is created on next access.
+func ResetTokenManagerInstance() {
+	tokenManagerLock.Lock()
+	defer tokenManagerLock.Unlock()
+	tokenManagerSingleton = nil
+}
+
 func (tokenManager *Manager) GetAccessToken(token string) (*oauth2.AccessToken, bool) {
 	for _, currentClientStores := range tokenManager.clientStores {
 		accessTokenStore := *currentClientStores.accessTokenStore

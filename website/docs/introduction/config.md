@@ -1,10 +1,19 @@
 # Configuration
 
-**STOPnik** configuration is a simple YAML file.
+**STOPnik** configuration is a simple [TOML](https://toml.io/) file.
 
-By default **STOPnik** will use the `config.yml` in the same directory as the executable.
+By default **STOPnik** will use the `config.toml` in the same directory as the executable.
 
 The possible configuration options are listed in the next section.
+
+## Automatic reload
+
+**STOPnik** watches the configuration file and checks it for changes every 2 seconds.
+
+When the file changes, the new configuration is validated first, including referenced private keys, TLS certificates and the logo image.
+
+- A valid configuration is applied by restarting **STOPnik** in-process with it. Existing sessions and tokens are lost on restart.
+- An invalid configuration is not applied, a warning is logged and **STOPnik** keeps running with the previously loaded configuration.
 
 :::warning
 
@@ -14,7 +23,7 @@ As **STOPnik** is under heavy development right now, the configuration may chang
 
 ## Configuration file
 
-The configuration file (e.g. `config.yml`) may contain different root options which are described here as followed
+The configuration file (e.g. `config.toml`) may contain different root options which are described here as followed
 
 | Property                              | Description                  | Required |
 |---------------------------------------|------------------------------|----------|
@@ -329,7 +338,7 @@ If the parent classification has set scopes the scopes are used in addition to t
 
 ### Minimal configuration
 
-The shown `config.yml` is the minimal version possible.
+The shown `config.toml` is the minimal version possible.
 
 It only defines the HTTP port **STOPnik** should listen on, one client and one user.
 
@@ -340,117 +349,135 @@ After starting locally with this configuration, **STOPnik** will be accessible a
 - http://localhost:8080/account
 - http://localhost:8080/health
 
-```yaml
-server:
-  addr: :8080
-clients:
-  - id: testclient
-    clientSecret: $2a$10$xchSl0M6Yk43/6Lvvqzx5..sWJcgOp1wCPYUOVPGW4XBh.duYU4I6
-    redirects:
-      - https://oauth.pstmn.io/v1/callback
-users:
-  - username: foo
-    password: $2a$10$xchSl0M6Yk43/6Lvvqzx5..sWJcgOp1wCPYUOVPGW4XBh.duYU4I6
+```toml
+[server]
+addr = ":8080"
+
+[[clients]]
+id = "testclient"
+clientSecret = "$2a$10$xchSl0M6Yk43/6Lvvqzx5..sWJcgOp1wCPYUOVPGW4XBh.duYU4I6"
+redirects = ["https://oauth.pstmn.io/v1/callback"]
+
+[[users]]
+username = "foo"
+password = "$2a$10$xchSl0M6Yk43/6Lvvqzx5..sWJcgOp1wCPYUOVPGW4XBh.duYU4I6"
 ```
 
 ### Development configuration
 
-The shown `config.yml` is used during development and can be
+The shown `config.toml` is used during development and can be
 found in the repository.
 
-https://github.com/webishdev/stopnik/blob/main/config.yml
+https://github.com/webishdev/stopnik/blob/main/config.toml
 
 This configuration uses self-singed TLS certificates, keys and a privates key located in the `.test_files` folder.
 
-```yaml
-server:
-  # logLevel: debug
-  cookies:
-    authName: stopnik_auth
-    messageName: stopnik_message
-  #logoutRedirect: http://localhost:8080
-  forwardAuth:
-    enabled: true
-    externalUrl: http://localhost:9090
-    #externalUrl: http://stopnik.localhost:9090 #ext
-    redirects:
-      - http://localhost:9090/*
-      - http://whoami.localhost:9090/*
-  secret: WRYldij9ebtDZ5VJSsxNAfCZ
-  privateKey: ./.test_files/rsa256key.pem
-  addr: :8082
-  tls:
-    addr: :8081
-    keys:
-      cert: ./.test_files/server.crt
-      key: ./.test_files/server.key
-ui:
-#  hideFooter: true
-#  hideLogo: true
-#  footerText: Some nice line!
-#  title: Test realm
-clients:
-  - id: testclient
-    clientSecret: 43a77b3b7f74190654023e68a972b4b0dc21a90be9b85e80222d7bce31eb02ce3205a5fed49a7710afd0ba1fcb97b793d67b5b7ae69607461cdac1a235610dd8
-    salt: 123
-    accessTTL: 5
-    refreshTTL: 15
-    idTTL: 15
-    oidc: true
-    introspect: true
-    redirects:
-      - https://oauth.pstmn.io/v1/callback
-      - http://localhost:8080/session/callback
-      - http://localhost:5173/reporting/oidc-callback*
-      - http://localhost:8082/health
-  - id: testclient2
-    clientSecret: deb920477e822d9373831d5521749d3685a3c359504139eb3ff61c7d2fe91986b1978aa1a7834bb304762699b05da2700319e5d60c1183f6f9f66f9c6e73e34e
-    salt: abc
-    accessTTL: 5
-    refreshTTL: 15
-    opaqueToken: true
-    redirects:
-      - https://oauth.pstmn.io/v1/callback
-  - id: testclient3
-    clientSecret: 1efcbc37f7d7e2f9f8cf009b91c95b2b7b913b89d36a21a05da1e3cb396ed1ab0e596e2b649e9407367e40d852ac4d0abfcfc1c4227eb661385e9f2e0f3203ca
-    salt: 321
-    accessTTL: 5
-    refreshTTL: 15
-    privateKey: ./.test_files/ecdsa521key.pem
-    redirects:
-      - https://oauth.pstmn.io/v1/callback
-users:
-  - username: foo
-    password: 695e6f39f5ffd36ae60e0ade727c892d725531455a19c6035cb739d099e8f20e63d3fdfd3241888e38de1d8db85532dd65f817b12fe33ac7cdcc358ef6c8ea23
-    salt: moo
-    roles:
-      testclient:
-        - foo_role
-        - bar_role
-    userProfile:
-      givenName: John
-      familyName: Doe
-    userInformation:
-      email: jone.doe@foo.com
-      emailVerified: true
-      phoneNumber: 555 1234 5678
-      phoneVerified: true
-      address:
-        street: Mainstreet 1
-        city: Sometown
-        postalCode: 12345
-        country: Boom
-classification:
-  - user: foo
-    users: ['foo', 'bar', 'moo'] # 2nd definition of 'foo', will only be used once
-    client: testclient
-    scope: my_scope
-    claims:
-      - name: some
-        value: some_value
-        scope: blabla
-      - name: other
-        values:
-          - abc
-          - def
+```toml
+[server]
+# basePath = "foo"
+# logLevel = "debug"
+#logoutRedirect = "http://localhost:8080"
+#basePath = "/auth"
+secret = "WRYldij9ebtDZ5VJSsxNAfCZ"
+privateKey = "./.test_files/rsa256key.pem"
+addr = ":8082"
+
+[server.cookies]
+authName = "stopnik_auth"
+messageName = "stopnik_message"
+
+[server.forwardAuth]
+externalUrl = "http://localhost:9090"
+enabled = true
+#externalUrl = "http://stopnik.localhost:9090" #ext
+redirects = [
+  "http://localhost:9090/*",
+  "http://whoami.localhost:9090/*",
+]
+
+[server.tls]
+addr = ":8081"
+
+[server.tls.keys]
+cert = "./.test_files/server.crt"
+key = "./.test_files/server.key"
+
+[ui]
+#hideFooter = true
+#hideLogo = true
+#footerText = "Some nice line!"
+#title = "Test realm"
+
+[[clients]]
+id = "testclient"
+clientSecret = "43a77b3b7f74190654023e68a972b4b0dc21a90be9b85e80222d7bce31eb02ce3205a5fed49a7710afd0ba1fcb97b793d67b5b7ae69607461cdac1a235610dd8"
+salt = "123"
+accessTTL = 5
+refreshTTL = 15
+idTTL = 15
+oidc = true
+introspect = true
+passwordFallbackAllowed = true
+redirects = [
+  "https://oauth.pstmn.io/v1/callback",
+  "http://localhost:8080/session/callback",
+  "http://localhost:5173/reporting/oidc-callback*",
+  "http://localhost:8082/health",
+]
+
+[[clients]]
+id = "testclient2"
+clientSecret = "deb920477e822d9373831d5521749d3685a3c359504139eb3ff61c7d2fe91986b1978aa1a7834bb304762699b05da2700319e5d60c1183f6f9f66f9c6e73e34e"
+salt = "abc"
+accessTTL = 5
+refreshTTL = 15
+opaqueToken = true
+redirects = ["https://oauth.pstmn.io/v1/callback"]
+
+[[clients]]
+id = "testclient3"
+clientSecret = "1efcbc37f7d7e2f9f8cf009b91c95b2b7b913b89d36a21a05da1e3cb396ed1ab0e596e2b649e9407367e40d852ac4d0abfcfc1c4227eb661385e9f2e0f3203ca"
+salt = "321"
+accessTTL = 5
+refreshTTL = 15
+privateKey = "./.test_files/ecdsa521key.pem"
+redirects = ["https://oauth.pstmn.io/v1/callback"]
+
+[[users]]
+username = "foo"
+password = "$2a$10$jvXVHUYe.kb5njbxI2QUOOY/TDDi880X0jC01h1CrhUNagGN.KcDq"
+
+[users.roles]
+testclient = ["foo_role", "bar_role"]
+
+[users.userProfile]
+givenName = "John"
+familyName = "Doe"
+
+[users.userInformation]
+email = "jone.doe@foo.com"
+emailVerified = true
+phoneNumber = "555 1234 5678"
+phoneVerified = true
+
+[users.userInformation.address]
+street = "Mainstreet 1"
+city = "Sometown"
+postalCode = "12345"
+country = "Boom"
+
+[[classification]]
+user = "foo"
+users = ["foo", "bar", "moo"] # 2nd definition of 'foo', will only be used once
+client = "testclient"
+scope = "my_scope"
+
+[[classification.claims]]
+name = "some"
+value = "some_value"
+scope = "blabla"
+
+[[classification.claims]]
+name = "other"
+values = ["abc", "def"]
 ```

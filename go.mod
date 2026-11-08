@@ -3,9 +3,9 @@ module github.com/webishdev/stopnik
 go 1.27.3
 
 require (
+	github.com/BurntSushi/toml v1.6.0
 	github.com/lestrrat-go/jwx/v4 v4.6.0
 	golang.org/x/crypto v0.58.0
-	gopkg.in/yaml.v3 v3.0.1
 )
 
 require (
@@ -24,7 +24,6 @@ require (
 	github.com/Antonboom/errname v1.1.2 // indirect
 	github.com/Antonboom/nilnil v1.1.2 // indirect
 	github.com/Antonboom/testifylint v1.6.4 // indirect
-	github.com/BurntSushi/toml v1.6.0 // indirect
 	github.com/ClickHouse/clickhouse-go-linter v1.2.1 // indirect
 	github.com/Djarvur/go-err113 v0.1.1 // indirect
 	github.com/Masterminds/semver/v3 v3.5.0 // indirect
@@ -218,6 +217,7 @@ require (
 	google.golang.org/protobuf v1.36.12 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
+	gopkg.in/yaml.v3 v3.0.1 // indirect
 	honnef.co/go/tools v0.8.2 // indirect
 	mvdan.cc/gofumpt v0.12.0 // indirect
 	mvdan.cc/unparam v0.0.0-20260823230713-2fa3d841b0c8 // indirect

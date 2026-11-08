@@ -35,6 +35,13 @@ func GetForwardSessionManagerInstance() Manager[ForwardSession] {
 	return forwardSessionManagerSingleton
 }
 
+// ResetForwardSessionManagerInstance resets the current forward session manager singleton, a new one is created on next access.
+func ResetForwardSessionManagerInstance() {
+	forwardSessionManagerLock.Lock()
+	defer forwardSessionManagerLock.Unlock()
+	forwardSessionManagerSingleton = nil
+}
+
 func (forwardManager *ForwardManager) StartSession(forwardSession *ForwardSession) {
 	authSessionStore := *forwardManager.forwardSessionStore
 	authSessionStore.Set(forwardSession.Id, forwardSession)

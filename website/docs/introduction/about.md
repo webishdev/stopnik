@@ -7,7 +7,7 @@
 Currently, **STOPnik** only depends on
 
 - [github.com/lestrrat-go/jwx/v4 v4.6.0](https://pkg.go.dev/github.com/lestrrat-go/jwx/v4@v4.6.0) (handle JWT, JWK, JWE, etc&hellip;)
-- [gopkg.in/yaml.v3 v3.0.1](https://pkg.go.dev/gopkg.in/yaml.v3@v3.0.1) (parse YAML files)
+- [github.com/BurntSushi/toml v1.6.0](https://pkg.go.dev/github.com/BurntSushi/toml@v1.6.0) (parse TOML files)
 
 #### Development tools
 
@@ -44,7 +44,7 @@ Furthermore, it was also created to be used in a Homelab and VPS to replace the 
 which adds too much load to the VPS and has to many configuration possibilities.
 
 **STOPnik** does not have any persistence layer and will only work in-memory with the clients and users defined in the
-configuration file (`YAML`).
+configuration file (`TOML`).
 When restarted, all issued tokens will become invalid/forgotten by **STOPnik**.
 
 You still may consider using another authorization server.

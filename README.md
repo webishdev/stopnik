@@ -11,7 +11,7 @@
 The simple and small `OAuth2 | OpenId Connect` server that secures applications without hassle.
 
 **STOPnik** does not have any persistence layer and will only work in-memory with the clients and users defined in the
-configuration file (`YAML`).
+configuration file (`TOML`).
 When restarted, all issued tokens will become invalid/forgotten by **STOPnik**.
 
 This project was used to
@@ -66,10 +66,10 @@ More details about **STOPnik** can be found at https://stopnik.webish.dev/
 
 Docker images for `linux/amd64` and `linux/arm64` are published to the GitHub Container Registry with every release.
 
-The image expects the configuration file at `/config.yml`, e.g. to run with the [minimal configuration](minimal-config.yml)
+The image expects the configuration file at `/config.toml`, e.g. to run with the [minimal configuration](minimal-config.toml)
 
 ```bash
-docker run --rm -p 8080:8080 -v "$(pwd)/minimal-config.yml:/config.yml:ro" ghcr.io/webishdev/stopnik:latest
+docker run --rm -p 8080:8080 -v "$(pwd)/minimal-config.toml:/config.toml:ro" ghcr.io/webishdev/stopnik:latest
 ```
 
 Prebuilt binaries for Linux, macOS and Windows can be downloaded from the [releases](https://github.com/webishdev/stopnik/releases).
@@ -92,7 +92,7 @@ And then start **STOPnik** with
 ./stopnik
 ```
 
-By default the configuration is read from `config.yml` in the current folder, another file can be used with `./stopnik -file my-config.yml`.
+By default the configuration is read from `config.toml` in the current folder, another file can be used with `./stopnik -file my-config.toml`.
 
 Release binaries for specific platforms are built with the `Makefile` into the `bin` folder, e.g.
 

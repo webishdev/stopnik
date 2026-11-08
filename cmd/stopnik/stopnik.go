@@ -12,7 +12,7 @@ func main() {
 	isHelp := flag.Bool("help", false, "Show help message")
 	showVersion := flag.Bool("version", false, "Show version information")
 	askPassword := flag.Bool("password", false, "Ask for password to create a bcrypt hash")
-	configurationFile := flag.String("file", "config.yml", "Configuration file to use")
+	configurationFile := flag.String("file", "config.toml", "Configuration file to use")
 	flag.Parse()
 
 	if *isHelp {

@@ -5,7 +5,7 @@
 ```bash
 Usage of ./stopnik:
   -file string
-        Configuration file to use (default "config.yml")
+        Configuration file to use (default "config.toml")
   -help
         Show help message
   -password
@@ -26,7 +26,7 @@ The `-version` parameter will show the version information.
 ## Configuration file
 
 The `-file <location>` parameter can be used to point to a configuration file,
-otherwise **STOPnik** will try to read the `config.yml` from the working directory.
+otherwise **STOPnik** will try to read the `config.toml` from the working directory.
 
 ## Password
 

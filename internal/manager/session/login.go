@@ -43,6 +43,13 @@ func GetLoginSessionManagerInstance() LoginManager[LoginSession] {
 	return loginSessionManagerSingleton
 }
 
+// ResetLoginSessionManagerInstance resets the current login session manager singleton, a new one is created on next access.
+func ResetLoginSessionManagerInstance() {
+	loginSessionManagerLock.Lock()
+	defer loginSessionManagerLock.Unlock()
+	loginSessionManagerSingleton = nil
+}
+
 func (loginManager *loginManager) StartSession(loginSession *LoginSession) {
 	loginSessionStore := *loginManager.loginSessionStore
 	loginSession.StartTime = time.Now()

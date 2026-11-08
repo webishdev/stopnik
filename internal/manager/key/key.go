@@ -47,6 +47,28 @@ func GetKeyMangerInstance() *Manger {
 	return keyManagerSingleton
 }
 
+// ResetKeyManagerInstance resets the current key manager singleton, a new one is created on next access.
+func ResetKeyManagerInstance() {
+	keyManagerLock.Lock()
+	defer keyManagerLock.Unlock()
+	keyManagerSingleton = nil
+}
+
+// ValidateKeys checks whether all private keys referenced by the given config.Config can be loaded.
+func ValidateKeys(c *config.Config) error {
+	newStore := store.NewStore[crypto.ManagedKey]()
+	keyManager := &Manger{
+		keyStore: &newStore,
+	}
+
+	serverKeyError := keyManager.addSeverKey(c)
+	if serverKeyError != nil {
+		return serverKeyError
+	}
+
+	return keyManager.addClientKeys(c)
+}
+
 func (km *Manger) getClientKey(c *config.Client) *crypto.ManagedKey {
 	var result *crypto.ManagedKey
 	for _, mangedKey := range km.GetAllKeys() {

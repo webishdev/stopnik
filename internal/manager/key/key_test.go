@@ -127,7 +127,46 @@ func testSetupTestConfig(t *testing.T) {
 }
 
 func resetKeyManager() {
-	keyManagerLock.Lock()
-	defer keyManagerLock.Unlock()
-	keyManagerSingleton = nil
+	ResetKeyManagerInstance()
+}
+
+func Test_ValidateKeys(t *testing.T) {
+	type testValidateKeys struct {
+		name          string
+		serverKey     string
+		clientKey     string
+		expectedValid bool
+	}
+
+	var validateKeysParameter = []testValidateKeys{
+		{"no keys", "", "", true},
+		{"valid server key", "../../../.test_files/rsa256key.pem", "", true},
+		{"valid server and client key", "../../../.test_files/rsa256key.pem", "../../../.test_files/ecdsa521key.pem", true},
+		{"invalid server key", "../../../.test_files/invalidkey.pem", "", false},
+		{"missing client key", "", "../../../.test_files/missing.pem", false},
+	}
+
+	for _, test := range validateKeysParameter {
+		t.Run(test.name, func(t *testing.T) {
+			testConfig := &config.Config{
+				Server: config.Server{
+					PrivateKey: test.serverKey,
+				},
+				Clients: []config.Client{
+					{
+						Id:         "foo",
+						PrivateKey: test.clientKey,
+					},
+				},
+			}
+
+			validateError := ValidateKeys(testConfig)
+
+			if test.expectedValid && validateError != nil {
+				t.Errorf("expected keys to be valid, %v", validateError)
+			} else if !test.expectedValid && validateError == nil {
+				t.Error("expected keys to be invalid")
+			}
+		})
+	}
 }
