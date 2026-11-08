@@ -2,6 +2,7 @@ package oidc
 
 import (
 	"github.com/lestrrat-go/jwx/v4/jwa"
+	"github.com/webishdev/stopnik/internal/config"
 	"github.com/webishdev/stopnik/internal/endpoint"
 	internalHttp "github.com/webishdev/stopnik/internal/http"
 	"github.com/webishdev/stopnik/internal/oauth2"
@@ -58,11 +59,13 @@ type oidcConfigurationResponse struct {
 }
 
 type DiscoveryHandler struct {
+	config       *config.Config
 	errorHandler *errorHandler.Handler
 }
 
 func NewOidcDiscoveryHandler() *DiscoveryHandler {
 	return &DiscoveryHandler{
+		config:       config.GetConfigInstance(),
 		errorHandler: errorHandler.NewErrorHandler(),
 	}
 }
@@ -71,7 +74,7 @@ func (h *DiscoveryHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	log.AccessLogRequest(r)
 	if r.Method == http.MethodGet {
 		requestData := internalHttp.NewRequestData(r)
-		urlFromRequest, parseError := requestData.URL()
+		urlFromRequest, parseError := requestData.BaseURL(h.config.GetBasePath())
 		if parseError != nil {
 			h.errorHandler.InternalServerErrorHandler(w, r, parseError)
 			return
@@ -103,7 +106,7 @@ func (h *DiscoveryHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 
 		metadataResponse := &oidcConfigurationResponse{
-			Issuer:                requestData.IssuerString(),
+			Issuer:                h.config.GetIssuer(requestData),
 			AuthorizationEndpoint: authorizationEndpoint.String(),
 			TokenEndpoint:         tokenEndpoint.String(),
 			IntrospectionEndpoint: introspectEndpoint.String(),

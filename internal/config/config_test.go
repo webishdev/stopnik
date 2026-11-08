@@ -5,6 +5,8 @@ import (
 	internalHttp "github.com/webishdev/stopnik/internal/http"
 	"github.com/webishdev/stopnik/internal/oauth2"
 	"github.com/webishdev/stopnik/internal/system"
+	"net/http"
+	"net/http/httptest"
 	"reflect"
 	"testing"
 )
@@ -1582,6 +1584,97 @@ func Test_GetSecureCookie(t *testing.T) {
 			testConfig := &Config{Server: Server{SecureCookie: test.secureCookie}}
 			if result := testConfig.GetSecureCookie(); result != test.expected {
 				t.Errorf("result %t did not match %t", result, test.expected)
+			}
+		})
+	}
+}
+
+func Test_GetBasePath(t *testing.T) {
+	type basePathParameter struct {
+		basePath           string
+		expectedBasePath   string
+		expectedCookiePath string
+	}
+
+	var basePathParameters = []basePathParameter{
+		{"", "", "/"},
+		{"/", "", "/"},
+		{"/auth", "/auth", "/auth"},
+		{"auth", "/auth", "/auth"},
+		{"/auth/", "/auth", "/auth"},
+		{"/foo/bar", "/foo/bar", "/foo/bar"},
+	}
+
+	for _, test := range basePathParameters {
+		testMessage := fmt.Sprintf("Base path '%s'", test.basePath)
+		t.Run(testMessage, func(t *testing.T) {
+			testConfig := &Config{Server: Server{BasePath: test.basePath}}
+			if result := testConfig.GetBasePath(); result != test.expectedBasePath {
+				t.Errorf("base path %s did not match %s", result, test.expectedBasePath)
+			}
+			if result := testConfig.GetCookiePath(); result != test.expectedCookiePath {
+				t.Errorf("cookie path %s did not match %s", result, test.expectedCookiePath)
+			}
+		})
+	}
+}
+
+func Test_ValidateBasePath(t *testing.T) {
+	type basePathParameter struct {
+		basePath string
+		valid    bool
+	}
+
+	var basePathParameters = []basePathParameter{
+		{"", true},
+		{"/", true},
+		{"/auth", true},
+		{"/foo/bar/", true},
+		{"/auth?foo=bar", false},
+		{"/auth#foo", false},
+		{"//example.com", false},
+		{"http://example.com/auth", false},
+		{"/foo bar", false},
+		{"/foo\\bar", false},
+	}
+
+	for _, test := range basePathParameters {
+		testMessage := fmt.Sprintf("Base path '%s'", test.basePath)
+		t.Run(testMessage, func(t *testing.T) {
+			if result := isValidBasePath(test.basePath); result != test.valid {
+				t.Errorf("result %t did not match %t", result, test.valid)
+			}
+			if !test.valid {
+				testConfig := &Config{Server: Server{Addr: ":8080", BasePath: test.basePath}}
+				if validationError := testConfig.Validate(); validationError == nil {
+					t.Error("expected validation error for invalid base path")
+				}
+			}
+		})
+	}
+}
+
+func Test_GetIssuerWithBasePath(t *testing.T) {
+	requestData := internalHttp.NewRequestData(httptest.NewRequest(http.MethodGet, "/auth/token", nil))
+
+	type issuerParameter struct {
+		name           string
+		basePath       string
+		issuer         string
+		expectedIssuer string
+	}
+
+	var issuerParameters = []issuerParameter{
+		{"No base path", "", "", "http://example.com"},
+		{"Base path", "/auth", "", "http://example.com/auth"},
+		{"Configured issuer", "/auth", "https://issuer.example.com", "https://issuer.example.com"},
+	}
+
+	for _, test := range issuerParameters {
+		t.Run(test.name, func(t *testing.T) {
+			testConfig := &Config{Server: Server{BasePath: test.basePath, Issuer: test.issuer}}
+			if result := testConfig.GetIssuer(requestData); result != test.expectedIssuer {
+				t.Errorf("issuer %s did not match %s", result, test.expectedIssuer)
 			}
 		})
 	}

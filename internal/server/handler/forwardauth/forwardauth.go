@@ -119,7 +119,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	log.Info("Will redirect to %s", redirectUri.String())
 
-	parsedUri, parsedUriError := createUri(h.config.Server.ForwardAuth.ExternalUrl, endpoint.Authorization, func(query url.Values) {
+	parsedUri, parsedUriError := createUri(h.config.Server.ForwardAuth.ExternalUrl, h.config.GetBasePath()+endpoint.Authorization, func(query url.Values) {
 		query.Set(oauth2.ParameterResponseType, string(oauth2.RtCode))
 		query.Set(oauth2.ParameterClientId, forwardAuthClient.Id)
 		query.Set(oauth2.ParameterState, forwardSessionState)

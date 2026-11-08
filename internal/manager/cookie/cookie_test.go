@@ -186,3 +186,43 @@ func testAuthCookieValues(t *testing.T, cookie http.Cookie, maxAge int) {
 		t.Errorf("Cookie maxAge should be %d", maxAge)
 	}
 }
+
+func Test_CookiePathWithBasePath(t *testing.T) {
+	testConfig := &config.Config{
+		Server: config.Server{
+			BasePath: "/auth",
+		},
+	}
+	initializationError := config.Initialize(testConfig)
+	if initializationError != nil {
+		t.Fatal(initializationError)
+	}
+
+	cookieManager := newCookieManagerWithTime(time.Now)
+
+	authCookie, authCookieError := cookieManager.CreateAuthCookie("foo", "someId")
+	if authCookieError != nil {
+		t.Fatal(authCookieError)
+	}
+	if authCookie.Path != "/auth" {
+		t.Errorf("auth cookie path should be /auth, got %s", authCookie.Path)
+	}
+
+	deleteAuthCookie := cookieManager.DeleteAuthCookie()
+	if deleteAuthCookie.Path != "/auth" {
+		t.Errorf("delete auth cookie path should be /auth, got %s", deleteAuthCookie.Path)
+	}
+
+	messageCookie := cookieManager.CreateMessageCookie("foo")
+	if messageCookie.Path != "/auth" {
+		t.Errorf("message cookie path should be /auth, got %s", messageCookie.Path)
+	}
+
+	forwardAuthCookie, forwardAuthCookieError := cookieManager.CreateForwardAuthCookie("foo", "someId")
+	if forwardAuthCookieError != nil {
+		t.Fatal(forwardAuthCookieError)
+	}
+	if forwardAuthCookie.Path != "/" {
+		t.Errorf("forward auth cookie path should be /, got %s", forwardAuthCookie.Path)
+	}
+}

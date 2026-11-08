@@ -49,7 +49,7 @@ func (cookieManager *Manager) CreateMessageCookie(message string) http.Cookie {
 	return http.Cookie{
 		Name:     messageCookieName,
 		Value:    message,
-		Path:     "/",
+		Path:     cookieManager.config.GetCookiePath(),
 		MaxAge:   1,
 		HttpOnly: true,
 		Secure:   cookieManager.config.GetSecureCookie(),
@@ -71,7 +71,7 @@ func (cookieManager *Manager) DeleteAuthCookie() http.Cookie {
 	return http.Cookie{
 		Name:     authCookieName,
 		Value:    "",
-		Path:     "/",
+		Path:     cookieManager.config.GetCookiePath(),
 		MaxAge:   -1,
 		HttpOnly: true,
 		Secure:   cookieManager.config.GetSecureCookie(),
@@ -82,7 +82,7 @@ func (cookieManager *Manager) DeleteAuthCookie() http.Cookie {
 func (cookieManager *Manager) CreateAuthCookie(username string, loginSessionId string) (http.Cookie, error) {
 	authCookieName := cookieManager.config.GetAuthCookieName()
 	log.Debug("Creating %s auth cookie", authCookieName)
-	return cookieManager.createAuthCookie(authCookieName, username, loginSessionId)
+	return cookieManager.createAuthCookie(authCookieName, cookieManager.config.GetCookiePath(), username, loginSessionId)
 }
 
 func (cookieManager *Manager) ValidateAuthCookie(r *http.Request) (*config.User, *session.LoginSession, bool) {
@@ -94,7 +94,8 @@ func (cookieManager *Manager) ValidateAuthCookie(r *http.Request) (*config.User,
 func (cookieManager *Manager) CreateForwardAuthCookie(username string, loginSessionId string) (http.Cookie, error) {
 	forwardAuthCookieName := cookieManager.config.GetForwardAuthCookieName()
 	log.Debug("Creating %s forward auth cookie", forwardAuthCookieName)
-	return cookieManager.createAuthCookie(forwardAuthCookieName, username, loginSessionId)
+	// The forward auth cookie is set on responses for the protected application, therefore it uses the root path
+	return cookieManager.createAuthCookie(forwardAuthCookieName, "/", username, loginSessionId)
 }
 
 func (cookieManager *Manager) ValidateForwardAuthCookie(r *http.Request) (*config.User, *session.LoginSession, bool) {
@@ -103,7 +104,7 @@ func (cookieManager *Manager) ValidateForwardAuthCookie(r *http.Request) (*confi
 	return cookieManager.validateAuthCookie(forwardAuthCookieName, r)
 }
 
-func (cookieManager *Manager) createAuthCookie(name string, username string, loginSessionId string) (http.Cookie, error) {
+func (cookieManager *Manager) createAuthCookie(name string, path string, username string, loginSessionId string) (http.Cookie, error) {
 	value, err := cookieManager.generateAuthCookieValue(username, loginSessionId)
 	if err != nil {
 		return http.Cookie{}, err
@@ -111,7 +112,7 @@ func (cookieManager *Manager) createAuthCookie(name string, username string, log
 	return http.Cookie{
 		Name:     name,
 		Value:    value,
-		Path:     "/",
+		Path:     path,
 		MaxAge:   cookieManager.config.GetSessionTimeoutSeconds(),
 		HttpOnly: true,
 		Secure:   cookieManager.config.GetSecureCookie(),

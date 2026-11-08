@@ -32,6 +32,7 @@ Root entry named `server`
 |-------------------------------|---------------------------------------------------------------------------------------------------|----------|
 | `logLevel`                    | Log level                                                                                         | No       |
 | `addr`                        | [Go like address](https://pkg.go.dev/net#Dial), may contain IP and port                           | Yes      |
+| `basePath`                    | Path prefix for all endpoints, see [Base path](#base-path)                                        | No       |
 | [`cookies`](#cookies)         | Configuration related to cookie names                                                             | No       |
 | `secureCookie`                | Only send cookies via HTTPS, defaults to `true`                                                   | No       |
 | `secret`                      | Server secret                                                                                     | No       |
@@ -51,6 +52,21 @@ The issuer is used as `iss` value in tokens and in the metadata endpoints.
 When no `issuer` is configured, the issuer will be derived from the `Host` header of each request,
 which can be manipulated by a client. **STOPnik** will log a warning on startup in this case.
 Configure an `issuer` for production use.
+
+When a [base path](#base-path) is configured, the derived issuer contains the base path, e.g. `https://example.com/auth`.
+A configured `issuer` is used as it is.
+
+#### Base path
+
+With `basePath` all endpoints are served below the given path, e.g. with `basePath: /auth`
+the account page is available at `/auth/account` and the OIDC discovery at `/auth/.well-known/openid-configuration`.
+This allows running **STOPnik** behind a reverse proxy on a sub path, without stripping the prefix in the proxy.
+
+The URLs in the metadata endpoints and the `/authorize` URL used for [ForwardAuth](#forwardauth) contain the base path,
+the cookies of **STOPnik** are restricted to the base path.
+The ForwardAuth cookie is still set for `/`, as it is used for the protected application.
+
+When `basePath` is not set or set to `/`, all endpoints are served from the root path.
 
 #### Secure cookies
 

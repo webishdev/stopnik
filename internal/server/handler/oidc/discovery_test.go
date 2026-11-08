@@ -3,6 +3,7 @@ package oidc
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/webishdev/stopnik/internal/config"
 	"github.com/webishdev/stopnik/internal/endpoint"
 	"io"
 	"net/http"
@@ -11,47 +12,68 @@ import (
 )
 
 func Test_OidcConfiguration(t *testing.T) {
-	oidcDiscoveryHandler := NewOidcDiscoveryHandler()
-
-	rr := httptest.NewRecorder()
-	request := httptest.NewRequest(http.MethodGet, endpoint.Keys, nil)
-
-	oidcDiscoveryHandler.ServeHTTP(rr, request)
-
-	if rr.Code != http.StatusOK {
-		t.Errorf("handler returned wrong status code: got %v want %v", rr.Code, http.StatusOK)
+	type basePathParameter struct {
+		basePath        string
+		issuer          string
+		expectedIssuer  string
+		expectedBaseURL string
 	}
 
-	requestResponse := rr.Result()
-
-	oidcConfigurationParse := testOidcConfigurationParse(t, requestResponse)
-
-	if oidcConfigurationParse.Issuer != "http://example.com" {
-		t.Error("oidcConfigurationParse issuer did not match")
+	var basePathParameters = []basePathParameter{
+		{basePath: "", expectedIssuer: "http://example.com", expectedBaseURL: "http://example.com"},
+		{basePath: "/", expectedIssuer: "http://example.com", expectedBaseURL: "http://example.com"},
+		{basePath: "/auth", expectedIssuer: "http://example.com/auth", expectedBaseURL: "http://example.com/auth"},
+		{basePath: "auth/", expectedIssuer: "http://example.com/auth", expectedBaseURL: "http://example.com/auth"},
+		{basePath: "/auth", issuer: "https://issuer.example.com", expectedIssuer: "https://issuer.example.com", expectedBaseURL: "http://example.com/auth"},
 	}
 
-	if oidcConfigurationParse.AuthorizationEndpoint != "http://example.com/authorize" {
-		t.Error("oidcConfigurationParse authorization_endpoint did not match")
-	}
+	for _, test := range basePathParameters {
+		testMessage := fmt.Sprintf("OIDC configuration with base path '%s' and issuer '%s'", test.basePath, test.issuer)
+		t.Run(testMessage, func(t *testing.T) {
+			initializeConfig(t, test.basePath, test.issuer)
+			oidcDiscoveryHandler := NewOidcDiscoveryHandler()
 
-	if oidcConfigurationParse.TokenEndpoint != "http://example.com/token" {
-		t.Error("oidcConfigurationParse token_endpoint did not match")
-	}
+			rr := httptest.NewRecorder()
+			request := httptest.NewRequest(http.MethodGet, endpoint.Keys, nil)
 
-	if oidcConfigurationParse.JWKsUri != "http://example.com/keys" {
-		t.Error("oidcConfigurationParse jwks_uri did not match")
-	}
+			oidcDiscoveryHandler.ServeHTTP(rr, request)
 
-	if oidcConfigurationParse.IntrospectionEndpoint != "http://example.com/introspect" {
-		t.Error("oidcConfigurationParse introspection_endpoint did not match")
-	}
+			if rr.Code != http.StatusOK {
+				t.Errorf("handler returned wrong status code: got %v want %v", rr.Code, http.StatusOK)
+			}
 
-	if oidcConfigurationParse.RevocationEndpoint != "http://example.com/revoke" {
-		t.Error("oidcConfigurationParse revocation_endpoint did not match")
-	}
+			requestResponse := rr.Result()
 
-	if oidcConfigurationParse.ServiceDocumentation != "https://stopnik.webish.dev" {
-		t.Error("oidcConfigurationParse service_documentation did not match")
+			oidcConfigurationParse := testOidcConfigurationParse(t, requestResponse)
+
+			if oidcConfigurationParse.Issuer != test.expectedIssuer {
+				t.Error("oidcConfigurationParse issuer did not match")
+			}
+
+			if oidcConfigurationParse.AuthorizationEndpoint != test.expectedBaseURL+"/authorize" {
+				t.Error("oidcConfigurationParse authorization_endpoint did not match")
+			}
+
+			if oidcConfigurationParse.TokenEndpoint != test.expectedBaseURL+"/token" {
+				t.Error("oidcConfigurationParse token_endpoint did not match")
+			}
+
+			if oidcConfigurationParse.JWKsUri != test.expectedBaseURL+"/keys" {
+				t.Error("oidcConfigurationParse jwks_uri did not match")
+			}
+
+			if oidcConfigurationParse.IntrospectionEndpoint != test.expectedBaseURL+"/introspect" {
+				t.Error("oidcConfigurationParse introspection_endpoint did not match")
+			}
+
+			if oidcConfigurationParse.RevocationEndpoint != test.expectedBaseURL+"/revoke" {
+				t.Error("oidcConfigurationParse revocation_endpoint did not match")
+			}
+
+			if oidcConfigurationParse.ServiceDocumentation != "https://stopnik.webish.dev" {
+				t.Error("oidcConfigurationParse service_documentation did not match")
+			}
+		})
 	}
 }
 
@@ -66,6 +88,7 @@ func Test_OidcConfigurationNotAllowedHttpMethods(t *testing.T) {
 	for _, method := range testInvalidOidcConfigurationHttpMethods {
 		testMessage := fmt.Sprintf("OIDC configuration with unsupported method %s", method)
 		t.Run(testMessage, func(t *testing.T) {
+			initializeConfig(t, "", "")
 			oidcDiscoveryHandler := NewOidcDiscoveryHandler()
 
 			rr := httptest.NewRecorder()
@@ -97,4 +120,17 @@ func testOidcConfigurationParse(t *testing.T, r *http.Response) oidcConfiguratio
 	}
 
 	return oidcConfigurationResponse
+}
+
+func initializeConfig(t *testing.T, basePath string, issuer string) {
+	testConfig := &config.Config{
+		Server: config.Server{
+			BasePath: basePath,
+			Issuer:   issuer,
+		},
+	}
+	initializationError := config.Initialize(testConfig)
+	if initializationError != nil {
+		t.Fatal(initializationError)
+	}
 }
