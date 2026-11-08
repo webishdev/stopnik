@@ -1,5 +1,5 @@
 server:
-  basePath: foo
+  # basePath: foo
   # logLevel: debug
   cookies:
     authName: stopnik_auth
