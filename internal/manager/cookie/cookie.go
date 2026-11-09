@@ -33,13 +33,6 @@ func GetCookieManagerInstance() *Manager {
 	return cookieManagerSingleton
 }
 
-// ResetCookieManagerInstance resets the current cookie manager singleton, a new one is created on next access.
-func ResetCookieManagerInstance() {
-	cookieManagerLock.Lock()
-	defer cookieManagerLock.Unlock()
-	cookieManagerSingleton = nil
-}
-
 func newCookieManagerWithTime(now Now) *Manager {
 	configInstance := config.GetConfigInstance()
 	return &Manager{

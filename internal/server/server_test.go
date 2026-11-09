@@ -67,7 +67,7 @@ func Test_Server(t *testing.T) {
 		}
 		registerHandlers(emptyConfig, reg)
 
-		expectedHandlers := 9
+		expectedHandlers := 11
 		if len(*patterns) != expectedHandlers {
 			t.Errorf("Incorrect number of patterns registered, expected %v got %v", expectedHandlers, len(*patterns))
 		}
@@ -113,6 +113,16 @@ func Test_Server(t *testing.T) {
 		if !keysPattern {
 			t.Errorf("Keys endpoint not registered")
 		}
+
+		// Oidc 1.0 Core, always registered because clients are dynamic
+		oidcDiscoveryPattern := slices.Contains(*patterns, endpoint.OidcDiscovery)
+		if !oidcDiscoveryPattern {
+			t.Errorf("Oidc discovery endpoint not registered")
+		}
+		oidcUserInfoPattern := slices.Contains(*patterns, endpoint.OidcUserInfo)
+		if !oidcUserInfoPattern {
+			t.Errorf("Oidc user info endpoint not registered")
+		}
 	})
 
 	t.Run("Register handlers with base path", func(t *testing.T) {
@@ -146,6 +156,8 @@ func Test_Server(t *testing.T) {
 			"/auth" + endpoint.Revoke,
 			"/auth" + endpoint.Metadata,
 			"/auth" + endpoint.Keys,
+			"/auth" + endpoint.OidcDiscovery,
+			"/auth" + endpoint.OidcUserInfo,
 		}
 
 		if !slices.Equal(*patterns, expectedPatterns) {

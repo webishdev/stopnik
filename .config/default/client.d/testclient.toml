@@ -1,0 +1,15 @@
+id = "testclient"
+clientSecret = "43a77b3b7f74190654023e68a972b4b0dc21a90be9b85e80222d7bce31eb02ce3205a5fed49a7710afd0ba1fcb97b793d67b5b7ae69607461cdac1a235610dd8"
+salt = "123"
+accessTTL = 5
+refreshTTL = 15
+idTTL = 15
+oidc = true
+introspect = true
+passwordFallbackAllowed = true
+redirects = [
+  "https://oauth.pstmn.io/v1/callback",
+  "http://localhost:8080/session/callback",
+  "http://localhost:5173/reporting/oidc-callback*",
+  "http://localhost:8082/health",
+]

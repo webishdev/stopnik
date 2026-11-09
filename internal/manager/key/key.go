@@ -11,11 +11,16 @@ import (
 	"github.com/webishdev/stopnik/internal/crypto"
 	"github.com/webishdev/stopnik/internal/store"
 	"github.com/webishdev/stopnik/internal/system"
+	"github.com/webishdev/stopnik/log"
 	"sync"
 )
 
 type Manger struct {
-	keyStore *store.Store[crypto.ManagedKey]
+	config         *config.Config
+	mutex          *sync.Mutex
+	serverKey      *crypto.ManagedKey
+	keyStore       *store.Store[crypto.ManagedKey]
+	dynamicVersion uint64
 }
 
 var keyManagerLock = &sync.Mutex{}
@@ -26,19 +31,11 @@ func GetKeyMangerInstance() *Manger {
 	defer keyManagerLock.Unlock()
 	if keyManagerSingleton == nil {
 		currentConfig := config.GetConfigInstance()
-		newStore := store.NewStore[crypto.ManagedKey]()
-		keyManager := &Manger{
-			keyStore: &newStore,
-		}
+		keyManager := newKeyManager(currentConfig)
 
 		serverKeyError := keyManager.addSeverKey(currentConfig)
 		if serverKeyError != nil {
 			system.Error(serverKeyError)
-		}
-
-		clientKeyError := keyManager.addClientKeys(currentConfig)
-		if clientKeyError != nil {
-			system.Error(clientKeyError)
 		}
 
 		keyManagerSingleton = keyManager
@@ -47,26 +44,23 @@ func GetKeyMangerInstance() *Manger {
 	return keyManagerSingleton
 }
 
-// ResetKeyManagerInstance resets the current key manager singleton, a new one is created on next access.
-func ResetKeyManagerInstance() {
-	keyManagerLock.Lock()
-	defer keyManagerLock.Unlock()
-	keyManagerSingleton = nil
-}
-
-// ValidateKeys checks whether all private keys referenced by the given config.Config can be loaded.
-func ValidateKeys(c *config.Config) error {
+func newKeyManager(c *config.Config) *Manger {
 	newStore := store.NewStore[crypto.ManagedKey]()
-	keyManager := &Manger{
+	return &Manger{
+		config:   c,
+		mutex:    &sync.Mutex{},
 		keyStore: &newStore,
 	}
+}
 
-	serverKeyError := keyManager.addSeverKey(c)
-	if serverKeyError != nil {
-		return serverKeyError
-	}
+// ValidateServerKey checks whether the private key of the server referenced by the given config.Config can be loaded.
+func ValidateServerKey(c *config.Config) error {
+	return newKeyManager(c).addSeverKey(c)
+}
 
-	return keyManager.addClientKeys(c)
+// ValidateClientKey checks whether the private key referenced by the given config.Client can be loaded.
+func ValidateClientKey(client *config.Client) error {
+	return newKeyManager(nil).addClientKey(client)
 }
 
 func (km *Manger) getClientKey(c *config.Client) *crypto.ManagedKey {
@@ -86,7 +80,26 @@ func (km *Manger) getClientKey(c *config.Client) *crypto.ManagedKey {
 	return result
 }
 
+// GetAllKeys returns the server key and the keys of all currently loaded clients.
+// Client keys are loaded again, when the dynamic configuration changed.
 func (km *Manger) GetAllKeys() []*crypto.ManagedKey {
+	km.mutex.Lock()
+	defer km.mutex.Unlock()
+
+	if km.config != nil && km.config.GetDynamicVersion() != km.dynamicVersion {
+		km.dynamicVersion = km.config.GetDynamicVersion()
+		newStore := store.NewStore[crypto.ManagedKey]()
+		km.keyStore = &newStore
+		if km.serverKey != nil {
+			km.addManagedKey(km.serverKey)
+		}
+		for _, client := range km.config.GetClients() {
+			if clientKeyError := km.addClientKey(client); clientKeyError != nil {
+				log.Error("Private key for client %s could not be loaded: %v", client.Id, clientKeyError)
+			}
+		}
+	}
+
 	keyStore := *km.keyStore
 	return keyStore.GetValues()
 }
@@ -104,28 +117,26 @@ func (km *Manger) addSeverKey(c *config.Config) error {
 		}
 
 		managedKey.Server = true
+		km.serverKey = managedKey
 		km.addManagedKey(managedKey)
 	}
 
 	return nil
 }
 
-func (km *Manger) addClientKeys(c *config.Config) error {
-
-	for _, client := range c.Clients {
-		if client.PrivateKey != "" {
-			signingPrivateKey, loadError := crypto.LoadPrivateKey(client.PrivateKey)
-			if loadError != nil {
-				return loadError
-			}
-			managedKey, convertError := km.convert(signingPrivateKey)
-			if convertError != nil {
-				return convertError
-			}
-
-			managedKey.Clients = []*config.Client{&client}
-			km.addManagedKey(managedKey)
+func (km *Manger) addClientKey(client *config.Client) error {
+	if client.PrivateKey != "" {
+		signingPrivateKey, loadError := crypto.LoadPrivateKey(client.PrivateKey)
+		if loadError != nil {
+			return loadError
 		}
+		managedKey, convertError := km.convert(signingPrivateKey)
+		if convertError != nil {
+			return convertError
+		}
+
+		managedKey.Clients = []*config.Client{client}
+		km.addManagedKey(managedKey)
 	}
 
 	return nil

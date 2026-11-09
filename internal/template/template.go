@@ -45,13 +45,6 @@ func GetTemplateManagerInstance() *Manager {
 	return templateManagerSingleton
 }
 
-// ResetTemplateManagerInstance resets the current template manager singleton, a new one is created on next access.
-func ResetTemplateManagerInstance() {
-	templateManagerLock.Lock()
-	defer templateManagerLock.Unlock()
-	templateManagerSingleton = nil
-}
-
 func addTemplates(main *template.Template) bytes.Buffer {
 	var tpl bytes.Buffer
 

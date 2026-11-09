@@ -25,10 +25,7 @@ type response struct {
 }
 
 func Test_Keys(t *testing.T) {
-	testConfig := &config.Config{
-		Server: config.Server{
-			PrivateKey: "../../../../.test_files/rsa256key.pem",
-		},
+	testConfigEntries := config.Entries{
 		Clients: []config.Client{
 			{
 				Id:           "foo",
@@ -50,10 +47,18 @@ func Test_Keys(t *testing.T) {
 			},
 		},
 	}
+	testConfig := &config.Config{
+		Server: config.Server{
+			PrivateKey: "../../../../.test_files/rsa256key.pem",
+		},
+	}
 
 	initializationError := config.Initialize(testConfig)
 	if initializationError != nil {
 		t.Fatal(initializationError)
+	}
+	if applyError := testConfig.ApplyEntries(testConfigEntries); applyError != nil {
+		t.Fatal(applyError)
 	}
 
 	keyManger := key.GetKeyMangerInstance()

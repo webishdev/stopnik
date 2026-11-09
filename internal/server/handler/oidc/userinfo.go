@@ -35,6 +35,10 @@ func NewOidcUserInfoHandler(tokenManager *token.Manager) *UserInfoHandler {
 
 func (h *UserInfoHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	log.AccessLogRequest(r)
+	if !h.config.GetOidc() {
+		h.errorHandler.NotFoundHandler(w, r)
+		return
+	}
 	if r.Method == http.MethodGet || r.Method == http.MethodPost {
 		response := &UserInfoResponse{}
 		validAccessToken, valid := h.tokenManager.ValidateAccessTokenRequest(r)

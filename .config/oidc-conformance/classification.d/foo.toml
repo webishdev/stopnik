@@ -1,0 +1,5 @@
+user = "foo"
+
+[[claims]]
+name = "role"
+values = ["foo_role", "bar_role"]

@@ -1,0 +1,12 @@
+[server]
+logLevel = "debug"
+secret = "WRYldij9ebtDZ5VJSsxNAfCZ"
+privateKey = "./.test_files/rsa256key.pem"
+addr = ":8082"
+
+[server.tls]
+addr = ":8083"
+
+[server.tls.keys]
+cert = "./.test_files/server.crt"
+key = "./.test_files/server.key"

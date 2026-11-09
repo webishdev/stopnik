@@ -19,14 +19,18 @@ func Test_Cookie(t *testing.T) {
 		return mockedTime
 	}
 
-	testConfig := &config.Config{
+	testConfigEntries := config.Entries{
 		Users: []config.User{
 			{Username: "foo", Password: "d82c4eb5261cb9c8aa9855edd67d1bd10482f41529858d925094d173fa662aa91ff39bc5b188615273484021dfb16fd8284cf684ccf0fc795be3aa2fc1e6c181"},
 		},
 	}
+	testConfig := &config.Config{}
 	initializationError := config.Initialize(testConfig)
 	if initializationError != nil {
 		t.Fatal(initializationError)
+	}
+	if applyError := testConfig.ApplyEntries(testConfigEntries); applyError != nil {
+		t.Fatal(applyError)
 	}
 
 	t.Run("Create and validate auth cookie", func(t *testing.T) {

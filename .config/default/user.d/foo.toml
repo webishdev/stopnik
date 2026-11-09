@@ -1,0 +1,21 @@
+username = "foo"
+password = "$2a$10$jvXVHUYe.kb5njbxI2QUOOY/TDDi880X0jC01h1CrhUNagGN.KcDq"
+
+[roles]
+testclient = ["foo_role", "bar_role"]
+
+[userProfile]
+givenName = "John"
+familyName = "Doe"
+
+[userInformation]
+email = "jone.doe@foo.com"
+emailVerified = true
+phoneNumber = "555 1234 5678"
+phoneVerified = true
+
+[userInformation.address]
+street = "Mainstreet 1"
+city = "Sometown"
+postalCode = "12345"
+country = "Boom"

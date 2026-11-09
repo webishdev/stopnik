@@ -133,4 +133,16 @@ func initializeConfig(t *testing.T, basePath string, issuer string) {
 	if initializationError != nil {
 		t.Fatal(initializationError)
 	}
+	applyError := testConfig.ApplyEntries(config.Entries{
+		Clients: []config.Client{
+			{
+				Id:        "foo",
+				Oidc:      true,
+				Redirects: []string{"https://example.com/callback"},
+			},
+		},
+	})
+	if applyError != nil {
+		t.Fatal(applyError)
+	}
 }

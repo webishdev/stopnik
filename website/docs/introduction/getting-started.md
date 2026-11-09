@@ -71,7 +71,7 @@ Starting from Shell
 > stopnik 
 STOPnik development - none
 
-open config.toml: no such file or directory
+open .config/default/config.toml: no such file or directory
 ```
   </TabItem>
   <TabItem value="docker" label="Docker">
@@ -80,7 +80,7 @@ Starting with Docker
 > docker run --rm ghcr.io/webishdev/stopnik:latest
 STOPnik development - none
 
-open config.toml: no such file or directory
+open .config/default/config.toml: no such file or directory
 ```
   </TabItem>
   <TabItem value="podman" label="Podman">
@@ -89,7 +89,7 @@ Starting with Podman
 > podman run --rm ghcr.io/webishdev/stopnik:latest
 STOPnik development - none
 
-open config.toml: no such file or directory
+open .config/default/config.toml: no such file or directory
 ```
   </TabItem>
 </Tabs>
@@ -100,18 +100,19 @@ To continue a configuration must be provided.
 
 :::
 
-For the binary variant just put a `config.toml` into the same directory as the binary.
+For the binary variant put the static configuration into `.config/default/config.toml` relative to the working directory,
+and clients, users and classifications into the `client.d`, `user.d` and `classification.d` folders next to it.
 
-For the container variant the `config.toml` should be mounted into the container. It may be also necessary to mount the necessery TLS certificates and private keys used for signing tokens.
+For the container variant the `.config/default` folder should be mounted into the container. It may be also necessary to mount the necessery TLS certificates and private keys used for signing tokens.
 
-The following command line show how to start the container when the Git repository was cloned and the provided `config.toml` and the test certificates (inside `.test_files` folder) are used.
+The following command line show how to start the container when the Git repository was cloned and the provided `.config/default` configuration and the test certificates (inside `.test_files` folder) are used.
 
 <Tabs>
   <TabItem value="docker" label="Docker">
 Starting with Docker
 ```bash
-> docker run --rm -p 8080:8080 -p 8081:8081 -v ${PWD}/config.toml:/config.toml -v ${PWD}/.test_files:/.test_files ghcr.io/webishdev/stopnik:latest
-time=2024-08-23T10:30:15.774Z level=INFO msg="Config loaded from config.toml"
+> docker run --rm -p 8080:8080 -p 8081:8081 -v ${PWD}/.config/default:/.config/default -v ${PWD}/.test_files:/.test_files ghcr.io/webishdev/stopnik:latest
+time=2024-08-23T10:30:15.774Z level=INFO msg="Config loaded from .config/default/config.toml"
 time=2024-08-23T10:30:15.780Z level=INFO msg="Will accept TLS connections at [::]:8081"
 time=2024-08-23T10:30:15.780Z level=ERROR msg="Error starting server: open server.crt: no such file or directory"
 time=2024-08-23T10:30:15.780Z level=INFO msg="Will accept connections at [::]:8080"
@@ -120,8 +121,8 @@ time=2024-08-23T10:30:15.780Z level=INFO msg="Will accept connections at [::]:80
   <TabItem value="podman" label="Podman">
 Starting with Podman
 ```bash
-> podman run --rm -p 8080:8080 -p 8081:8081 -v ${PWD}/config.toml:/config.toml -v ${PWD}/.test_files:/.test_files ghcr.io/webishdev/stopnik:latest
-time=2024-08-23T10:30:15.774Z level=INFO msg="Config loaded from config.toml"
+> podman run --rm -p 8080:8080 -p 8081:8081 -v ${PWD}/.config/default:/.config/default -v ${PWD}/.test_files:/.test_files ghcr.io/webishdev/stopnik:latest
+time=2024-08-23T10:30:15.774Z level=INFO msg="Config loaded from .config/default/config.toml"
 time=2024-08-23T10:30:15.780Z level=INFO msg="Will accept TLS connections at [::]:8081"
 time=2024-08-23T10:30:15.780Z level=ERROR msg="Error starting server: open server.crt: no such file or directory"
 time=2024-08-23T10:30:15.780Z level=INFO msg="Will accept connections at [::]:8080"

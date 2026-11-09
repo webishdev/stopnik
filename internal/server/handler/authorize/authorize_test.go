@@ -1209,7 +1209,7 @@ func Test_AuthorizeRequestObjectNotSupported(t *testing.T) {
 }
 
 func createTestConfig(t *testing.T) *config.Config {
-	testConfig := &config.Config{
+	testConfigEntries := config.Entries{
 		Clients: []config.Client{
 			{
 				Id:           "foo",
@@ -1234,10 +1234,14 @@ func createTestConfig(t *testing.T) *config.Config {
 			},
 		},
 	}
+	testConfig := &config.Config{}
 
 	initializationError := config.Initialize(testConfig)
 	if initializationError != nil {
 		t.Fatal(initializationError)
+	}
+	if applyError := testConfig.ApplyEntries(testConfigEntries); applyError != nil {
+		t.Fatal(applyError)
 	}
 	return testConfig
 }

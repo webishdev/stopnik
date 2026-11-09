@@ -1,0 +1,10 @@
+id = "oidc" # pw: bar
+clientSecret = "1efcbc37f7d7e2f9f8cf009b91c95b2b7b913b89d36a21a05da1e3cb396ed1ab0e596e2b649e9407367e40d852ac4d0abfcfc1c4227eb661385e9f2e0f3203ca"
+salt = "321"
+accessTTL = 30
+refreshTTL = 45
+idTTL = 45
+oidc = true
+passwordFallbackAllowed = true
+privateKey = "./.test_files/ecdsa521key.pem"
+redirects = ["https://localhost.emobix.co.uk:8443/test/a/instructions-example/callback"]

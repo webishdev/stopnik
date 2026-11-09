@@ -13,7 +13,6 @@ import (
 	"github.com/webishdev/stopnik/internal/system"
 	logger "github.com/webishdev/stopnik/log"
 	"os"
-	"time"
 )
 
 // printVersion prints the provided version and git hash value.
@@ -41,72 +40,54 @@ func readPassword() {
 	fmt.Printf("Hashed value is: %s\n\n", result)
 }
 
-// configurationCheckInterval defines how often the configuration file is checked for changes.
-const configurationCheckInterval = 2 * time.Second
-
-// start starts the STOPnik server configured by the provided configurationFile.
-// The configuration file is watched, a valid change restarts the server with the new configuration,
-// an invalid change is ignored and the previous configuration stays active.
+// start starts the STOPnik server configured by the provided static configurationFile.
+// The static configuration is loaded once, the dynamic configuration (clients, users and classifications)
+// is loaded from its directories and watched for changes when enabled.
 func start(configurationFile *string) error {
-	configLoader := config.NewConfigLoader(os.ReadFile, toml.Unmarshal)
-	readAndValidate := func(name string) (*config.Config, error) {
-		return readConfiguration(name, configLoader)
-	}
-
-	initialConfig, configError := readAndValidate(*configurationFile)
+	currentConfig, configError := loadStaticConfiguration(*configurationFile)
 	if configError != nil {
 		fmt.Printf("STOPnik %s - %s\n\n", Version, GitHash)
 		fmt.Printf("%v", configError)
 		return configError
 	}
 
-	applyConfiguration(*configurationFile, initialConfig)
-
-	reloads := make(chan *config.Config, 1)
-	watcher := config.NewWatcher(*configurationFile, configurationCheckInterval, readAndValidate, func(nextConfig *config.Config) {
-		// only the latest valid configuration is of interest
-		select {
-		case <-reloads:
-		default:
-		}
-		reloads <- nextConfig
-	})
-	defer watcher.Close()
-
-	signals := system.GetSignalChannel()
-
-	for {
-		stopnikServer := server.NewStopnikServer()
-		done := make(chan struct{})
-		go func() {
-			stopnikServer.Start()
-			close(done)
-		}()
-
-		select {
-		case sig := <-signals:
-			logger.Debug("Received signal %s", sig)
-			stopnikServer.Shutdown()
-			<-done
-			return nil
-		case nextConfig := <-reloads:
-			stopnikServer.Shutdown()
-			<-done
-			server.ResetInstances()
-			applyConfiguration(*configurationFile, nextConfig)
-		}
+	logger.SetLogLevel(currentConfig.Server.LogLevel)
+	logger.Info("Config loaded from %s", *configurationFile)
+	if currentConfig.Server.Issuer == "" {
+		logger.Warn("No issuer configured, the issuer will be derived from the Host header of each request, configure server.issuer to avoid manipulated issuer values")
 	}
+
+	dynamicStore := config.NewDynamicStore(currentConfig, toml.Unmarshal, key.ValidateClientKey)
+	dynamicStore.Load()
+	if currentConfig.Dynamic.Watch {
+		logger.Info("Watching dynamic configuration every %s", currentConfig.GetDynamicInterval())
+		watcher := config.NewWatcher(dynamicStore, currentConfig.GetDynamicInterval())
+		defer watcher.Close()
+	}
+
+	stopnikServer := server.NewStopnikServer()
+
+	go func() {
+		sig := <-system.GetSignalChannel()
+		logger.Debug("Received signal %s", sig)
+		stopnikServer.Shutdown()
+	}()
+
+	stopnikServer.Start()
+
+	return nil
 }
 
-// readConfiguration reads and validates the configuration without applying it.
-// Beside the configuration itself, referenced private keys and TLS certificates are validated.
-func readConfiguration(name string, configLoader config.Loader) (*config.Config, error) {
-	currentConfig, configError := configLoader.ReadConfig(name)
-	if configError != nil {
+// loadStaticConfiguration loads and validates the static configuration and makes it the current one.
+// Beside the configuration itself, the referenced server private key and TLS certificates are validated.
+func loadStaticConfiguration(name string) (*config.Config, error) {
+	configLoader := config.NewConfigLoader(os.ReadFile, toml.Unmarshal)
+	if configError := configLoader.LoadConfig(name, true); configError != nil {
 		return nil, configError
 	}
+	currentConfig := config.GetConfigInstance()
 
-	keyError := key.ValidateKeys(currentConfig)
+	keyError := key.ValidateServerKey(currentConfig)
 	if keyError != nil {
 		return nil, keyError
 	}
@@ -119,18 +100,4 @@ func readConfiguration(name string, configLoader config.Loader) (*config.Config,
 	}
 
 	return currentConfig, nil
-}
-
-// applyConfiguration makes the given, already validated and prepared configuration the current one.
-func applyConfiguration(name string, currentConfig *config.Config) {
-	config.Activate(currentConfig)
-
-	logger.SetLogLevel(currentConfig.Server.LogLevel)
-	logger.Info("Config loaded from %s", name)
-	if currentConfig.GetOidc() {
-		logger.Info("OpenId Connect is enabled")
-	}
-	if currentConfig.Server.Issuer == "" {
-		logger.Warn("No issuer configured, the issuer will be derived from the Host header of each request, configure server.issuer to avoid manipulated issuer values")
-	}
 }

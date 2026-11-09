@@ -1,19 +1,46 @@
 # Configuration
 
-**STOPnik** configuration is a simple [TOML](https://toml.io/) file.
+**STOPnik** configuration is split into a static and a dynamic part, both written in [TOML](https://toml.io/).
 
-By default **STOPnik** will use the `config.toml` in the same directory as the executable.
+- The **static configuration** contains the [`server`](#server-configuration) and [`ui`](#user-interface-configuration) settings.
+  It is loaded, validated and applied once while **STOPnik** starts. Changes require a restart.
+- The **dynamic configuration** contains [clients](#clients), [users](#users) and [classifications](#classification).
+  Each entry is a single TOML file inside the folders `client.d`, `user.d` and `classification.d`.
 
-The possible configuration options are listed in the next section.
+By default **STOPnik** will use the static configuration `.config/default/config.toml` relative to the working directory,
+another file can be used with the [`-file`](../advanced/cmd.md#configuration-file) parameter.
+The dynamic configuration folders are expected next to the static configuration file, e.g.
 
-## Automatic reload
+```
+.config/default/
+├── config.toml
+├── client.d/
+│   └── testclient.toml
+├── user.d/
+│   └── foo.toml
+└── classification.d/
+    └── foo-testclient.toml
+```
 
-**STOPnik** watches the configuration file and checks it for changes every 2 seconds.
+The possible configuration options are listed in the next sections.
 
-When the file changes, the new configuration is validated first, including referenced private keys, TLS certificates and the logo image.
+## Dynamic configuration
 
-- A valid configuration is applied by restarting **STOPnik** in-process with it. Existing sessions and tokens are lost on restart.
-- An invalid configuration is not applied, a warning is logged and **STOPnik** keeps running with the previously loaded configuration.
+All `*.toml` files inside the dynamic configuration folders are loaded during start up, in alphabetical order.
+Every file is loaded and validated on its own, including referenced private keys of clients.
+
+- A valid file is applied.
+- An invalid file is skipped and a warning is logged, all other files are still applied.
+- When a client id or username is defined in more than one file, the first file wins and the other ones are skipped.
+
+When `watch` is enabled in the [`dynamic`](#dynamic-configuration-settings) settings, the folders are checked for changes,
+by default every 2 seconds.
+
+- A new or changed file is loaded, validated and applied, existing sessions and tokens stay valid.
+- When a changed file becomes invalid, a warning is logged and the previously loaded entry stays active.
+- When a file is removed, its entry is removed as well.
+
+So to add a new user, just create a new TOML file in `user.d`.
 
 :::warning
 
@@ -21,17 +48,15 @@ As **STOPnik** is under heavy development right now, the configuration may chang
 
 :::
 
-## Configuration file
+## Static configuration file
 
-The configuration file (e.g. `config.toml`) may contain different root options which are described here as followed
+The static configuration file (e.g. `.config/default/config.toml`) may contain different root options which are described here as followed
 
-| Property                              | Description                  | Required |
-|---------------------------------------|------------------------------|----------|
-| [`server`](#server-configuration)     | Server configuration         | Yes      |
-| [`ui`](#user-interface-configuration) | User interface configuration | No       |
-| [`clients`](#clients)                 | List of clients              | Yes      |
-| [`users`](#users)                     | List of users                | Yes      |
-| [`classification`](#classification)   | Classification               | No       |
+| Property                                         | Description                          | Required |
+|--------------------------------------------------|--------------------------------------|----------|
+| [`server`](#server-configuration)                | Server configuration                 | Yes      |
+| [`ui`](#user-interface-configuration)            | User interface configuration         | No       |
+| [`dynamic`](#dynamic-configuration-settings)     | Dynamic configuration settings       | No       |
 
 ### Server configuration
 
@@ -152,13 +177,40 @@ Root entry named `ui`
 | `invalidCredentialsMessage` | Message to show for invalid credentials | No       |
 | `expiredLoginMessage`       | Message to show when login expired      | No       |
 
+### Dynamic configuration settings
+
+Root entry named `dynamic`
+
+| Property          | Description                                                       | Required |
+|-------------------|-------------------------------------------------------------------|----------|
+| `watch`           | Watch the dynamic configuration folders for changes               | No       |
+| `interval`        | Seconds between checks for changes, defaults to `2`               | No       |
+| `clients`         | Folder containing client files, defaults to `client.d`            | No       |
+| `users`           | Folder containing user files, defaults to `user.d`                | No       |
+| `classifications` | Folder containing classification files, defaults to `classification.d` | No       |
+
+Relative folders are resolved against the folder of the static configuration file.
+
+```toml
+[dynamic]
+watch = true
+interval = 5
+users = "/etc/stopnik/users"
+```
+
+## Dynamic configuration files
+
 ### Clients
 
-List of clients
+Each file inside `client.d` defines exactly one client, e.g. `client.d/testclient.toml`
 
-Root entry `clients`
+```toml
+id = "testclient"
+clientSecret = "$2a$10$xchSl0M6Yk43/6Lvvqzx5..sWJcgOp1wCPYUOVPGW4XBh.duYU4I6"
+redirects = ["https://oauth.pstmn.io/v1/callback"]
+```
 
-Each entry may contain the following options
+A client file may contain the following options
 
 | Property                  | Description                                             | Required |
 |---------------------------|---------------------------------------------------------|----------|
@@ -182,6 +234,8 @@ Each entry may contain the following options
 For `clientSecret` and `salt` see, [Command line - Password](../advanced/cmd.md#password)
 
 If no `clientSecret` is provided, the client is handled as public client, otherwise it will become a confidential client.
+
+The OpenId Connect endpoints (discovery and user info) are only available while at least one loaded client has `oidc` enabled.
 Public clients must use [PKCE](https://datatracker.ietf.org/doc/html/rfc7636) for the authorization code grant.
 
 #### Scopes
@@ -207,11 +261,18 @@ Requests for grant types which are not allowed are rejected with `unauthorized_c
 
 ### Users
 
-List of users
+Each file inside `user.d` defines exactly one user, e.g. `user.d/foo.toml`
 
-Root entry `users`
+```toml
+username = "foo"
+password = "$2a$10$xchSl0M6Yk43/6Lvvqzx5..sWJcgOp1wCPYUOVPGW4XBh.duYU4I6"
 
-Each entry may contain the following options
+[userProfile]
+givenName = "John"
+familyName = "Doe"
+```
+
+A user file may contain the following options
 
 | Property                               | Description                                                     | Required |
 |----------------------------------------|-----------------------------------------------------------------|----------|
@@ -230,7 +291,7 @@ The same applies to failed client authentications for a client id.
 
 User profile which will be used for OpenId Connect UserInfo
 
-Entry `users[n].userProfile`
+Entry `userProfile`
 
 Each entry may contain the following options
 
@@ -252,7 +313,7 @@ Each entry may contain the following options
 
 User information which will be used for OpenId Connect UserInfo
 
-Entry `users[n].userInformation`
+Entry `userInformation`
 
 Each entry may contain the following options
 
@@ -268,7 +329,7 @@ Each entry may contain the following options
 
 User address which will be used for OpenId Connect UserInfo
 
-Entry `users[n].userInformation.address`
+Entry `userInformation.address`
 
 Each entry may contain the following options
 
@@ -282,15 +343,22 @@ Each entry may contain the following options
 
 ### Classification
 
-List of classification entries
+Each file inside `classification.d` defines exactly one classification, e.g. `classification.d/foo-testclient.toml`
 
-Root entry `classification`
+```toml
+user = "foo"
+client = "testclient"
+
+[[claims]]
+name = "role"
+values = ["admin", "user"]
+```
 
 A classification entry allows to add specific claims to access token (if is a JWT), to ID token and to the user info endpoint described in [OpenID Connect Core 1.0](../advanced/endpoints.md#openid-connect-core-10)
 
 When `scope` or `scopes` are used, the listed `claims` will only be returned if the scope was requested.
 
-Each entry may contain the following options
+A classification file may contain the following options
 
 | Property            | Description       | Required |
 |---------------------|-------------------|----------|
@@ -312,7 +380,7 @@ Values for `user` + `users`, `client` + `clients`, `scope` + `scopes` will be us
 
 List of client claims
 
-Entry `classification[n].calims`
+Entry `claims`
 
 Each entry may contain the following options
 
@@ -338,9 +406,11 @@ If the parent classification has set scopes the scopes are used in addition to t
 
 ### Minimal configuration
 
-The shown `config.toml` is the minimal version possible.
+The minimal configuration only defines the HTTP port **STOPnik** should listen on, one client and one user.
 
-It only defines the HTTP port **STOPnik** should listen on, one client and one user.
+It can be found in the repository at
+
+https://github.com/webishdev/stopnik/tree/main/.config/minimal
 
 Client secret and user password are both the bcrypt hash for `bar`.
 
@@ -349,135 +419,35 @@ After starting locally with this configuration, **STOPnik** will be accessible a
 - http://localhost:8080/account
 - http://localhost:8080/health
 
+`.config/minimal/config.toml`
+
 ```toml
 [server]
 addr = ":8080"
+```
 
-[[clients]]
+`.config/minimal/client.d/testclient.toml`
+
+```toml
 id = "testclient"
 clientSecret = "$2a$10$xchSl0M6Yk43/6Lvvqzx5..sWJcgOp1wCPYUOVPGW4XBh.duYU4I6"
 redirects = ["https://oauth.pstmn.io/v1/callback"]
+```
 
-[[users]]
+`.config/minimal/user.d/foo.toml`
+
+```toml
 username = "foo"
 password = "$2a$10$xchSl0M6Yk43/6Lvvqzx5..sWJcgOp1wCPYUOVPGW4XBh.duYU4I6"
 ```
 
 ### Development configuration
 
-The shown `config.toml` is used during development and can be
-found in the repository.
+The configuration used during development can be found in the repository.
 
-https://github.com/webishdev/stopnik/blob/main/config.toml
+https://github.com/webishdev/stopnik/tree/main/.config/default
 
-This configuration uses self-singed TLS certificates, keys and a privates key located in the `.test_files` folder.
+This configuration uses self-singed TLS certificates, keys and a privates key located in the `.test_files` folder
+and watches the dynamic configuration for changes.
 
-```toml
-[server]
-# basePath = "foo"
-# logLevel = "debug"
-#logoutRedirect = "http://localhost:8080"
-#basePath = "/auth"
-secret = "WRYldij9ebtDZ5VJSsxNAfCZ"
-privateKey = "./.test_files/rsa256key.pem"
-addr = ":8082"
-
-[server.cookies]
-authName = "stopnik_auth"
-messageName = "stopnik_message"
-
-[server.forwardAuth]
-externalUrl = "http://localhost:9090"
-enabled = true
-#externalUrl = "http://stopnik.localhost:9090" #ext
-redirects = [
-  "http://localhost:9090/*",
-  "http://whoami.localhost:9090/*",
-]
-
-[server.tls]
-addr = ":8081"
-
-[server.tls.keys]
-cert = "./.test_files/server.crt"
-key = "./.test_files/server.key"
-
-[ui]
-#hideFooter = true
-#hideLogo = true
-#footerText = "Some nice line!"
-#title = "Test realm"
-
-[[clients]]
-id = "testclient"
-clientSecret = "43a77b3b7f74190654023e68a972b4b0dc21a90be9b85e80222d7bce31eb02ce3205a5fed49a7710afd0ba1fcb97b793d67b5b7ae69607461cdac1a235610dd8"
-salt = "123"
-accessTTL = 5
-refreshTTL = 15
-idTTL = 15
-oidc = true
-introspect = true
-passwordFallbackAllowed = true
-redirects = [
-  "https://oauth.pstmn.io/v1/callback",
-  "http://localhost:8080/session/callback",
-  "http://localhost:5173/reporting/oidc-callback*",
-  "http://localhost:8082/health",
-]
-
-[[clients]]
-id = "testclient2"
-clientSecret = "deb920477e822d9373831d5521749d3685a3c359504139eb3ff61c7d2fe91986b1978aa1a7834bb304762699b05da2700319e5d60c1183f6f9f66f9c6e73e34e"
-salt = "abc"
-accessTTL = 5
-refreshTTL = 15
-opaqueToken = true
-redirects = ["https://oauth.pstmn.io/v1/callback"]
-
-[[clients]]
-id = "testclient3"
-clientSecret = "1efcbc37f7d7e2f9f8cf009b91c95b2b7b913b89d36a21a05da1e3cb396ed1ab0e596e2b649e9407367e40d852ac4d0abfcfc1c4227eb661385e9f2e0f3203ca"
-salt = "321"
-accessTTL = 5
-refreshTTL = 15
-privateKey = "./.test_files/ecdsa521key.pem"
-redirects = ["https://oauth.pstmn.io/v1/callback"]
-
-[[users]]
-username = "foo"
-password = "$2a$10$jvXVHUYe.kb5njbxI2QUOOY/TDDi880X0jC01h1CrhUNagGN.KcDq"
-
-[users.roles]
-testclient = ["foo_role", "bar_role"]
-
-[users.userProfile]
-givenName = "John"
-familyName = "Doe"
-
-[users.userInformation]
-email = "jone.doe@foo.com"
-emailVerified = true
-phoneNumber = "555 1234 5678"
-phoneVerified = true
-
-[users.userInformation.address]
-street = "Mainstreet 1"
-city = "Sometown"
-postalCode = "12345"
-country = "Boom"
-
-[[classification]]
-user = "foo"
-users = ["foo", "bar", "moo"] # 2nd definition of 'foo', will only be used once
-client = "testclient"
-scope = "my_scope"
-
-[[classification.claims]]
-name = "some"
-value = "some_value"
-scope = "blabla"
-
-[[classification.claims]]
-name = "other"
-values = ["abc", "def"]
-```
+Further examples are available in `.config/oidc-conformance` (used for the OpenID Connect conformance tests) and `.config/exoknox`.

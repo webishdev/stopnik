@@ -1,0 +1,13 @@
+user = "foo"
+users = ["foo", "bar", "moo"] # 2nd definition of 'foo', will only be used once
+client = "testclient"
+scope = "my_scope"
+
+[[claims]]
+name = "some"
+value = "some_value"
+scope = "blabla"
+
+[[claims]]
+name = "other"
+values = ["abc", "def"]

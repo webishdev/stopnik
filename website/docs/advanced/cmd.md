@@ -5,7 +5,7 @@
 ```bash
 Usage of ./stopnik:
   -file string
-        Configuration file to use (default "config.toml")
+        Static configuration file to use (default ".config/default/config.toml")
   -help
         Show help message
   -password
@@ -25,8 +25,11 @@ The `-version` parameter will show the version information.
 
 ## Configuration file
 
-The `-file <location>` parameter can be used to point to a configuration file,
-otherwise **STOPnik** will try to read the `config.toml` from the working directory.
+The `-file <location>` parameter can be used to point to a static configuration file,
+otherwise **STOPnik** will try to read the `.config/default/config.toml` from the working directory.
+
+The dynamic configuration folders `client.d`, `user.d` and `classification.d` are expected next to the static configuration file,
+see [Configuration](../introduction/config.md).
 
 ## Password
 

@@ -38,9 +38,10 @@ type ValidAccessToken struct {
 }
 
 type Manager struct {
-	config       *config.Config
-	keyLoader    crypto.KeyLoader
-	clientStores map[string]*clientStores
+	config          *config.Config
+	keyLoader       crypto.KeyLoader
+	clientStores    map[string]*clientStores
+	clientStoresMux *sync.RWMutex
 }
 
 type IdTokenInput struct {
@@ -64,46 +65,58 @@ func GetTokenManagerInstance() *Manager {
 		currentConfig := config.GetConfigInstance()
 		keyLoader := key.GetDefaultKeyLoaderInstance()
 		tokenManagerSingleton = &Manager{
-			config:       currentConfig,
-			keyLoader:    keyLoader,
-			clientStores: make(map[string]*clientStores),
-		}
-
-		var allClients []config.Client
-
-		forwardAuthClient, forwardAuthClientExists := currentConfig.GetForwardAuthClient()
-		if forwardAuthClientExists {
-			allClients = append(currentConfig.Clients, *forwardAuthClient)
-		} else {
-			allClients = currentConfig.Clients
-		}
-
-		for _, client := range allClients {
-			accessStoreTime := time.Minute*time.Duration(client.GetAccessTTL()) + time.Minute*time.Duration(1)
-			refreshStoreTime := time.Minute*time.Duration(client.GetRefreshTTL()) + time.Minute*time.Duration(1)
-			accessTokenStore := store.NewTimedStore[oauth2.AccessToken](accessStoreTime)
-			refreshTokenStore := store.NewTimedStore[oauth2.RefreshToken](refreshStoreTime)
-			authorizationCodeStore := store.NewDefaultTimedStore[string]()
-			stores := &clientStores{
-				accessTokenStore:       &accessTokenStore,
-				refreshTokenStore:      &refreshTokenStore,
-				authorizationCodeStore: &authorizationCodeStore,
-			}
-			tokenManagerSingleton.clientStores[client.Id] = stores
+			config:          currentConfig,
+			keyLoader:       keyLoader,
+			clientStores:    make(map[string]*clientStores),
+			clientStoresMux: &sync.RWMutex{},
 		}
 	}
 	return tokenManagerSingleton
 }
 
-// ResetTokenManagerInstance resets the current token manager singleton, a new one is created on next access.
-func ResetTokenManagerInstance() {
-	tokenManagerLock.Lock()
-	defer tokenManagerLock.Unlock()
-	tokenManagerSingleton = nil
+// getClientStores returns the stores for the given client, they are created on first access
+// because clients can be added by the dynamic configuration at any time.
+func (tokenManager *Manager) getClientStores(client *config.Client) *clientStores {
+	tokenManager.clientStoresMux.RLock()
+	stores, exists := tokenManager.clientStores[client.Id]
+	tokenManager.clientStoresMux.RUnlock()
+	if exists {
+		return stores
+	}
+
+	tokenManager.clientStoresMux.Lock()
+	defer tokenManager.clientStoresMux.Unlock()
+	if stores, exists = tokenManager.clientStores[client.Id]; exists {
+		return stores
+	}
+
+	accessStoreTime := time.Minute*time.Duration(client.GetAccessTTL()) + time.Minute*time.Duration(1)
+	refreshStoreTime := time.Minute*time.Duration(client.GetRefreshTTL()) + time.Minute*time.Duration(1)
+	accessTokenStore := store.NewTimedStore[oauth2.AccessToken](accessStoreTime)
+	refreshTokenStore := store.NewTimedStore[oauth2.RefreshToken](refreshStoreTime)
+	authorizationCodeStore := store.NewDefaultTimedStore[string]()
+	stores = &clientStores{
+		accessTokenStore:       &accessTokenStore,
+		refreshTokenStore:      &refreshTokenStore,
+		authorizationCodeStore: &authorizationCodeStore,
+	}
+	tokenManager.clientStores[client.Id] = stores
+	return stores
+}
+
+// allClientStores returns the stores of all clients which were used so far.
+func (tokenManager *Manager) allClientStores() []*clientStores {
+	tokenManager.clientStoresMux.RLock()
+	defer tokenManager.clientStoresMux.RUnlock()
+	result := make([]*clientStores, 0, len(tokenManager.clientStores))
+	for _, stores := range tokenManager.clientStores {
+		result = append(result, stores)
+	}
+	return result
 }
 
 func (tokenManager *Manager) GetAccessToken(token string) (*oauth2.AccessToken, bool) {
-	for _, currentClientStores := range tokenManager.clientStores {
+	for _, currentClientStores := range tokenManager.allClientStores() {
 		accessTokenStore := *currentClientStores.accessTokenStore
 		accessToken, accessTokenExists := accessTokenStore.Get(token)
 		if accessTokenExists {
@@ -115,7 +128,7 @@ func (tokenManager *Manager) GetAccessToken(token string) (*oauth2.AccessToken, 
 
 func (tokenManager *Manager) RevokeAccessToken(accessToken *oauth2.AccessToken) {
 	if accessToken != nil {
-		for _, currentClientStores := range tokenManager.clientStores {
+		for _, currentClientStores := range tokenManager.allClientStores() {
 			accessTokenStore := *currentClientStores.accessTokenStore
 			accessTokenStore.Delete(accessToken.Key)
 		}
@@ -123,7 +136,7 @@ func (tokenManager *Manager) RevokeAccessToken(accessToken *oauth2.AccessToken) 
 }
 
 func (tokenManager *Manager) GetRefreshToken(token string) (*oauth2.RefreshToken, bool) {
-	for _, currentClientStores := range tokenManager.clientStores {
+	for _, currentClientStores := range tokenManager.allClientStores() {
 		refreshTokenStore := *currentClientStores.refreshTokenStore
 		refreshToken, refreshTokenExists := refreshTokenStore.Get(token)
 		if refreshTokenExists {
@@ -135,7 +148,7 @@ func (tokenManager *Manager) GetRefreshToken(token string) (*oauth2.RefreshToken
 
 // TakeRefreshToken returns and removes the refresh token, so it can only be used once.
 func (tokenManager *Manager) TakeRefreshToken(token string) (*oauth2.RefreshToken, bool) {
-	for _, currentClientStores := range tokenManager.clientStores {
+	for _, currentClientStores := range tokenManager.allClientStores() {
 		refreshTokenStore := *currentClientStores.refreshTokenStore
 		refreshToken, refreshTokenExists := refreshTokenStore.Take(token)
 		if refreshTokenExists {
@@ -147,7 +160,7 @@ func (tokenManager *Manager) TakeRefreshToken(token string) (*oauth2.RefreshToke
 
 func (tokenManager *Manager) RevokeRefreshToken(refreshToken *oauth2.RefreshToken) {
 	if refreshToken != nil {
-		for _, currentClientStores := range tokenManager.clientStores {
+		for _, currentClientStores := range tokenManager.allClientStores() {
 			refreshTokenStore := *currentClientStores.refreshTokenStore
 			refreshTokenStore.Delete(refreshToken.Key)
 		}
@@ -155,7 +168,7 @@ func (tokenManager *Manager) RevokeRefreshToken(refreshToken *oauth2.RefreshToke
 }
 
 func (tokenManager *Manager) RevokeAccessTokenByAuthorizationCode(authorizationCode string) {
-	for _, currentClientStores := range tokenManager.clientStores {
+	for _, currentClientStores := range tokenManager.allClientStores() {
 		authorizationCodeStore := *currentClientStores.authorizationCodeStore
 		accessTokenKey, accessTokenKeyExists := authorizationCodeStore.Get(authorizationCode)
 		if accessTokenKeyExists {
@@ -171,9 +184,10 @@ func (tokenManager *Manager) CreateAccessTokenResponse(r *http.Request, username
 	log.Debug("Creating new access token for %s, access TTL %d, refresh TTL %d", client.Id, client.GetAccessTTL(), client.GetRefreshTTL())
 
 	requestData := internalHttp.NewRequestData(r)
-	accessTokenStore := *tokenManager.clientStores[client.Id].accessTokenStore
-	refreshTokenStore := *tokenManager.clientStores[client.Id].refreshTokenStore
-	authorizationCodeStore := *tokenManager.clientStores[client.Id].authorizationCodeStore
+	currentClientStores := tokenManager.getClientStores(client)
+	accessTokenStore := *currentClientStores.accessTokenStore
+	refreshTokenStore := *currentClientStores.refreshTokenStore
+	authorizationCodeStore := *currentClientStores.authorizationCodeStore
 
 	accessTokenDuration := time.Minute * time.Duration(client.GetAccessTTL())
 	accessTokenKey := tokenManager.CreateAccessToken(r, username, client, scopes, accessTokenDuration)

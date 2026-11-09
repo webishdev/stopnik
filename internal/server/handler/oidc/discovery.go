@@ -72,6 +72,10 @@ func NewOidcDiscoveryHandler() *DiscoveryHandler {
 
 func (h *DiscoveryHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	log.AccessLogRequest(r)
+	if !h.config.GetOidc() {
+		h.errorHandler.NotFoundHandler(w, r)
+		return
+	}
 	if r.Method == http.MethodGet {
 		requestData := internalHttp.NewRequestData(r)
 		urlFromRequest, parseError := requestData.BaseURL(h.config.GetBasePath())

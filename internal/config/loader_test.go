@@ -4,6 +4,7 @@ import (
 	"errors"
 	"github.com/BurntSushi/toml"
 	"testing"
+	"time"
 )
 
 func Test_ReadError(t *testing.T) {
@@ -32,47 +33,6 @@ func Test_UnmarshalError(t *testing.T) {
 	}
 }
 
-func Test_ReadConfigDoesNotActivate(t *testing.T) {
-	initialConfig := &Config{Server: Server{Addr: ":8080"}}
-	if initializationError := Initialize(initialConfig); initializationError != nil {
-		t.Fatal(initializationError)
-	}
-
-	configLoader := NewConfigLoader(func(filename string) ([]byte, error) {
-		return []byte(watcherTestConfig(":9090")), nil
-	}, toml.Unmarshal)
-
-	readConfig, readError := configLoader.ReadConfig("config.toml")
-	if readError != nil {
-		t.Fatal(readError)
-	}
-
-	if readConfig.Server.Addr != ":9090" {
-		t.Errorf("expected read address, got %s", readConfig.Server.Addr)
-	}
-
-	if GetConfigInstance() != initialConfig {
-		t.Error("ReadConfig should not change the current config")
-	}
-
-	Activate(readConfig)
-
-	if GetConfigInstance() != readConfig {
-		t.Error("Activate should change the current config")
-	}
-}
-
-func Test_ReadConfigInvalid(t *testing.T) {
-	configLoader := NewConfigLoader(func(filename string) ([]byte, error) {
-		return []byte("[server]\naddr = \":8080\"\n"), nil
-	}, toml.Unmarshal)
-
-	_, readError := configLoader.ReadConfig("config.toml")
-	if readError == nil {
-		t.Error("expected error for invalid config")
-	}
-}
-
 func Test_TOMLConfig(t *testing.T) {
 	data := `
 [server]
@@ -87,28 +47,10 @@ addr = ":8081"
 cert = "server.crt"
 key = "server.key"
 
-[[clients]]
-id = "foo"
-accessTTL = 5
-redirects = ["https://example.com/callback"]
-grantTypes = ["authorization_code"]
-
-[[users]]
-username = "foo"
-password = "bar"
-
-[users.userProfile]
-givenName = "John"
-
-[users.userInformation.address]
-postalCode = "12345"
-
-[[classification]]
-user = "foo"
-
-[[classification.claims]]
-name = "role"
-values = ["a", "b"]
+[dynamic]
+watch = true
+interval = 5
+clients = "/clients"
 `
 	config := &Config{}
 	if decodeError := toml.Unmarshal([]byte(data), config); decodeError != nil {
@@ -121,13 +63,56 @@ values = ["a", "b"]
 	if config.Server.SecureCookie == nil || *config.Server.SecureCookie {
 		t.Error("secure cookie should be decoded as false")
 	}
-	if len(config.Clients) != 1 || config.Clients[0].AccessTTL != 5 || config.Clients[0].GrantTypes[0] != "authorization_code" {
-		t.Errorf("clients not decoded as expected, %v", config.Clients)
+	if !config.Dynamic.Watch || config.GetDynamicInterval() != 5*time.Second || config.Dynamic.Clients != "/clients" {
+		t.Errorf("dynamic not decoded as expected, %v", config.Dynamic)
 	}
-	if len(config.Users) != 1 || config.Users[0].UserProfile.GivenName != "John" || config.Users[0].UserInformation.Address.PostalCode != "12345" {
-		t.Errorf("users not decoded as expected, %v", config.Users)
+}
+
+func Test_TOMLEntries(t *testing.T) {
+	client := &Client{}
+	clientData := `
+id = "foo"
+accessTTL = 5
+redirects = ["https://example.com/callback"]
+grantTypes = ["authorization_code"]
+`
+	if decodeError := toml.Unmarshal([]byte(clientData), client); decodeError != nil {
+		t.Fatal(decodeError)
 	}
-	if len(config.Classification) != 1 || len(config.Classification[0].Claims[0].Values) != 2 {
-		t.Errorf("classification not decoded as expected, %v", config.Classification)
+	if client.Id != "foo" || client.AccessTTL != 5 || client.GrantTypes[0] != "authorization_code" {
+		t.Errorf("client not decoded as expected, %v", client)
+	}
+
+	user := &User{}
+	userData := `
+username = "foo"
+password = "bar"
+
+[userProfile]
+givenName = "John"
+
+[userInformation.address]
+postalCode = "12345"
+`
+	if decodeError := toml.Unmarshal([]byte(userData), user); decodeError != nil {
+		t.Fatal(decodeError)
+	}
+	if user.Username != "foo" || user.UserProfile.GivenName != "John" || user.UserInformation.Address.PostalCode != "12345" {
+		t.Errorf("user not decoded as expected, %v", user)
+	}
+
+	classification := &Classification{}
+	classificationData := `
+user = "foo"
+
+[[claims]]
+name = "role"
+values = ["a", "b"]
+`
+	if decodeError := toml.Unmarshal([]byte(classificationData), classification); decodeError != nil {
+		t.Fatal(decodeError)
+	}
+	if classification.User != "foo" || len(classification.Claims[0].Values) != 2 {
+		t.Errorf("classification not decoded as expected, %v", classification)
 	}
 }

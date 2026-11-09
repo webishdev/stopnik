@@ -339,64 +339,46 @@ func Test_SameCookieNameForwardAuthAndAuth(t *testing.T) {
 }
 
 func Test_SimpleClassificationConfiguration(t *testing.T) {
-	configLoader := NewConfigLoader(func(filename string) ([]byte, error) {
-		return make([]byte, 10), nil
-	}, func(in []byte, out interface{}) (err error) {
-		origin := out.(*Config)
-		*origin = Config{
-			Clients: []Client{
-				{
-					Id:           "foo",
-					ClientSecret: "d82c4eb5261cb9c8aa9855edd67d1bd10482f41529858d925094d173fa662aa91ff39bc5b188615273484021dfb16fd8284cf684ccf0fc795be3aa2fc1e6c181",
-					Redirects:    []string{"http://localhost:8080/callback"},
+	config := initializeTestEntries(t, Entries{
+		Clients: []Client{
+			{
+				Id:           "foo",
+				ClientSecret: "d82c4eb5261cb9c8aa9855edd67d1bd10482f41529858d925094d173fa662aa91ff39bc5b188615273484021dfb16fd8284cf684ccf0fc795be3aa2fc1e6c181",
+				Redirects:    []string{"http://localhost:8080/callback"},
+			},
+		},
+		Users: []User{
+			{
+				Username: "bar",
+				Password: "3c9909afec25354d551dae21590bb26e38d53f2173b8d3dc3eee4c047e7ab1c1eb8b85103e3be7ba613b31bb5c9c36214dc9f14a42fd7a2fdb84856bca5c44c2",
+			},
+		},
+		Classifications: []Classification{
+			{
+				User:   "bar",
+				Client: "foo",
+				Claims: []claim{
+					{Name: "first_claim", Value: "fist_value"},
 				},
 			},
-			Users: []User{
-				{
-					Username: "bar",
-					Password: "3c9909afec25354d551dae21590bb26e38d53f2173b8d3dc3eee4c047e7ab1c1eb8b85103e3be7ba613b31bb5c9c36214dc9f14a42fd7a2fdb84856bca5c44c2",
+			{
+				User:   "bar",
+				Users:  []string{"bar"},
+				Client: "foo",
+				Scope:  "main:scope",
+				Claims: []claim{
+					{Name: "second_claim", Value: "second_value", Scope: "claim:scope"},
 				},
 			},
-			Classification: []Classification{
-				{
-					User:   "bar",
-					Client: "foo",
-					Claims: []claim{
-						{Name: "first_claim", Value: "fist_value"},
-					},
-				},
-				{
-					User:   "bar",
-					Users:  []string{"bar"},
-					Client: "foo",
-					Scope:  "main:scope",
-					Claims: []claim{
-						{Name: "second_claim", Value: "second_value", Scope: "claim:scope"},
-					},
-				},
-				{
-					User:   "bar",
-					Client: "foo",
-					Claims: []claim{
-						{Name: "third_claim", Values: []string{"third_value1", "third_value2"}, Scope: "other:scope"},
-					},
+			{
+				User:   "bar",
+				Client: "foo",
+				Claims: []claim{
+					{Name: "third_claim", Values: []string{"third_value1", "third_value2"}, Scope: "other:scope"},
 				},
 			},
-		}
-		return nil
+		},
 	})
-
-	err := configLoader.LoadConfig("foo.txt", false)
-
-	if err != nil {
-		t.Errorf("did not expect error when loading config, %v", err)
-	}
-
-	config := GetConfigInstance()
-
-	if config == nil {
-		t.Fatal("config was nil")
-	}
 
 	claims := config.GetClaims("bar", "foo", []string{})
 
@@ -471,129 +453,25 @@ func Test_SimpleClassificationConfiguration(t *testing.T) {
 	}
 }
 
-func Test_ClassificationWithEmptyClaimName(t *testing.T) {
-	configLoader := NewConfigLoader(func(filename string) ([]byte, error) {
-		return make([]byte, 10), nil
-	}, func(in []byte, out interface{}) (err error) {
-		origin := out.(*Config)
-		*origin = Config{
-			Server: Server{
-				Addr: ":8080",
-			},
-			Clients: []Client{
-				{
-					Id:           "foo",
-					ClientSecret: "d82c4eb5261cb9c8aa9855edd67d1bd10482f41529858d925094d173fa662aa91ff39bc5b188615273484021dfb16fd8284cf684ccf0fc795be3aa2fc1e6c181",
-					Redirects:    []string{"http://localhost:8080/callback"},
-				},
-			},
-			Users: []User{
-				{
-					Username: "bar",
-					Password: "3c9909afec25354d551dae21590bb26e38d53f2173b8d3dc3eee4c047e7ab1c1eb8b85103e3be7ba613b31bb5c9c36214dc9f14a42fd7a2fdb84856bca5c44c2",
-				},
-			},
-			Classification: []Classification{
-				{
-					User:   "bar",
-					Client: "foo",
-					Claims: []claim{
-						{Value: "first_name"},
-					},
-				},
-			},
-		}
-		return nil
-	})
-
-	err := configLoader.LoadConfig("foo.txt", true)
-
-	if err == nil {
-		t.Error("expected error when loading config because claim name is missing")
+func Test_InvalidClassifications(t *testing.T) {
+	type classificationParameter struct {
+		name   string
+		claims []claim
 	}
-}
 
-func Test_ClassificationWithEmptyClaimValues(t *testing.T) {
-	configLoader := NewConfigLoader(func(filename string) ([]byte, error) {
-		return make([]byte, 10), nil
-	}, func(in []byte, out interface{}) (err error) {
-		origin := out.(*Config)
-		*origin = Config{
-			Server: Server{
-				Addr: ":8080",
-			},
-			Clients: []Client{
-				{
-					Id:           "foo",
-					ClientSecret: "d82c4eb5261cb9c8aa9855edd67d1bd10482f41529858d925094d173fa662aa91ff39bc5b188615273484021dfb16fd8284cf684ccf0fc795be3aa2fc1e6c181",
-					Redirects:    []string{"http://localhost:8080/callback"},
-				},
-			},
-			Users: []User{
-				{
-					Username: "bar",
-					Password: "3c9909afec25354d551dae21590bb26e38d53f2173b8d3dc3eee4c047e7ab1c1eb8b85103e3be7ba613b31bb5c9c36214dc9f14a42fd7a2fdb84856bca5c44c2",
-				},
-			},
-			Classification: []Classification{
-				{
-					User:   "bar",
-					Client: "foo",
-					Claims: []claim{
-						{Name: "first_name"},
-					},
-				},
-			},
-		}
-		return nil
-	})
-
-	err := configLoader.LoadConfig("foo.txt", true)
-
-	if err == nil {
-		t.Error("expected error when loading config because claim value is missing")
+	var classificationParameters = []classificationParameter{
+		{"Empty claim name", []claim{{Value: "first_name"}}},
+		{"Empty claim values", []claim{{Name: "first_name"}}},
+		{"Both claim values", []claim{{Name: "first_name", Value: "foo", Values: []string{"bar"}}}},
 	}
-}
 
-func Test_ClassificationWithBothClaimValues(t *testing.T) {
-	configLoader := NewConfigLoader(func(filename string) ([]byte, error) {
-		return make([]byte, 10), nil
-	}, func(in []byte, out interface{}) (err error) {
-		origin := out.(*Config)
-		*origin = Config{
-			Server: Server{
-				Addr: ":8080",
-			},
-			Clients: []Client{
-				{
-					Id:           "foo",
-					ClientSecret: "d82c4eb5261cb9c8aa9855edd67d1bd10482f41529858d925094d173fa662aa91ff39bc5b188615273484021dfb16fd8284cf684ccf0fc795be3aa2fc1e6c181",
-					Redirects:    []string{"http://localhost:8080/callback"},
-				},
-			},
-			Users: []User{
-				{
-					Username: "bar",
-					Password: "3c9909afec25354d551dae21590bb26e38d53f2173b8d3dc3eee4c047e7ab1c1eb8b85103e3be7ba613b31bb5c9c36214dc9f14a42fd7a2fdb84856bca5c44c2",
-				},
-			},
-			Classification: []Classification{
-				{
-					User:   "bar",
-					Client: "foo",
-					Claims: []claim{
-						{Name: "first_name", Value: "foo", Values: []string{"bar"}},
-					},
-				},
-			},
-		}
-		return nil
-	})
-
-	err := configLoader.LoadConfig("foo.txt", true)
-
-	if err == nil {
-		t.Error("expected error when loading config because claim value and values is set")
+	for _, test := range classificationParameters {
+		t.Run(test.name, func(t *testing.T) {
+			classification := &Classification{User: "bar", Client: "foo", Claims: test.claims}
+			if validationError := ValidateClassification(classification); validationError == nil {
+				t.Error("expected classification to be invalid")
+			}
+		})
 	}
 }
 
@@ -735,66 +613,50 @@ func Test_SimpleUIConfiguration(t *testing.T) {
 }
 
 func Test_ValidUsers(t *testing.T) {
-	configLoader := NewConfigLoader(func(filename string) ([]byte, error) {
-		return make([]byte, 10), nil
-	}, func(in []byte, out interface{}) (err error) {
-		origin := out.(*Config)
-		*origin = Config{
-			Users: []User{
-				{
-					Username: "foo",
-					Password: "d82c4eb5261cb9c8aa9855edd67d1bd10482f41529858d925094d173fa662aa91ff39bc5b188615273484021dfb16fd8284cf684ccf0fc795be3aa2fc1e6c181",
-					UserProfile: UserProfile{
-						PreferredUserName: "foofoo",
-						GivenName:         "Hans",
-						FamilyName:        "Mayer",
-					},
-					UserInformation: UserInformation{
-						Address: &UserAddress{
-							Street:     "Main Street 123",
-							PostalCode: "98765",
-							City:       "Maintown",
-						},
-					},
-				},
-				{
-					Username: "bar",
-					Password: "3c9909afec25354d551dae21590bb26e38d53f2173b8d3dc3eee4c047e7ab1c1eb8b85103e3be7ba613b31bb5c9c36214dc9f14a42fd7a2fdb84856bca5c44c2",
-					UserProfile: UserProfile{
-						GivenName: "Hans",
-					},
-				},
-				{
-					Username: "moo",
-					Password: "ddaf35a193617abacc417349ae20413112e6fa4e89a97ea20a9eeee64b55d39a2192992a274fc1a836ba3c23a3feebbd454d4423643ce80e2a9ac94fa54ca49f",
-				},
-				{
-					Username: "moo_more",
-					Password: "ddaf35a193617abacc417349ae20413112e6fa4e89a97ea20a9eeee64b55d39a2192992a274fc1a836ba3c23a3feebbd454d4423643ce80e2a9ac94fa54ca49f",
-					UserProfile: UserProfile{
-						FamilyName: "Mayer",
-					},
+	users := []User{
+		{
+			Username: "foo",
+			Password: "d82c4eb5261cb9c8aa9855edd67d1bd10482f41529858d925094d173fa662aa91ff39bc5b188615273484021dfb16fd8284cf684ccf0fc795be3aa2fc1e6c181",
+			UserProfile: UserProfile{
+				PreferredUserName: "foofoo",
+				GivenName:         "Hans",
+				FamilyName:        "Mayer",
+			},
+			UserInformation: UserInformation{
+				Address: &UserAddress{
+					Street:     "Main Street 123",
+					PostalCode: "98765",
+					City:       "Maintown",
 				},
 			},
+		},
+		{
+			Username: "bar",
+			Password: "3c9909afec25354d551dae21590bb26e38d53f2173b8d3dc3eee4c047e7ab1c1eb8b85103e3be7ba613b31bb5c9c36214dc9f14a42fd7a2fdb84856bca5c44c2",
+			UserProfile: UserProfile{
+				GivenName: "Hans",
+			},
+		},
+		{
+			Username: "moo",
+			Password: "ddaf35a193617abacc417349ae20413112e6fa4e89a97ea20a9eeee64b55d39a2192992a274fc1a836ba3c23a3feebbd454d4423643ce80e2a9ac94fa54ca49f",
+		},
+		{
+			Username: "moo_more",
+			Password: "ddaf35a193617abacc417349ae20413112e6fa4e89a97ea20a9eeee64b55d39a2192992a274fc1a836ba3c23a3feebbd454d4423643ce80e2a9ac94fa54ca49f",
+			UserProfile: UserProfile{
+				FamilyName: "Mayer",
+			},
+		},
+	}
+
+	for _, user := range users {
+		if validationError := ValidateUser(&user); validationError != nil {
+			t.Errorf("did not expect user %s to be invalid, %v", user.Username, validationError)
 		}
-		return nil
-	})
-
-	err := configLoader.LoadConfig("foo.txt", false)
-
-	if err != nil {
-		t.Errorf("did not expect error when loading config, %v", err)
 	}
 
-	config := GetConfigInstance()
-
-	if config == nil {
-		t.Fatal("config was nil")
-	}
-
-	if len(config.Users) != 4 {
-		t.Errorf("expected 3 users, got %d", len(config.Users))
-	}
+	config := initializeTestEntries(t, Entries{Users: users})
 
 	assertUserExistsWithName(t, "foo", config)
 	assertUserExistsWithName(t, "bar", config)
@@ -835,103 +697,70 @@ func Test_InvalidUsers(t *testing.T) {
 	var invalidUserParameters = []User{
 		{Username: "wrong", Password: "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"},
 		{Username: "empty", Password: ""},
+		{Username: "foo"},
 		{Username: "", Password: "d82c4eb5261cb9c8aa9855edd67d1bd10482f41529858d925094d173fa662aa91ff39bc5b188615273484021dfb16fd8284cf684ccf0fc795be3aa2fc1e6c181"}}
 
 	for _, user := range invalidUserParameters {
-		configLoader := NewConfigLoader(func(filename string) ([]byte, error) {
-			return make([]byte, 10), nil
-		}, func(in []byte, out interface{}) (err error) {
-			origin := out.(*Config)
-			*origin = Config{
-				Users: []User{user},
-			}
-			return nil
-		})
-
-		err := configLoader.LoadConfig("foo.txt", true)
-
-		if err == nil {
-			t.Error("expected error when loading config")
+		if validationError := ValidateUser(&user); validationError == nil {
+			t.Errorf("expected user '%s' to be invalid", user.Username)
 		}
-
 	}
 }
 
 func Test_DuplicateUsers(t *testing.T) {
-	configLoader := NewConfigLoader(func(filename string) ([]byte, error) {
-		return make([]byte, 10), nil
-	}, func(in []byte, out interface{}) (err error) {
-		origin := out.(*Config)
-		*origin = Config{
-			Users: []User{
-				{
-					Username: "foo",
-					Password: "d82c4eb5261cb9c8aa9855edd67d1bd10482f41529858d925094d173fa662aa91ff39bc5b188615273484021dfb16fd8284cf684ccf0fc795be3aa2fc1e6c181",
-				},
-				{
-					Username: "foo",
-					Password: "3c9909afec25354d551dae21590bb26e38d53f2173b8d3dc3eee4c047e7ab1c1eb8b85103e3be7ba613b31bb5c9c36214dc9f14a42fd7a2fdb84856bca5c44c2",
-				},
+	config := initializeTestEntries(t, Entries{})
+
+	applyError := config.ApplyEntries(Entries{
+		Users: []User{
+			{
+				Username: "foo",
+				Password: "d82c4eb5261cb9c8aa9855edd67d1bd10482f41529858d925094d173fa662aa91ff39bc5b188615273484021dfb16fd8284cf684ccf0fc795be3aa2fc1e6c181",
 			},
-		}
-		return nil
+			{
+				Username: "foo",
+				Password: "3c9909afec25354d551dae21590bb26e38d53f2173b8d3dc3eee4c047e7ab1c1eb8b85103e3be7ba613b31bb5c9c36214dc9f14a42fd7a2fdb84856bca5c44c2",
+			},
+		},
 	})
 
-	err := configLoader.LoadConfig("foo.txt", false)
-
-	if err == nil {
-		t.Error("expected error when loading config because of duplicate usernames")
+	if applyError == nil {
+		t.Error("expected error when applying entries because of duplicate usernames")
 	}
 }
 
 func Test_ValidClients(t *testing.T) {
-	configLoader := NewConfigLoader(func(filename string) ([]byte, error) {
-		return make([]byte, 10), nil
-	}, func(in []byte, out interface{}) (err error) {
-		origin := out.(*Config)
-		*origin = Config{
-			Server: Server{
-				Issuer: "other",
-			},
-			Clients: []Client{
-				{
-					Id:           "foo",
-					ClientSecret: "d82c4eb5261cb9c8aa9855edd67d1bd10482f41529858d925094d173fa662aa91ff39bc5b188615273484021dfb16fd8284cf684ccf0fc795be3aa2fc1e6c181",
-					Redirects:    []string{"http://localhost:8080/callback"},
-				},
-				{
-					Id:           "bar",
-					ClientSecret: "3c9909afec25354d551dae21590bb26e38d53f2173b8d3dc3eee4c047e7ab1c1eb8b85103e3be7ba613b31bb5c9c36214dc9f14a42fd7a2fdb84856bca5c44c2",
-					Redirects:    []string{"http://localhost:8080/callback", "https://example.com/callback"},
-					AccessTTL:    20,
-					RefreshTTL:   60,
-					IdTTL:        40,
-					Audience:     []string{"one", "two"},
-					Oidc:         true,
-				},
-				{
-					Id:        "moo",
-					Redirects: []string{"http://localhost:8080/callback"},
-				},
-			},
+	clients := []Client{
+		{
+			Id:           "foo",
+			ClientSecret: "d82c4eb5261cb9c8aa9855edd67d1bd10482f41529858d925094d173fa662aa91ff39bc5b188615273484021dfb16fd8284cf684ccf0fc795be3aa2fc1e6c181",
+			Redirects:    []string{"http://localhost:8080/callback"},
+		},
+		{
+			Id:           "bar",
+			ClientSecret: "3c9909afec25354d551dae21590bb26e38d53f2173b8d3dc3eee4c047e7ab1c1eb8b85103e3be7ba613b31bb5c9c36214dc9f14a42fd7a2fdb84856bca5c44c2",
+			Redirects:    []string{"http://localhost:8080/callback", "https://example.com/callback"},
+			AccessTTL:    20,
+			RefreshTTL:   60,
+			IdTTL:        40,
+			Audience:     []string{"one", "two"},
+			Oidc:         true,
+		},
+		{
+			Id:        "moo",
+			Redirects: []string{"http://localhost:8080/callback"},
+		},
+	}
+
+	for _, client := range clients {
+		if validationError := ValidateClient(&client); validationError != nil {
+			t.Errorf("did not expect client %s to be invalid, %v", client.Id, validationError)
 		}
-		return nil
-	})
-
-	err := configLoader.LoadConfig("foo.txt", false)
-
-	if err != nil {
-		t.Errorf("did not expect error when loading config, %v", err)
 	}
 
-	config := GetConfigInstance()
+	config := initializeTestEntries(t, Entries{Clients: clients})
 
-	if config == nil {
-		t.Fatal("config was nil")
-	}
-
-	if len(config.Clients) != 3 {
-		t.Errorf("expected 3 clients, got %d", len(config.Clients))
+	if len(config.GetClients()) != 3 {
+		t.Errorf("expected 3 clients, got %d", len(config.GetClients()))
 	}
 
 	oidc := config.GetOidc()
@@ -979,62 +808,42 @@ func Test_InvalidClients(t *testing.T) {
 	var invalidClientParameters = []Client{
 		{Id: "wrong", ClientSecret: "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"},
 		{Id: "empty", ClientSecret: ""},
-		{Id: "", ClientSecret: "d82c4eb5261cb9c8aa9855edd67d1bd10482f41529858d925094d173fa662aa91ff39bc5b188615273484021dfb16fd8284cf684ccf0fc795be3aa2fc1e6c181"},
+		{Id: "", ClientSecret: "d82c4eb5261cb9c8aa9855edd67d1bd10482f41529858d925094d173fa662aa91ff39bc5b188615273484021dfb16fd8284cf684ccf0fc795be3aa2fc1e6c181", Redirects: []string{"https://example.com/callback"}},
 		{Id: "no_redirects", ClientSecret: "3c9909afec25354d551dae21590bb26e38d53f2173b8d3dc3eee4c047e7ab1c1eb8b85103e3be7ba613b31bb5c9c36214dc9f14a42fd7a2fdb84856bca5c44c2"},
+		{Id: "unknown_grant", Redirects: []string{"https://example.com/callback"}, GrantTypes: []string{"foo"}},
 	}
 
 	for _, client := range invalidClientParameters {
-		configLoader := NewConfigLoader(func(filename string) ([]byte, error) {
-			return make([]byte, 10), nil
-		}, func(in []byte, out interface{}) (err error) {
-			origin := out.(*Config)
-			*origin = Config{
-				Clients: []Client{client},
-			}
-			return nil
-		})
-
-		err := configLoader.LoadConfig("foo.txt", true)
-
-		if err == nil {
-			t.Error("expected error when loading config")
+		if validationError := ValidateClient(&client); validationError == nil {
+			t.Errorf("expected client '%s' to be invalid", client.Id)
 		}
 	}
 }
 
 func Test_DuplicateClients(t *testing.T) {
-	configLoader := NewConfigLoader(func(filename string) ([]byte, error) {
-		return make([]byte, 10), nil
-	}, func(in []byte, out interface{}) (err error) {
-		origin := out.(*Config)
-		*origin = Config{
-			Server: Server{
-				Issuer: "other",
+	config := initializeTestEntries(t, Entries{})
+
+	applyError := config.ApplyEntries(Entries{
+		Clients: []Client{
+			{
+				Id:           "foo",
+				ClientSecret: "d82c4eb5261cb9c8aa9855edd67d1bd10482f41529858d925094d173fa662aa91ff39bc5b188615273484021dfb16fd8284cf684ccf0fc795be3aa2fc1e6c181",
+				Redirects:    []string{"http://localhost:8080/callback"},
 			},
-			Clients: []Client{
-				{
-					Id:           "foo",
-					ClientSecret: "d82c4eb5261cb9c8aa9855edd67d1bd10482f41529858d925094d173fa662aa91ff39bc5b188615273484021dfb16fd8284cf684ccf0fc795be3aa2fc1e6c181",
-					Redirects:    []string{"http://localhost:8080/callback"},
-				},
-				{
-					Id:           "foo",
-					ClientSecret: "3c9909afec25354d551dae21590bb26e38d53f2173b8d3dc3eee4c047e7ab1c1eb8b85103e3be7ba613b31bb5c9c36214dc9f14a42fd7a2fdb84856bca5c44c2",
-					Redirects:    []string{"http://localhost:8080/callback", "https://example.com/callback"},
-				},
+			{
+				Id:           "foo",
+				ClientSecret: "3c9909afec25354d551dae21590bb26e38d53f2173b8d3dc3eee4c047e7ab1c1eb8b85103e3be7ba613b31bb5c9c36214dc9f14a42fd7a2fdb84856bca5c44c2",
+				Redirects:    []string{"http://localhost:8080/callback", "https://example.com/callback"},
 			},
-		}
-		return nil
+		},
 	})
 
-	err := configLoader.LoadConfig("foo.txt", false)
-
-	if err == nil {
-		t.Error("expected error when loading config because of duplicate client ids")
+	if applyError == nil {
+		t.Error("expected error when applying entries because of duplicate client ids")
 	}
 }
 
-func Test_NoClients(t *testing.T) {
+func Test_NoDynamicEntries(t *testing.T) {
 	configLoader := NewConfigLoader(func(filename string) ([]byte, error) {
 		return make([]byte, 10), nil
 	}, func(in []byte, out interface{}) (err error) {
@@ -1043,175 +852,22 @@ func Test_NoClients(t *testing.T) {
 			Server: Server{
 				Addr: ":8080",
 			},
-			Users: []User{
-				{
-					Username: "foo",
-					Password: "d82c4eb5261cb9c8aa9855edd67d1bd10482f41529858d925094d173fa662aa91ff39bc5b188615273484021dfb16fd8284cf684ccf0fc795be3aa2fc1e6c181",
-				},
-			},
 		}
 		return nil
 	})
 
 	err := configLoader.LoadConfig("foo.txt", true)
 
-	if err == nil {
-		t.Error("expected error when loading config")
+	if err != nil {
+		t.Errorf("did not expect error when loading static config without clients and users, %v", err)
 	}
-}
 
-func Test_NoUsers(t *testing.T) {
-	configLoader := NewConfigLoader(func(filename string) ([]byte, error) {
-		return make([]byte, 10), nil
-	}, func(in []byte, out interface{}) (err error) {
-		origin := out.(*Config)
-		*origin = Config{
-			Server: Server{
-				Addr: ":8080",
-			},
-			Clients: []Client{
-				{
-					Id:           "foo",
-					ClientSecret: "d82c4eb5261cb9c8aa9855edd67d1bd10482f41529858d925094d173fa662aa91ff39bc5b188615273484021dfb16fd8284cf684ccf0fc795be3aa2fc1e6c181",
-					Redirects:    []string{"https://example.com/callback"},
-				},
-			},
-		}
-		return nil
-	})
-
-	err := configLoader.LoadConfig("foo.txt", true)
-
-	if err == nil {
-		t.Error("expected error when loading config")
+	config := GetConfigInstance()
+	if len(config.GetClients()) != 0 || config.GetOidc() {
+		t.Error("expected no clients")
 	}
-}
-
-func Test_UserWithoutPassword(t *testing.T) {
-	configLoader := NewConfigLoader(func(filename string) ([]byte, error) {
-		return make([]byte, 10), nil
-	}, func(in []byte, out interface{}) (err error) {
-		origin := out.(*Config)
-		*origin = Config{
-			Server: Server{
-				Addr: ":8080",
-			},
-			Users: []User{
-				{
-					Username: "foo",
-				},
-			},
-			Clients: []Client{
-				{
-					Id:           "foo",
-					ClientSecret: "d82c4eb5261cb9c8aa9855edd67d1bd10482f41529858d925094d173fa662aa91ff39bc5b188615273484021dfb16fd8284cf684ccf0fc795be3aa2fc1e6c181",
-					Redirects:    []string{"https://example.com/callback"},
-				},
-			},
-		}
-		return nil
-	})
-
-	err := configLoader.LoadConfig("foo.txt", true)
-
-	if err == nil {
-		t.Error("expected error when loading config")
-	}
-}
-
-func Test_UserWithoutUsername(t *testing.T) {
-	configLoader := NewConfigLoader(func(filename string) ([]byte, error) {
-		return make([]byte, 10), nil
-	}, func(in []byte, out interface{}) (err error) {
-		origin := out.(*Config)
-		*origin = Config{
-			Server: Server{
-				Addr: ":8080",
-			},
-			Users: []User{
-				{
-					Password: "d82c4eb5261cb9c8aa9855edd67d1bd10482f41529858d925094d173fa662aa91ff39bc5b188615273484021dfb16fd8284cf684ccf0fc795be3aa2fc1e6c181",
-				},
-			},
-			Clients: []Client{
-				{
-					Id:           "foo",
-					ClientSecret: "d82c4eb5261cb9c8aa9855edd67d1bd10482f41529858d925094d173fa662aa91ff39bc5b188615273484021dfb16fd8284cf684ccf0fc795be3aa2fc1e6c181",
-					Redirects:    []string{"https://example.com/callback"},
-				},
-			},
-		}
-		return nil
-	})
-
-	err := configLoader.LoadConfig("foo.txt", true)
-
-	if err == nil {
-		t.Error("expected error when loading config")
-	}
-}
-
-func Test_ClientWithoutId(t *testing.T) {
-	configLoader := NewConfigLoader(func(filename string) ([]byte, error) {
-		return make([]byte, 10), nil
-	}, func(in []byte, out interface{}) (err error) {
-		origin := out.(*Config)
-		*origin = Config{
-			Server: Server{
-				Addr: ":8080",
-			},
-			Users: []User{
-				{
-					Username: "foo",
-					Password: "d82c4eb5261cb9c8aa9855edd67d1bd10482f41529858d925094d173fa662aa91ff39bc5b188615273484021dfb16fd8284cf684ccf0fc795be3aa2fc1e6c181",
-				},
-			},
-			Clients: []Client{
-				{
-					ClientSecret: "d82c4eb5261cb9c8aa9855edd67d1bd10482f41529858d925094d173fa662aa91ff39bc5b188615273484021dfb16fd8284cf684ccf0fc795be3aa2fc1e6c181",
-					Redirects:    []string{"https://example.com/callback"},
-				},
-			},
-		}
-		return nil
-	})
-
-	err := configLoader.LoadConfig("foo.txt", true)
-
-	if err == nil {
-		t.Error("expected error when loading config")
-	}
-}
-
-func Test_ClientWithoutRedirects(t *testing.T) {
-	configLoader := NewConfigLoader(func(filename string) ([]byte, error) {
-		return make([]byte, 10), nil
-	}, func(in []byte, out interface{}) (err error) {
-		origin := out.(*Config)
-		*origin = Config{
-			Server: Server{
-				Addr: ":8080",
-			},
-			Users: []User{
-				{
-					Username: "foo",
-					Password: "d82c4eb5261cb9c8aa9855edd67d1bd10482f41529858d925094d173fa662aa91ff39bc5b188615273484021dfb16fd8284cf684ccf0fc795be3aa2fc1e6c181",
-				},
-			},
-			Clients: []Client{
-				{
-					Id:           "foo",
-					ClientSecret: "d82c4eb5261cb9c8aa9855edd67d1bd10482f41529858d925094d173fa662aa91ff39bc5b188615273484021dfb16fd8284cf684ccf0fc795be3aa2fc1e6c181",
-				},
-			},
-		}
-		return nil
-	})
-
-	err := configLoader.LoadConfig("foo.txt", true)
-
-	if err == nil {
-		t.Error("expected error when loading config")
+	if _, exists := config.GetUser("foo"); exists {
+		t.Error("expected no users")
 	}
 }
 
@@ -1228,19 +884,6 @@ func Test_TLSWithoutKey(t *testing.T) {
 					Keys: Keys{
 						Cert: "foo.crt",
 					},
-				},
-			},
-			Users: []User{
-				{
-					Username: "foo",
-					Password: "d82c4eb5261cb9c8aa9855edd67d1bd10482f41529858d925094d173fa662aa91ff39bc5b188615273484021dfb16fd8284cf684ccf0fc795be3aa2fc1e6c181",
-				},
-			},
-			Clients: []Client{
-				{
-					Id:           "foo",
-					ClientSecret: "d82c4eb5261cb9c8aa9855edd67d1bd10482f41529858d925094d173fa662aa91ff39bc5b188615273484021dfb16fd8284cf684ccf0fc795be3aa2fc1e6c181",
-					Redirects:    []string{"https://example.com/callback"},
 				},
 			},
 		}
@@ -1267,19 +910,6 @@ func Test_TLSWithoutCertificate(t *testing.T) {
 					Keys: Keys{
 						Key: "foo.key",
 					},
-				},
-			},
-			Users: []User{
-				{
-					Username: "foo",
-					Password: "d82c4eb5261cb9c8aa9855edd67d1bd10482f41529858d925094d173fa662aa91ff39bc5b188615273484021dfb16fd8284cf684ccf0fc795be3aa2fc1e6c181",
-				},
-			},
-			Clients: []Client{
-				{
-					Id:           "foo",
-					ClientSecret: "d82c4eb5261cb9c8aa9855edd67d1bd10482f41529858d925094d173fa662aa91ff39bc5b188615273484021dfb16fd8284cf684ccf0fc795be3aa2fc1e6c181",
-					Redirects:    []string{"https://example.com/callback"},
 				},
 			},
 		}
@@ -1309,19 +939,6 @@ func Test_MinimalConfiguration(t *testing.T) {
 					},
 				},
 			},
-			Users: []User{
-				{
-					Username: "foo",
-					Password: "d82c4eb5261cb9c8aa9855edd67d1bd10482f41529858d925094d173fa662aa91ff39bc5b188615273484021dfb16fd8284cf684ccf0fc795be3aa2fc1e6c181",
-				},
-			},
-			Clients: []Client{
-				{
-					Id:           "foo",
-					ClientSecret: "d82c4eb5261cb9c8aa9855edd67d1bd10482f41529858d925094d173fa662aa91ff39bc5b188615273484021dfb16fd8284cf684ccf0fc795be3aa2fc1e6c181",
-					Redirects:    []string{"https://example.com/callback"},
-				},
-			},
 		}
 		return nil
 	})
@@ -1331,6 +948,62 @@ func Test_MinimalConfiguration(t *testing.T) {
 	if err != nil {
 		t.Errorf("did not expect error when loading config, %v", err)
 	}
+}
+
+func Test_DynamicDirectories(t *testing.T) {
+	type dirParameter struct {
+		name                    string
+		staticFile              string
+		dynamic                 Dynamic
+		expectedClients         string
+		expectedUsers           string
+		expectedClassifications string
+	}
+
+	var dirParameters = []dirParameter{
+		{"Defaults next to static file", ".config/default/config.toml", Dynamic{}, ".config/default/client.d", ".config/default/user.d", ".config/default/classification.d"},
+		{"Relative to static file", "/etc/stopnik/config.toml", Dynamic{Clients: "c", Users: "../u", Classifications: "./x"}, "/etc/stopnik/c", "/etc/u", "/etc/stopnik/x"},
+		{"Absolute", "config.toml", Dynamic{Clients: "/a", Users: "/b", Classifications: "/c"}, "/a", "/b", "/c"},
+	}
+
+	for _, test := range dirParameters {
+		t.Run(test.name, func(t *testing.T) {
+			configLoader := NewConfigLoader(func(filename string) ([]byte, error) {
+				return make([]byte, 10), nil
+			}, func(in []byte, out interface{}) (err error) {
+				origin := out.(*Config)
+				*origin = Config{Server: Server{Addr: ":8080"}, Dynamic: test.dynamic}
+				return nil
+			})
+
+			if loadError := configLoader.LoadConfig(test.staticFile, true); loadError != nil {
+				t.Fatal(loadError)
+			}
+
+			config := GetConfigInstance()
+			if config.GetClientsDir() != test.expectedClients {
+				t.Errorf("clients dir %s did not match %s", config.GetClientsDir(), test.expectedClients)
+			}
+			if config.GetUsersDir() != test.expectedUsers {
+				t.Errorf("users dir %s did not match %s", config.GetUsersDir(), test.expectedUsers)
+			}
+			if config.GetClassificationsDir() != test.expectedClassifications {
+				t.Errorf("classifications dir %s did not match %s", config.GetClassificationsDir(), test.expectedClassifications)
+			}
+		})
+	}
+}
+
+func initializeTestEntries(t *testing.T, entries Entries) *Config {
+	t.Helper()
+	config := &Config{Server: Server{Issuer: "other"}}
+	if initializationError := Initialize(config); initializationError != nil {
+		t.Fatal(initializationError)
+	}
+	if applyError := config.ApplyEntries(entries); applyError != nil {
+		t.Fatal(applyError)
+	}
+	return config
 }
 
 func Test_ValidateRedirects(t *testing.T) {

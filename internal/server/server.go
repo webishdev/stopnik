@@ -125,19 +125,6 @@ func newStopnikServerWithServe(rwMutex *sync.RWMutex, mux *http.ServeMux, serve 
 	}
 }
 
-// ResetInstances resets all singletons which depend on the current config.Config,
-// they will be created again on next access.
-func ResetInstances() {
-	template.ResetTemplateManagerInstance()
-	cookie.ResetCookieManagerInstance()
-	token2.ResetTokenManagerInstance()
-	key.ResetDefaultKeyLoaderInstance()
-	key.ResetKeyManagerInstance()
-	session.ResetForwardSessionManagerInstance()
-	session.ResetAuthSessionManagerInstance()
-	session.ResetLoginSessionManagerInstance()
-}
-
 func (stopnikServer *StopnikServer) Start() {
 
 	wg := sync.WaitGroup{}
@@ -266,12 +253,10 @@ func registerHandlers(config *config.Config, register func(pattern string, handl
 	handle(endpoint.Metadata, metadataHandler)
 	handle(endpoint.Keys, keysHandler)
 
-	// Oidc 1.0 Core
-	if config.GetOidc() {
-		discoveryHandler := oidc.NewOidcDiscoveryHandler()
-		userInfoHandler := oidc.NewOidcUserInfoHandler(tokenManager)
+	// Oidc 1.0 Core, answers only when a currently loaded client has OIDC enabled
+	discoveryHandler := oidc.NewOidcDiscoveryHandler()
+	userInfoHandler := oidc.NewOidcUserInfoHandler(tokenManager)
 
-		handle(endpoint.OidcDiscovery, discoveryHandler)
-		handle(endpoint.OidcUserInfo, userInfoHandler)
-	}
+	handle(endpoint.OidcDiscovery, discoveryHandler)
+	handle(endpoint.OidcUserInfo, userInfoHandler)
 }

@@ -47,13 +47,6 @@ func GetAuthSessionManagerInstance() Manager[AuthSession] {
 	return authSessionManagerSingleton
 }
 
-// ResetAuthSessionManagerInstance resets the current auth session manager singleton, a new one is created on next access.
-func ResetAuthSessionManagerInstance() {
-	authSessionManagerLock.Lock()
-	defer authSessionManagerLock.Unlock()
-	authSessionManagerSingleton = nil
-}
-
 func (authManager *AuthManager) StartSession(authSession *AuthSession) {
 	authSessionStore := *authManager.authSessionStore
 	authSessionStore.Set(authSession.Id, authSession)

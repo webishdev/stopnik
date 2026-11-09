@@ -1,0 +1,45 @@
+# Static configuration, loaded once during start up.
+# Clients, users and classifications are loaded from the dynamic configuration folders
+# client.d, user.d and classification.d next to this file, one entry per TOML file.
+
+[server]
+# basePath = "foo"
+# logLevel = "debug"
+#logoutRedirect = "http://localhost:8080"
+#basePath = "/auth"
+secret = "WRYldij9ebtDZ5VJSsxNAfCZ"
+privateKey = "./.test_files/rsa256key.pem"
+addr = ":8082"
+
+[server.cookies]
+authName = "stopnik_auth"
+messageName = "stopnik_message"
+
+[server.forwardAuth]
+externalUrl = "http://localhost:9090"
+enabled = true
+#externalUrl = "http://stopnik.localhost:9090" #ext
+redirects = [
+  "http://localhost:9090/*",
+  "http://whoami.localhost:9090/*",
+]
+
+[server.tls]
+addr = ":8081"
+
+[server.tls.keys]
+cert = "./.test_files/server.crt"
+key = "./.test_files/server.key"
+
+[ui]
+#hideFooter = true
+#hideLogo = true
+#footerText = "Some nice line!"
+#title = "Test realm"
+
+[dynamic]
+watch = true
+#interval = 2
+#clients = "./client.d"
+#users = "./user.d"
+#classifications = "./classification.d"

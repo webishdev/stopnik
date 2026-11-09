@@ -98,6 +98,8 @@ func testSetupTestConfig(t *testing.T) {
 		Server: config.Server{
 			PrivateKey: "../../../.test_files/rsa256key.pem",
 		},
+	}
+	testConfigEntries := config.Entries{
 		Clients: []config.Client{
 			{
 				Id:           "foo",
@@ -124,10 +126,15 @@ func testSetupTestConfig(t *testing.T) {
 	if initializationError != nil {
 		t.Fatal(initializationError)
 	}
+	if applyError := testConfig.ApplyEntries(testConfigEntries); applyError != nil {
+		t.Fatal(applyError)
+	}
 }
 
 func resetKeyManager() {
-	ResetKeyManagerInstance()
+	keyManagerLock.Lock()
+	defer keyManagerLock.Unlock()
+	keyManagerSingleton = nil
 }
 
 func Test_ValidateKeys(t *testing.T) {
@@ -152,15 +159,16 @@ func Test_ValidateKeys(t *testing.T) {
 				Server: config.Server{
 					PrivateKey: test.serverKey,
 				},
-				Clients: []config.Client{
-					{
-						Id:         "foo",
-						PrivateKey: test.clientKey,
-					},
-				},
+			}
+			testClient := &config.Client{
+				Id:         "foo",
+				PrivateKey: test.clientKey,
 			}
 
-			validateError := ValidateKeys(testConfig)
+			validateError := ValidateServerKey(testConfig)
+			if validateError == nil {
+				validateError = ValidateClientKey(testClient)
+			}
 
 			if test.expectedValid && validateError != nil {
 				t.Errorf("expected keys to be valid, %v", validateError)
@@ -168,5 +176,33 @@ func Test_ValidateKeys(t *testing.T) {
 				t.Error("expected keys to be invalid")
 			}
 		})
+	}
+}
+
+func Test_ClientKeysFollowDynamicConfiguration(t *testing.T) {
+	testSetupTestConfig(t)
+	testConfig := config.GetConfigInstance()
+	resetKeyManager()
+	keyManger := GetKeyMangerInstance()
+
+	if len(keyManger.GetAllKeys()) != 3 {
+		t.Fatal("Server and client keys should exist")
+	}
+
+	applyError := testConfig.ApplyEntries(config.Entries{
+		Clients: []config.Client{
+			{
+				Id:         "foo",
+				Redirects:  []string{"https://example.com/callback"},
+				PrivateKey: "../../../.test_files/ecdsa384key.pem",
+			},
+		},
+	})
+	if applyError != nil {
+		t.Fatal(applyError)
+	}
+
+	if len(keyManger.GetAllKeys()) != 2 {
+		t.Error("Server key and the key of the remaining client should exist")
 	}
 }

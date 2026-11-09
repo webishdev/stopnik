@@ -287,13 +287,7 @@ func assertTokenResponse(t *testing.T, accessTokenResponse oauth2.AccessTokenRes
 
 func createTestConfig(t *testing.T, opaque bool, refreshTokenTTL int, idTTokenTTL int, keyPath string) *config.Config {
 	var isOidc = idTTokenTTL > 0
-	testConfig := &config.Config{
-		Server: config.Server{
-			ForwardAuth: config.ForwardAuth{
-				Enabled:     true,
-				ExternalUrl: "http://localhost:8082",
-			},
-		},
+	testConfigEntries := config.Entries{
 		Clients: []config.Client{
 			{
 				Id:           "foo",
@@ -325,9 +319,20 @@ func createTestConfig(t *testing.T, opaque bool, refreshTokenTTL int, idTTokenTT
 			},
 		},
 	}
+	testConfig := &config.Config{
+		Server: config.Server{
+			ForwardAuth: config.ForwardAuth{
+				Enabled:     true,
+				ExternalUrl: "http://localhost:8082",
+			},
+		},
+	}
 	initializationError := config.Initialize(testConfig)
 	if initializationError != nil {
 		t.Fatal(initializationError)
+	}
+	if applyError := testConfig.ApplyEntries(testConfigEntries); applyError != nil {
+		t.Fatal(applyError)
 	}
 
 	return testConfig

@@ -17,6 +17,7 @@ import (
 	"slices"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"uuid"
 )
 
@@ -176,19 +177,27 @@ type Classification struct {
 	scopes    store.Set[string]
 }
 
-// Config defines the root entry for the configuration.
+// Dynamic defines where the dynamic configuration is located and whether it should be watched for changes.
+// Relative directories are resolved against the directory of the static configuration file.
+type Dynamic struct {
+	Watch           bool   `toml:"watch"`
+	Interval        int    `toml:"interval"`
+	Clients         string `toml:"clients"`
+	Users           string `toml:"users"`
+	Classifications string `toml:"classifications"`
+}
+
+// Config defines the root entry for the static configuration.
+// Clients, users and classifications are part of the dynamic configuration, see Entries and DynamicStore.
 type Config struct {
-	Server            Server           `toml:"server"`
-	Clients           []Client         `toml:"clients"`
-	Users             []User           `toml:"users"`
-	UI                UI               `toml:"ui"`
-	Classification    []Classification `toml:"classification"`
+	Server            Server  `toml:"server"`
+	UI                UI      `toml:"ui"`
+	Dynamic           Dynamic `toml:"dynamic"`
 	generatedSecret   string
-	userMap           map[string]*User
-	clientMap         map[string]*Client
-	oidc              bool
 	logoImage         *[]byte
 	forwardAuthClient *Client
+	baseDir           string
+	dynamic           *atomic.Pointer[dynamicSnapshot]
 }
 
 var configLock = &sync.Mutex{}
@@ -207,8 +216,6 @@ func GetConfigInstance() *Config {
 }
 
 // Initialize initializes a given Config.
-// Checks for OIDC configuration on given Client entries.
-// Initializes maps for faster Client and User access in the Config.
 // Generates a server secret when none was provided.
 // Loads a logo image into []byte to use in the web user interface.
 // Checks for ForwardAuth settings.
@@ -227,38 +234,12 @@ func Initialize(config *Config) error {
 	return nil
 }
 
-// Activate sets an already prepared Config, e.g. provided by Loader.ReadConfig, as the current singleton.
-func Activate(config *Config) {
-	configLock.Lock()
-	defer configLock.Unlock()
-
-	configSingleton = config
-}
-
-// prepare prepares a given Config without making it the current singleton.
+// prepare prepares the static part of a given Config.
 func prepare(config *Config) error {
-	config.oidc = false
 	config.logoImage = nil
 	config.forwardAuthClient = nil
-
-	for _, client := range config.Clients {
-		config.oidc = config.oidc || client.Oidc
-	}
-
-	var userMapError error
-	config.userMap, userMapError = setup[User](&config.Users, "User with username", func(user User) string {
-		return user.Username
-	})
-	if userMapError != nil {
-		return userMapError
-	}
-
-	var clientMapError error
-	config.clientMap, clientMapError = setup[Client](&config.Clients, "Client with id", func(client Client) string {
-		return client.Id
-	})
-	if clientMapError != nil {
-		return clientMapError
+	if config.dynamic == nil {
+		config.dynamic = &atomic.Pointer[dynamicSnapshot]{}
 	}
 
 	randomString, randomError := generateRandomString(16)
@@ -304,86 +285,82 @@ func prepare(config *Config) error {
 		log.Info("Forward auth client created")
 	}
 
-	// because range config.Classification would copy the struct and not provide access to existing one
-	for i := 0; i < len(config.Classification); i++ {
-		classification := &config.Classification[i]
-		validString := func(s *string) bool {
-			return s != nil && *s != ""
-		}
-		classification.usernames = mergeIntoSet(classification.Users, &classification.User, validString)
-		classification.clientIds = mergeIntoSet(classification.Clients, &classification.Client, validString)
-		classification.scopes = mergeIntoSet(classification.Scopes, &classification.Scope, validString)
-
-		for j := 0; j < len(classification.Claims); j++ {
-			currentClaim := &classification.Claims[j]
-			currentClaim.scopes = mergeIntoSet(currentClaim.Scopes, &currentClaim.Scope, validString)
-		}
-
-	}
-
 	return nil
 }
 
-// Validate validates the current Config and returns an error when necessary values are missing.
+// prepareClassification merges single and multiple values of a Classification into sets for faster access.
+func prepareClassification(classification *Classification) {
+	validString := func(s *string) bool {
+		return s != nil && *s != ""
+	}
+	classification.usernames = mergeIntoSet(classification.Users, &classification.User, validString)
+	classification.clientIds = mergeIntoSet(classification.Clients, &classification.Client, validString)
+	classification.scopes = mergeIntoSet(classification.Scopes, &classification.Scope, validString)
+
+	for j := 0; j < len(classification.Claims); j++ {
+		currentClaim := &classification.Claims[j]
+		currentClaim.scopes = mergeIntoSet(currentClaim.Scopes, &currentClaim.Scope, validString)
+	}
+}
+
+// Validate validates the static part of the current Config and returns an error when necessary values are missing.
 func (config *Config) Validate() error {
 	if serverError := config.validateServer(); serverError != nil {
 		return serverError
 	}
 
-	if len(config.Users) == 0 {
-		return errors.New("no users configured, add at least one user")
+	if config.Dynamic.Interval < 0 {
+		return errors.New("dynamic configuration interval must not be negative")
 	}
 
-	if len(config.Clients) == 0 {
-		return errors.New("no clients configured, add at least one client")
+	return nil
+}
+
+// ValidateUser validates a single User from the dynamic configuration.
+func ValidateUser(user *User) error {
+	if user.Username == "" {
+		return errors.New("user configuration invalid, missing username")
 	}
 
-	for userIndex, user := range config.Users {
-		if user.Username == "" {
-			invalidUser := fmt.Sprintf("user configuration invalid for user %d, missing username %v", userIndex, user)
-			return errors.New(invalidUser)
-		}
-
-		if !isSupportedHash(user.Password) {
-			invalidUser := fmt.Sprintf("user configuration invalid for user %d with username %s, missing password or not a bcrypt or SHA512 hash", userIndex, user.Username)
-			return errors.New(invalidUser)
-		}
+	if !isSupportedHash(user.Password) {
+		return fmt.Errorf("user configuration invalid for user with username %s, missing password or not a bcrypt or SHA512 hash", user.Username)
 	}
 
-	for clientIndex, client := range config.Clients {
-		if client.Id == "" {
-			invalidClient := fmt.Sprintf("client configuration invalid for client %d, missing id %v", clientIndex, client)
-			return errors.New(invalidClient)
-		}
+	return nil
+}
 
-		if client.ClientSecret != "" && !isSupportedHash(client.ClientSecret) {
-			invalidClient := fmt.Sprintf("client configuration invalid, for client %d with id %s, client secret is not a bcrypt or SHA512 hash", clientIndex, client.Id)
-			return errors.New(invalidClient)
-		}
+// ValidateClient validates a single Client from the dynamic configuration.
+func ValidateClient(client *Client) error {
+	if client.Id == "" {
+		return errors.New("client configuration invalid, missing id")
+	}
 
-		if len(client.Redirects) == 0 {
-			invalidClient := fmt.Sprintf("client configuration invalid, for client %d with id %s, missing redirects, %v", clientIndex, client.Id, client)
-			return errors.New(invalidClient)
-		}
+	if client.ClientSecret != "" && !isSupportedHash(client.ClientSecret) {
+		return fmt.Errorf("client configuration invalid, for client with id %s, client secret is not a bcrypt or SHA512 hash", client.Id)
+	}
 
-		for _, grantType := range client.GrantTypes {
-			if _, validGrantType := oauth2.GrantTypeFromString(grantType); !validGrantType {
-				invalidClient := fmt.Sprintf("client configuration invalid, for client %d with id %s, unknown grant type %s", clientIndex, client.Id, grantType)
-				return errors.New(invalidClient)
-			}
+	if len(client.Redirects) == 0 {
+		return fmt.Errorf("client configuration invalid, for client with id %s, missing redirects", client.Id)
+	}
+
+	for _, grantType := range client.GrantTypes {
+		if _, validGrantType := oauth2.GrantTypeFromString(grantType); !validGrantType {
+			return fmt.Errorf("client configuration invalid, for client with id %s, unknown grant type %s", client.Id, grantType)
 		}
 	}
 
-	for i := 0; i < len(config.Classification); i++ {
-		classification := &config.Classification[i]
-		for _, currentClaim := range classification.Claims {
-			if currentClaim.Name == "" {
-				return errors.New("claim is missing a name")
-			} else if currentClaim.Value != "" && len(currentClaim.Values) > 0 {
-				return errors.New("claim can only be single value or multiple values, not both at the same time")
-			} else if currentClaim.Value == "" && len(currentClaim.Values) == 0 {
-				return errors.New("claim must contain at least one value, or a list of values")
-			}
+	return nil
+}
+
+// ValidateClassification validates a single Classification from the dynamic configuration.
+func ValidateClassification(classification *Classification) error {
+	for _, currentClaim := range classification.Claims {
+		if currentClaim.Name == "" {
+			return errors.New("claim is missing a name")
+		} else if currentClaim.Value != "" && len(currentClaim.Values) > 0 {
+			return errors.New("claim can only be single value or multiple values, not both at the same time")
+		} else if currentClaim.Value == "" && len(currentClaim.Values) == 0 {
+			return errors.New("claim must contain at least one value, or a list of values")
 		}
 	}
 
@@ -430,14 +407,14 @@ func (config *Config) validateServer() error {
 // GetUser returns a User for the given username.
 // Also returns a bool which indicates, whether the User exists or not.
 func (config *Config) GetUser(username string) (*User, bool) {
-	value, exists := config.userMap[username]
+	value, exists := config.getDynamic().userMap[username]
 	return value, exists
 }
 
 // GetClient returns a Client for the given clientId.
 // Also returns a bool which indicates, whether the Client exists or not.
 func (config *Config) GetClient(clientId string) (*Client, bool) {
-	value, exists := config.clientMap[clientId]
+	value, exists := config.getDynamic().clientMap[clientId]
 	if !exists && config.forwardAuthClient != nil && config.forwardAuthClient.Id == clientId {
 		return config.forwardAuthClient, true
 	}
@@ -558,9 +535,9 @@ func (config *Config) GetExpiredLoginMessage() string {
 	return cmp.Or(config.UI.ExpiredLoginMessage, "Login expired, try again")
 }
 
-// GetOidc returns whether one of the existing clients has OIDC flag set or not.
+// GetOidc returns whether one of the currently loaded clients has OIDC flag set or not.
 func (config *Config) GetOidc() bool {
-	return config.oidc
+	return config.getDynamic().oidc
 }
 
 // GetIssuer returns the issuer, either by mirroring from request, from Server configuration or default value.
@@ -616,7 +593,7 @@ func (config *Config) GetForwardAuthClient() (*Client, bool) {
 // GetClaims returns an array of claims related to the username, client id and scopes.
 func (config *Config) GetClaims(username string, clientId string, scopes []string) []*Claim {
 	result := make([]*Claim, 0)
-	for _, classification := range config.Classification {
+	for _, classification := range config.getDynamic().classifications {
 		matchesUser := false
 		if !classification.usernames.IsEmpty() {
 			matchesUser = classification.usernames.Contains(&username)
