@@ -498,6 +498,21 @@ When claim scopes are used, the listed claims will only be returned if the scope
 
 If the parent classification has set scopes the scopes are used in addition to the claim scopes.
 
+## Migration
+
+The following changes require additions to existing configurations.
+
+| Change | What to do |
+|---|---|
+| `server.issuer` is required, the issuer is no longer derived from the `Host` header | Add `issuer` with the external URL of **STOPnik**, see [Issuer](#issuer) |
+| Redirects of clients must match exactly, wildcards (`*`) are rejected | List every redirect URI of a client exactly, including query parameters, see [Redirects](#redirects). ForwardAuth redirects still support a trailing `*` |
+| Without `grantTypes` only `authorization_code` and `refresh_token` are allowed | Add `grantTypes` to clients using `password`, `implicit` or `client_credentials` |
+| Without `scopes` only the OpenID Connect scopes of `oidc` clients are allowed | Add `scopes` with all scopes a client requests, see [Scopes](#scopes) |
+| Tokens are never signed with the server `secret` | Configure `server.privateKey`, otherwise an ephemeral key is generated on every start, see [Keys and secret](#keys-and-secret) |
+| PKCE with `S256` is required for all clients by default | Use PKCE with `S256`, or set `requirePkce = false` for confidential clients and `pkcePlainAllowed = true` for clients using `plain`, see [PKCE](#pkce) |
+| `server.revokeScopeScope` is renamed | Rename it to `server.revokeScope`, the old name is accepted with a warning until the next release |
+| `allowLegacyHashes` will default to `false` with the next major version | Replace SHA512 hashes with bcrypt hashes, see [SHA512 hashes](../advanced/cmd.md#sha512-hashes) |
+
 ## Examples
 
 ### Minimal configuration
