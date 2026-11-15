@@ -1,6 +1,8 @@
 package key
 
 import (
+	stdcrypto "crypto"
+	"encoding/base64"
 	"github.com/lestrrat-go/jwx/v4/jwa"
 	"github.com/webishdev/stopnik/internal/config"
 	"reflect"
@@ -228,5 +230,49 @@ func Test_ClientKeysFollowDynamicConfiguration(t *testing.T) {
 
 	if len(keyManger.GetAllKeys()) != 2 {
 		t.Error("Server key and the key of the remaining client should exist")
+	}
+}
+
+func Test_KeyIdIsPublicKeyThumbprint(t *testing.T) {
+	for _, keyFile := range []string{"rsa256key.pem", "ecdsa256key.pem", "ecdsa521key.pem"} {
+		t.Run(keyFile, func(t *testing.T) {
+			testClient := &config.Client{Id: "foo", PrivateKey: "../../../.test_files/" + keyFile}
+
+			firstManager := newKeyManager(nil)
+			secondManager := newKeyManager(nil)
+			if loadError := firstManager.addClientKey(testClient); loadError != nil {
+				t.Fatal(loadError)
+			}
+			if loadError := secondManager.addClientKey(testClient); loadError != nil {
+				t.Fatal(loadError)
+			}
+			firstKeys := (*firstManager.keyStore).GetValues()
+			secondKeys := (*secondManager.keyStore).GetValues()
+			if len(firstKeys) != 1 || len(secondKeys) != 1 {
+				t.Fatal("expected exactly one key")
+			}
+
+			// The same private key always results in the same key id
+			if firstKeys[0].Id != secondKeys[0].Id {
+				t.Errorf("key ids %s and %s differ for the same private key", firstKeys[0].Id, secondKeys[0].Id)
+			}
+
+			// The key id equals the RFC 7638 thumbprint of the public key, which is served at the JWKS endpoint
+			publicKey, publicKeyError := (*firstKeys[0].Key).PublicKey()
+			if publicKeyError != nil {
+				t.Fatal(publicKeyError)
+			}
+			expectedThumbprint, thumbprintError := publicKey.Thumbprint(stdcrypto.SHA256)
+			if thumbprintError != nil {
+				t.Fatal(thumbprintError)
+			}
+			if firstKeys[0].Id != base64.RawURLEncoding.EncodeToString(expectedThumbprint) {
+				t.Errorf("key id %s is not the thumbprint of the public key", firstKeys[0].Id)
+			}
+			publicKid, _ := publicKey.KeyID()
+			if publicKid != firstKeys[0].Id {
+				t.Errorf("served key id %s does not match %s", publicKid, firstKeys[0].Id)
+			}
+		})
 	}
 }

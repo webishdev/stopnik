@@ -1,7 +1,6 @@
 package crypto
 
 import (
-	"crypto/sha1"
 	"crypto/sha512"
 	"crypto/subtle"
 	"fmt"
@@ -32,11 +31,6 @@ func Sha512SaltedHash(value string, salt string) string {
 	} else {
 		return Sha512Hash(value)
 	}
-}
-
-// Sha1Hash returns a SHA1 hash for the given value.
-func Sha1Hash(value string) string {
-	return fmt.Sprintf("%x", sha1.Sum([]byte(value)))
 }
 
 // BcryptHash returns a bcrypt hash for the given value, the salt is part of the returned hash.

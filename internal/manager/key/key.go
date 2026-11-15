@@ -1,11 +1,9 @@
 package key
 
 import (
-	"crypto/ecdsa"
-	"crypto/rsa"
-	"crypto/x509"
+	stdcrypto "crypto"
+	_ "crypto/sha256" // registers SHA-256 for the key thumbprint
 	"encoding/base64"
-	"fmt"
 	"github.com/lestrrat-go/jwx/v4/jwa"
 	"github.com/lestrrat-go/jwx/v4/jwk"
 	"github.com/webishdev/stopnik/internal/config"
@@ -197,30 +195,29 @@ func (km *Manger) addManagedKey(managedKey *crypto.ManagedKey) {
 	}
 }
 
+// convert converts the private key into a jwk.Key used to sign tokens.
+// https://datatracker.ietf.org/doc/html/rfc7638
+// The key id is the SHA-256 thumbprint of the public key, so it is stable and not derived from secret material.
 func (km *Manger) convert(signingPrivateKey *crypto.SigningPrivateKey) (*crypto.ManagedKey, error) {
-	keyAsBytes, loadError := km.getBytes(signingPrivateKey.PrivateKey)
-	if loadError != nil {
-		return nil, loadError
-	}
-	base64String := base64.StdEncoding.EncodeToString(keyAsBytes)
-	kid := crypto.Sha1Hash(base64String)
-
 	key, jwkError := jwk.Import[jwk.Key](signingPrivateKey.PrivateKey)
 	if jwkError != nil {
 		return nil, jwkError
 	}
 
-	var setError error
+	kid, kidError := thumbprint(key)
+	if kidError != nil {
+		return nil, kidError
+	}
 
-	if settError := key.Set(jwk.KeyIDKey, kid); settError != nil {
+	if setError := key.Set(jwk.KeyIDKey, kid); setError != nil {
 		return nil, setError
 	}
 
-	if settError := key.Set(jwk.AlgorithmKey, signingPrivateKey.SignatureAlgorithm); settError != nil {
+	if setError := key.Set(jwk.AlgorithmKey, signingPrivateKey.SignatureAlgorithm); setError != nil {
 		return nil, setError
 	}
 
-	if settError := key.Set(jwk.KeyUsageKey, "sig"); settError != nil {
+	if setError := key.Set(jwk.KeyUsageKey, "sig"); setError != nil {
 		return nil, setError
 	}
 
@@ -234,12 +231,15 @@ func (km *Manger) convert(signingPrivateKey *crypto.SigningPrivateKey) (*crypto.
 	return managedKey, nil
 }
 
-func (km *Manger) getBytes(key interface{}) ([]byte, error) {
-	switch key := key.(type) {
-	case *rsa.PrivateKey:
-		return x509.MarshalPKCS8PrivateKey(key)
-	case *ecdsa.PrivateKey:
-		return x509.MarshalECPrivateKey(key)
+// thumbprint returns the base64url encoded RFC 7638 SHA-256 thumbprint of the public key of the given key.
+func thumbprint(key jwk.Key) (string, error) {
+	publicKey, publicKeyError := key.PublicKey()
+	if publicKeyError != nil {
+		return "", publicKeyError
 	}
-	return nil, fmt.Errorf("unknown private key type: %T", key)
+	thumbprintBytes, thumbprintError := publicKey.Thumbprint(stdcrypto.SHA256)
+	if thumbprintError != nil {
+		return "", thumbprintError
+	}
+	return base64.RawURLEncoding.EncodeToString(thumbprintBytes), nil
 }

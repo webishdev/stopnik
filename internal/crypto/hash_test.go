@@ -51,28 +51,6 @@ func Test_Sha512SaltedHash(t *testing.T) {
 	}
 }
 
-func Test_Sha1Hash(t *testing.T) {
-	type parameter struct {
-		value    string
-		expected string
-	}
-
-	var parameters = []parameter{
-		{"foo", "0beec7b5ea3f0fdbc95d0dd47f3c5bc275da8a33"},
-		{"bar", "62cdb7020ff920e5aa642c3d4066950dd1f01f4d"},
-		{"moo123", "36d0e94568d34adaec89601e4297a10100cf47c5"},
-	}
-
-	for _, test := range parameters {
-		testMessage := test.value
-		t.Run(testMessage, func(t *testing.T) {
-			if output := Sha1Hash(test.value); output != test.expected {
-				t.Errorf("Output %s not equal to expected %s", output, test.expected)
-			}
-		})
-	}
-}
-
 func Test_VerifySecret(t *testing.T) {
 	bcryptHash, hashError := BcryptHash("bar")
 	if hashError != nil {
