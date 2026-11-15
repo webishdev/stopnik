@@ -28,7 +28,7 @@ func setupStore(t *testing.T) (string, *Store) {
 			t.Fatal(mkdirError)
 		}
 	}
-	store := NewStore(filepath.Join(baseDir, "client.d"), filepath.Join(baseDir, "user.d"), filepath.Join(baseDir, "classification.d"), nil)
+	store := NewStore(filepath.Join(baseDir, "client.d"), filepath.Join(baseDir, "user.d"), filepath.Join(baseDir, "classification.d"), nil, true)
 	return baseDir, store
 }
 

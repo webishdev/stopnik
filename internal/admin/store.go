@@ -16,6 +16,7 @@ import (
 
 	"github.com/BurntSushi/toml"
 	"github.com/webishdev/stopnik/internal/config"
+	"github.com/webishdev/stopnik/internal/crypto"
 )
 
 var (
@@ -58,6 +59,17 @@ func (entry *Entry) Valid() bool {
 	return entry.Error == ""
 }
 
+// LegacyHash returns whether the password or client secret of the entry uses a legacy SHA512 hash, used by the template.
+func (entry *Entry) LegacyHash() bool {
+	if entry.Client != nil {
+		return crypto.IsLegacyHash(entry.Client.ClientSecret)
+	}
+	if entry.User != nil {
+		return crypto.IsLegacyHash(entry.User.Password)
+	}
+	return false
+}
+
 // Store reads and writes the dynamic configuration files of clients, users and classifications.
 // Every write is validated with the same rules STOPnik uses when loading the files.
 type Store struct {
@@ -66,7 +78,8 @@ type Store struct {
 }
 
 // NewStore creates a Store for the given directories, the optional ClientCheck is used to validate clients.
-func NewStore(clientsDir string, usersDir string, classificationsDir string, clientCheck config.ClientCheck) *Store {
+// Legacy SHA512 hashes are only accepted, when allowLegacyHashes is set.
+func NewStore(clientsDir string, usersDir string, classificationsDir string, clientCheck config.ClientCheck, allowLegacyHashes bool) *Store {
 	return &Store{
 		kinds: []*Kind{
 			{
@@ -76,7 +89,7 @@ func NewStore(clientsDir string, usersDir string, classificationsDir string, cli
 				KeyName:  "id",
 				Dir:      clientsDir,
 				parse: func(entry *Entry, data []byte) error {
-					client, parseError := config.ParseClient(data, toml.Unmarshal, clientCheck)
+					client, parseError := config.ParseClient(data, toml.Unmarshal, clientCheck, allowLegacyHashes)
 					if parseError != nil {
 						return parseError
 					}
@@ -91,7 +104,7 @@ func NewStore(clientsDir string, usersDir string, classificationsDir string, cli
 				KeyName:  "username",
 				Dir:      usersDir,
 				parse: func(entry *Entry, data []byte) error {
-					user, parseError := config.ParseUser(data, toml.Unmarshal)
+					user, parseError := config.ParseUser(data, toml.Unmarshal, allowLegacyHashes)
 					if parseError != nil {
 						return parseError
 					}

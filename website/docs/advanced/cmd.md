@@ -34,7 +34,7 @@ see [Configuration](../introduction/config.md).
 
 ## Password
 
-The `-password` parameter will prompt for a password/secret and print its bcrypt hash.
+The `-password` parameter will prompt for a password/secret and print its bcrypt hash, created with cost 12.
 The result can be used in the configuration file for client secret and user password.
 bcrypt hashes contain their own random salt, so no `salt` is needed in the configuration.
 
@@ -59,6 +59,11 @@ htpasswd -nbBC 10 "" bar | cut -d: -f2
 
 Previous versions of **STOPnik** used (salted) SHA512 hashes, which are still supported.
 As SHA512 is fast to calculate, such hashes are easier to brute force and should be replaced by bcrypt hashes.
+**STOPnik** logs a warning on startup for every user and client which still uses a SHA512 hash,
+the admin web user interface marks them in the lists.
+
+With `server.allowLegacyHashes = false` users and clients with SHA512 hashes are rejected.
+The default is `true` for now and will change to `false` with the next major version.
 
 When not using an additional salt value, the SHA512 hash can be created with other tools.
 To create the hash value for the password `bar` for example, the following command can be used
@@ -98,7 +103,8 @@ which allows to make the admin web user interface available through a reverse pr
 New entries are stored as files with a generated name (a UUID) in the matching folder,
 existing files keep their name.
 Settings which are not part of the forms, like custom keys, are kept when an entry is saved, comments are removed.
-Passwords and client secrets entered in the forms are stored as bcrypt hashes.
+Passwords and client secrets entered in the forms are always stored as bcrypt hashes,
+users and clients which still use a legacy SHA512 hash are marked in the lists.
 
 Relative paths to client private keys are resolved against the working directory,
 start `stopnik-admin` from the same directory as **STOPnik**.

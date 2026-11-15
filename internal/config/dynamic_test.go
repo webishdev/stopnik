@@ -177,3 +177,21 @@ func Test_DynamicStoreMissingDirectories(t *testing.T) {
 		t.Error("expected no clients")
 	}
 }
+
+func Test_DynamicStoreRejectsLegacyHashes(t *testing.T) {
+	baseDir, config, dynamicStore := setupDynamicTest(t, nil)
+	disallowed := false
+	config.Server.AllowLegacyHashes = &disallowed
+
+	legacyHash := "d82c4eb5261cb9c8aa9855edd67d1bd10482f41529858d925094d173fa662aa91ff39bc5b188615273484021dfb16fd8284cf684ccf0fc795be3aa2fc1e6c181"
+	writeTestFile(t, filepath.Join(baseDir, "user.d", "legacy.toml"), "username = \"legacy\"\npassword = \""+legacyHash+"\"\n")
+	writeTestFile(t, filepath.Join(baseDir, "user.d", "bar.toml"), testUserFile("bar"))
+	dynamicStore.Load()
+
+	if _, exists := config.GetUser("legacy"); exists {
+		t.Error("user with legacy hash should be rejected when legacy hashes are not allowed")
+	}
+	if _, exists := config.GetUser("bar"); !exists {
+		t.Error("user with bcrypt hash should be loaded")
+	}
+}

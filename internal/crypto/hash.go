@@ -12,10 +12,13 @@ import (
 // legacyHashPattern matches the hex encoded SHA512 hashes used before bcrypt was introduced.
 var legacyHashPattern = regexp.MustCompile("^[0-9a-f]{128}$")
 
+// bcryptCost is the cost of new bcrypt hashes.
+const bcryptCost = 12
+
 // unknownBcryptHash and unknownLegacyHash are compared against when the expected hash is not of the related type,
 // so every call of VerifySecret costs one bcrypt and one SHA512 calculation,
 // independent of whether a user or client exists or which hash type is used.
-var unknownBcryptHash, _ = bcrypt.GenerateFromPassword([]byte("stopnik-unknown-secret"), bcrypt.DefaultCost)
+var unknownBcryptHash, _ = bcrypt.GenerateFromPassword([]byte("stopnik-unknown-secret"), bcryptCost)
 var unknownLegacyHash = Sha512Hash("stopnik-unknown-secret")
 
 // Sha512Hash returns a SHA512 hash for the given value.
@@ -35,7 +38,7 @@ func Sha512SaltedHash(value string, salt string) string {
 
 // BcryptHash returns a bcrypt hash for the given value, the salt is part of the returned hash.
 func BcryptHash(value string) (string, error) {
-	hash, hashError := bcrypt.GenerateFromPassword([]byte(value), bcrypt.DefaultCost)
+	hash, hashError := bcrypt.GenerateFromPassword([]byte(value), bcryptCost)
 	if hashError != nil {
 		return "", hashError
 	}

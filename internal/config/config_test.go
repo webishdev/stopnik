@@ -653,7 +653,7 @@ func Test_ValidUsers(t *testing.T) {
 	}
 
 	for _, user := range users {
-		if validationError := ValidateUser(&user); validationError != nil {
+		if validationError := ValidateUser(&user, true); validationError != nil {
 			t.Errorf("did not expect user %s to be invalid, %v", user.Username, validationError)
 		}
 	}
@@ -703,7 +703,7 @@ func Test_InvalidUsers(t *testing.T) {
 		{Username: "", Password: "d82c4eb5261cb9c8aa9855edd67d1bd10482f41529858d925094d173fa662aa91ff39bc5b188615273484021dfb16fd8284cf684ccf0fc795be3aa2fc1e6c181"}}
 
 	for _, user := range invalidUserParameters {
-		if validationError := ValidateUser(&user); validationError == nil {
+		if validationError := ValidateUser(&user, true); validationError == nil {
 			t.Errorf("expected user '%s' to be invalid", user.Username)
 		}
 	}
@@ -754,7 +754,7 @@ func Test_ValidClients(t *testing.T) {
 	}
 
 	for _, client := range clients {
-		if validationError := ValidateClient(&client); validationError != nil {
+		if validationError := ValidateClient(&client, true); validationError != nil {
 			t.Errorf("did not expect client %s to be invalid, %v", client.Id, validationError)
 		}
 	}
@@ -816,7 +816,7 @@ func Test_InvalidClients(t *testing.T) {
 	}
 
 	for _, client := range invalidClientParameters {
-		if validationError := ValidateClient(&client); validationError == nil {
+		if validationError := ValidateClient(&client, true); validationError == nil {
 			t.Errorf("expected client '%s' to be invalid", client.Id)
 		}
 	}
@@ -1161,7 +1161,7 @@ func Test_InvalidConfiguredRedirects(t *testing.T) {
 	for _, redirect := range invalidRedirects {
 		t.Run(redirect, func(t *testing.T) {
 			client := &Client{Id: "foo", Redirects: []string{"https://example.com/valid", redirect}}
-			validationError := ValidateClient(client)
+			validationError := ValidateClient(client, true)
 			if validationError == nil {
 				t.Fatalf("expected client with redirect %s to be invalid", redirect)
 			}
@@ -1590,5 +1590,56 @@ func Test_GetRequirePkce(t *testing.T) {
 				t.Errorf("result %t did not match %t", result, test.expected)
 			}
 		})
+	}
+}
+
+func Test_AllowLegacyHashes(t *testing.T) {
+	legacyHash := "d82c4eb5261cb9c8aa9855edd67d1bd10482f41529858d925094d173fa662aa91ff39bc5b188615273484021dfb16fd8284cf684ccf0fc795be3aa2fc1e6c181"
+	bcryptHash := "$2a$10$jvXVHUYe.kb5njbxI2QUOOY/TDDi880X0jC01h1CrhUNagGN.KcDq"
+
+	if !(&Config{}).GetAllowLegacyHashes() {
+		t.Error("legacy hashes should be allowed by default")
+	}
+	disallowed := false
+	if (&Config{Server: Server{AllowLegacyHashes: &disallowed}}).GetAllowLegacyHashes() {
+		t.Error("legacy hashes should not be allowed when disabled")
+	}
+
+	legacyUser := &User{Username: "foo", Password: legacyHash}
+	bcryptUser := &User{Username: "foo", Password: bcryptHash}
+	if ValidateUser(legacyUser, true) != nil || ValidateUser(legacyUser, false) == nil {
+		t.Error("legacy user hash should only be accepted when allowed")
+	}
+	if ValidateUser(bcryptUser, false) != nil {
+		t.Error("bcrypt user hash should always be accepted")
+	}
+
+	legacyClient := &Client{Id: "foo", ClientSecret: legacyHash, Redirects: []string{"https://example.com/callback"}}
+	bcryptClient := &Client{Id: "foo", ClientSecret: bcryptHash, Redirects: []string{"https://example.com/callback"}}
+	publicClient := &Client{Id: "foo", Redirects: []string{"https://example.com/callback"}}
+	if ValidateClient(legacyClient, true) != nil || ValidateClient(legacyClient, false) == nil {
+		t.Error("legacy client hash should only be accepted when allowed")
+	}
+	if ValidateClient(bcryptClient, false) != nil || ValidateClient(publicClient, false) != nil {
+		t.Error("bcrypt client hash and public clients should always be accepted")
+	}
+}
+
+func Test_LegacyHashWarning(t *testing.T) {
+	legacyHash := "d82c4eb5261cb9c8aa9855edd67d1bd10482f41529858d925094d173fa662aa91ff39bc5b188615273484021dfb16fd8284cf684ccf0fc795be3aa2fc1e6c181"
+	newDynamicSnapshot(
+		[]*Client{{Id: "legacy-client", ClientSecret: legacyHash}, {Id: "public-client"}},
+		[]*User{{Username: "legacy-user", Password: legacyHash}},
+		nil,
+	)
+
+	if _, warned := legacyHashWarnings.Load("client:legacy-client"); !warned {
+		t.Error("expected warning for client with legacy hash")
+	}
+	if _, warned := legacyHashWarnings.Load("user:legacy-user"); !warned {
+		t.Error("expected warning for user with legacy hash")
+	}
+	if _, warned := legacyHashWarnings.Load("client:public-client"); warned {
+		t.Error("did not expect warning for client without legacy hash")
 	}
 }

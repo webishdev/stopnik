@@ -60,7 +60,7 @@ func start(addr string, basePath string, configurationDir string) error {
 
 	logger.Info("Managing clients in %s, users in %s and classifications in %s", currentConfig.GetClientsDir(), currentConfig.GetUsersDir(), currentConfig.GetClassificationsDir())
 
-	store := admin.NewStore(currentConfig.GetClientsDir(), currentConfig.GetUsersDir(), currentConfig.GetClassificationsDir(), key.ValidateClientKey)
+	store := admin.NewStore(currentConfig.GetClientsDir(), currentConfig.GetUsersDir(), currentConfig.GetClassificationsDir(), key.ValidateClientKey, currentConfig.GetAllowLegacyHashes())
 	handler, handlerError := admin.NewHandler(store, currentConfig, basePath)
 	if handlerError != nil {
 		return handlerError

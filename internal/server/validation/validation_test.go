@@ -3,6 +3,7 @@ package validation
 import (
 	"fmt"
 	"github.com/webishdev/stopnik/internal/config"
+	"github.com/webishdev/stopnik/internal/crypto"
 	"github.com/webishdev/stopnik/internal/limiter"
 	"github.com/webishdev/stopnik/internal/oauth2"
 	"net/http"
@@ -311,12 +312,19 @@ func createValidationTestConfig(t *testing.T) {
 }
 
 // useTestCredentialGuard replaces the credential guard with a new one for the duration of the test.
+// The secret verification is replaced with a fast check of the legacy hashes used by the test configuration,
+// as the tests only check the counting of many failed attempts and bcrypt is slow on purpose.
 func useTestCredentialGuard(t *testing.T) {
 	t.Helper()
 	originalGuard := credentialGuard
+	originalVerifySecret := verifySecret
 	credentialGuard = limiter.NewCredentialGuard()
+	verifySecret = func(secret string, salt string, expectedHash string) bool {
+		return expectedHash != "" && crypto.Sha512SaltedHash(secret, salt) == expectedHash
+	}
 	t.Cleanup(func() {
 		credentialGuard = originalGuard
+		verifySecret = originalVerifySecret
 	})
 }
 

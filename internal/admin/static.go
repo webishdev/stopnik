@@ -101,6 +101,7 @@ func staticTopics(staticConfig *config.Config, store *Store) []*staticTopic {
 						fullWidth(textField("Private key", "Used to sign tokens, otherwise an ephemeral key is generated on every start.", server.PrivateKey)),
 						secret,
 						sessionTimeout,
+						toggle("Legacy hashes allowed", "Accept SHA512 hashes for passwords and client secrets.", staticConfig.GetAllowLegacyHashes()),
 					},
 				},
 				{

@@ -1,6 +1,7 @@
 package crypto
 
 import (
+	"golang.org/x/crypto/bcrypt"
 	"testing"
 )
 
@@ -99,5 +100,22 @@ func Test_IsSupportedHash(t *testing.T) {
 	}
 	if IsSupportedHash("bar") {
 		t.Errorf("plain value should not be supported")
+	}
+}
+
+func Test_BcryptCost(t *testing.T) {
+	hash, hashError := BcryptHash("bar")
+	if hashError != nil {
+		t.Fatal(hashError)
+	}
+	cost, costError := bcrypt.Cost([]byte(hash))
+	if costError != nil || cost != 12 {
+		t.Errorf("expected bcrypt cost 12, got %d", cost)
+	}
+
+	// The hash for unknown users must have the same cost, so the timing does not reveal existing users
+	unknownCost, unknownCostError := bcrypt.Cost(unknownBcryptHash)
+	if unknownCostError != nil || unknownCost != cost {
+		t.Errorf("expected unknown bcrypt hash to have cost %d, got %d", cost, unknownCost)
 	}
 }

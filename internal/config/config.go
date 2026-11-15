@@ -68,6 +68,7 @@ type Server struct {
 	SessionTimeoutSeconds int         `toml:"sessionTimeoutSeconds"`
 	Issuer                string      `toml:"issuer"`
 	TrustedProxies        []string    `toml:"trustedProxies"`
+	AllowLegacyHashes     *bool       `toml:"allowLegacyHashes"`
 	ForwardAuth           ForwardAuth `toml:"forwardAuth"`
 }
 
@@ -331,7 +332,8 @@ func (config *Config) Validate() error {
 }
 
 // ValidateUser validates a single User from the dynamic configuration.
-func ValidateUser(user *User) error {
+// Legacy SHA512 password hashes are only accepted, when allowLegacyHashes is set.
+func ValidateUser(user *User, allowLegacyHashes bool) error {
 	if user.Username == "" {
 		return errors.New("user configuration invalid, missing username")
 	}
@@ -340,17 +342,26 @@ func ValidateUser(user *User) error {
 		return fmt.Errorf("user configuration invalid for user with username %s, missing password or not a bcrypt or SHA512 hash", user.Username)
 	}
 
+	if !allowLegacyHashes && isLegacyHash(user.Password) {
+		return fmt.Errorf("user configuration invalid for user with username %s, legacy SHA512 password hashes are not allowed, create a bcrypt hash with 'stopnik -password'", user.Username)
+	}
+
 	return nil
 }
 
 // ValidateClient validates a single Client from the dynamic configuration.
-func ValidateClient(client *Client) error {
+// Legacy SHA512 client secret hashes are only accepted, when allowLegacyHashes is set.
+func ValidateClient(client *Client, allowLegacyHashes bool) error {
 	if client.Id == "" {
 		return errors.New("client configuration invalid, missing id")
 	}
 
 	if client.ClientSecret != "" && !isSupportedHash(client.ClientSecret) {
 		return fmt.Errorf("client configuration invalid, for client with id %s, client secret is not a bcrypt or SHA512 hash", client.Id)
+	}
+
+	if !allowLegacyHashes && isLegacyHash(client.ClientSecret) {
+		return fmt.Errorf("client configuration invalid, for client with id %s, legacy SHA512 client secret hashes are not allowed, create a bcrypt hash with 'stopnik -password'", client.Id)
 	}
 
 	if len(client.Redirects) == 0 {
@@ -544,6 +555,12 @@ func (config *Config) GetDisallowedScopes(client *Client, scopes []string) []str
 		}
 	}
 	return disallowedScopes
+}
+
+// GetAllowLegacyHashes returns whether legacy SHA512 hashes are accepted for passwords and client secrets.
+// When no value is provided, legacy hashes are accepted, this default will change with the next major version.
+func (config *Config) GetAllowLegacyHashes() bool {
+	return config.Server.AllowLegacyHashes == nil || *config.Server.AllowLegacyHashes
 }
 
 // GetTrustedProxies returns the proxies, which are trusted to provide the client address in X-Forwarded-For.
@@ -1041,6 +1058,11 @@ func isSupportedHash(value string) bool {
 		_, costError := bcrypt.Cost([]byte(value))
 		return costError == nil
 	}
+	return isLegacyHash(value)
+}
+
+// isLegacyHash checks whether the given value is a hex encoded (salted) SHA512 hash, as used before bcrypt.
+func isLegacyHash(value string) bool {
 	if len(value) != 128 {
 		return false
 	}

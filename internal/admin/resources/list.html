@@ -9,7 +9,7 @@
     <tbody>
     {{ range .Entries }}
     <tr>
-        <td><a class="primary-link" href="{{ base }}/clients/{{ .ID }}">{{ or .Label "Unnamed client" }}</a>{{ if not .Valid }}<div class="hint error-text">{{ .Error }}</div>{{ end }}</td>
+        <td><a class="primary-link" href="{{ base }}/clients/{{ .ID }}">{{ or .Label "Unnamed client" }}</a>{{ if not .Valid }}<div class="hint error-text">{{ .Error }}</div>{{ end }}{{ if .LegacyHash }}<div class="hint error-text">Legacy SHA512 secret hash, set a new secret</div>{{ end }}</td>
         {{ with .Client }}
         <td>{{ if .ClientSecret }}<span class="pill">Confidential</span>{{ else }}<span class="pill muted">Public</span>{{ end }}{{ if .Oidc }} <span class="pill accent">OIDC</span>{{ end }}</td>
         <td>{{ range .GrantTypes }}<span class="pill">{{ . }}</span> {{ else }}<span class="muted">Default</span>{{ end }}</td>
@@ -25,7 +25,7 @@
     <tbody>
     {{ range .Entries }}
     <tr>
-        <td><a class="primary-link" href="{{ base }}/users/{{ .ID }}">{{ or .Label "Unnamed user" }}</a>{{ if not .Valid }}<div class="hint error-text">{{ .Error }}</div>{{ end }}</td>
+        <td><a class="primary-link" href="{{ base }}/users/{{ .ID }}">{{ or .Label "Unnamed user" }}</a>{{ if not .Valid }}<div class="hint error-text">{{ .Error }}</div>{{ end }}{{ if .LegacyHash }}<div class="hint error-text">Legacy SHA512 password hash, set a new password</div>{{ end }}</td>
         {{ with .User }}<td>{{ .GetName }}</td><td>{{ .UserInformation.Email }}</td><td>{{ if .Admin }}<span class="admin-check" title="Admin" aria-label="Admin">{{ template "icon" "check" }}</span>{{ end }}</td>{{ else }}<td></td><td></td><td></td>{{ end }}
         <td>{{ template "status" . }}</td>
         {{ template "rowActions" (remove $.Kind .ID .Hash .) }}

@@ -92,6 +92,20 @@ func onlyFile(t *testing.T, dir string) (string, string) {
 	return dirEntries[0].Name(), string(data)
 }
 
+func Test_HandlerShowsLegacyHashes(t *testing.T) {
+	baseDir, _, handler := setupHandler(t)
+	legacyHash := "d82c4eb5261cb9c8aa9855edd67d1bd10482f41529858d925094d173fa662aa91ff39bc5b188615273484021dfb16fd8284cf684ccf0fc795be3aa2fc1e6c181"
+	writeEntry(t, baseDir, "client.d", "legacy", "id = \"legacy\"\nclientSecret = \""+legacyHash+"\"\nredirects = [\"https://example.com/callback\"]\n")
+	writeEntry(t, baseDir, "user.d", "legacy", "username = \"legacy\"\npassword = \""+legacyHash+"\"\n")
+
+	if body := get(t, handler, "/clients").Body.String(); !strings.Contains(body, "Legacy SHA512 secret hash") {
+		t.Error("expected legacy client secret hash to be shown")
+	}
+	if body := get(t, handler, "/users").Body.String(); !strings.Contains(body, "Legacy SHA512 password hash") {
+		t.Error("expected legacy password hash to be shown")
+	}
+}
+
 func Test_HandlerPages(t *testing.T) {
 	baseDir, _, handler := setupHandler(t)
 	writeEntry(t, baseDir, "client.d", "foo", testClientFile("foo"))
@@ -250,7 +264,7 @@ func Test_HandlerCreateAndEditClient(t *testing.T) {
 
 	fileName, content := onlyFile(t, filepath.Join(baseDir, "client.d"))
 	id := strings.TrimSuffix(fileName, ".toml")
-	client, parseError := config.ParseClient([]byte(content), toml.Unmarshal, nil)
+	client, parseError := config.ParseClient([]byte(content), toml.Unmarshal, nil, true)
 	if parseError != nil {
 		t.Fatal(parseError)
 	}
@@ -275,7 +289,7 @@ func Test_HandlerCreateAndEditClient(t *testing.T) {
 		t.Fatalf("expected redirect, got %d: %s", recorder.Code, recorder.Body.String())
 	}
 	_, content = onlyFile(t, filepath.Join(baseDir, "client.d"))
-	edited, _ := config.ParseClient([]byte(content), toml.Unmarshal, nil)
+	edited, _ := config.ParseClient([]byte(content), toml.Unmarshal, nil, true)
 	if edited.ClientSecret != client.ClientSecret || edited.Oidc || len(edited.Redirects) != 1 || edited.AccessTTL != 0 {
 		t.Errorf("unexpected client %+v", edited)
 	}
@@ -310,7 +324,7 @@ func Test_HandlerCreateInvalidUser(t *testing.T) {
 		t.Fatalf("expected redirect, got %d: %s", recorder.Code, recorder.Body.String())
 	}
 	_, content := onlyFile(t, filepath.Join(baseDir, "user.d"))
-	user, parseError := config.ParseUser([]byte(content), toml.Unmarshal)
+	user, parseError := config.ParseUser([]byte(content), toml.Unmarshal, true)
 	if parseError != nil {
 		t.Fatal(parseError)
 	}

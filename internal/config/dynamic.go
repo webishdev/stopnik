@@ -57,6 +57,7 @@ func newDynamicSnapshot(clients []*Client, users []*User, classifications []*Cla
 		snapshot.clients = append(snapshot.clients, client)
 		snapshot.oidc = snapshot.oidc || client.Oidc
 		warnDeprecatedGrantTypes(client)
+		warnLegacyHash("client", client.Id, client.ClientSecret)
 	}
 
 	for _, user := range users {
@@ -65,6 +66,7 @@ func newDynamicSnapshot(clients []*Client, users []*User, classifications []*Cla
 			continue
 		}
 		snapshot.userMap[user.Username] = user
+		warnLegacyHash("user", user.Username, user.Password)
 	}
 
 	for _, classification := range classifications {
@@ -88,6 +90,21 @@ func warnDeprecatedGrantTypes(client *Client) {
 			log.Warn("Client %s uses the grant type %s, which is deprecated and removed in OAuth 2.1", client.Id, deprecatedGrantType)
 		}
 	}
+}
+
+// legacyHashWarnings remembers for which entries a warning about a legacy hash was already logged.
+var legacyHashWarnings sync.Map
+
+// warnLegacyHash logs a warning once per entry, when a legacy SHA512 hash is used.
+// Such hashes can be brute-forced quickly when a configuration file leaks.
+func warnLegacyHash(kind string, name string, hash string) {
+	if !isLegacyHash(hash) {
+		return
+	}
+	if _, alreadyWarned := legacyHashWarnings.LoadOrStore(kind+":"+name, true); alreadyWarned {
+		return
+	}
+	log.Warn("The %s %s uses a legacy SHA512 hash, create a bcrypt hash with 'stopnik -password'", kind, name)
 }
 
 // getDynamic returns the currently active dynamic configuration, never nil.
@@ -347,9 +364,9 @@ func (dynamicStore *DynamicStore) parse(file *dynamicFile, data []byte) error {
 	var parseError error
 	switch file.kind {
 	case kindClient:
-		file.client, parseError = ParseClient(data, dynamicStore.unmarshaler, dynamicStore.clientCheck)
+		file.client, parseError = ParseClient(data, dynamicStore.unmarshaler, dynamicStore.clientCheck, dynamicStore.config.GetAllowLegacyHashes())
 	case kindUser:
-		file.user, parseError = ParseUser(data, dynamicStore.unmarshaler)
+		file.user, parseError = ParseUser(data, dynamicStore.unmarshaler, dynamicStore.config.GetAllowLegacyHashes())
 	case kindClassification:
 		file.classification, parseError = ParseClassification(data, dynamicStore.unmarshaler)
 	}
@@ -358,12 +375,12 @@ func (dynamicStore *DynamicStore) parse(file *dynamicFile, data []byte) error {
 
 // ParseClient decodes and validates a single Client from a dynamic configuration file.
 // The optional ClientCheck is called after validation.
-func ParseClient(data []byte, unmarshaler Unmarshal, clientCheck ClientCheck) (*Client, error) {
+func ParseClient(data []byte, unmarshaler Unmarshal, clientCheck ClientCheck, allowLegacyHashes bool) (*Client, error) {
 	client := &Client{}
 	if parseError := unmarshaler(data, client); parseError != nil {
 		return nil, parseError
 	}
-	if validationError := ValidateClient(client); validationError != nil {
+	if validationError := ValidateClient(client, allowLegacyHashes); validationError != nil {
 		return nil, validationError
 	}
 	if clientCheck != nil {
@@ -375,12 +392,12 @@ func ParseClient(data []byte, unmarshaler Unmarshal, clientCheck ClientCheck) (*
 }
 
 // ParseUser decodes and validates a single User from a dynamic configuration file.
-func ParseUser(data []byte, unmarshaler Unmarshal) (*User, error) {
+func ParseUser(data []byte, unmarshaler Unmarshal, allowLegacyHashes bool) (*User, error) {
 	user := &User{}
 	if parseError := unmarshaler(data, user); parseError != nil {
 		return nil, parseError
 	}
-	if validationError := ValidateUser(user); validationError != nil {
+	if validationError := ValidateUser(user, allowLegacyHashes); validationError != nil {
 		return nil, validationError
 	}
 	return user, nil

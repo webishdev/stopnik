@@ -79,6 +79,7 @@ Root entry named `server`
 | `sessionTimeoutSeconds`       | Seconds until session will end                                                                    | No       |
 | `issuer`                      | External URL of **STOPnik**, see [Issuer](#issuer)                                                | Yes      |
 | `trustedProxies`              | List of proxy IP addresses or CIDRs, see [Trusted proxies](#trusted-proxies)                      | No       |
+| `allowLegacyHashes`           | Accept SHA512 hashes, defaults to `true`, see [SHA512 hashes](../advanced/cmd.md#sha512-hashes)   | No       |
 | [`forwardAuth`](#forwardauth) | [Traefik ForwardAuth](https://doc.traefik.io/traefik/middlewares/http/forwardauth/) configuration | No       |
 
 #### Issuer

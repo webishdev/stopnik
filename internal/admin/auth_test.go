@@ -191,7 +191,7 @@ func Test_AuthOwnUser(t *testing.T) {
 		t.Fatalf("expected redirect, got %d: %s", recorder.Code, recorder.Body.String())
 	}
 	_, content := onlyFile(t, filepath.Join(baseDir, "user.d"))
-	user, parseError := config.ParseUser([]byte(content), toml.Unmarshal)
+	user, parseError := config.ParseUser([]byte(content), toml.Unmarshal, true)
 	if parseError != nil {
 		t.Fatal(parseError)
 	}
