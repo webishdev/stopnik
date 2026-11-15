@@ -3,6 +3,7 @@ package validation
 import (
 	"fmt"
 	"github.com/webishdev/stopnik/internal/config"
+	"github.com/webishdev/stopnik/internal/limiter"
 	"github.com/webishdev/stopnik/internal/oauth2"
 	"net/http"
 	"net/http/httptest"
@@ -214,7 +215,7 @@ func Test_ValidateUserPassword(t *testing.T) {
 
 			requestValidator := NewRequestValidator()
 
-			_, valid := requestValidator.ValidateUserPassword(test.name, test.password)
+			_, valid := requestValidator.ValidateUserPassword(httptest.NewRequest(http.MethodPost, "/token", nil), test.name, test.password)
 
 			if test.valid != valid {
 				t.Errorf("result does not match %t != %t", test.valid, valid)
@@ -246,7 +247,7 @@ func Test_ValidateUserPasswordAlwaysHashes(t *testing.T) {
 			hashCalls = 0
 			requestValidator := NewRequestValidator()
 
-			requestValidator.ValidateUserPassword(username, "xxx")
+			requestValidator.ValidateUserPassword(httptest.NewRequest(http.MethodPost, "/token", nil), username, "xxx")
 
 			if hashCalls != 1 {
 				t.Errorf("hash was calculated %d times, expected 1", hashCalls)
@@ -309,49 +310,125 @@ func createValidationTestConfig(t *testing.T) {
 	}
 }
 
+// useTestCredentialGuard replaces the credential guard with a new one for the duration of the test.
+func useTestCredentialGuard(t *testing.T) {
+	t.Helper()
+	originalGuard := credentialGuard
+	credentialGuard = limiter.NewCredentialGuard()
+	t.Cleanup(func() {
+		credentialGuard = originalGuard
+	})
+}
+
+func testRequestFrom(address string) *http.Request {
+	request := httptest.NewRequest(http.MethodPost, "/token", nil)
+	request.RemoteAddr = address + ":51234"
+	return request
+}
+
 func Test_ValidateUserPasswordBlockedAfterFailedAttempts(t *testing.T) {
 	createValidationTestConfig(t)
-
-	originalLimiter := credentialLimiter
-	defer func() {
-		credentialLimiter = originalLimiter
-	}()
-	credentialLimiter = newAttemptLimiter(2, time.Minute)
+	useTestCredentialGuard(t)
 
 	requestValidator := NewRequestValidator()
 
-	requestValidator.ValidateUserPassword("foo", "xxx")
-	requestValidator.ValidateUserPassword("foo", "xxx")
+	for range 10 {
+		requestValidator.ValidateUserPassword(testRequestFrom("192.0.2.1"), "foo", "xxx")
+	}
 
-	_, valid := requestValidator.ValidateUserPassword("foo", "bar")
+	_, valid := requestValidator.ValidateUserPassword(testRequestFrom("192.0.2.1"), "foo", "bar")
 	if valid {
-		t.Errorf("user should be blocked after too many failed attempts")
+		t.Errorf("user should be delayed after too many failed attempts from the same address")
 	}
 
 	// Unknown users are blocked the same way, so blocking does not reveal existing users
-	requestValidator.ValidateUserPassword("unknown", "xxx")
-	requestValidator.ValidateUserPassword("unknown", "xxx")
-	if !credentialLimiter.blocked("user:unknown") {
-		t.Errorf("unknown user should be blocked after too many failed attempts")
+	for range 10 {
+		requestValidator.ValidateUserPassword(testRequestFrom("192.0.2.1"), "unknown", "xxx")
+	}
+	if !credentialGuard.Blocked("user:unknown", "192.0.2.1") {
+		t.Errorf("unknown user should be delayed after too many failed attempts")
+	}
+}
+
+func Test_ValidateUserPasswordOtherAddressNotBlocked(t *testing.T) {
+	createValidationTestConfig(t)
+	useTestCredentialGuard(t)
+
+	requestValidator := NewRequestValidator()
+
+	for range 10 {
+		requestValidator.ValidateUserPassword(testRequestFrom("192.0.2.1"), "foo", "xxx")
+	}
+
+	// An attacker can not lock out a user, which signs in from another address
+	_, valid := requestValidator.ValidateUserPassword(testRequestFrom("198.51.100.7"), "foo", "bar")
+	if !valid {
+		t.Errorf("failed attempts from one address must not block a correct login from another address")
+	}
+}
+
+func Test_ValidateUserPasswordAddressBlocked(t *testing.T) {
+	createValidationTestConfig(t)
+	useTestCredentialGuard(t)
+
+	requestValidator := NewRequestValidator()
+
+	// One password against many usernames
+	for index := range 50 {
+		requestValidator.ValidateUserPassword(testRequestFrom("192.0.2.1"), fmt.Sprintf("user%d", index), "xxx")
+	}
+
+	_, valid := requestValidator.ValidateUserPassword(testRequestFrom("192.0.2.1"), "foo", "bar")
+	if valid {
+		t.Errorf("address should be blocked after too many failed attempts for different usernames")
+	}
+
+	_, valid = requestValidator.ValidateUserPassword(testRequestFrom("198.51.100.7"), "foo", "bar")
+	if !valid {
+		t.Errorf("other addresses should not be blocked")
+	}
+}
+
+func Test_ValidateClientCredentialsAddressBlocked(t *testing.T) {
+	createValidationTestConfig(t)
+	useTestCredentialGuard(t)
+
+	requestValidator := NewRequestValidator()
+
+	createRequest := func(address string, clientId string, clientSecret string) *http.Request {
+		request := testRequestFrom(address)
+		request.SetBasicAuth(clientId, clientSecret)
+		return request
+	}
+
+	for index := range 50 {
+		requestValidator.ValidateClientCredentials(createRequest("192.0.2.1", fmt.Sprintf("client%d", index), "xxx"))
+	}
+
+	_, _, valid := requestValidator.ValidateClientCredentials(createRequest("192.0.2.1", "foo", "bar"))
+	if valid {
+		t.Errorf("address should be blocked after too many failed attempts for different clients")
+	}
+
+	_, _, valid = requestValidator.ValidateClientCredentials(createRequest("198.51.100.7", "foo", "bar"))
+	if !valid {
+		t.Errorf("other addresses should not be blocked")
 	}
 }
 
 func Test_ValidateUserPasswordResetAfterSuccess(t *testing.T) {
 	createValidationTestConfig(t)
-
-	originalLimiter := credentialLimiter
-	defer func() {
-		credentialLimiter = originalLimiter
-	}()
-	credentialLimiter = newAttemptLimiter(2, time.Minute)
+	useTestCredentialGuard(t)
 
 	requestValidator := NewRequestValidator()
 
-	requestValidator.ValidateUserPassword("foo", "xxx")
-	requestValidator.ValidateUserPassword("foo", "bar")
-	requestValidator.ValidateUserPassword("foo", "xxx")
+	for range 2 {
+		requestValidator.ValidateUserPassword(testRequestFrom("192.0.2.1"), "foo", "xxx")
+		requestValidator.ValidateUserPassword(testRequestFrom("192.0.2.1"), "foo", "xxx")
+		requestValidator.ValidateUserPassword(testRequestFrom("192.0.2.1"), "foo", "bar")
+	}
 
-	_, valid := requestValidator.ValidateUserPassword("foo", "bar")
+	_, valid := requestValidator.ValidateUserPassword(testRequestFrom("192.0.2.1"), "foo", "bar")
 	if !valid {
 		t.Errorf("failed attempts should be reset after successful login")
 	}

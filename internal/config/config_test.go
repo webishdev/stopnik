@@ -1547,3 +1547,22 @@ func Test_ValidateIssuer(t *testing.T) {
 		})
 	}
 }
+
+func Test_TrustedProxies(t *testing.T) {
+	validConfig := &Config{Server: Server{Addr: ":8080", Issuer: "https://auth.example.com", TrustedProxies: []string{"10.0.0.0/8", "192.0.2.1", "::1"}}}
+	if validationError := validConfig.Validate(); validationError != nil {
+		t.Fatalf("did not expect validation error, %v", validationError)
+	}
+	if initializationError := Initialize(validConfig); initializationError != nil {
+		t.Fatal(initializationError)
+	}
+	trustedProxies := validConfig.GetTrustedProxies()
+	if len(trustedProxies) != 3 || trustedProxies[0].String() != "10.0.0.0/8" || trustedProxies[1].String() != "192.0.2.1/32" {
+		t.Errorf("unexpected trusted proxies %v", trustedProxies)
+	}
+
+	invalidConfig := &Config{Server: Server{Addr: ":8080", Issuer: "https://auth.example.com", TrustedProxies: []string{"10.0.0.0/8", "proxy.example.com"}}}
+	if validationError := invalidConfig.Validate(); validationError == nil {
+		t.Error("expected validation error for invalid trusted proxy")
+	}
+}

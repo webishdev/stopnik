@@ -6,28 +6,24 @@ import (
 	"encoding/hex"
 	"errors"
 	"net/http"
-	"sync"
+	"net/netip"
 	"time"
 
 	"github.com/webishdev/stopnik/internal/config"
 	"github.com/webishdev/stopnik/internal/crypto"
+	internalHttp "github.com/webishdev/stopnik/internal/http"
+	"github.com/webishdev/stopnik/internal/limiter"
 	internalStore "github.com/webishdev/stopnik/internal/store"
 )
 
 const sessionCookieName = "stopnik_admin_session"
 const defaultSessionTimeout = time.Hour
-const maxFailedLogins = 10
-const failedLoginsWindow = time.Minute * time.Duration(5)
 
 // ErrOwnAdmin is returned when the signed-in administrator would lock themselves out.
 var ErrOwnAdmin = errors.New("you can not delete, rename or remove the administrator flag of your own user")
 
 type adminSession struct {
 	username string
-}
-
-type failedLogins struct {
-	count int
 }
 
 type usernameKey struct{}
@@ -37,25 +33,27 @@ type usernameKey struct{}
 type authenticator struct {
 	store          *Store
 	sessionTimeout time.Duration
+	trustedProxies []netip.Prefix
 	sessions       internalStore.ExpiringStore[adminSession]
-	mutex          sync.Mutex
-	failed         internalStore.ExpiringStore[failedLogins]
+	guard          *limiter.CredentialGuard
 }
 
-func newAuthenticator(store *Store, sessionTimeout time.Duration) *authenticator {
+func newAuthenticator(store *Store, sessionTimeout time.Duration, trustedProxies []netip.Prefix) *authenticator {
 	return &authenticator{
 		store:          store,
 		sessionTimeout: sessionTimeout,
+		trustedProxies: trustedProxies,
 		sessions:       internalStore.NewTimedStore[adminSession](sessionTimeout),
-		failed:         internalStore.NewTimedStore[failedLogins](failedLoginsWindow),
+		guard:          limiter.NewCredentialGuard(),
 	}
 }
 
 // login checks the credentials and returns a new session token for an administrator.
-// After too many failed attempts within a time window further attempts for the username are rejected,
+// Failed attempts are limited per username and address, per address and per username, see limiter.CredentialGuard,
 // whether the user exists or not.
-func (auth *authenticator) login(username string, password string) (string, bool) {
-	if auth.blocked(username) {
+func (auth *authenticator) login(r *http.Request, username string, password string) (string, bool) {
+	address := internalHttp.ClientAddress(r, auth.trustedProxies)
+	if auth.guard.Blocked(username, address) {
 		return "", false
 	}
 	user := auth.store.FindUser(username)
@@ -66,12 +64,10 @@ func (auth *authenticator) login(username string, password string) (string, bool
 	// the secret is verified for unknown users too, so the response time does not reveal existing users
 	validSecret := crypto.VerifySecret(password, salt, expectedHash)
 	if !validSecret || user == nil || !user.Admin {
-		auth.failedAttempt(username)
+		auth.guard.Failed(username, address)
 		return "", false
 	}
-	auth.mutex.Lock()
-	auth.failed.Delete(username)
-	auth.mutex.Unlock()
+	auth.guard.Succeeded(username, address)
 
 	token := make([]byte, 32)
 	if _, randError := rand.Read(token); randError != nil {
@@ -105,24 +101,6 @@ func (auth *authenticator) user(r *http.Request) (*config.User, bool) {
 func (auth *authenticator) logout(r *http.Request) {
 	if cookie, cookieError := r.Cookie(sessionCookieName); cookieError == nil {
 		auth.sessions.Delete(cookie.Value)
-	}
-}
-
-func (auth *authenticator) blocked(username string) bool {
-	auth.mutex.Lock()
-	defer auth.mutex.Unlock()
-	attempts, exists := auth.failed.Get(username)
-	return exists && attempts.count >= maxFailedLogins
-}
-
-// failedAttempt records a failed attempt, the time window starts with the first failed attempt.
-func (auth *authenticator) failedAttempt(username string) {
-	auth.mutex.Lock()
-	defer auth.mutex.Unlock()
-	if attempts, exists := auth.failed.Get(username); exists {
-		attempts.count++
-	} else {
-		auth.failed.Set(username, &failedLogins{count: 1})
 	}
 }
 

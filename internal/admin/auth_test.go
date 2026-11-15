@@ -2,6 +2,7 @@ package admin
 
 import (
 	"net/http"
+	"net/http/httptest"
 	"net/url"
 	"path/filepath"
 	"strings"
@@ -114,11 +115,32 @@ func Test_AuthBlocksAfterFailedAttempts(t *testing.T) {
 	baseDir, _, handler := setupUnauthenticatedHandler(t)
 	writeEntry(t, baseDir, "user.d", "admin", testAdminFile("admin"))
 
-	for range maxFailedLogins {
+	for range 10 {
 		login(t, handler, "admin", "wrong")
 	}
 	if response := login(t, handler, "admin", testAdminPassword); response.StatusCode != http.StatusUnauthorized {
 		t.Errorf("expected sign in to be blocked, got %d", response.StatusCode)
+	}
+}
+
+func Test_AuthOtherAddressNotBlocked(t *testing.T) {
+	baseDir, _, handler := setupUnauthenticatedHandler(t)
+	writeEntry(t, baseDir, "user.d", "admin", testAdminFile("admin"))
+
+	for range 10 {
+		login(t, handler, "admin", "wrong")
+	}
+
+	// Failed attempts from one address must not lock out the administrator signing in from another address
+	values := url.Values{"username": {"admin"}, "password": {testAdminPassword}}
+	request := httptest.NewRequest(http.MethodPost, "/login", strings.NewReader(values.Encode()))
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	request.RemoteAddr = "198.51.100.7:51234"
+	recorder := httptest.NewRecorder()
+	handler.ServeHTTP(recorder, request)
+
+	if recorder.Code != http.StatusSeeOther {
+		t.Errorf("expected sign in from another address to succeed, got %d", recorder.Code)
 	}
 }
 

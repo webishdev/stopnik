@@ -190,7 +190,7 @@ func (h *Handler) passwordGrant(r *http.Request) (*tokenGrant, *oauth2.TokenErro
 	passwordForm := r.PostFormValue(oauth2.ParameterPassword)
 	scopeForm := r.PostFormValue(oauth2.ParameterScope)
 
-	user, exists := h.validator.ValidateUserPassword(usernameFrom, passwordForm)
+	user, exists := h.validator.ValidateUserPassword(r, usernameFrom, passwordForm)
 	if !exists {
 		return nil, &oauth2.TokenErrorResponseParameter{Error: oauth2.TokenEtInvalidRequest}
 	}

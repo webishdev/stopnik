@@ -78,6 +78,7 @@ Root entry named `server`
 | `revokeScopeScope`            | Scope which allows token revocation                                                               | No       |
 | `sessionTimeoutSeconds`       | Seconds until session will end                                                                    | No       |
 | `issuer`                      | External URL of **STOPnik**, see [Issuer](#issuer)                                                | Yes      |
+| `trustedProxies`              | List of proxy IP addresses or CIDRs, see [Trusted proxies](#trusted-proxies)                      | No       |
 | [`forwardAuth`](#forwardauth) | [Traefik ForwardAuth](https://doc.traefik.io/traefik/middlewares/http/forwardauth/) configuration | No       |
 
 #### Issuer
@@ -94,6 +95,21 @@ The issuer is never derived from the `Host` header of a request, as it can be ma
 The configured `issuer` is used as it is.
 When a [base path](#base-path) is configured, the endpoint URLs are `issuer` + endpoint path when the `issuer` already ends with
 the base path (e.g. `https://example.com/auth/token`), and `issuer` + base path + endpoint path otherwise.
+
+#### Trusted proxies
+
+**STOPnik** limits failed logins and client authentications per client address, see [Users](#users).
+By default the address of the direct peer is used and `X-Forwarded-For` is ignored, as it can be set by any client.
+
+When **STOPnik** runs behind a reverse proxy, list the addresses of the proxies in `trustedProxies`, e.g.
+
+```toml
+[server]
+trustedProxies = ["10.0.0.0/8", "192.168.1.10"]
+```
+
+When the direct peer is a trusted proxy, the right-most address in `X-Forwarded-For`, which is not a trusted proxy itself,
+is used as client address.
 
 #### Keys and secret
 
@@ -332,8 +348,17 @@ For `password` and `salt` see, [Command line - Password](../advanced/cmd.md#pass
 The `admin` property is only used by the [admin web user interface](../advanced/cmd.md#admin-web-user-interface),
 **STOPnik** itself ignores it.
 
-After 10 failed login attempts within 5 minutes, further logins for the username are blocked for the rest of the 5 minutes.
+Failed logins are limited within a time window of 5 minutes, so passwords can not be guessed by brute force.
+
+- After 3 failed logins for a username from the same address, further logins of this username from this address
+  are delayed, starting with 1 second and doubling with every further failed login.
+  Logins of the same user from other addresses are not affected, so an attacker can not lock out a user.
+- After 50 failed logins from the same address, all logins from this address are blocked.
+- After 100 failed logins for a username from all addresses, all logins of this username are blocked.
+
 The same applies to failed client authentications for a client id.
+The client address is determined as described in [Trusted proxies](#trusted-proxies).
+The [admin web user interface](../advanced/cmd.md#admin-web-user-interface) uses the same limits.
 
 #### User profile
 

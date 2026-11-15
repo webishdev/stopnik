@@ -12,6 +12,7 @@ const (
 	XForwardProtocol         string = "X-Forwarded-Proto"
 	XForwardHost             string = "X-Forwarded-Host"
 	XForwardUri              string = "X-Forwarded-Uri"
+	XForwardedFor            string = "X-Forwarded-For"
 	XFrameOptions            string = "X-Frame-Options"
 	XContentTypeOptions      string = "X-Content-Type-Options"
 	ContentSecurityPolicy    string = "Content-Security-Policy"

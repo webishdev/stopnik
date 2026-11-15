@@ -5,6 +5,7 @@ import (
 	"cmp"
 	"errors"
 	"fmt"
+	internalHttp "github.com/webishdev/stopnik/internal/http"
 	"github.com/webishdev/stopnik/internal/oauth2"
 	"github.com/webishdev/stopnik/internal/oidc"
 	"github.com/webishdev/stopnik/internal/store"
@@ -12,6 +13,7 @@ import (
 	"github.com/webishdev/stopnik/log"
 	"golang.org/x/crypto/bcrypt"
 	"io"
+	"net/netip"
 	"net/url"
 	"os"
 	"slices"
@@ -65,6 +67,7 @@ type Server struct {
 	RevokeScope           string      `toml:"revokeScopeScope"`
 	SessionTimeoutSeconds int         `toml:"sessionTimeoutSeconds"`
 	Issuer                string      `toml:"issuer"`
+	TrustedProxies        []string    `toml:"trustedProxies"`
 	ForwardAuth           ForwardAuth `toml:"forwardAuth"`
 }
 
@@ -193,6 +196,7 @@ type Config struct {
 	UI                UI      `toml:"ui"`
 	Dynamic           Dynamic `toml:"dynamic"`
 	generatedSecret   string
+	trustedProxies    []netip.Prefix
 	logoImage         *[]byte
 	forwardAuthClient *Client
 	configDir         string
@@ -247,6 +251,15 @@ func prepare(config *Config) error {
 	}
 	generatedSecret := randomString
 	config.generatedSecret = generatedSecret
+
+	config.trustedProxies = nil
+	for _, trustedProxy := range config.Server.TrustedProxies {
+		prefix, prefixError := internalHttp.ParseTrustedProxy(trustedProxy)
+		if prefixError != nil {
+			return fmt.Errorf("invalid trusted proxy '%s': %w", trustedProxy, prefixError)
+		}
+		config.trustedProxies = append(config.trustedProxies, prefix)
+	}
 
 	if config.UI.LogoImage != "" {
 		file, fileError := os.Open(config.UI.LogoImage)
@@ -390,6 +403,12 @@ func (config *Config) validateServer() error {
 		return errors.New("certificate for TLS is missing")
 	}
 
+	for _, trustedProxy := range config.Server.TrustedProxies {
+		if _, prefixError := internalHttp.ParseTrustedProxy(trustedProxy); prefixError != nil {
+			return fmt.Errorf("invalid trusted proxy '%s', expected an IP address or CIDR", trustedProxy)
+		}
+	}
+
 	if !isValidBasePath(config.Server.BasePath) {
 		return fmt.Errorf("invalid base path '%s'", config.Server.BasePath)
 	}
@@ -523,6 +542,11 @@ func (config *Config) GetDisallowedScopes(client *Client, scopes []string) []str
 		}
 	}
 	return disallowedScopes
+}
+
+// GetTrustedProxies returns the proxies, which are trusted to provide the client address in X-Forwarded-For.
+func (config *Config) GetTrustedProxies() []netip.Prefix {
+	return config.trustedProxies
 }
 
 // GetServerSecret returns the server secret.

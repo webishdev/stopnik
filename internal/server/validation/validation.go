@@ -4,6 +4,8 @@ import (
 	"github.com/lestrrat-go/jwx/v4/jwt"
 	"github.com/webishdev/stopnik/internal/config"
 	"github.com/webishdev/stopnik/internal/crypto"
+	internalHttp "github.com/webishdev/stopnik/internal/http"
+	"github.com/webishdev/stopnik/internal/limiter"
 	"github.com/webishdev/stopnik/internal/oauth2"
 	"github.com/webishdev/stopnik/internal/system"
 	"github.com/webishdev/stopnik/log"
@@ -30,6 +32,9 @@ func ValidateSameOrigin(r *http.Request) bool {
 
 // verifySecret checks passwords and client secrets against their configured hash.
 var verifySecret = crypto.VerifySecret
+
+// credentialGuard slows down brute force attacks against passwords and client secrets.
+var credentialGuard = limiter.NewCredentialGuard()
 
 type RequestValidator struct {
 	config             *config.Config
@@ -106,7 +111,7 @@ func (validator *RequestValidator) ValidateFormLogin(r *http.Request) (*config.U
 		// https://en.wikipedia.org/wiki/Post/Redirect/Get
 		// redirect with Status 303
 		// When login valid
-		user, valid := validator.ValidateUserPassword(username, password)
+		user, valid := validator.ValidateUserPassword(r, username, password)
 		if !valid {
 			loginError := validator.config.GetInvalidCredentialsMessage()
 			log.AccessLogInvalidLogin(r, "Account login failed for user %s: %s", username, loginError)
@@ -140,8 +145,9 @@ func (validator *RequestValidator) ValidateClientCredentials(r *http.Request) (*
 		}
 
 		limiterKey := "client:" + clientId
-		if credentialLimiter.blocked(limiterKey) {
-			log.Warn("Too many failed attempts for client with id %s, client is blocked temporarily", clientId)
+		address := internalHttp.ClientAddress(r, validator.config.GetTrustedProxies())
+		if credentialGuard.Blocked(limiterKey, address) {
+			log.Warn("Too many failed attempts for client with id %s from %s, client is blocked temporarily", clientId, address)
 			return nil, usingFallback, false
 		}
 
@@ -149,7 +155,7 @@ func (validator *RequestValidator) ValidateClientCredentials(r *http.Request) (*
 		if !clientExists {
 			// Verify anyway, so timing does not reveal whether the client exists
 			verifySecret(clientSecret, "", "")
-			credentialLimiter.failed(limiterKey)
+			credentialGuard.Failed(limiterKey, address)
 			return nil, usingFallback, false
 		}
 
@@ -165,11 +171,11 @@ func (validator *RequestValidator) ValidateClientCredentials(r *http.Request) (*
 		}
 
 		if !verifySecret(clientSecret, client.Salt, client.ClientSecret) {
-			credentialLimiter.failed(limiterKey)
+			credentialGuard.Failed(limiterKey, address)
 			return nil, usingFallback, false
 		}
 
-		credentialLimiter.succeeded(limiterKey)
+		credentialGuard.Succeeded(limiterKey, address)
 		return client, usingFallback, true
 	}
 	return nil, false, false
@@ -179,10 +185,12 @@ func (validator *RequestValidator) ValidateClientId(clientId string) (*config.Cl
 	return validator.config.GetClient(clientId)
 }
 
-func (validator *RequestValidator) ValidateUserPassword(username string, password string) (*config.User, bool) {
+// ValidateUserPassword checks the password of the user, the request is used to determine the client address.
+func (validator *RequestValidator) ValidateUserPassword(r *http.Request, username string, password string) (*config.User, bool) {
 	limiterKey := "user:" + username
-	if credentialLimiter.blocked(limiterKey) {
-		log.Warn("Too many failed login attempts for user %s, user is blocked temporarily", username)
+	address := internalHttp.ClientAddress(r, validator.config.GetTrustedProxies())
+	if credentialGuard.Blocked(limiterKey, address) {
+		log.Warn("Too many failed login attempts for user %s from %s, login is blocked temporarily", username, address)
 		return nil, false
 	}
 
@@ -190,14 +198,14 @@ func (validator *RequestValidator) ValidateUserPassword(username string, passwor
 	if !exists {
 		// Verify anyway, so timing does not reveal whether the user exists
 		verifySecret(password, "", "")
-		credentialLimiter.failed(limiterKey)
+		credentialGuard.Failed(limiterKey, address)
 		return nil, false
 	}
 	if !verifySecret(password, user.Salt, user.Password) {
-		credentialLimiter.failed(limiterKey)
+		credentialGuard.Failed(limiterKey, address)
 		return nil, false
 	}
 
-	credentialLimiter.succeeded(limiterKey)
+	credentialGuard.Succeeded(limiterKey, address)
 	return user, true
 }

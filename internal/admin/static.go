@@ -91,6 +91,7 @@ func staticTopics(staticConfig *config.Config, store *Store) []*staticTopic {
 						textField("Issuer", "External URL of STOPnik, used as issuer of the tokens. Required.", server.Issuer),
 						withDefault("Log level", "One of debug, info, warn or error.", server.LogLevel, "info"),
 						fullWidth(textField("Logout redirect", "Target after a logout without redirect.", server.LogoutRedirect)),
+						listField("Trusted proxies", "Proxies allowed to provide the client address in X-Forwarded-For.", server.TrustedProxies),
 					},
 				},
 				{

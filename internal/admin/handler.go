@@ -5,6 +5,7 @@ import (
 	"html/template"
 	"io/fs"
 	"net/http"
+	"net/netip"
 	"net/url"
 	"path"
 	"path/filepath"
@@ -49,9 +50,11 @@ func NewHandler(store *Store, staticConfig *config.Config, basePath string) (htt
 
 	sessionTimeout := defaultSessionTimeout
 	invalidCredentialsMessage := "Invalid credentials"
+	var trustedProxies []netip.Prefix
 	if staticConfig != nil {
 		sessionTimeout = time.Duration(staticConfig.GetSessionTimeoutSeconds()) * time.Second
 		invalidCredentialsMessage = staticConfig.GetInvalidCredentialsMessage()
+		trustedProxies = staticConfig.GetTrustedProxies()
 	}
 
 	handler := &Handler{
@@ -61,7 +64,7 @@ func NewHandler(store *Store, staticConfig *config.Config, basePath string) (htt
 		basePath:                  basePath,
 		mux:                       http.NewServeMux(),
 		public:                    map[string]bool{},
-		auth:                      newAuthenticator(store, sessionTimeout),
+		auth:                      newAuthenticator(store, sessionTimeout, trustedProxies),
 		invalidCredentialsMessage: invalidCredentialsMessage,
 	}
 	handler.routes = http.StripPrefix(basePath, http.HandlerFunc(handler.requireAdmin))
@@ -158,7 +161,7 @@ func (handler *Handler) login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	username := r.PostForm.Get("username")
-	sessionId, valid := handler.auth.login(username, r.PostForm.Get("password"))
+	sessionId, valid := handler.auth.login(r, username, r.PostForm.Get("password"))
 	if !valid {
 		log.Info("Failed sign in for user '%s'", username)
 		handler.renderLogin(w, r, http.StatusUnauthorized, handler.invalidCredentialsMessage)
