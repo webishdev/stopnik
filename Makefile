@@ -71,7 +71,7 @@ lint: clean-lint
 # Run tests
 test:
 	@echo "Running tests"
-	go test ./...
+	go test -race ./...
 
 # Run tests and create an HTML coverage report
 coverage: clean-test
@@ -115,7 +115,7 @@ help:
 	@echo "  build-windows-intel Build windows/amd64"
 	@echo "  build-windows-arm   Build windows/arm64"
 	@echo "  lint                Run golangci-lint as tool"
-	@echo "  test                Run all Go tests"
+	@echo "  test                Run all Go tests with the race detector"
 	@echo "  coverage            Run tests and create an HTML coverage report"
 	@echo "  test-ci             Run tests and write testresults.json"
 	@echo "  clean               Remove build artifacts"
