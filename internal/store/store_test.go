@@ -61,7 +61,7 @@ func Test_ExpiringStore(t *testing.T) {
 	})
 
 	t.Run("Set and get for expiring store", func(t *testing.T) {
-		storeWithTimer := newTimedStoreWithTimer[Tester](time.Hour*time.Duration(1), timer)
+		storeWithTimer := NewTimedStoreWithTimer[Tester](time.Hour*time.Duration(1), timer)
 
 		storeWithTimer.Set("foo", tester)
 		storeWithTimer.SetWithDuration("bar", tester, time.Hour*time.Duration(10))
@@ -107,7 +107,7 @@ func Test_ExpiringStore(t *testing.T) {
 	})
 
 	t.Run("Set, get and delete for expiring store", func(t *testing.T) {
-		storeWithTimer := newTimedStoreWithTimer[Tester](time.Hour*time.Duration(1), timer)
+		storeWithTimer := NewTimedStoreWithTimer[Tester](time.Hour*time.Duration(1), timer)
 
 		storeWithTimer.Set("foo", tester)
 		storeWithTimer.SetWithDuration("bar", tester, time.Hour*time.Duration(10))

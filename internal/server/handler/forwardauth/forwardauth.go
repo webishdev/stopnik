@@ -18,25 +18,25 @@ import (
 )
 
 type Handler struct {
-	config                *config.Config
-	cookieManager         *cookie.Manager
-	authSessionManager    session.Manager[session.AuthSession]
-	forwardSessionManager session.Manager[session.ForwardSession]
-	loginSessionManager   session.Manager[session.LoginSession]
-	templateManager       *template.Manager
-	errorHandler          *internalError.Handler
+	config                   *config.Config
+	cookieManager            *cookie.Manager
+	authorizationCodeManager session.Manager[session.AuthorizationCode]
+	forwardSessionManager    session.Manager[session.ForwardSession]
+	loginSessionManager      session.Manager[session.LoginSession]
+	templateManager          *template.Manager
+	errorHandler             *internalError.Handler
 }
 
-func NewForwardAuthHandler(cookieManager *cookie.Manager, authSessionManager session.Manager[session.AuthSession], forwardSessionManager session.Manager[session.ForwardSession], loginSessionManager session.Manager[session.LoginSession], templateManager *template.Manager) *Handler {
+func NewForwardAuthHandler(cookieManager *cookie.Manager, authorizationCodeManager session.Manager[session.AuthorizationCode], forwardSessionManager session.Manager[session.ForwardSession], loginSessionManager session.Manager[session.LoginSession], templateManager *template.Manager) *Handler {
 	currentConfig := config.GetConfigInstance()
 	return &Handler{
-		config:                currentConfig,
-		cookieManager:         cookieManager,
-		authSessionManager:    authSessionManager,
-		forwardSessionManager: forwardSessionManager,
-		loginSessionManager:   loginSessionManager,
-		templateManager:       templateManager,
-		errorHandler:          internalError.NewErrorHandler(),
+		config:                   currentConfig,
+		cookieManager:            cookieManager,
+		authorizationCodeManager: authorizationCodeManager,
+		forwardSessionManager:    forwardSessionManager,
+		loginSessionManager:      loginSessionManager,
+		templateManager:          templateManager,
+		errorHandler:             internalError.NewErrorHandler(),
 	}
 }
 
@@ -144,36 +144,36 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 // validatePKCEAndState validates the code, state and PKCE for a forward session.
-// Auth and forward session are removed in any case, so code and forward session can only be used once.
-func (h *Handler) validatePKCEAndState(forwardAuthClient *config.Client, code string, state string, forwardSessionId string) (*session.AuthSession, *session.ForwardSession, bool) {
-	authSession, authSessionExists := h.authSessionManager.TakeSession(code)
+// Authorization code and forward session are removed in any case, so code and forward session can only be used once.
+func (h *Handler) validatePKCEAndState(forwardAuthClient *config.Client, code string, state string, forwardSessionId string) (*session.AuthorizationCode, *session.ForwardSession, bool) {
+	authorizationCode, authorizationCodeExists := h.authorizationCodeManager.TakeSession(code)
 	forwardSession, forwardSessionExists := h.forwardSessionManager.TakeSession(forwardSessionId)
-	if !authSessionExists || !forwardSessionExists {
+	if !authorizationCodeExists || !forwardSessionExists {
 		return nil, nil, false
 	}
 	// The code must be issued for the forward auth client to an authenticated user
-	if authSession.ClientId != forwardAuthClient.Id || authSession.Username == "" {
+	if authorizationCode.ClientId != forwardAuthClient.Id || authorizationCode.Username == "" {
 		return nil, nil, false
 	}
-	codeChallengeMethod, codeChallengeMethodExists := pkce.CodeChallengeMethodFromString(authSession.CodeChallengeMethod)
+	codeChallengeMethod, codeChallengeMethodExists := pkce.CodeChallengeMethodFromString(authorizationCode.CodeChallengeMethod)
 	if codeChallengeMethodExists && forwardSession.State == state {
-		validatePKCE := pkce.ValidatePKCE(codeChallengeMethod, forwardSession.CodeChallengeVerifier, authSession.CodeChallenge)
+		validatePKCE := pkce.ValidatePKCE(codeChallengeMethod, forwardSession.CodeChallengeVerifier, authorizationCode.CodeChallenge)
 		if validatePKCE {
-			return authSession, forwardSession, true
+			return authorizationCode, forwardSession, true
 		}
 	}
 	return nil, nil, false
 }
 
 func (h *Handler) validateAndCreateAuthCookie(forwardAuthClient *config.Client, code string, state string, forwardSessionId string) (*http.Cookie, *session.ForwardSession, bool) {
-	authSession, forwardSession, valid := h.validatePKCEAndState(forwardAuthClient, code, state, forwardSessionId)
+	authorizationCode, forwardSession, valid := h.validatePKCEAndState(forwardAuthClient, code, state, forwardSessionId)
 	if valid {
 		loginSession := &session.LoginSession{
 			Id:       uuid.New().String(),
-			Username: authSession.Username,
+			Username: authorizationCode.Username,
 		}
 		h.loginSessionManager.StartSession(loginSession)
-		forwardAuthCookie, forwardAuthCookieError := h.cookieManager.CreateForwardAuthCookie(authSession.Username, loginSession.Id)
+		forwardAuthCookie, forwardAuthCookieError := h.cookieManager.CreateForwardAuthCookie(authorizationCode.Username, loginSession.Id)
 		if forwardAuthCookieError != nil {
 			return nil, nil, false
 		}

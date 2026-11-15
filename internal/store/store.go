@@ -64,6 +64,15 @@ func NewTimer() *Timer {
 	}
 }
 
+// NewTimerWithClock creates a Timer with the given functions for the current time and the clean-up ticker,
+// used to control the time in tests.
+func NewTimerWithClock(now func() time.Time, tickerChannel func() <-chan time.Time) *Timer {
+	return &Timer{
+		now:           now,
+		tickerChannel: tickerChannel,
+	}
+}
+
 func NewStore[T any]() Store[T] {
 	return &store[T]{
 		storeMap: make(map[string]*T),
@@ -76,10 +85,11 @@ func NewDefaultTimedStore[T any]() ExpiringStore[T] {
 }
 
 func NewTimedStore[T any](duration time.Duration) ExpiringStore[T] {
-	return newTimedStoreWithTimer[T](duration, NewTimer())
+	return NewTimedStoreWithTimer[T](duration, NewTimer())
 }
 
-func newTimedStoreWithTimer[T any](duration time.Duration, timer *Timer) ExpiringStore[T] {
+// NewTimedStoreWithTimer creates an ExpiringStore which uses the given Timer.
+func NewTimedStoreWithTimer[T any](duration time.Duration, timer *Timer) ExpiringStore[T] {
 	tickerChannel := timer.tickerChannel()
 	cache := &timedStore[T]{
 		storeMap:      make(map[string]expiringType[*T]),

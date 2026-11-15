@@ -6,8 +6,11 @@ import (
 	internalHttp "github.com/webishdev/stopnik/internal/http"
 	"github.com/webishdev/stopnik/internal/manager/cookie"
 	"github.com/webishdev/stopnik/internal/manager/session"
+	"github.com/webishdev/stopnik/internal/manager/token"
 	"github.com/webishdev/stopnik/internal/oauth2"
 	"github.com/webishdev/stopnik/internal/pkce"
+	"github.com/webishdev/stopnik/internal/server/handler/authorize"
+	"github.com/webishdev/stopnik/internal/server/validation"
 	"github.com/webishdev/stopnik/internal/template"
 	"net/http"
 	"net/http/httptest"
@@ -18,12 +21,12 @@ import (
 func Test_ForwardAuthWithoutCookie(t *testing.T) {
 	testConfig := createTestConfig(t)
 	cookieManager := cookie.GetCookieManagerInstance()
-	authSessionManager := session.GetAuthSessionManagerInstance()
+	authorizationCodeManager := session.GetAuthorizationCodeManagerInstance()
 	forwardSessionManager := session.GetForwardSessionManagerInstance()
 	loginSessionManager := session.GetLoginSessionManagerInstance()
 	templateManager := template.GetTemplateManagerInstance()
 
-	forwardAuthHandler := NewForwardAuthHandler(cookieManager, authSessionManager, forwardSessionManager, loginSessionManager, templateManager)
+	forwardAuthHandler := NewForwardAuthHandler(cookieManager, authorizationCodeManager, forwardSessionManager, loginSessionManager, templateManager)
 
 	rr := httptest.NewRecorder()
 	request := httptest.NewRequest(http.MethodGet, testConfig.GetForwardAuthEndpoint(), nil)
@@ -46,7 +49,7 @@ func Test_ForwardAuthWithoutCookie(t *testing.T) {
 func Test_ForwardAuthWithCookie(t *testing.T) {
 	testConfig := createTestConfig(t)
 	cookieManager := cookie.GetCookieManagerInstance()
-	authSessionManager := session.GetAuthSessionManagerInstance()
+	authorizationCodeManager := session.GetAuthorizationCodeManagerInstance()
 	forwardSessionManager := session.GetForwardSessionManagerInstance()
 	loginSessionManager := session.GetLoginSessionManagerInstance()
 	templateManager := template.GetTemplateManagerInstance()
@@ -59,7 +62,7 @@ func Test_ForwardAuthWithCookie(t *testing.T) {
 	loginSessionManager.StartSession(loginSession)
 	authCookie, _ := cookieManager.CreateForwardAuthCookie(user.Username, loginSession.Id)
 
-	forwardAuthHandler := NewForwardAuthHandler(cookieManager, authSessionManager, forwardSessionManager, loginSessionManager, templateManager)
+	forwardAuthHandler := NewForwardAuthHandler(cookieManager, authorizationCodeManager, forwardSessionManager, loginSessionManager, templateManager)
 
 	rr := httptest.NewRecorder()
 	request := httptest.NewRequest(http.MethodGet, testConfig.GetForwardAuthEndpoint(), nil)
@@ -83,12 +86,12 @@ func Test_ForwardAuthWithCookie(t *testing.T) {
 func Test_ForwardAuthMissingHeaders(t *testing.T) {
 	testConfig := createTestConfig(t)
 	cookieManager := cookie.GetCookieManagerInstance()
-	authSessionManager := session.GetAuthSessionManagerInstance()
+	authorizationCodeManager := session.GetAuthorizationCodeManagerInstance()
 	forwardSessionManager := session.GetForwardSessionManagerInstance()
 	loginSessionManager := session.GetLoginSessionManagerInstance()
 	templateManager := template.GetTemplateManagerInstance()
 
-	forwardAuthHandler := NewForwardAuthHandler(cookieManager, authSessionManager, forwardSessionManager, loginSessionManager, templateManager)
+	forwardAuthHandler := NewForwardAuthHandler(cookieManager, authorizationCodeManager, forwardSessionManager, loginSessionManager, templateManager)
 
 	rr := httptest.NewRecorder()
 	request := httptest.NewRequest(http.MethodGet, testConfig.GetForwardAuthEndpoint(), nil)
@@ -103,12 +106,12 @@ func Test_ForwardAuthMissingHeaders(t *testing.T) {
 func Test_ForwardAuthInvalidHeaders(t *testing.T) {
 	testConfig := createTestConfig(t)
 	cookieManager := cookie.GetCookieManagerInstance()
-	authSessionManager := session.GetAuthSessionManagerInstance()
+	authorizationCodeManager := session.GetAuthorizationCodeManagerInstance()
 	forwardSessionManager := session.GetForwardSessionManagerInstance()
 	loginSessionManager := session.GetLoginSessionManagerInstance()
 	templateManager := template.GetTemplateManagerInstance()
 
-	forwardAuthHandler := NewForwardAuthHandler(cookieManager, authSessionManager, forwardSessionManager, loginSessionManager, templateManager)
+	forwardAuthHandler := NewForwardAuthHandler(cookieManager, authorizationCodeManager, forwardSessionManager, loginSessionManager, templateManager)
 
 	rr := httptest.NewRecorder()
 	request := httptest.NewRequest(http.MethodGet, testConfig.GetForwardAuthEndpoint(), nil)
@@ -142,7 +145,7 @@ func Test_ForwardAuthCodeUsage(t *testing.T) {
 			testConfig := createTestConfig(t)
 			forwardAuthClient, _ := testConfig.GetForwardAuthClient()
 			cookieManager := cookie.GetCookieManagerInstance()
-			authSessionManager := session.GetAuthSessionManagerInstance()
+			authorizationCodeManager := session.GetAuthorizationCodeManagerInstance()
 			forwardSessionManager := session.GetForwardSessionManagerInstance()
 			loginSessionManager := session.GetLoginSessionManagerInstance()
 			templateManager := template.GetTemplateManagerInstance()
@@ -152,14 +155,14 @@ func Test_ForwardAuthCodeUsage(t *testing.T) {
 			if test.otherClient {
 				clientId = "foo"
 			}
-			authSession := &session.AuthSession{
-				Id:                  uuid.New().String(),
+			authorizationCode := &session.AuthorizationCode{
+				Code:                session.GenerateAuthorizationCode(),
 				ClientId:            clientId,
 				Username:            test.username,
 				CodeChallenge:       codeVerifier,
 				CodeChallengeMethod: string(pkce.S256),
 			}
-			authSessionManager.StartSession(authSession)
+			authorizationCodeManager.StartSession(authorizationCode)
 			forwardSession := &session.ForwardSession{
 				Id:                    uuid.New().String(),
 				CodeChallengeVerifier: pkce.CalculatePKCE(pkce.S256, codeVerifier),
@@ -168,9 +171,9 @@ func Test_ForwardAuthCodeUsage(t *testing.T) {
 			}
 			forwardSessionManager.StartSession(forwardSession)
 
-			forwardAuthHandler := NewForwardAuthHandler(cookieManager, authSessionManager, forwardSessionManager, loginSessionManager, templateManager)
+			forwardAuthHandler := NewForwardAuthHandler(cookieManager, authorizationCodeManager, forwardSessionManager, loginSessionManager, templateManager)
 
-			forwardUri := fmt.Sprintf("/blabla?%s=%s&%s=%s&%s=%s", oauth2.ParameterCode, authSession.Id, oauth2.ParameterState, forwardSession.State, testConfig.GetForwardAuthParameterName(), forwardSession.Id)
+			forwardUri := fmt.Sprintf("/blabla?%s=%s&%s=%s&%s=%s", oauth2.ParameterCode, authorizationCode.Code, oauth2.ParameterState, forwardSession.State, testConfig.GetForwardAuthParameterName(), forwardSession.Id)
 			createRequest := func() *http.Request {
 				request := httptest.NewRequest(http.MethodGet, testConfig.GetForwardAuthEndpoint(), nil)
 				request.Header.Set(internalHttp.XForwardProtocol, "http")
@@ -197,6 +200,97 @@ func Test_ForwardAuthCodeUsage(t *testing.T) {
 	}
 }
 
+func Test_ForwardAuthEndToEnd(t *testing.T) {
+	testConfig := createTestConfig(t)
+	cookieManager := cookie.GetCookieManagerInstance()
+	authSessionManager := session.GetAuthSessionManagerInstance()
+	authorizationCodeManager := session.GetAuthorizationCodeManagerInstance()
+	forwardSessionManager := session.GetForwardSessionManagerInstance()
+	loginSessionManager := session.GetLoginSessionManagerInstance()
+	templateManager := template.GetTemplateManagerInstance()
+	tokenManager := token.GetTokenManagerInstance()
+	requestValidator := validation.NewRequestValidator()
+
+	forwardAuthHandler := NewForwardAuthHandler(cookieManager, authorizationCodeManager, forwardSessionManager, loginSessionManager, templateManager)
+	authorizeHandler := authorize.NewAuthorizeHandler(requestValidator, cookieManager, authSessionManager, authorizationCodeManager, loginSessionManager, tokenManager, templateManager)
+
+	createForwardRequest := func(forwardUri string) *http.Request {
+		request := httptest.NewRequest(http.MethodGet, testConfig.GetForwardAuthEndpoint(), nil)
+		request.Header.Set(internalHttp.XForwardProtocol, "http")
+		request.Header.Set(internalHttp.XForwardHost, "localhost:8080")
+		request.Header.Set(internalHttp.XForwardUri, forwardUri)
+		return request
+	}
+
+	// Traefik asks for a request without a cookie, the user is redirected to the authorization endpoint
+	forwardRecorder := httptest.NewRecorder()
+	forwardAuthHandler.ServeHTTP(forwardRecorder, createForwardRequest("/blabla?foo=bar"))
+
+	if forwardRecorder.Code != http.StatusTemporaryRedirect {
+		t.Fatalf("handler returned wrong status code: got %v want %v", forwardRecorder.Code, http.StatusTemporaryRedirect)
+	}
+	authorizeLocation, authorizeLocationError := forwardRecorder.Result().Location()
+	if authorizeLocationError != nil {
+		t.Fatalf("location was not provided: %v", authorizeLocationError)
+	}
+
+	// The user is already logged in at STOPnik, so the code is issued directly
+	user, _ := testConfig.GetUser("foo")
+	loginSession := &session.LoginSession{
+		Id:       uuid.New().String(),
+		Username: user.Username,
+	}
+	loginSessionManager.StartSession(loginSession)
+	authCookie, _ := cookieManager.CreateAuthCookie(user.Username, loginSession.Id)
+
+	authorizeRecorder := httptest.NewRecorder()
+	authorizeRequest := httptest.NewRequest(http.MethodGet, authorizeLocation.RequestURI(), nil)
+	authorizeRequest.AddCookie(&authCookie)
+	authorizeHandler.ServeHTTP(authorizeRecorder, authorizeRequest)
+
+	if authorizeRecorder.Code != http.StatusFound {
+		t.Fatalf("authorize handler returned wrong status code: got %v want %v", authorizeRecorder.Code, http.StatusFound)
+	}
+	callbackLocation, callbackLocationError := authorizeRecorder.Result().Location()
+	if callbackLocationError != nil {
+		t.Fatalf("location was not provided: %v", callbackLocationError)
+	}
+	if callbackLocation.Query().Get(oauth2.ParameterCode) == "" {
+		t.Fatalf("code was not provided, got location %v", callbackLocation)
+	}
+
+	// Traefik asks again for the callback, the code is exchanged for the forward auth cookie
+	callbackRecorder := httptest.NewRecorder()
+	forwardAuthHandler.ServeHTTP(callbackRecorder, createForwardRequest(callbackLocation.RequestURI()))
+
+	if callbackRecorder.Code != http.StatusTemporaryRedirect {
+		t.Fatalf("handler returned wrong status code: got %v want %v", callbackRecorder.Code, http.StatusTemporaryRedirect)
+	}
+	if callbackRecorder.Header().Get(internalHttp.Location) != "http://localhost:8080/blabla?foo=bar" {
+		t.Errorf("handler redirected to %v, expected the originally requested URL", callbackRecorder.Header().Get(internalHttp.Location))
+	}
+
+	var forwardAuthCookie *http.Cookie
+	for _, responseCookie := range callbackRecorder.Result().Cookies() {
+		if responseCookie.Name == testConfig.GetForwardAuthCookieName() {
+			forwardAuthCookie = responseCookie
+		}
+	}
+	if forwardAuthCookie == nil {
+		t.Fatal("forward auth cookie was not set")
+	}
+
+	// With the cookie the request is allowed
+	allowedRecorder := httptest.NewRecorder()
+	allowedRequest := createForwardRequest("/blabla?foo=bar")
+	allowedRequest.AddCookie(forwardAuthCookie)
+	forwardAuthHandler.ServeHTTP(allowedRecorder, allowedRequest)
+
+	if allowedRecorder.Code != http.StatusOK {
+		t.Errorf("handler returned wrong status code: got %v want %v", allowedRecorder.Code, http.StatusOK)
+	}
+}
+
 func createTestConfig(t *testing.T) *config.Config {
 	testConfigEntries := config.Entries{
 		Clients: []config.Client{
@@ -218,6 +312,7 @@ func createTestConfig(t *testing.T) *config.Config {
 			ForwardAuth: config.ForwardAuth{
 				Enabled:     true,
 				ExternalUrl: "http://foo.com",
+				Redirects:   []string{"http://localhost:8080/*"},
 			},
 		},
 	}

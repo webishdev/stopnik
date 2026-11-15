@@ -210,6 +210,7 @@ func registerHandlers(config *config.Config, register func(pattern string, handl
 
 	keyManger := key.GetKeyMangerInstance()
 	authSessionManager := session.GetAuthSessionManagerInstance()
+	authorizationCodeManager := session.GetAuthorizationCodeManagerInstance()
 	tokenManager := token2.GetTokenManagerInstance()
 	cookieManager := cookie.GetCookieManagerInstance()
 	loginSessionManager := session.GetLoginSessionManagerInstance()
@@ -222,8 +223,8 @@ func registerHandlers(config *config.Config, register func(pattern string, handl
 	logoutHandler := logout.NewLogoutHandler(cookieManager, loginSessionManager, config.Server.LogoutRedirect)
 
 	// OAuth2
-	authorizeHandler := authorize.NewAuthorizeHandler(requestValidator, cookieManager, authSessionManager, loginSessionManager, tokenManager, templateManager)
-	tokenHandler := token.NewTokenHandler(requestValidator, authSessionManager, tokenManager)
+	authorizeHandler := authorize.NewAuthorizeHandler(requestValidator, cookieManager, authSessionManager, authorizationCodeManager, loginSessionManager, tokenManager, templateManager)
+	tokenHandler := token.NewTokenHandler(requestValidator, authorizationCodeManager, tokenManager)
 
 	// OAuth2 extensions
 	introspectHandler := introspect.NewIntrospectHandler(requestValidator, tokenManager)
@@ -239,7 +240,7 @@ func registerHandlers(config *config.Config, register func(pattern string, handl
 	if config.GetForwardAuthEnabled() {
 		log.Info("ForwardAuth enabled with endpoint %s", config.GetForwardAuthEndpoint())
 		forwardSessionManager := session.GetForwardSessionManagerInstance()
-		forwardAuthHandler := forwardauth.NewForwardAuthHandler(cookieManager, authSessionManager, forwardSessionManager, loginSessionManager, templateManager)
+		forwardAuthHandler := forwardauth.NewForwardAuthHandler(cookieManager, authorizationCodeManager, forwardSessionManager, loginSessionManager, templateManager)
 		handle(config.GetForwardAuthEndpoint(), forwardAuthHandler)
 	}
 

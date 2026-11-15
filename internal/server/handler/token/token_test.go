@@ -66,10 +66,10 @@ func Test_Token(t *testing.T) {
 func Test_TokenMissingClientCredentials(t *testing.T) {
 	t.Run("Missing client credentials for confidential client", func(t *testing.T) {
 		requestValidator := validation.NewRequestValidator()
-		sessionManager := session.GetAuthSessionManagerInstance()
+		authorizationCodeManager := session.GetAuthorizationCodeManagerInstance()
 		tokenManager := token.GetTokenManagerInstance()
 
-		tokenHandler := NewTokenHandler(requestValidator, sessionManager, tokenManager)
+		tokenHandler := NewTokenHandler(requestValidator, authorizationCodeManager, tokenManager)
 
 		rr := httptest.NewRecorder()
 
@@ -84,10 +84,10 @@ func Test_TokenMissingClientCredentials(t *testing.T) {
 func Test_TokenInvalidClientCredentials(t *testing.T) {
 	t.Run("Invalid client credentials", func(t *testing.T) {
 		requestValidator := validation.NewRequestValidator()
-		sessionManager := session.GetAuthSessionManagerInstance()
+		authorizationCodeManager := session.GetAuthorizationCodeManagerInstance()
 		tokenManager := token.GetTokenManagerInstance()
 
-		tokenHandler := NewTokenHandler(requestValidator, sessionManager, tokenManager)
+		tokenHandler := NewTokenHandler(requestValidator, authorizationCodeManager, tokenManager)
 
 		rr := httptest.NewRecorder()
 
@@ -104,10 +104,10 @@ func Test_TokenInvalidClientCredentials(t *testing.T) {
 
 func Test_TokenMissingGrandType(t *testing.T) {
 	requestValidator := validation.NewRequestValidator()
-	sessionManager := session.GetAuthSessionManagerInstance()
+	authorizationCodeManager := session.GetAuthorizationCodeManagerInstance()
 	tokenManager := token.GetTokenManagerInstance()
 
-	tokenHandler := NewTokenHandler(requestValidator, sessionManager, tokenManager)
+	tokenHandler := NewTokenHandler(requestValidator, authorizationCodeManager, tokenManager)
 
 	rr := httptest.NewRecorder()
 
@@ -123,10 +123,10 @@ func Test_TokenMissingGrandType(t *testing.T) {
 
 func Test_TokenInvalidGrandType(t *testing.T) {
 	requestValidator := validation.NewRequestValidator()
-	sessionManager := session.GetAuthSessionManagerInstance()
+	authorizationCodeManager := session.GetAuthorizationCodeManagerInstance()
 	tokenManager := token.GetTokenManagerInstance()
 
-	tokenHandler := NewTokenHandler(requestValidator, sessionManager, tokenManager)
+	tokenHandler := NewTokenHandler(requestValidator, authorizationCodeManager, tokenManager)
 
 	rr := httptest.NewRecorder()
 
@@ -148,10 +148,10 @@ func Test_TokenInvalidGrandType(t *testing.T) {
 
 func Test_TokenAuthorizationCodeGrantTypeMissingCodeParameter(t *testing.T) {
 	requestValidator := validation.NewRequestValidator()
-	sessionManager := session.GetAuthSessionManagerInstance()
+	authorizationCodeManager := session.GetAuthorizationCodeManagerInstance()
 	tokenManager := token.GetTokenManagerInstance()
 
-	tokenHandler := NewTokenHandler(requestValidator, sessionManager, tokenManager)
+	tokenHandler := NewTokenHandler(requestValidator, authorizationCodeManager, tokenManager)
 
 	rr := httptest.NewRecorder()
 
@@ -174,24 +174,21 @@ func Test_TokenAuthorizationCodeGrantTypeMissingCodeParameter(t *testing.T) {
 func Test_TokenAuthorizationCodeGrantTypeInvalidPKCE(t *testing.T) {
 	id := uuid.New()
 	pkceCodeChallenge := pkce.CalculatePKCE(pkce.S256, "foobar")
-	authSession := &session.AuthSession{
-		Id:                  id.String(),
+	authorizationCode := &session.AuthorizationCode{
+		Code:                id.String(),
 		Redirect:            "https://example.com/callback",
-		AuthURI:             "https://example.com/auth",
 		CodeChallenge:       pkceCodeChallenge,
 		CodeChallengeMethod: string(pkce.S256),
 		ClientId:            "foo",
-		ResponseTypes:       []oauth2.ResponseType{oauth2.RtCode},
 		Scopes:              []string{"foo:bar", "moo:abc"},
-		State:               "xyz",
 	}
 
 	requestValidator := validation.NewRequestValidator()
-	sessionManager := session.GetAuthSessionManagerInstance()
+	authorizationCodeManager := session.GetAuthorizationCodeManagerInstance()
 	tokenManager := token.GetTokenManagerInstance()
-	sessionManager.StartSession(authSession)
+	authorizationCodeManager.StartSession(authorizationCode)
 
-	tokenHandler := NewTokenHandler(requestValidator, sessionManager, tokenManager)
+	tokenHandler := NewTokenHandler(requestValidator, authorizationCodeManager, tokenManager)
 
 	rr := httptest.NewRecorder()
 
@@ -245,25 +242,22 @@ func Test_TokenAuthorizationCodeGrantType(t *testing.T) {
 		testMessage := fmt.Sprintf("Authorization code grant type state %v scope %v code challenge %v method %v", test.state, test.scope, pkceCodeChallenge, pkceCodeChallengeMethod)
 		t.Run(testMessage, func(t *testing.T) {
 			id := uuid.New()
-			authSession := &session.AuthSession{
-				Id:                  id.String(),
+			authorizationCode := &session.AuthorizationCode{
+				Code:                id.String(),
 				Redirect:            "https://example.com/callback",
-				AuthURI:             "https://example.com/auth",
 				CodeChallenge:       pkceCodeChallenge,
 				CodeChallengeMethod: pkceCodeChallengeMethod,
 				ClientId:            "foo",
 				Username:            "foo",
-				ResponseTypes:       []oauth2.ResponseType{oauth2.RtCode},
 				Scopes:              []string{"foo:bar", "moo:abc"},
-				State:               test.state,
 			}
 
 			requestValidator := validation.NewRequestValidator()
-			sessionManager := session.GetAuthSessionManagerInstance()
+			authorizationCodeManager := session.GetAuthorizationCodeManagerInstance()
 			tokenManager := token.GetTokenManagerInstance()
-			sessionManager.StartSession(authSession)
+			authorizationCodeManager.StartSession(authorizationCode)
 
-			tokenHandler := NewTokenHandler(requestValidator, sessionManager, tokenManager)
+			tokenHandler := NewTokenHandler(requestValidator, authorizationCodeManager, tokenManager)
 
 			rr := httptest.NewRecorder()
 
@@ -327,24 +321,22 @@ func Test_TokenAuthorizationCodeGrantTypeInvalidCodeUsage(t *testing.T) {
 			if test.codeChallenge != "" {
 				codeChallengeMethod = string(pkce.S256)
 			}
-			authSession := &session.AuthSession{
-				Id:                  id.String(),
+			authorizationCode := &session.AuthorizationCode{
+				Code:                id.String(),
 				Redirect:            "https://example.com/callback",
-				AuthURI:             "https://example.com/auth",
 				CodeChallenge:       test.codeChallenge,
 				CodeChallengeMethod: codeChallengeMethod,
 				ClientId:            "foo",
 				Username:            test.username,
-				ResponseTypes:       []oauth2.ResponseType{oauth2.RtCode},
 				Scopes:              []string{"foo:bar"},
 			}
 
 			requestValidator := validation.NewRequestValidator()
-			sessionManager := session.GetAuthSessionManagerInstance()
+			authorizationCodeManager := session.GetAuthorizationCodeManagerInstance()
 			tokenManager := token.GetTokenManagerInstance()
-			sessionManager.StartSession(authSession)
+			authorizationCodeManager.StartSession(authorizationCode)
 
-			tokenHandler := NewTokenHandler(requestValidator, sessionManager, tokenManager)
+			tokenHandler := NewTokenHandler(requestValidator, authorizationCodeManager, tokenManager)
 
 			rr := httptest.NewRecorder()
 
@@ -365,7 +357,7 @@ func Test_TokenAuthorizationCodeGrantTypeInvalidCodeUsage(t *testing.T) {
 				t.Errorf("handler returned wrong status code: got %v want %v", rr.Code, http.StatusBadRequest)
 			}
 
-			_, sessionExists := sessionManager.GetSession(id.String())
+			_, sessionExists := authorizationCodeManager.GetSession(id.String())
 			if sessionExists {
 				t.Errorf("authorization code was not invalidated after failed usage")
 			}
@@ -373,12 +365,74 @@ func Test_TokenAuthorizationCodeGrantTypeInvalidCodeUsage(t *testing.T) {
 	}
 }
 
+func Test_TokenAuthorizationCodeReuse(t *testing.T) {
+	code := session.GenerateAuthorizationCode()
+	authorizationCode := &session.AuthorizationCode{
+		Code:     code,
+		Redirect: "https://example.com/callback",
+		ClientId: "foo",
+		Username: "foo",
+		Scopes:   []string{"foo:bar"},
+	}
+
+	requestValidator := validation.NewRequestValidator()
+	authorizationCodeManager := session.GetAuthorizationCodeManagerInstance()
+	tokenManager := token.GetTokenManagerInstance()
+	authorizationCodeManager.StartSession(authorizationCode)
+
+	tokenHandler := NewTokenHandler(requestValidator, authorizationCodeManager, tokenManager)
+
+	createRequest := func() *http.Request {
+		bodyString := testCreateBody(
+			oauth2.ParameterGrantType, oauth2.GtAuthorizationCode,
+			oauth2.ParameterCode, code,
+			oauth2.ParameterRedirectUri, "https://example.com/callback",
+		)
+		request := httptest.NewRequest(http.MethodPost, endpoint.Token, strings.NewReader(bodyString))
+		request.Header.Add(internalHttp.Authorization, fmt.Sprintf("Basic %s", testTokenCreateBasicAuth("foo", "bar")))
+		request.Header.Add(internalHttp.ContentType, "application/x-www-form-urlencoded")
+		return request
+	}
+
+	rr := httptest.NewRecorder()
+	tokenHandler.ServeHTTP(rr, createRequest())
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("handler returned wrong status code: got %v want %v", rr.Code, http.StatusOK)
+	}
+
+	accessTokenResponse := oauth2.AccessTokenResponse{}
+	jsonParseError := json.Unmarshal(rr.Body.Bytes(), &accessTokenResponse)
+	if jsonParseError != nil {
+		t.Fatalf("could not parse response body: %v", jsonParseError)
+	}
+
+	_, accessTokenExists := tokenManager.GetAccessToken(accessTokenResponse.AccessTokenValue)
+	if !accessTokenExists {
+		t.Fatalf("access token was not found in access token manager")
+	}
+
+	// https://datatracker.ietf.org/doc/html/rfc6749#section-4.1.2
+	// When a code is used more than once, tokens previously issued based on that code are revoked
+	replay := httptest.NewRecorder()
+	tokenHandler.ServeHTTP(replay, createRequest())
+
+	if replay.Code != http.StatusBadRequest {
+		t.Errorf("handler returned wrong status code for reused code: got %v want %v", replay.Code, http.StatusBadRequest)
+	}
+
+	_, accessTokenExists = tokenManager.GetAccessToken(accessTokenResponse.AccessTokenValue)
+	if accessTokenExists {
+		t.Errorf("access token was not revoked after the code was used again")
+	}
+}
+
 func Test_TokenPasswordGrantType(t *testing.T) {
 	requestValidator := validation.NewRequestValidator()
-	sessionManager := session.GetAuthSessionManagerInstance()
+	authorizationCodeManager := session.GetAuthorizationCodeManagerInstance()
 	tokenManager := token.GetTokenManagerInstance()
 
-	tokenHandler := NewTokenHandler(requestValidator, sessionManager, tokenManager)
+	tokenHandler := NewTokenHandler(requestValidator, authorizationCodeManager, tokenManager)
 
 	rr := httptest.NewRecorder()
 
@@ -429,10 +483,10 @@ func Test_TokenNotAllowedGrantTypeOrScope(t *testing.T) {
 	for _, test := range notAllowedParameters {
 		t.Run(test.name, func(t *testing.T) {
 			requestValidator := validation.NewRequestValidator()
-			sessionManager := session.GetAuthSessionManagerInstance()
+			authorizationCodeManager := session.GetAuthorizationCodeManagerInstance()
 			tokenManager := token.GetTokenManagerInstance()
 
-			tokenHandler := NewTokenHandler(requestValidator, sessionManager, tokenManager)
+			tokenHandler := NewTokenHandler(requestValidator, authorizationCodeManager, tokenManager)
 
 			rr := httptest.NewRecorder()
 
@@ -468,10 +522,10 @@ func Test_TokenNotAllowedGrantTypeOrScope(t *testing.T) {
 
 func Test_TokenClientCredentialsGrantType(t *testing.T) {
 	requestValidator := validation.NewRequestValidator()
-	sessionManager := session.GetAuthSessionManagerInstance()
+	authorizationCodeManager := session.GetAuthorizationCodeManagerInstance()
 	tokenManager := token.GetTokenManagerInstance()
 
-	tokenHandler := NewTokenHandler(requestValidator, sessionManager, tokenManager)
+	tokenHandler := NewTokenHandler(requestValidator, authorizationCodeManager, tokenManager)
 
 	rr := httptest.NewRecorder()
 
@@ -503,27 +557,24 @@ func testTokenRefreshTokenGrantType(t *testing.T, testConfig *config.Config) {
 		scopes := []string{"foo:bar", "moo:abc"}
 
 		id := uuid.New()
-		authSession := &session.AuthSession{
-			Id:                  id.String(),
+		authorizationCode := &session.AuthorizationCode{
+			Code:                id.String(),
 			Redirect:            "https://example.com/callback",
-			AuthURI:             "https://example.com/auth",
 			CodeChallenge:       "",
 			CodeChallengeMethod: "",
 			ClientId:            client.Id,
-			ResponseTypes:       []oauth2.ResponseType{oauth2.RtCode},
 			Scopes:              scopes,
-			State:               "xyz",
 		}
 
 		requestValidator := validation.NewRequestValidator()
-		sessionManager := session.GetAuthSessionManagerInstance()
+		authorizationCodeManager := session.GetAuthorizationCodeManagerInstance()
 		tokenManager := token.GetTokenManagerInstance()
-		sessionManager.StartSession(authSession)
+		authorizationCodeManager.StartSession(authorizationCode)
 
 		request := httptest.NewRequest(http.MethodPost, endpoint.Token, nil)
 		accessTokenResponse := tokenManager.CreateAccessTokenResponse(request, user.Username, client, nil, scopes, nil, "", "")
 
-		tokenHandler := NewTokenHandler(requestValidator, sessionManager, tokenManager)
+		tokenHandler := NewTokenHandler(requestValidator, authorizationCodeManager, tokenManager)
 
 		rr := httptest.NewRecorder()
 
@@ -572,7 +623,7 @@ func Test_TokenNotAllowedHttpMethods(t *testing.T) {
 	for _, method := range testInvalidTokenHttpMethods {
 		testMessage := fmt.Sprintf("Token with unsupported method %s", method)
 		t.Run(testMessage, func(t *testing.T) {
-			tokenHandler := NewTokenHandler(&validation.RequestValidator{}, &session.AuthManager{}, &token.Manager{})
+			tokenHandler := NewTokenHandler(&validation.RequestValidator{}, &session.CodeManager{}, &token.Manager{})
 
 			rr := httptest.NewRecorder()
 

@@ -27,7 +27,7 @@ import (
 	"uuid"
 )
 
-// maxAuthSessions limits the number of open authorization sessions.
+// maxAuthSessions limits the number of open authorization sessions and the number of issued authorization codes.
 var maxAuthSessions = 100000
 
 type authorizeRequestValues struct {
@@ -46,33 +46,36 @@ type authorizeRequestValues struct {
 }
 
 type Handler struct {
-	config              *config.Config
-	validator           *validation.RequestValidator
-	cookieManager       *cookie.Manager
-	authSessionManager  session.Manager[session.AuthSession]
-	loginSessionManager session.Manager[session.LoginSession]
-	tokenManager        *token.Manager
-	templateManager     *template.Manager
-	errorHandler        *error.Handler
+	config                   *config.Config
+	validator                *validation.RequestValidator
+	cookieManager            *cookie.Manager
+	authSessionManager       session.Manager[session.AuthSession]
+	authorizationCodeManager session.Manager[session.AuthorizationCode]
+	loginSessionManager      session.Manager[session.LoginSession]
+	tokenManager             *token.Manager
+	templateManager          *template.Manager
+	errorHandler             *error.Handler
 }
 
 func NewAuthorizeHandler(
 	validator *validation.RequestValidator,
 	cookieManager *cookie.Manager,
 	authSessionManager session.Manager[session.AuthSession],
+	authorizationCodeManager session.Manager[session.AuthorizationCode],
 	loginSessionManager session.Manager[session.LoginSession],
 	tokenManager *token.Manager,
 	templateManager *template.Manager) *Handler {
 	currentConfig := config.GetConfigInstance()
 	return &Handler{
-		config:              currentConfig,
-		validator:           validator,
-		cookieManager:       cookieManager,
-		authSessionManager:  authSessionManager,
-		loginSessionManager: loginSessionManager,
-		tokenManager:        tokenManager,
-		templateManager:     templateManager,
-		errorHandler:        error.NewErrorHandler(),
+		config:                   currentConfig,
+		validator:                validator,
+		cookieManager:            cookieManager,
+		authSessionManager:       authSessionManager,
+		authorizationCodeManager: authorizationCodeManager,
+		loginSessionManager:      loginSessionManager,
+		tokenManager:             tokenManager,
+		templateManager:          templateManager,
+		errorHandler:             error.NewErrorHandler(),
 	}
 }
 
@@ -122,6 +125,25 @@ func (h *Handler) handlePostRequest(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
+		// The auth session is removed after a successful login, so the login form can not be replayed
+		authSession, authSessionExists = h.authSessionManager.TakeSession(authSessionId)
+		if !authSessionExists {
+			h.sendRetryLocation(w, r, "")
+			return
+		}
+
+		client, clientExists := h.validator.ValidateClientId(authSession.ClientId)
+		if !clientExists {
+			h.errorHandler.BadRequestHandler(w, r)
+			return
+		}
+
+		redirectURL, urlParseError := url.Parse(authSession.Redirect)
+		if urlParseError != nil {
+			h.errorHandler.InternalServerErrorHandler(w, r, urlParseError)
+			return
+		}
+
 		loginSession := &session.LoginSession{
 			Id:       uuid.New().String(),
 			Username: user.Username,
@@ -133,39 +155,15 @@ func (h *Handler) handlePostRequest(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		authSession.Username = user.Username
-		authSession.AuthTime = loginSession.StartTime
-		redirectURL, urlParseError := url.Parse(authSession.Redirect)
-		if urlParseError != nil {
-			h.errorHandler.InternalServerErrorHandler(w, r, urlParseError)
-			return
-		}
-
 		http.SetCookie(w, &authCookie)
 
-		responseTypes := authSession.ResponseTypes
-
-		query := newResponseParameters(redirectURL, responseTypes)
-		if slices.Contains(responseTypes, oauth2.RtToken) {
-			client, clientExists := h.validator.ValidateClientId(authSession.ClientId)
-			if !clientExists {
-				h.errorHandler.BadRequestHandler(w, r)
-				return
-			}
-			accessTokenResponse := h.tokenManager.CreateAccessTokenResponse(r, user.Username, client, &loginSession.StartTime, authSession.Scopes, authSession.RequestedClaims, authSession.Nonce, "")
-			setImplicitGrantParameter(query, accessTokenResponse)
-		} else if slices.Contains(responseTypes, oauth2.RtCode) {
-			setAuthorizationGrantParameter(query, authSession.Id)
-		} else {
-			oauth2.AuthorizationErrorResponseHandler(w, redirectURL, authSession.State, &oauth2.AuthorizationErrorResponseParameter{Error: oauth2.AuthorizationEtUnsupportedResponseType})
+		query, authorizationErrorResponse := h.createLocationResponseQuery(r, redirectURL, user, client, authSession, loginSession)
+		if authorizationErrorResponse != nil {
+			oauth2.AuthorizationErrorResponseHandler(w, redirectURL, authSession.State, authorizationErrorResponse)
 			return
 		}
 
-		if authSession.State != "" {
-			query.Set(oauth2.ParameterState, authSession.State)
-		}
-
-		sendFound(w, redirectURL, query, useFragment(responseTypes))
+		sendFound(w, redirectURL, query, useFragment(authSession.ResponseTypes))
 	} else {
 		authorizeRequest := h.parseRequest(r)
 		h.handleAuthorizeRequest(w, r, authorizeRequest)
@@ -245,18 +243,6 @@ func (h *Handler) handleAuthorizeRequest(w http.ResponseWriter, r *http.Request,
 		return
 	}
 
-	idTokenRequest := slices.Contains(responseTypes, oauth2.RtIdToken) && len(responseTypes) == 1
-
-	if !idTokenRequest {
-		// Every authorization request creates a session, limit them to avoid running out of memory
-		if h.authSessionManager.SessionCount() >= maxAuthSessions {
-			log.Error("Too many open authorization sessions, rejecting authorization request for client %s", client.Id)
-			oauth2.AuthorizationErrorResponseHandler(w, redirectURL, authorizeRequest.stateParameter, &oauth2.AuthorizationErrorResponseParameter{Error: oauth2.AuthorizationEtTemporaryUnavailable})
-			return
-		}
-		h.authSessionManager.StartSession(authSession)
-	}
-
 	user, loginSession, validCookie := h.cookieManager.ValidateAuthCookie(r)
 
 	promptType, invalidPromptTypeHandler := h.validatePromptType(client, authorizeRequest, validCookie, redirectURL)
@@ -272,10 +258,8 @@ func (h *Handler) handleAuthorizeRequest(w http.ResponseWriter, r *http.Request,
 	}
 
 	if validCookie && !h.forceLogin(loginSession, promptType, maxAge) {
-		authSession.Username = user.Username
-		authSession.AuthTime = loginSession.StartTime
-
-		query, authorizationErrorResponse := h.createLocationResponseQuery(r, redirectURL, user, client, authorizeRequest.requestedScopes, authSession, loginSession, responseTypes, authSession.Id, idTokenRequest, authorizeRequest.stateParameter)
+		// The user is already authenticated, the auth session is only used as input and never stored
+		query, authorizationErrorResponse := h.createLocationResponseQuery(r, redirectURL, user, client, authSession, loginSession)
 		if authorizationErrorResponse != nil {
 			oauth2.AuthorizationErrorResponseHandler(w, redirectURL, authorizeRequest.stateParameter, authorizationErrorResponse)
 			return
@@ -283,6 +267,18 @@ func (h *Handler) handleAuthorizeRequest(w http.ResponseWriter, r *http.Request,
 
 		sendFound(w, redirectURL, query, useFragment(responseTypes))
 	} else {
+		idTokenRequest := slices.Contains(responseTypes, oauth2.RtIdToken) && len(responseTypes) == 1
+
+		if !idTokenRequest {
+			// Every authorization request which needs a login creates a session, limit them to avoid running out of memory
+			if h.authSessionManager.SessionCount() >= maxAuthSessions {
+				log.Error("Too many open authorization sessions, rejecting authorization request for client %s", client.Id)
+				oauth2.AuthorizationErrorResponseHandler(w, redirectURL, authorizeRequest.stateParameter, &oauth2.AuthorizationErrorResponseParameter{Error: oauth2.AuthorizationEtTemporaryUnavailable})
+				return
+			}
+			h.authSessionManager.StartSession(authSession)
+		}
+
 		// Show login page
 		h.sendLogin(w, r, authSession.Id)
 	}
@@ -429,16 +425,23 @@ func (h *Handler) validateRedirect(client *config.Client, redirect string) http.
 	return nil
 }
 
-func (h *Handler) createLocationResponseQuery(r *http.Request, redirectURL *url.URL, user *config.User, client *config.Client, scopes []string, authSession *session.AuthSession, loginSession *session.LoginSession, responseTypes []oauth2.ResponseType, id string, idTokenRequest bool, stateParameter string) (url.Values, *oauth2.AuthorizationErrorResponseParameter) {
+// createLocationResponseQuery creates the response parameters for an authenticated user.
+// The given auth session is only read, it must not be part of the auth session store anymore.
+func (h *Handler) createLocationResponseQuery(r *http.Request, redirectURL *url.URL, user *config.User, client *config.Client, authSession *session.AuthSession, loginSession *session.LoginSession) (url.Values, *oauth2.AuthorizationErrorResponseParameter) {
+	responseTypes := authSession.ResponseTypes
 	query := newResponseParameters(redirectURL, responseTypes)
 
 	var idToken string
-	accessTokenResponse := h.tokenManager.CreateAccessTokenResponse(r, user.Username, client, &loginSession.StartTime, scopes, authSession.RequestedClaims, authSession.Nonce, "")
+	accessTokenResponse := h.tokenManager.CreateAccessTokenResponse(r, user.Username, client, &loginSession.StartTime, authSession.Scopes, authSession.RequestedClaims, authSession.Nonce, "")
 	if slices.Contains(responseTypes, oauth2.RtToken) {
 		setImplicitGrantParameter(query, accessTokenResponse)
 	} else if slices.Contains(responseTypes, oauth2.RtCode) {
-		setAuthorizationGrantParameter(query, id)
-	} else if idTokenRequest {
+		authorizationCode, authorizationCodeIssued := h.issueAuthorizationCode(user, client, authSession, loginSession)
+		if !authorizationCodeIssued {
+			return nil, &oauth2.AuthorizationErrorResponseParameter{Error: oauth2.AuthorizationEtTemporaryUnavailable}
+		}
+		setAuthorizationGrantParameter(query, authorizationCode.Code)
+	} else if slices.Contains(responseTypes, oauth2.RtIdToken) && len(responseTypes) == 1 {
 		if accessTokenResponse.IdTokenValue == "" {
 			system.CriticalError(errors.New("no id_token found in response"))
 		}
@@ -448,14 +451,40 @@ func (h *Handler) createLocationResponseQuery(r *http.Request, redirectURL *url.
 		return nil, &oauth2.AuthorizationErrorResponseParameter{Error: oauth2.AuthorizationEtUnsupportedResponseType}
 	}
 
-	if stateParameter != "" {
-		query.Set(oauth2.ParameterState, stateParameter)
+	if authSession.State != "" {
+		query.Set(oauth2.ParameterState, authSession.State)
 	}
 
 	if idToken != "" {
 		setIdTokenParameter(query, idToken)
 	}
 	return query, nil
+}
+
+// issueAuthorizationCode creates and stores a new authorization code for an authenticated user.
+// https://datatracker.ietf.org/doc/html/rfc6749#section-4.1.2
+// The code is a new random value which is not related to the auth session or the login token,
+// so no value visible before the authentication can be exchanged at the token endpoint.
+func (h *Handler) issueAuthorizationCode(user *config.User, client *config.Client, authSession *session.AuthSession, loginSession *session.LoginSession) (*session.AuthorizationCode, bool) {
+	if h.authorizationCodeManager.SessionCount() >= maxAuthSessions {
+		log.Error("Too many open authorization codes, rejecting authorization request for client %s", client.Id)
+		return nil, false
+	}
+
+	authorizationCode := &session.AuthorizationCode{
+		Code:                session.GenerateAuthorizationCode(),
+		ClientId:            client.Id,
+		Redirect:            authSession.Redirect,
+		Username:            user.Username,
+		Scopes:              authSession.Scopes,
+		Nonce:               authSession.Nonce,
+		RequestedClaims:     authSession.RequestedClaims,
+		AuthTime:            loginSession.StartTime,
+		CodeChallenge:       authSession.CodeChallenge,
+		CodeChallengeMethod: authSession.CodeChallengeMethod,
+	}
+	h.authorizationCodeManager.StartSession(authorizationCode)
+	return authorizationCode, true
 }
 
 func (h *Handler) getPromptType(validCookie bool, promptQueryParameter string) (*oidc.PromptType, *oauth2.AuthorizationErrorResponseParameter) {

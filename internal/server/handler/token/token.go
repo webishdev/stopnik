@@ -17,20 +17,20 @@ import (
 )
 
 type Handler struct {
-	config             *config.Config
-	validator          *validation.RequestValidator
-	authSessionManager session.Manager[session.AuthSession]
-	tokenManager       *token.Manager
-	errorHandler       *error.Handler
+	config                   *config.Config
+	validator                *validation.RequestValidator
+	authorizationCodeManager session.Manager[session.AuthorizationCode]
+	tokenManager             *token.Manager
+	errorHandler             *error.Handler
 }
 
-func NewTokenHandler(validator *validation.RequestValidator, authSessionManager session.Manager[session.AuthSession], tokenManager *token.Manager) *Handler {
+func NewTokenHandler(validator *validation.RequestValidator, authorizationCodeManager session.Manager[session.AuthorizationCode], tokenManager *token.Manager) *Handler {
 	return &Handler{
-		config:             config.GetConfigInstance(),
-		validator:          validator,
-		authSessionManager: authSessionManager,
-		tokenManager:       tokenManager,
-		errorHandler:       error.NewErrorHandler(),
+		config:                   config.GetConfigInstance(),
+		validator:                validator,
+		authorizationCodeManager: authorizationCodeManager,
+		tokenManager:             tokenManager,
+		errorHandler:             error.NewErrorHandler(),
 	}
 }
 
@@ -79,9 +79,9 @@ func (h *Handler) handlePostRequest(w http.ResponseWriter, r *http.Request) {
 	if grantType == oauth2.GtAuthorizationCode {
 		// https://datatracker.ietf.org/doc/html/rfc6749#section-4.1.3
 		code := r.PostFormValue(oauth2.ParameterCode)
-		// Taking the session removes it, so a code can only be redeemed once, even for concurrent requests
-		authSession, authSessionExists := h.authSessionManager.TakeSession(code)
-		if !authSessionExists {
+		// Taking the code removes it, so a code can only be redeemed once, even for concurrent requests
+		authorizationCode, authorizationCodeExists := h.authorizationCodeManager.TakeSession(code)
+		if !authorizationCodeExists {
 			h.tokenManager.RevokeAccessTokenByAuthorizationCode(code)
 			oauth2.TokenErrorResponseHandler(w, r, &oauth2.TokenErrorResponseParameter{Error: oauth2.TokenEtInvalidGrant})
 			return
@@ -89,22 +89,22 @@ func (h *Handler) handlePostRequest(w http.ResponseWriter, r *http.Request) {
 
 		// https://datatracker.ietf.org/doc/html/rfc6749#section-4.1.3
 		// The code must have been issued to the authenticated client
-		if authSession.ClientId != client.Id {
-			log.Error("Authorization code issued for client %s was used by client %s", authSession.ClientId, client.Id)
+		if authorizationCode.ClientId != client.Id {
+			log.Error("Authorization code issued for client %s was used by client %s", authorizationCode.ClientId, client.Id)
 			oauth2.TokenErrorResponseHandler(w, r, &oauth2.TokenErrorResponseParameter{Error: oauth2.TokenEtInvalidGrant})
 			return
 		}
 
 		// The redirect_uri must be identical to the one used in the authorization request
 		redirectUri := r.PostFormValue(oauth2.ParameterRedirectUri)
-		if redirectUri != authSession.Redirect {
+		if redirectUri != authorizationCode.Redirect {
 			log.Error("Invalid redirect URI %s for authorization code of client %s", redirectUri, client.Id)
 			oauth2.TokenErrorResponseHandler(w, r, &oauth2.TokenErrorResponseParameter{Error: oauth2.TokenEtInvalidGrant})
 			return
 		}
 
-		// Auth sessions are created before the user logged in, only codes of authenticated users are valid
-		if authSession.Username == "" {
+		// Codes are only issued after the user logged in, checked anyway as defence in depth
+		if authorizationCode.Username == "" {
 			oauth2.TokenErrorResponseHandler(w, r, &oauth2.TokenErrorResponseParameter{Error: oauth2.TokenEtInvalidGrant})
 			return
 		}
@@ -112,28 +112,28 @@ func (h *Handler) handlePostRequest(w http.ResponseWriter, r *http.Request) {
 		codeVerifier := r.PostFormValue(pkce.ParameterCodeVerifier) // https://datatracker.ietf.org/doc/html/rfc7636#section-4.1
 		// https://datatracker.ietf.org/doc/html/rfc7636#section-4.6
 		// When a code challenge was provided, the code verifier is mandatory
-		if authSession.CodeChallenge != "" && codeVerifier == "" {
+		if authorizationCode.CodeChallenge != "" && codeVerifier == "" {
 			oauth2.TokenErrorResponseHandler(w, r, &oauth2.TokenErrorResponseParameter{Error: oauth2.TokenEtInvalidGrant})
 			return
 		}
 		if codeVerifier != "" {
-			codeChallengeMethod, codeChallengeMethodExists := pkce.CodeChallengeMethodFromString(authSession.CodeChallengeMethod)
+			codeChallengeMethod, codeChallengeMethodExists := pkce.CodeChallengeMethodFromString(authorizationCode.CodeChallengeMethod)
 			if !codeChallengeMethodExists {
 				oauth2.TokenErrorResponseHandler(w, r, &oauth2.TokenErrorResponseParameter{Error: oauth2.TokenEtInvalidRequest})
 				return
 			}
-			validPKCE := pkce.ValidatePKCE(codeChallengeMethod, authSession.CodeChallenge, codeVerifier)
+			validPKCE := pkce.ValidatePKCE(codeChallengeMethod, authorizationCode.CodeChallenge, codeVerifier)
 			if !validPKCE {
 				oauth2.TokenErrorResponseHandler(w, r, &oauth2.TokenErrorResponseParameter{Error: oauth2.TokenEtInvalidRequest})
 				return
 			}
 		}
 
-		scopes = authSession.Scopes
-		username = authSession.Username
-		nonce = authSession.Nonce
-		requestedClaims = authSession.RequestedClaims
-		authTime = authSession.AuthTime
+		scopes = authorizationCode.Scopes
+		username = authorizationCode.Username
+		nonce = authorizationCode.Nonce
+		requestedClaims = authorizationCode.RequestedClaims
+		authTime = authorizationCode.AuthTime
 		authCode = code
 	} else if grantType == oauth2.GtPassword {
 		// https://datatracker.ietf.org/doc/html/rfc6749#section-4.3.2
