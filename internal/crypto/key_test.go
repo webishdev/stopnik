@@ -2,8 +2,10 @@ package crypto
 
 import (
 	"fmt"
+	"github.com/lestrrat-go/jwx/v4/jwa"
 	"github.com/lestrrat-go/jwx/v4/jwt"
 	"github.com/webishdev/stopnik/internal/config"
+	"reflect"
 	"testing"
 )
 
@@ -19,7 +21,7 @@ func Test_Key(t *testing.T) {
 		t.Fatal(initializationError)
 	}
 
-	testServerKeyLoader(t)
+	testGeneratePrivateKey(t)
 
 	testPurposeServerKeyLoader(t)
 
@@ -30,41 +32,6 @@ func Test_Key(t *testing.T) {
 	testLoadInvalidPrivateKey(t)
 
 	testLoadUnsupportedCurvePrivateKey(t)
-}
-
-func testServerKeyLoader(t *testing.T) {
-	t.Run("Server key loader", func(t *testing.T) {
-		serverSecretLoader := NewServerSecretLoader()
-
-		key := serverSecretLoader.GetServerKey()
-
-		token, tokenError := jwt.NewBuilder().Subject("foo").Issuer("bar").Build()
-		if tokenError != nil {
-			t.Fatal(tokenError)
-		}
-		signedToken, signingError := jwt.Sign(token, key)
-		if signingError != nil {
-			t.Fatal(signingError)
-		}
-		if len(signedToken) == 0 {
-			t.Errorf("signedToken is empty")
-		}
-
-		parsedToken, parseError := jwt.Parse(signedToken, key)
-		if parseError != nil {
-			t.Fatal(parseError)
-		}
-
-		subject, _ := parsedToken.Subject()
-		if subject != "foo" {
-			t.Errorf("parsed token subject does not match, expected foo but got %s", subject)
-		}
-
-		issuer, _ := parsedToken.Issuer()
-		if issuer != "bar" {
-			t.Errorf("parsed token issuer does not match, expected bar but got %s", issuer)
-		}
-	})
 }
 
 func testLoadPrivateKey(t *testing.T) {
@@ -147,9 +114,27 @@ func testPurposeServerKeyLoader(t *testing.T) {
 			t.Errorf("token should not be valid for other purpose")
 		}
 
-		_, parseError = jwt.Parse(signedToken, NewServerSecretLoader().GetServerKey())
+		_, parseError = jwt.Parse(signedToken, jwt.WithKey(jwa.HS256(), []byte(config.GetConfigInstance().GetServerSecret())))
 		if parseError == nil {
 			t.Errorf("token should not be valid with plain server secret")
+		}
+	})
+}
+
+func testGeneratePrivateKey(t *testing.T) {
+	t.Run("Generate private key", func(t *testing.T) {
+		firstKey, firstError := GeneratePrivateKey()
+		secondKey, secondError := GeneratePrivateKey()
+		if firstError != nil || secondError != nil {
+			t.Fatalf("could not generate private keys: %v %v", firstError, secondError)
+		}
+
+		if firstKey.SignatureAlgorithm != jwa.ES256() || firstKey.HashAlgorithm != SHA256 {
+			t.Errorf("expected ES256 key, got %s", firstKey.SignatureAlgorithm)
+		}
+
+		if reflect.DeepEqual(firstKey.PrivateKey, secondKey.PrivateKey) {
+			t.Error("expected generated keys to differ")
 		}
 	})
 }

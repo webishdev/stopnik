@@ -229,7 +229,7 @@ func registerHandlers(config *config.Config, register func(pattern string, handl
 	// OAuth2 extensions
 	introspectHandler := introspect.NewIntrospectHandler(requestValidator, tokenManager)
 	revokeHandler := revoke.NewRevokeHandler(requestValidator, tokenManager)
-	metadataHandler := metadata.NewMetadataHandler()
+	metadataHandler := metadata.NewMetadataHandler(keyManger)
 	keysHandler := keys.NewKeysHandler(keyManger)
 
 	// Server
@@ -255,7 +255,7 @@ func registerHandlers(config *config.Config, register func(pattern string, handl
 	handle(endpoint.Keys, keysHandler)
 
 	// Oidc 1.0 Core, answers only when a currently loaded client has OIDC enabled
-	discoveryHandler := oidc.NewOidcDiscoveryHandler()
+	discoveryHandler := oidc.NewOidcDiscoveryHandler(keyManger)
 	userInfoHandler := oidc.NewOidcUserInfoHandler(tokenManager)
 
 	handle(endpoint.OidcDiscovery, discoveryHandler)

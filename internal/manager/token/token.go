@@ -363,33 +363,27 @@ func (tokenManager *Manager) generateOpaqueToken(tokenId string) string {
 	return base64.RawURLEncoding.EncodeToString([]byte(tokenId))
 }
 
+// generateJWTToken signs the token with the key of the client or the server key.
+// A server key always exists, tokens are never signed with the server secret.
 func (tokenManager *Manager) generateJWTToken(client *config.Client, token jwt.Token) string {
-
 	loader := tokenManager.keyLoader
 	managedKey, keyExists := loader.LoadKeys(client)
-
 	if !keyExists {
-		options := loader.GetServerKey()
-		tokenString, tokenError := jwt.Sign(token, options)
-		if tokenError != nil {
-			system.Error(tokenError)
-		}
-
-		return string(tokenString)
-	} else {
-		currentKey := *managedKey.Key
-
-		algorithm, _ := currentKey.Algorithm()
-		options := jwt.WithKey(algorithm, currentKey)
-
-		tokenString, tokenError := jwt.Sign(token, options)
-		if tokenError != nil {
-			system.Error(tokenError)
-		}
-
-		return string(tokenString)
+		system.CriticalError(fmt.Errorf("no key found to sign token for client %s", client.Id))
+		return ""
 	}
 
+	currentKey := *managedKey.Key
+
+	algorithm, _ := currentKey.Algorithm()
+	options := jwt.WithKey(algorithm, currentKey)
+
+	tokenString, tokenError := jwt.Sign(token, options)
+	if tokenError != nil {
+		system.Error(tokenError)
+	}
+
+	return string(tokenString)
 }
 
 func generateIdToken(config *config.Config, idTokenInput IdTokenInput) jwt.Token {

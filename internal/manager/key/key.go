@@ -6,12 +6,15 @@ import (
 	"crypto/x509"
 	"encoding/base64"
 	"fmt"
+	"github.com/lestrrat-go/jwx/v4/jwa"
 	"github.com/lestrrat-go/jwx/v4/jwk"
 	"github.com/webishdev/stopnik/internal/config"
 	"github.com/webishdev/stopnik/internal/crypto"
 	"github.com/webishdev/stopnik/internal/store"
 	"github.com/webishdev/stopnik/internal/system"
 	"github.com/webishdev/stopnik/log"
+	"slices"
+	"strings"
 	"sync"
 )
 
@@ -54,7 +57,11 @@ func newKeyManager(c *config.Config) *Manger {
 }
 
 // ValidateServerKey checks whether the private key of the server referenced by the given config.Config can be loaded.
+// When no private key is referenced, nothing is checked, as an ephemeral key will be generated.
 func ValidateServerKey(c *config.Config) error {
+	if c.Server.PrivateKey == "" {
+		return nil
+	}
 	return newKeyManager(c).addSeverKey(c)
 }
 
@@ -104,24 +111,56 @@ func (km *Manger) GetAllKeys() []*crypto.ManagedKey {
 	return keyStore.GetValues()
 }
 
+// addSeverKey loads the private key of the server, which is used for all clients without an own private key.
+// When no private key is configured, an ephemeral ECDSA P-256 key is generated,
+// so tokens are never signed with the server secret and can always be verified with a key from the JWKS endpoint.
 func (km *Manger) addSeverKey(c *config.Config) error {
+	var privateKey *crypto.SigningPrivateKey
 	if c.Server.PrivateKey != "" {
-		privateKey, loadError := crypto.LoadPrivateKey(c.Server.PrivateKey)
+		loadedPrivateKey, loadError := crypto.LoadPrivateKey(c.Server.PrivateKey)
 		if loadError != nil {
 			return loadError
 		}
-
-		managedKey, convertError := km.convert(privateKey)
-		if convertError != nil {
-			return convertError
+		privateKey = loadedPrivateKey
+	} else {
+		generatedPrivateKey, generateError := crypto.GeneratePrivateKey()
+		if generateError != nil {
+			return generateError
 		}
-
-		managedKey.Server = true
-		km.serverKey = managedKey
-		km.addManagedKey(managedKey)
+		log.Warn("No server private key configured, generated an ephemeral key which changes on every restart, configure server.privateKey for production")
+		privateKey = generatedPrivateKey
 	}
 
+	managedKey, convertError := km.convert(privateKey)
+	if convertError != nil {
+		return convertError
+	}
+
+	managedKey.Server = true
+	km.serverKey = managedKey
+	km.addManagedKey(managedKey)
+
 	return nil
+}
+
+// GetSigningAlgorithms returns the distinct signature algorithms of all currently loaded keys.
+func (km *Manger) GetSigningAlgorithms() []jwa.SignatureAlgorithm {
+	var signingAlgorithms []jwa.SignatureAlgorithm
+	for _, managedKey := range km.GetAllKeys() {
+		currentKey := *managedKey.Key
+		algorithm, algorithmExists := currentKey.Algorithm()
+		if !algorithmExists {
+			continue
+		}
+		signatureAlgorithm, isSignatureAlgorithm := algorithm.(jwa.SignatureAlgorithm)
+		if isSignatureAlgorithm && !slices.Contains(signingAlgorithms, signatureAlgorithm) {
+			signingAlgorithms = append(signingAlgorithms, signatureAlgorithm)
+		}
+	}
+	slices.SortFunc(signingAlgorithms, func(a jwa.SignatureAlgorithm, b jwa.SignatureAlgorithm) int {
+		return strings.Compare(a.String(), b.String())
+	})
+	return signingAlgorithms
 }
 
 func (km *Manger) addClientKey(client *config.Client) error {

@@ -2,6 +2,8 @@ package token
 
 import (
 	"fmt"
+	"github.com/lestrrat-go/jwx/v4/jwa"
+	"github.com/lestrrat-go/jwx/v4/jwk"
 	"github.com/lestrrat-go/jwx/v4/jwt"
 	"github.com/webishdev/stopnik/internal/config"
 	"github.com/webishdev/stopnik/internal/crypto"
@@ -254,6 +256,44 @@ func Test_TokenIssuerNotFromHostHeader(t *testing.T) {
 	}
 }
 
+func Test_TokenWithoutConfiguredKey(t *testing.T) {
+	testConfig := createTestConfig(t, false, 100, 100, "")
+	tokenManager := GetTokenManagerInstance()
+	client, _ := testConfig.GetClient("foo")
+
+	request := httptest.NewRequest(http.MethodPost, endpoint.Token, nil)
+	requestScopes := []string{oidc.ScopeOpenId, oidc.ScopeOfflineAccess}
+	accessTokenResponse := tokenManager.CreateAccessTokenResponse(request, "foo", client, nil, requestScopes, nil, "", "")
+
+	// Without configured keys every token is signed with the ephemeral server key, never with the server secret
+	for _, tokenValue := range []string{accessTokenResponse.AccessTokenValue, accessTokenResponse.RefreshTokenValue, accessTokenResponse.IdTokenValue} {
+		assertVerifiesWithPublicKeys(t, tokenValue)
+		if _, secretError := jwt.Parse([]byte(tokenValue), jwt.WithKey(jwa.HS256(), []byte(testConfig.GetServerSecret()))); secretError == nil {
+			t.Error("token must not be signed with the server secret")
+		}
+	}
+}
+
+// assertVerifiesWithPublicKeys verifies the token with the public keys, which are served by the JWKS endpoint.
+func assertVerifiesWithPublicKeys(t *testing.T, tokenValue string) jwt.Token {
+	t.Helper()
+	keySet := jwk.NewSet()
+	for _, managedKey := range key.GetKeyMangerInstance().GetAllKeys() {
+		publicKey, publicKeyError := (*managedKey.Key).PublicKey()
+		if publicKeyError != nil {
+			t.Fatal(publicKeyError)
+		}
+		if addKeyError := keySet.AddKey(publicKey); addKeyError != nil {
+			t.Fatal(addKeyError)
+		}
+	}
+	parsedToken, parseError := jwt.Parse([]byte(tokenValue), jwt.WithKeySet(keySet))
+	if parseError != nil {
+		t.Fatalf("token could not be verified with the public keys: %v", parseError)
+	}
+	return parsedToken
+}
+
 func assertAuthorizationHeader(t *testing.T, tokenManager *Manager, authorizationHeader string, requestScopes []string) {
 	validAccessToken, valid := tokenManager.validateAccessTokenHeader(authorizationHeader)
 	if !valid {
@@ -294,13 +334,10 @@ func assertTokenResponse(t *testing.T, accessTokenResponse oauth2.AccessTokenRes
 
 	if test.idTTL > 0 && accessTokenResponse.IdTokenValue == "" {
 		t.Error("id token should exists")
+	}
 
-		keyLoader := key.GetDefaultKeyLoaderInstance()
-		options := keyLoader.GetServerKey()
-		parsedIdToken, idTokenParseError := jwt.Parse([]byte(accessTokenResponse.IdTokenValue), options)
-		if idTokenParseError != nil {
-			t.Error(idTokenParseError)
-		}
+	if test.idTTL > 0 && accessTokenResponse.IdTokenValue != "" {
+		parsedIdToken := assertVerifiesWithPublicKeys(t, accessTokenResponse.IdTokenValue)
 
 		subject, _ := parsedIdToken.Subject()
 		if subject != "foo" {

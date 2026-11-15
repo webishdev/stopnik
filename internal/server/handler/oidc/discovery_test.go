@@ -5,11 +5,14 @@ import (
 	"fmt"
 	"github.com/webishdev/stopnik/internal/config"
 	"github.com/webishdev/stopnik/internal/endpoint"
+	"github.com/webishdev/stopnik/internal/manager/key"
 	"github.com/webishdev/stopnik/internal/oauth2"
+	"github.com/webishdev/stopnik/internal/server/handler/keys"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"reflect"
+	"slices"
 	"strings"
 	"testing"
 )
@@ -34,7 +37,7 @@ func Test_OidcConfiguration(t *testing.T) {
 		testMessage := fmt.Sprintf("OIDC configuration with base path '%s' and issuer '%s'", test.basePath, test.issuer)
 		t.Run(testMessage, func(t *testing.T) {
 			initializeConfig(t, test.basePath, test.issuer)
-			oidcDiscoveryHandler := NewOidcDiscoveryHandler()
+			oidcDiscoveryHandler := NewOidcDiscoveryHandler(key.GetKeyMangerInstance())
 
 			rr := httptest.NewRecorder()
 			request := httptest.NewRequest(http.MethodGet, endpoint.Keys, nil)
@@ -98,7 +101,7 @@ func Test_OidcConfigurationNotAllowedHttpMethods(t *testing.T) {
 		testMessage := fmt.Sprintf("OIDC configuration with unsupported method %s", method)
 		t.Run(testMessage, func(t *testing.T) {
 			initializeConfig(t, "", "https://auth.example.com")
-			oidcDiscoveryHandler := NewOidcDiscoveryHandler()
+			oidcDiscoveryHandler := NewOidcDiscoveryHandler(key.GetKeyMangerInstance())
 
 			rr := httptest.NewRecorder()
 
@@ -113,7 +116,7 @@ func Test_OidcConfigurationNotAllowedHttpMethods(t *testing.T) {
 
 func Test_OidcConfigurationSupportedGrantAndResponseTypes(t *testing.T) {
 	initializeConfig(t, "", "https://auth.example.com")
-	oidcDiscoveryHandler := NewOidcDiscoveryHandler()
+	oidcDiscoveryHandler := NewOidcDiscoveryHandler(key.GetKeyMangerInstance())
 
 	rr := httptest.NewRecorder()
 
@@ -129,6 +132,51 @@ func Test_OidcConfigurationSupportedGrantAndResponseTypes(t *testing.T) {
 	expectedResponseTypes := []oauth2.ResponseType{oauth2.RtCode}
 	if !reflect.DeepEqual(oidcConfiguration.ResponseTypesSupported, expectedResponseTypes) {
 		t.Errorf("response_types_supported %v did not match %v", oidcConfiguration.ResponseTypesSupported, expectedResponseTypes)
+	}
+}
+
+func Test_OidcConfigurationSigningAlgorithmsMatchKeys(t *testing.T) {
+	initializeConfig(t, "", "https://auth.example.com")
+	keyManager := key.GetKeyMangerInstance()
+	oidcDiscoveryHandler := NewOidcDiscoveryHandler(keyManager)
+	keysHandler := keys.NewKeysHandler(keyManager)
+
+	discoveryRecorder := httptest.NewRecorder()
+	oidcDiscoveryHandler.ServeHTTP(discoveryRecorder, httptest.NewRequest(http.MethodGet, endpoint.OidcDiscovery, nil))
+	oidcConfiguration := testOidcConfigurationParse(t, discoveryRecorder.Result())
+
+	keysRecorder := httptest.NewRecorder()
+	keysHandler.ServeHTTP(keysRecorder, httptest.NewRequest(http.MethodGet, endpoint.Keys, nil))
+	keySet := struct {
+		Keys []struct {
+			Alg string `json:"alg"`
+		} `json:"keys"`
+	}{}
+	if jsonError := json.Unmarshal(keysRecorder.Body.Bytes(), &keySet); jsonError != nil {
+		t.Fatal(jsonError)
+	}
+
+	var keyAlgorithms []string
+	for _, currentKey := range keySet.Keys {
+		if !slices.Contains(keyAlgorithms, currentKey.Alg) {
+			keyAlgorithms = append(keyAlgorithms, currentKey.Alg)
+		}
+	}
+	var advertisedAlgorithms []string
+	for _, algorithm := range oidcConfiguration.IdTokenSigningAlgValuesSupported {
+		advertisedAlgorithms = append(advertisedAlgorithms, algorithm.String())
+	}
+	slices.Sort(keyAlgorithms)
+	slices.Sort(advertisedAlgorithms)
+
+	if len(keyAlgorithms) == 0 || !reflect.DeepEqual(keyAlgorithms, advertisedAlgorithms) {
+		t.Errorf("advertised algorithms %v did not match the algorithms of the keys %v", advertisedAlgorithms, keyAlgorithms)
+	}
+	if slices.Contains(advertisedAlgorithms, "HS256") {
+		t.Error("HS256 must not be advertised")
+	}
+	if strings.Contains(discoveryRecorder.Body.String(), "endpoint_auth_signing_alg_values_supported") {
+		t.Error("JWT client authentication is not supported and must not be advertised")
 	}
 }
 

@@ -1,7 +1,9 @@
 package key
 
 import (
+	"github.com/lestrrat-go/jwx/v4/jwa"
 	"github.com/webishdev/stopnik/internal/config"
+	"reflect"
 	"testing"
 )
 
@@ -22,13 +24,24 @@ func testEmptyConfigKeyManager(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	t.Run("No keys from empty config", func(t *testing.T) {
+	t.Run("Ephemeral server key from empty config", func(t *testing.T) {
 		resetKeyManager()
 		keyManger := GetKeyMangerInstance()
 		keys := keyManger.GetAllKeys()
 
-		if len(keys) != 0 {
-			t.Error("No key should exists")
+		if len(keys) != 1 || !keys[0].Server {
+			t.Fatal("Generated server key should exist")
+		}
+
+		if algorithms := keyManger.GetSigningAlgorithms(); !reflect.DeepEqual(algorithms, []jwa.SignatureAlgorithm{jwa.ES256()}) {
+			t.Errorf("expected generated key to use ES256, got %v", algorithms)
+		}
+
+		// A client without own key uses the server key
+		keyLoader := &defaultKeyLoader{keyManager: keyManger}
+		managedKey, managedKeyExists := keyLoader.LoadKeys(&config.Client{Id: "no-key"})
+		if !managedKeyExists || !managedKey.Server {
+			t.Error("Client without own key should use the server key")
 		}
 	})
 }
@@ -176,6 +189,17 @@ func Test_ValidateKeys(t *testing.T) {
 				t.Error("expected keys to be invalid")
 			}
 		})
+	}
+}
+
+func Test_SigningAlgorithms(t *testing.T) {
+	testSetupTestConfig(t)
+	resetKeyManager()
+	keyManger := GetKeyMangerInstance()
+
+	expectedAlgorithms := []jwa.SignatureAlgorithm{jwa.ES256(), jwa.ES512(), jwa.RS256()}
+	if algorithms := keyManger.GetSigningAlgorithms(); !reflect.DeepEqual(algorithms, expectedAlgorithms) {
+		t.Errorf("signing algorithms %v did not match %v", algorithms, expectedAlgorithms)
 	}
 }
 

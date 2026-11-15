@@ -241,7 +241,7 @@ func prepare(config *Config) error {
 		config.dynamic = &atomic.Pointer[dynamicSnapshot]{}
 	}
 
-	randomString, randomError := generateRandomString(16)
+	randomString, randomError := generateRandomString(32)
 	if randomError != nil {
 		return randomError
 	}

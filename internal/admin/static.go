@@ -97,7 +97,7 @@ func staticTopics(staticConfig *config.Config, store *Store) []*staticTopic {
 					Title:       "Tokens and sessions",
 					Description: "Keys used to sign tokens.",
 					Fields: []staticField{
-						fullWidth(textField("Private key", "Used to sign tokens, otherwise the secret is used.", server.PrivateKey)),
+						fullWidth(textField("Private key", "Used to sign tokens, otherwise an ephemeral key is generated on every start.", server.PrivateKey)),
 						secret,
 						sessionTimeout,
 					},

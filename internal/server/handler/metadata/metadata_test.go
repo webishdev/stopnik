@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/webishdev/stopnik/internal/config"
 	"github.com/webishdev/stopnik/internal/endpoint"
+	"github.com/webishdev/stopnik/internal/manager/key"
 	"github.com/webishdev/stopnik/internal/oauth2"
 	"io"
 	"net/http"
@@ -34,7 +35,7 @@ func Test_Metadata(t *testing.T) {
 		testMessage := fmt.Sprintf("Metadata with base path '%s' and issuer '%s'", test.basePath, test.issuer)
 		t.Run(testMessage, func(t *testing.T) {
 			initializeConfig(t, test.basePath, test.issuer)
-			metadataHandler := NewMetadataHandler()
+			metadataHandler := NewMetadataHandler(key.GetKeyMangerInstance())
 
 			rr := httptest.NewRecorder()
 			request := httptest.NewRequest(http.MethodGet, endpoint.Keys, nil)
@@ -98,7 +99,7 @@ func Test_MetadataNotAllowedHttpMethods(t *testing.T) {
 		testMessage := fmt.Sprintf("Metadata with unsupported method %s", method)
 		t.Run(testMessage, func(t *testing.T) {
 			initializeConfig(t, "", "https://auth.example.com")
-			metadataHandler := NewMetadataHandler()
+			metadataHandler := NewMetadataHandler(key.GetKeyMangerInstance())
 
 			rr := httptest.NewRecorder()
 
@@ -122,7 +123,7 @@ func Test_MetadataSupportedGrantAndResponseTypes(t *testing.T) {
 	if applyError != nil {
 		t.Fatal(applyError)
 	}
-	metadataHandler := NewMetadataHandler()
+	metadataHandler := NewMetadataHandler(key.GetKeyMangerInstance())
 
 	rr := httptest.NewRecorder()
 

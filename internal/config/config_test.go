@@ -65,7 +65,7 @@ func Test_EmptyServerConfiguration(t *testing.T) {
 		t.Fatal("config was nil")
 	}
 
-	if config.generatedSecret == "" || len(config.generatedSecret) != 16 {
+	if config.generatedSecret == "" || len(config.generatedSecret) != 32 {
 		t.Error("expected generated secret to not be empty")
 	}
 

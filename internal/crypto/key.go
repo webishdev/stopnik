@@ -1,7 +1,10 @@
 package crypto
 
 import (
+	"crypto/ecdsa"
+	"crypto/elliptic"
 	"crypto/hkdf"
+	"crypto/rand"
 	"crypto/rsa"
 	"crypto/sha256"
 	"crypto/x509"
@@ -54,13 +57,6 @@ type serverSecret struct {
 type KeyLoader interface {
 	// LoadKeys returns a ManagedKey for a specific client and a bool indicating whether a key exists or not.
 	LoadKeys(client *config.Client) (*ManagedKey, bool)
-	ServerSecretLoader
-}
-
-// NewServerSecretLoader creates a ServerSecretLoader based on the current config.Config.
-func NewServerSecretLoader() ServerSecretLoader {
-	currentConfig := config.GetConfigInstance()
-	return &serverSecret{secret: currentConfig.GetServerSecret()}
 }
 
 // Purposes for which separate keys are derived from the server secret.
@@ -70,8 +66,8 @@ const (
 )
 
 // NewPurposeServerSecretLoader creates a ServerSecretLoader with a key derived from the server secret for the given purpose.
-// Separate keys ensure that e.g. a login token can not be used as cookie value or as access token and vice versa.
-// The plain server secret is still used to sign tokens, when no private key is configured.
+// Separate keys ensure that e.g. a login token can not be used as cookie value and vice versa.
+// Tokens handed to clients are never signed with the server secret.
 func NewPurposeServerSecretLoader(purpose string) ServerSecretLoader {
 	currentConfig := config.GetConfigInstance()
 	derivedKey, deriveError := hkdf.Key(sha256.New, []byte(currentConfig.GetServerSecret()), nil, purpose, sha256.Size)
@@ -81,9 +77,22 @@ func NewPurposeServerSecretLoader(purpose string) ServerSecretLoader {
 	return &serverSecret{secret: string(derivedKey)}
 }
 
-// GetServerKey returns the server secret as jwa.HS256() key.
+// GetServerKey returns the derived server secret as jwa.HS256() key.
 func (s *serverSecret) GetServerKey() jwt.SignEncryptParseOption {
 	return jwt.WithKey(jwa.HS256(), []byte(s.secret))
+}
+
+// GeneratePrivateKey generates a new ECDSA P-256 private key.
+func GeneratePrivateKey() (*SigningPrivateKey, error) {
+	privateKey, generateError := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	if generateError != nil {
+		return nil, generateError
+	}
+	return &SigningPrivateKey{
+		PrivateKey:         privateKey,
+		SignatureAlgorithm: jwa.ES256(),
+		HashAlgorithm:      SHA256,
+	}, nil
 }
 
 // LoadPrivateKey loads a private key from a given filename.

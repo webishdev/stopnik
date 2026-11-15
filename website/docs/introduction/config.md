@@ -70,7 +70,7 @@ Root entry named `server`
 | `basePath`                    | Path prefix for all endpoints, see [Base path](#base-path)                                        | No       |
 | [`cookies`](#cookies)         | Configuration related to cookie names                                                             | No       |
 | `secureCookie`                | Only send cookies via HTTPS, defaults to `true`                                                   | No       |
-| `secret`                      | Server secret                                                                                     | No       |
+| `secret`                      | Server secret, see [Keys and secret](#keys-and-secret)                                            | No       |
 | `privateKey`                  | General RSA or EC private key (can be overwritten for each client) to sign tokens                 | No       |
 | [`tls`](#tls)                 | Configuration for TLS                                                                             | No       |
 | `logoutRedirect`              | Where to redirect user after logout                                                               | No       |
@@ -94,6 +94,21 @@ The issuer is never derived from the `Host` header of a request, as it can be ma
 The configured `issuer` is used as it is.
 When a [base path](#base-path) is configured, the endpoint URLs are `issuer` + endpoint path when the `issuer` already ends with
 the base path (e.g. `https://example.com/auth/token`), and `issuer` + base path + endpoint path otherwise.
+
+#### Keys and secret
+
+Access, refresh and ID tokens are always signed with a private key, never with the server `secret`,
+so every token can be verified with a public key from the `/keys` endpoint.
+
+- A client with its own `privateKey` uses this key.
+- All other clients use the server `privateKey`.
+- When no server `privateKey` is configured, **STOPnik** generates an ephemeral ECDSA P-256 key on startup
+  and logs a warning. Tokens signed with it become invalid after a restart, so configure `privateKey` for production.
+
+The discovery endpoint only advertises the signature algorithms of the loaded keys.
+
+The `secret` is only used to protect cookies and the login form, separate keys are derived from it for each purpose.
+When no `secret` is configured, a random secret is generated on every start, which invalidates all sessions after a restart.
 
 #### Base path
 

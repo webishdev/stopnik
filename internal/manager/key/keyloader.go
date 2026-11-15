@@ -1,15 +1,13 @@
 package key
 
 import (
-	"github.com/lestrrat-go/jwx/v4/jwt"
 	"github.com/webishdev/stopnik/internal/config"
 	"github.com/webishdev/stopnik/internal/crypto"
 	"sync"
 )
 
 type defaultKeyLoader struct {
-	keyFallback crypto.ServerSecretLoader
-	keyManager  *Manger
+	keyManager *Manger
 }
 
 var keyLoaderLock = &sync.Mutex{}
@@ -20,8 +18,7 @@ func GetDefaultKeyLoaderInstance() crypto.KeyLoader {
 	defer keyLoaderLock.Unlock()
 	if keyLoaderSingleton == nil {
 		defaultKeyLoader := defaultKeyLoader{
-			keyFallback: crypto.NewServerSecretLoader(),
-			keyManager:  GetKeyMangerInstance(),
+			keyManager: GetKeyMangerInstance(),
 		}
 		keyLoaderSingleton = &defaultKeyLoader
 	}
@@ -35,8 +32,4 @@ func (defaultKeyLoader *defaultKeyLoader) LoadKeys(client *config.Client) (*cryp
 	}
 
 	return key, true
-}
-
-func (defaultKeyLoader *defaultKeyLoader) GetServerKey() jwt.SignEncryptParseOption {
-	return defaultKeyLoader.keyFallback.GetServerKey()
 }
