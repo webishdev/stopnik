@@ -548,6 +548,11 @@ func Test_TokenClientCredentialsGrantType(t *testing.T) {
 	response := rr.Result()
 
 	testTokenValidate(t, tokenManager, response)
+
+	// https://datatracker.ietf.org/doc/html/rfc6749#section-4.4.3
+	if strings.Contains(rr.Body.String(), oauth2.ParameterRefreshToken) {
+		t.Errorf("client credentials response must not contain a refresh token: %s", rr.Body.String())
+	}
 }
 
 func testTokenRefreshTokenGrantType(t *testing.T, testConfig *config.Config) {

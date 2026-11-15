@@ -432,20 +432,24 @@ func (h *Handler) createLocationResponseQuery(r *http.Request, redirectURL *url.
 	query := newResponseParameters(redirectURL, responseTypes)
 
 	var idToken string
-	accessTokenResponse := h.tokenManager.CreateAccessTokenResponse(r, user.Username, client, &loginSession.StartTime, authSession.Scopes, authSession.RequestedClaims, authSession.Nonce, "", "")
+	authTime := loginSession.StartTime
 	if slices.Contains(responseTypes, oauth2.RtToken) {
+		// https://datatracker.ietf.org/doc/html/rfc6749#section-4.2.2
+		// The implicit grant must not issue a refresh token, so none is created
+		accessTokenResponse := h.tokenManager.CreateAccessTokenResponseWithoutRefreshToken(r, user.Username, client, &authTime, authSession.Scopes, authSession.RequestedClaims, authSession.Nonce)
 		setImplicitGrantParameter(query, accessTokenResponse)
 	} else if slices.Contains(responseTypes, oauth2.RtCode) {
+		// Tokens are only created when the code is exchanged at the token endpoint
 		authorizationCode, authorizationCodeIssued := h.issueAuthorizationCode(user, client, authSession, loginSession)
 		if !authorizationCodeIssued {
 			return nil, &oauth2.AuthorizationErrorResponseParameter{Error: oauth2.AuthorizationEtTemporaryUnavailable}
 		}
 		setAuthorizationGrantParameter(query, authorizationCode.Code)
 	} else if slices.Contains(responseTypes, oauth2.RtIdToken) && len(responseTypes) == 1 {
-		if accessTokenResponse.IdTokenValue == "" {
-			system.CriticalError(errors.New("no id_token found in response"))
+		idToken = h.tokenManager.CreateIdToken(r, user.Username, client, &authTime, authSession.Scopes, authSession.RequestedClaims, authSession.Nonce)
+		if idToken == "" {
+			system.CriticalError(errors.New("no id_token created"))
 		}
-		idToken = accessTokenResponse.IdTokenValue
 	} else {
 		log.Error("Invalid response type %v", responseTypes)
 		return nil, &oauth2.AuthorizationErrorResponseParameter{Error: oauth2.AuthorizationEtUnsupportedResponseType}

@@ -115,6 +115,19 @@ func (tokenManager *Manager) allClientStores() []*clientStores {
 	return result
 }
 
+// TokenCount returns the number of stored access and refresh tokens of the client with the given id.
+func (tokenManager *Manager) TokenCount(clientId string) (int, int) {
+	tokenManager.clientStoresMux.RLock()
+	stores, exists := tokenManager.clientStores[clientId]
+	tokenManager.clientStoresMux.RUnlock()
+	if !exists {
+		return 0, 0
+	}
+	accessTokenStore := *stores.accessTokenStore
+	refreshTokenStore := *stores.refreshTokenStore
+	return accessTokenStore.Len(), refreshTokenStore.Len()
+}
+
 func (tokenManager *Manager) GetAccessToken(token string) (*oauth2.AccessToken, bool) {
 	for _, currentClientStores := range tokenManager.allClientStores() {
 		accessTokenStore := *currentClientStores.accessTokenStore
@@ -201,9 +214,43 @@ func (tokenManager *Manager) RevokeAccessTokenByAuthorizationCode(authorizationC
 	}
 }
 
-// CreateAccessTokenResponse creates and stores new tokens for the given client.
+// CreateAccessTokenResponse creates and stores new tokens for the given client, including a refresh token when enabled.
 // The tokens become part of the grant with the given grantId, an empty grantId starts a new grant.
 func (tokenManager *Manager) CreateAccessTokenResponse(r *http.Request, username string, client *config.Client, authTime *time.Time, scopes []string, requestedClaims *oidc.ClaimsParameter, nonce string, authorizationCode string, grantId string) oauth2.AccessTokenResponse {
+	return tokenManager.createAccessTokenResponse(r, username, client, authTime, scopes, requestedClaims, nonce, authorizationCode, grantId, true)
+}
+
+// CreateAccessTokenResponseWithoutRefreshToken creates and stores new tokens for the given client, but never a refresh token.
+// https://datatracker.ietf.org/doc/html/rfc6749#section-4.2.2
+// https://datatracker.ietf.org/doc/html/rfc6749#section-4.4.3
+// Used for the implicit and the client credentials grant, which must not issue refresh tokens.
+func (tokenManager *Manager) CreateAccessTokenResponseWithoutRefreshToken(r *http.Request, username string, client *config.Client, authTime *time.Time, scopes []string, requestedClaims *oidc.ClaimsParameter, nonce string) oauth2.AccessTokenResponse {
+	return tokenManager.createAccessTokenResponse(r, username, client, authTime, scopes, requestedClaims, nonce, "", "", false)
+}
+
+// CreateIdToken creates an ID token without creating an access token, so the ID token contains no at_hash.
+// https://openid.net/specs/openid-connect-core-1_0.html#ImplicitIDToken
+// Used for response_type=id_token, returns an empty string when no ID token can be created.
+func (tokenManager *Manager) CreateIdToken(r *http.Request, username string, client *config.Client, authTime *time.Time, scopes []string, requestedClaims *oidc.ClaimsParameter, nonce string) string {
+	user, userExists := tokenManager.config.GetUser(username)
+	if !userExists {
+		return ""
+	}
+	idTokenInput := IdTokenInput{
+		Username:        user.Username,
+		User:            user,
+		Client:          client,
+		Scopes:          scopes,
+		Nonce:           nonce,
+		RequestedClaims: requestedClaims,
+	}
+	if authTime != nil {
+		idTokenInput.AuthTime = *authTime
+	}
+	return tokenManager.createIdToken(r, idTokenInput)
+}
+
+func (tokenManager *Manager) createAccessTokenResponse(r *http.Request, username string, client *config.Client, authTime *time.Time, scopes []string, requestedClaims *oidc.ClaimsParameter, nonce string, authorizationCode string, grantId string, issueRefreshToken bool) oauth2.AccessTokenResponse {
 	log.Debug("Creating new access token for %s, access TTL %d, refresh TTL %d", client.Id, client.GetAccessTTL(), client.GetRefreshTTL())
 
 	if grantId == "" {
@@ -240,7 +287,8 @@ func (tokenManager *Manager) CreateAccessTokenResponse(r *http.Request, username
 		ExpiresIn:        int(accessTokenDuration / time.Second),
 	}
 
-	if (!client.Oidc && client.GetRefreshTTL() > 0) || (client.Oidc && oidc.HasOfflineAccessScope(scopes) && client.GetRefreshTTL() > 0) {
+	refreshTokenEnabled := (!client.Oidc && client.GetRefreshTTL() > 0) || (client.Oidc && oidc.HasOfflineAccessScope(scopes) && client.GetRefreshTTL() > 0)
+	if issueRefreshToken && refreshTokenEnabled {
 		refreshTokenDuration := time.Minute * time.Duration(client.GetRefreshTTL())
 		refreshTokenKey := tokenManager.generateRefreshToken(username, client, scopes, refreshTokenDuration)
 		refreshToken := &oauth2.RefreshToken{

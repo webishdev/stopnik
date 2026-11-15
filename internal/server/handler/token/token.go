@@ -191,7 +191,14 @@ func (h *Handler) handlePostRequest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	accessTokenResponse := h.tokenManager.CreateAccessTokenResponse(r, username, client, &authTime, scopes, requestedClaims, nonce, authCode, grantId)
+	var accessTokenResponse oauth2.AccessTokenResponse
+	if grantType == oauth2.GtClientCredentials {
+		// https://datatracker.ietf.org/doc/html/rfc6749#section-4.4.3
+		// A refresh token SHOULD NOT be included for the client credentials grant
+		accessTokenResponse = h.tokenManager.CreateAccessTokenResponseWithoutRefreshToken(r, username, client, &authTime, scopes, requestedClaims, nonce)
+	} else {
+		accessTokenResponse = h.tokenManager.CreateAccessTokenResponse(r, username, client, &authTime, scopes, requestedClaims, nonce, authCode, grantId)
+	}
 
 	jsonError := internalHttp.SendJson(accessTokenResponse, w, r)
 	if jsonError != nil {

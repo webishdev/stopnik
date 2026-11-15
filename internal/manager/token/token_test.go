@@ -294,6 +294,50 @@ func assertVerifiesWithPublicKeys(t *testing.T, tokenValue string) jwt.Token {
 	return parsedToken
 }
 
+func Test_CreateIdToken(t *testing.T) {
+	testConfig := createTestConfig(t, false, 100, 100, "../../../.test_files/ecdsa521key.pem")
+	tokenManager := GetTokenManagerInstance()
+	client, _ := testConfig.GetClient("foo")
+	accessTokenCount, refreshTokenCount := tokenManager.TokenCount(client.Id)
+
+	request := httptest.NewRequest(http.MethodGet, endpoint.Authorization, nil)
+	idToken := tokenManager.CreateIdToken(request, "foo", client, nil, []string{oidc.ScopeOpenId, oidc.ScopeOfflineAccess}, nil, "abc")
+
+	parsedIdToken := assertVerifiesWithPublicKeys(t, idToken)
+	if parsedIdToken.Has(oidc.ClaimAtHash) {
+		t.Error("id token without access token must not contain at_hash")
+	}
+	if nonce, _ := parsedIdToken.Field(oidc.ClaimNonce); nonce != "abc" {
+		t.Errorf("expected nonce abc, got %v", nonce)
+	}
+
+	newAccessTokenCount, newRefreshTokenCount := tokenManager.TokenCount(client.Id)
+	if newAccessTokenCount != accessTokenCount || newRefreshTokenCount != refreshTokenCount {
+		t.Error("creating an id token must not store access or refresh tokens")
+	}
+
+	if unknownUserIdToken := tokenManager.CreateIdToken(request, "unknown", client, nil, []string{oidc.ScopeOpenId}, nil, ""); unknownUserIdToken != "" {
+		t.Error("expected no id token for unknown user")
+	}
+}
+
+func Test_CreateAccessTokenResponseWithoutRefreshToken(t *testing.T) {
+	testConfig := createTestConfig(t, false, 100, 0, "../../../.test_files/ecdsa521key.pem")
+	tokenManager := GetTokenManagerInstance()
+	client, _ := testConfig.GetClient("foo")
+	_, refreshTokenCount := tokenManager.TokenCount(client.Id)
+
+	request := httptest.NewRequest(http.MethodPost, endpoint.Token, nil)
+	accessTokenResponse := tokenManager.CreateAccessTokenResponseWithoutRefreshToken(request, "foo", client, nil, []string{"abc"}, nil, "")
+
+	if accessTokenResponse.AccessTokenValue == "" || accessTokenResponse.RefreshTokenValue != "" {
+		t.Error("expected an access token, but no refresh token")
+	}
+	if _, newRefreshTokenCount := tokenManager.TokenCount(client.Id); newRefreshTokenCount != refreshTokenCount {
+		t.Error("no refresh token must be stored")
+	}
+}
+
 func assertAuthorizationHeader(t *testing.T, tokenManager *Manager, authorizationHeader string, requestScopes []string) {
 	validAccessToken, valid := tokenManager.validateAccessTokenHeader(authorizationHeader)
 	if !valid {
