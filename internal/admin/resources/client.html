@@ -1,0 +1,97 @@
+{{ define "content" }}
+<form method="post" class="form">
+    <input type="hidden" name="hash" value="{{ .Hash }}" />
+    {{ with .Doc }}
+    <section class="card">
+        <header class="card-header">
+            <h2>General</h2>
+            <p>The client id is used by applications to identify themselves.</p>
+        </header>
+        <div class="grid">
+            <div class="field">
+                <label for="id">Client ID</label>
+                <input id="id" name="id" value="{{ .Id }}" required autocomplete="off" />
+            </div>
+            <div class="field">
+                <label for="secret">{{ if $.HasSecret }}New client secret{{ else }}Client secret{{ end }}</label>
+                <input id="secret" type="password" name="secret" autocomplete="new-password" />
+                <p class="hint">{{ if $.HasSecret }}Leave empty to keep the current secret.{{ else }}Leave empty for a public client, e.g. a single page application using PKCE.{{ end }}</p>
+            </div>
+            {{ if $.HasSecret }}
+            <div class="field full">
+                {{ template "switch" (switch "removeSecret" false "Remove secret" "Turns this client into a public client.") }}
+            </div>
+            {{ end }}
+            <div class="field full">
+                <label for="redirects">Redirect URIs</label>
+                <textarea id="redirects" name="redirects" rows="4" placeholder="https://app.example.com/callback">{{ lines .Redirects }}</textarea>
+                <p class="hint">One URI per line. A trailing <code>*</code> allows any suffix.</p>
+            </div>
+        </div>
+    </section>
+
+    <section class="card">
+        <header class="card-header">
+            <h2>Capabilities</h2>
+            <p>What this client is allowed to do.</p>
+        </header>
+        <div class="grid">
+            {{ template "switch" (switch "oidc" .Oidc "OpenID Connect" "Issue ID tokens and allow the user info endpoint.") }}
+            {{ template "switch" (switch "introspect" .Introspect "Token introspection" "Allow to inspect tokens.") }}
+            {{ template "switch" (switch "revoke" .Revoke "Token revocation" "Allow to revoke tokens.") }}
+            {{ template "switch" (switch "opaqueToken" .OpaqueToken "Opaque tokens" "Issue random tokens instead of JWTs.") }}
+            {{ template "switch" (switch "passwordFallbackAllowed" .PasswordFallbackAllowed "Password fallback" "Allow the client secret as password for client authentication.") }}
+        </div>
+        <div class="field">
+            <span class="label">Grant types</span>
+            <div class="chips">
+                {{ range $.GrantTypes }}
+                <label class="chip"><input type="checkbox" name="grantTypes" value="{{ . }}"{{ if $.Doc.HasGrantType . }} checked{{ end }} /><span>{{ . }}</span></label>
+                {{ end }}
+            </div>
+            <p class="hint">When none is selected, the default grant types are allowed.</p>
+        </div>
+    </section>
+
+    <section class="card">
+        <header class="card-header">
+            <h2>Tokens</h2>
+            <p>Leave values empty to use the defaults.</p>
+        </header>
+        <div class="grid three">
+            <div class="field">
+                <label for="accessTTL">Access token lifetime</label>
+                <div class="input-unit"><input id="accessTTL" type="number" min="0" name="accessTTL" value="{{ if .AccessTTL }}{{ .AccessTTL }}{{ end }}" placeholder="5" /><span>min</span></div>
+            </div>
+            <div class="field">
+                <label for="refreshTTL">Refresh token lifetime</label>
+                <div class="input-unit"><input id="refreshTTL" type="number" min="0" name="refreshTTL" value="{{ if .RefreshTTL }}{{ .RefreshTTL }}{{ end }}" /><span>min</span></div>
+            </div>
+            <div class="field">
+                <label for="idTTL">ID token lifetime</label>
+                <div class="input-unit"><input id="idTTL" type="number" min="0" name="idTTL" value="{{ if .IdTTL }}{{ .IdTTL }}{{ end }}" /><span>min</span></div>
+            </div>
+        </div>
+        <div class="grid">
+            <div class="field">
+                <label for="scopes">Scopes</label>
+                <textarea id="scopes" name="scopes" rows="3">{{ lines .Scopes }}</textarea>
+                <p class="hint">One scope per line.</p>
+            </div>
+            <div class="field">
+                <label for="audience">Audience</label>
+                <textarea id="audience" name="audience" rows="3">{{ lines .Audience }}</textarea>
+                <p class="hint">One audience per line.</p>
+            </div>
+            <div class="field full">
+                <label for="privateKey">Signing key</label>
+                <input id="privateKey" name="privateKey" value="{{ .PrivateKey }}" placeholder="/path/to/key.pem" />
+                <p class="hint">Optional path to a private key used to sign tokens of this client instead of the server key.</p>
+            </div>
+        </div>
+    </section>
+    {{ end }}
+    {{ template "formActions" . }}
+</form>
+{{ if not .IsNew }}{{ template "deleteDialog" (remove .Kind .ID .Hash .Entry) }}{{ end }}
+{{ end }}

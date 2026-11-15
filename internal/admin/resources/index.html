@@ -1,0 +1,43 @@
+{{ define "content" }}
+<div class="stack">
+<p class="lead">Manage the clients, users and classifications of STOPnik. Changes are applied by a running STOPnik within a few seconds.</p>
+<div class="cards">
+    {{ range .Nav }}
+    <section class="card stat">
+        <div class="stat-icon">{{ template "icon" .Kind.Name }}</div>
+        <div class="stat-body">
+            <h2>{{ .Kind.Title }}</h2>
+            <div class="stat-value">{{ .Count }}</div>
+            {{ if .Invalid }}<span class="badge danger">{{ .Invalid }} invalid</span>{{ else }}<span class="badge success">All valid</span>{{ end }}
+            {{ if .Error }}<p class="hint error-text">{{ .Error }}</p>{{ end }}
+        </div>
+        <div class="stat-actions">
+            <a class="button" href="{{ base }}/{{ .Kind.Name }}">View all {{ template "icon" "arrow" }}</a>
+            <a class="button primary" href="{{ base }}/{{ .Kind.Name }}/new">{{ template "icon" "plus" }}Add</a>
+        </div>
+    </section>
+    {{ end }}
+</div>
+{{ if .Topics }}
+<section class="card static-summary">
+    <header class="card-header">
+        <h2>Static configuration</h2>
+        <p>Read-only, loaded once during start up. Changes require a restart of STOPnik.</p>
+    </header>
+    <ul class="topic-list">
+        {{ range .Topics }}
+        <li>
+            <a href="{{ base }}/settings/{{ .Name }}">
+                <span class="topic-icon">{{ template "icon" .Name }}</span>
+                <span class="topic-title">{{ .Title }}</span>
+                <span class="topic-summary">{{ .Summary }}</span>
+                {{ if eq .State "enabled" }}<span class="badge success">Enabled</span>{{ else if eq .State "disabled" }}<span class="badge neutral">Disabled</span>{{ end }}
+                {{ template "icon" "chevron" }}
+            </a>
+        </li>
+        {{ end }}
+    </ul>
+</section>
+{{ end }}
+</div>
+{{ end }}

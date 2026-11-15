@@ -112,6 +112,7 @@ type User struct {
 	Username        string          `toml:"username"`
 	Password        string          `toml:"password"`
 	Salt            string          `toml:"salt"`
+	Admin           bool            `toml:"admin"`
 	UserProfile     UserProfile     `toml:"userProfile"`
 	UserInformation UserInformation `toml:"userInformation"`
 }

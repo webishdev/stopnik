@@ -336,41 +336,58 @@ func (dynamicStore *DynamicStore) check(kind entryKind, name string, requireStab
 
 // parse decodes and validates a single entry of the given kind.
 func (dynamicStore *DynamicStore) parse(file *dynamicFile, data []byte) error {
+	var parseError error
 	switch file.kind {
 	case kindClient:
-		client := &Client{}
-		if parseError := dynamicStore.unmarshaler(data, client); parseError != nil {
-			return parseError
-		}
-		if validationError := ValidateClient(client); validationError != nil {
-			return validationError
-		}
-		if dynamicStore.clientCheck != nil {
-			if checkError := dynamicStore.clientCheck(client); checkError != nil {
-				return checkError
-			}
-		}
-		file.client = client
+		file.client, parseError = ParseClient(data, dynamicStore.unmarshaler, dynamicStore.clientCheck)
 	case kindUser:
-		user := &User{}
-		if parseError := dynamicStore.unmarshaler(data, user); parseError != nil {
-			return parseError
-		}
-		if validationError := ValidateUser(user); validationError != nil {
-			return validationError
-		}
-		file.user = user
+		file.user, parseError = ParseUser(data, dynamicStore.unmarshaler)
 	case kindClassification:
-		classification := &Classification{}
-		if parseError := dynamicStore.unmarshaler(data, classification); parseError != nil {
-			return parseError
-		}
-		if validationError := ValidateClassification(classification); validationError != nil {
-			return validationError
-		}
-		file.classification = classification
+		file.classification, parseError = ParseClassification(data, dynamicStore.unmarshaler)
 	}
-	return nil
+	return parseError
+}
+
+// ParseClient decodes and validates a single Client from a dynamic configuration file.
+// The optional ClientCheck is called after validation.
+func ParseClient(data []byte, unmarshaler Unmarshal, clientCheck ClientCheck) (*Client, error) {
+	client := &Client{}
+	if parseError := unmarshaler(data, client); parseError != nil {
+		return nil, parseError
+	}
+	if validationError := ValidateClient(client); validationError != nil {
+		return nil, validationError
+	}
+	if clientCheck != nil {
+		if checkError := clientCheck(client); checkError != nil {
+			return nil, checkError
+		}
+	}
+	return client, nil
+}
+
+// ParseUser decodes and validates a single User from a dynamic configuration file.
+func ParseUser(data []byte, unmarshaler Unmarshal) (*User, error) {
+	user := &User{}
+	if parseError := unmarshaler(data, user); parseError != nil {
+		return nil, parseError
+	}
+	if validationError := ValidateUser(user); validationError != nil {
+		return nil, validationError
+	}
+	return user, nil
+}
+
+// ParseClassification decodes and validates a single Classification from a dynamic configuration file.
+func ParseClassification(data []byte, unmarshaler Unmarshal) (*Classification, error) {
+	classification := &Classification{}
+	if parseError := unmarshaler(data, classification); parseError != nil {
+		return nil, parseError
+	}
+	if validationError := ValidateClassification(classification); validationError != nil {
+		return nil, validationError
+	}
+	return classification, nil
 }
 
 // apply builds a new snapshot from all valid files in name order and makes it active.

@@ -1,0 +1,65 @@
+{{ define "content" }}
+<form method="post" class="form">
+    <input type="hidden" name="hash" value="{{ .Hash }}" />
+    {{ with .Doc }}
+    <section class="card">
+        <header class="card-header">
+            <h2>Applies to</h2>
+            <p>The claims are added when the user and the client are listed and one of the scopes was requested.</p>
+        </header>
+        <div class="grid three">
+            <div class="field">
+                <label for="users">Users</label>
+                <textarea id="users" name="users" rows="4">{{ lines .AllUsers }}</textarea>
+                <p class="hint">One username per line.</p>
+            </div>
+            <div class="field">
+                <label for="clients">Clients</label>
+                <textarea id="clients" name="clients" rows="4">{{ lines .AllClients }}</textarea>
+                <p class="hint">One client id per line.</p>
+            </div>
+            <div class="field">
+                <label for="scopes">Scopes</label>
+                <textarea id="scopes" name="scopes" rows="4">{{ lines .AllScopes }}</textarea>
+                <p class="hint">One scope per line, empty for all scopes.</p>
+            </div>
+        </div>
+    </section>
+    {{ end }}
+
+    <section class="card">
+        <header class="card-header">
+            <h2>Claims</h2>
+            <p>Each claim has either a single value or a list of values. Claims without name and value are ignored.</p>
+        </header>
+        <input type="hidden" name="claims" value="{{ len .ClaimRows }}" />
+        <div class="claims">
+            {{ range $index, $claim := .ClaimRows }}
+            <div class="claim">
+                <div class="grid four">
+                    <div class="field">
+                        <label for="claim-{{ $index }}-name">Name</label>
+                        <input id="claim-{{ $index }}-name" name="claim.{{ $index }}.name" value="{{ $claim.Name }}" placeholder="roles" />
+                    </div>
+                    <div class="field">
+                        <label for="claim-{{ $index }}-value">Single value</label>
+                        <input id="claim-{{ $index }}-value" name="claim.{{ $index }}.value" value="{{ $claim.Value }}" />
+                    </div>
+                    <div class="field">
+                        <label for="claim-{{ $index }}-values">List of values</label>
+                        <textarea id="claim-{{ $index }}-values" name="claim.{{ $index }}.values" rows="2">{{ lines $claim.Values }}</textarea>
+                    </div>
+                    <div class="field">
+                        <label for="claim-{{ $index }}-scopes">Only for scopes</label>
+                        <textarea id="claim-{{ $index }}-scopes" name="claim.{{ $index }}.scopes" rows="2">{{ lines $claim.AllScopes }}</textarea>
+                    </div>
+                </div>
+            </div>
+            {{ end }}
+        </div>
+        <button type="submit" name="action" value="addClaim" class="button ghost" formnovalidate>{{ template "icon" "plus" }}Add claim</button>
+    </section>
+    {{ template "formActions" . }}
+</form>
+{{ if not .IsNew }}{{ template "deleteDialog" (remove .Kind .ID .Hash .Entry) }}{{ end }}
+{{ end }}

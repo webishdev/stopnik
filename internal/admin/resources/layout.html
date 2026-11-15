@@ -1,0 +1,120 @@
+{{ define "head" -}}
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light dark" />
+    <title>{{ .Title }} · STOPnik Admin</title>
+    <link href="{{ base }}/assets/admin.css?v={{ cssVersion }}" rel="stylesheet" />
+    <link rel="icon" href="{{ base }}/assets/favicon.ico" />
+</head>
+{{- end }}
+
+{{ define "bare" -}}
+{{ template "head" . }}
+<body>
+<main class="bare">
+    {{ template "content" . }}
+</main>
+</body>
+</html>
+{{- end }}
+
+{{ define "layout" -}}
+{{ template "head" . }}
+<body>
+<div class="app">
+    <aside class="sidebar">
+        <a class="brand" href="{{ base }}/">
+            <img src="{{ base }}/assets/logo.png" alt="" />
+            <span>STOPnik <small>Admin</small></span>
+        </a>
+        <nav>
+            <a href="{{ base }}/"{{ if eq .Title "Overview" }} class="active"{{ end }}>{{ template "icon" "overview" }}<span>Overview</span></a>
+            <div class="nav-section">Configuration</div>
+            {{ range .Nav }}
+            <a href="{{ base }}/{{ .Kind.Name }}"{{ if and $.Kind (eq $.Kind.Name .Kind.Name) }} class="active"{{ end }}>
+                {{ template "icon" .Kind.Name }}<span>{{ .Kind.Title }}</span>
+                <span class="count{{ if .Invalid }} has-invalid{{ end }}">{{ .Count }}</span>
+            </a>
+            {{ end }}
+            {{ if .Topics }}
+            <div class="nav-section">Static configuration</div>
+            {{ range .Topics }}
+            <a class="topic-link{{ if and $.Topic (eq $.Topic.Name .Name) }} active{{ end }}" href="{{ base }}/settings/{{ .Name }}">{{ template "icon" .Name }}<span>{{ .Title }}</span></a>
+            {{ end }}
+            {{ end }}
+        </nav>
+        <form class="sidebar-user" method="post" action="{{ base }}/logout">
+            {{ template "icon" "user" }}<span title="Signed in as {{ .Username }}">{{ .Username }}</span>
+            <button type="submit" class="icon-button" title="Sign out" aria-label="Sign out">{{ template "icon" "logout" }}</button>
+        </form>
+    </aside>
+    <main class="content">
+        <header class="page-header">
+            <div>
+                {{ if .Kind }}{{ if eq .Title .Kind.Title }}<span class="breadcrumb">Dynamic configuration</span>{{ else }}<a class="breadcrumb" href="{{ base }}/{{ .Kind.Name }}">{{ .Kind.Title }}</a>{{ end }}{{ else if .Topic }}<span class="breadcrumb">Static configuration</span>{{ else }}<span class="breadcrumb">STOPnik Admin</span>{{ end }}
+                <h1>{{ .Title }}</h1>
+            </div>
+            <div class="page-actions">{{ block "actions" . }}{{ end }}</div>
+        </header>
+        {{ if .Message }}<div class="alert success">{{ template "icon" "check" }}<span>{{ .Message }}</span></div>{{ end }}
+        {{ if .Error }}<div class="alert danger">{{ template "icon" "alert" }}<span>{{ .Error }}</span></div>{{ end }}
+        {{ template "content" . }}
+    </main>
+</div>
+</body>
+</html>
+{{- end }}
+
+{{ define "status" }}
+{{ if .Valid }}<span class="badge success">Valid</span>{{ else }}<span class="badge danger" title="{{ .Error }}">Invalid</span>{{ end }}
+{{ end }}
+
+{{ define "rowActions" }}
+<td class="row-actions">
+    <a class="icon-button" href="{{ base }}/{{ .Kind.Name }}/{{ .ID }}" title="Edit" aria-label="Edit">{{ template "icon" "edit" }}</a>
+    <button type="button" class="icon-button danger" commandfor="delete-{{ .ID }}" command="show-modal" title="Delete" aria-label="Delete">{{ template "icon" "trash" }}</button>
+    {{ template "deleteDialog" . }}
+</td>
+{{ end }}
+
+{{/* deleteDialog asks for confirmation before an entry is deleted, it is opened by a button with commandfor="delete-ID" */}}
+{{ define "deleteDialog" }}
+<dialog id="delete-{{ .ID }}" class="modal" aria-labelledby="delete-{{ .ID }}-title">
+    <form method="post" action="{{ base }}/{{ .Kind.Name }}/{{ .ID }}/delete">
+        <input type="hidden" name="hash" value="{{ .Hash }}" />
+        <div class="danger-icon">{{ template "icon" "trash" }}</div>
+        <h2 id="delete-{{ .ID }}-title">Delete {{ lower .Kind.Singular }} {{ if .Label }}<em>{{ .Label }}</em>{{ end }}?</h2>
+        <p class="muted">A running STOPnik removes the {{ lower .Kind.Singular }} within a few seconds. This can not be undone.</p>
+        <div class="form-actions plain">
+            <button type="button" class="button" commandfor="delete-{{ .ID }}" command="close" autofocus>Cancel</button>
+            <button type="submit" class="button danger">Delete {{ lower .Kind.Singular }}</button>
+        </div>
+    </form>
+</dialog>
+{{ end }}
+
+{{ define "formActions" }}
+<div class="form-actions">
+    <button type="submit" name="action" value="save" class="button primary">{{ if .IsNew }}Create {{ lower .Kind.Singular }}{{ else }}Save changes{{ end }}</button>
+    <a class="button" href="{{ base }}/{{ .Kind.Name }}">Cancel</a>
+    {{ if not .IsNew }}<button type="button" class="button ghost danger push" commandfor="delete-{{ .ID }}" command="show-modal">{{ template "icon" "trash" }}Delete</button>{{ end }}
+</div>
+{{ end }}
+
+{{ define "switch" }}
+<label class="switch">
+    <input type="checkbox" name="{{ .Name }}" value="true"{{ if .Checked }} checked{{ end }} />
+    <span class="track"></span>
+    <span class="switch-label">{{ .Label }}{{ if .Hint }}<small>{{ .Hint }}</small>{{ end }}</span>
+</label>
+{{ end }}
+
+{{ define "text" }}
+<div class="field">
+    <label for="{{ .Name }}">{{ .Label }}</label>
+    <input id="{{ .Name }}" name="{{ .Name }}" value="{{ .Value }}"{{ if .Placeholder }} placeholder="{{ .Placeholder }}"{{ end }} />
+</div>
+{{ end }}

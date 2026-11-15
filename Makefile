@@ -7,6 +7,8 @@ GIT_HASH := $(shell git rev-parse --short=11 HEAD)
 BIN_DIR := bin
 BINARY_NAME := stopnik
 MAIN_PATH := ./cmd/stopnik
+ADMIN_BINARY_NAME := stopnik-admin
+ADMIN_MAIN_PATH := ./cmd/stopnik-admin
 
 # Default target
 all: test lint
@@ -31,10 +33,10 @@ else
 endif
 
 build-windows-intel:
-	@$(MAKE) build GOOS=windows GOARCH=amd64 BINARY_NAME=stopnik.exe
+	@$(MAKE) build GOOS=windows GOARCH=amd64 BINARY_NAME=stopnik.exe ADMIN_BINARY_NAME=stopnik-admin.exe
 
 build-windows-arm:
-	@$(MAKE) build GOOS=windows GOARCH=arm64 BINARY_NAME=stopnik.exe
+	@$(MAKE) build GOOS=windows GOARCH=arm64 BINARY_NAME=stopnik.exe ADMIN_BINARY_NAME=stopnik-admin.exe
 
 build-linux-intel:
 	@$(MAKE) build GOOS=linux GOARCH=amd64
@@ -55,7 +57,11 @@ build:
 	@GOOS=$(GOOS) GOARCH=$(GOARCH) go build \
 		-ldflags="-s -w -X 'main.Version=$(VERSION)' -X 'main.GitHash=$(GIT_HASH)'" \
 		-o $(BIN_DIR)/$(GOOS)/$(GOARCH)/$(BINARY_NAME) $(MAIN_PATH)
-	@cd $(BIN_DIR)/$(GOOS)/$(GOARCH) && sha256sum $(BINARY_NAME) >> SHA256SUMS
+	@echo "Building $(ADMIN_BINARY_NAME) version $(VERSION) ($(GIT_HASH)) for $(GOOS) $(GOARCH) into $(BIN_DIR)"
+	@GOOS=$(GOOS) GOARCH=$(GOARCH) go build \
+		-ldflags="-s -w -X 'main.Version=$(VERSION)' -X 'main.GitHash=$(GIT_HASH)'" \
+		-o $(BIN_DIR)/$(GOOS)/$(GOARCH)/$(ADMIN_BINARY_NAME) $(ADMIN_MAIN_PATH)
+	@cd $(BIN_DIR)/$(GOOS)/$(GOARCH) && sha256sum $(BINARY_NAME) $(ADMIN_BINARY_NAME) >> SHA256SUMS
 	@command -v zip >/dev/null 2>&1 && cd $(BIN_DIR)/$(GOOS)/$(GOARCH) && zip -q -r ../$(NAME).$(VERSION)-$(GOOS)-$(GOARCH).zip ./
 
 lint: clean-lint
@@ -99,7 +105,7 @@ clean-all: clean clean-lint clean-test
 help:
 	@echo "Available targets:"
 	@echo "  all                 Run tests and linting"
-	@echo "  build               Build for the current GOOS/GOARCH"
+	@echo "  build               Build stopnik and stopnik-admin for the current GOOS/GOARCH"
 	@echo "  build-all           Build binaries for all supported platforms"
 	@echo "  build-ci            Build the platform(s) for the current CI OS"
 	@echo "  build-linux-intel   Build linux/amd64"

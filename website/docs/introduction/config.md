@@ -279,10 +279,14 @@ A user file may contain the following options
 | `username`                             | Username                                                        | Yes      |
 | `password`                             | bcrypt or SHA512 hashed password                                | Yes      |
 | `salt`                                 | Optional salt, only used for SHA512 hashed passwords            | No       |
+| `admin`                                | Allows the user to sign in to the admin web user interface      | No       |
 | [`userProfile`](#user-profile)         | User profile which will be used for OpenId Connect UserInfo     | No       |
 | [`userInformation`](#user-information) | User information which will be used for OpenId Connect UserInfo | No       |
 
 For `password` and `salt` see, [Command line - Password](../advanced/cmd.md#password)
+
+The `admin` property is only used by the [admin web user interface](../advanced/cmd.md#admin-web-user-interface),
+**STOPnik** itself ignores it.
 
 After 10 failed login attempts within 5 minutes, further logins for the username are blocked for the rest of the 5 minutes.
 The same applies to failed client authentications for a client id.

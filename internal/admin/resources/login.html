@@ -1,0 +1,30 @@
+{{ define "content" }}
+<div class="card login-card">
+    <header class="card-header">
+        <div class="login-brand">
+            <img src="{{ base }}/assets/logo.png" alt="" />
+        </div>
+        <h1>Sign in</h1>
+        <p>Enter your credentials to continue</p>
+    </header>
+    {{ if .NoAdmin }}
+    <div class="alert info" role="status">
+        {{ template "icon" "info" }}
+        <span>No administrator exists yet. An administrator has to be configured manually before anyone can sign in.</span>
+    </div>
+    {{ else }}
+    <form method="post" action="{{ base }}/login" class="form">
+        {{ if .Error }}<div class="alert danger" role="alert">{{ template "icon" "alert" }}<span>{{ .Error }}</span></div>{{ end }}
+        <div class="field">
+            <label for="username">Username</label>
+            <input id="username" type="text" name="username" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" required autofocus />
+        </div>
+        <div class="field">
+            <label for="password">Password</label>
+            <input id="password" type="password" name="password" autocomplete="current-password" required />
+        </div>
+        <button type="submit" class="button primary">Sign in to Admin UI</button>
+    </form>
+    {{ end }}
+</div>
+{{ end }}

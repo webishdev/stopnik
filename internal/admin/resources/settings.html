@@ -1,0 +1,39 @@
+{{ define "content" }}
+<div class="alert info">{{ template "icon" "info" }}<span>Read-only. The static configuration is loaded once during start up, changes require a restart of STOPnik.</span></div>
+<div class="form">
+    {{ range $g, $group := .Topic.Groups }}
+    <section class="card">
+        <header class="card-header">
+            <h2>{{ .Title }}</h2>
+            {{ if .Description }}<p>{{ .Description }}</p>{{ end }}
+        </header>
+        <div class="grid{{ if .Three }} three{{ end }}">
+            {{ range $f, $field := .Fields }}
+            {{ $id := printf "%s-%d-%d" $.Topic.Name $g $f }}
+            {{ if eq .Kind "switch" }}
+            <div class="field{{ if .Full }} full{{ end }}">
+                <label class="switch">
+                    <input type="checkbox" disabled{{ if .Checked }} checked{{ end }} />
+                    <span class="track"></span>
+                    <span class="switch-label">{{ .Label }}{{ if .Hint }}<small>{{ .Hint }}</small>{{ end }}</span>
+                </label>
+            </div>
+            {{ else }}
+            <div class="field{{ if .Full }} full{{ end }}">
+                <label for="{{ $id }}">{{ .Label }}</label>
+                {{ if eq .Kind "list" }}
+                <textarea id="{{ $id }}" rows="4" readonly>{{ lines .Values }}</textarea>
+                {{ else if .Unit }}
+                <div class="input-unit"><input id="{{ $id }}" value="{{ .Value }}"{{ if .Placeholder }} placeholder="{{ .Placeholder }}"{{ end }} readonly /><span>{{ .Unit }}</span></div>
+                {{ else }}
+                <input id="{{ $id }}" value="{{ .Value }}"{{ if .Placeholder }} placeholder="{{ .Placeholder }}"{{ end }} readonly />
+                {{ end }}
+                {{ if .Hint }}<p class="hint">{{ .Hint }}</p>{{ end }}
+            </div>
+            {{ end }}
+            {{ end }}
+        </div>
+    </section>
+    {{ end }}
+</div>
+{{ end }}

@@ -1,0 +1,64 @@
+{{ define "actions" }}<a class="button primary" href="{{ base }}/{{ .Kind.Name }}/new">{{ template "icon" "plus" }}New {{ lower .Kind.Singular }}</a>{{ end }}
+
+{{ define "content" }}
+{{ if .Entries }}
+<div class="card table-card">
+<table>
+    {{ if eq .Kind.Name "clients" }}
+    <thead><tr><th>Client ID</th><th>Type</th><th>Grant types</th><th>Redirects</th><th>Status</th><th></th></tr></thead>
+    <tbody>
+    {{ range .Entries }}
+    <tr>
+        <td><a class="primary-link" href="{{ base }}/clients/{{ .ID }}">{{ or .Label "Unnamed client" }}</a>{{ if not .Valid }}<div class="hint error-text">{{ .Error }}</div>{{ end }}</td>
+        {{ with .Client }}
+        <td>{{ if .ClientSecret }}<span class="pill">Confidential</span>{{ else }}<span class="pill muted">Public</span>{{ end }}{{ if .Oidc }} <span class="pill accent">OIDC</span>{{ end }}</td>
+        <td>{{ range .GrantTypes }}<span class="pill">{{ . }}</span> {{ else }}<span class="muted">Default</span>{{ end }}</td>
+        <td>{{ len .Redirects }}</td>
+        {{ else }}<td></td><td></td><td></td>{{ end }}
+        <td>{{ template "status" . }}</td>
+        {{ template "rowActions" (remove $.Kind .ID .Hash .) }}
+    </tr>
+    {{ end }}
+    </tbody>
+    {{ else if eq .Kind.Name "users" }}
+    <thead><tr><th>Username</th><th>Name</th><th>Email</th><th>Admin</th><th>Status</th><th></th></tr></thead>
+    <tbody>
+    {{ range .Entries }}
+    <tr>
+        <td><a class="primary-link" href="{{ base }}/users/{{ .ID }}">{{ or .Label "Unnamed user" }}</a>{{ if not .Valid }}<div class="hint error-text">{{ .Error }}</div>{{ end }}</td>
+        {{ with .User }}<td>{{ .GetName }}</td><td>{{ .UserInformation.Email }}</td><td>{{ if .Admin }}<span class="admin-check" title="Admin" aria-label="Admin">{{ template "icon" "check" }}</span>{{ end }}</td>{{ else }}<td></td><td></td><td></td>{{ end }}
+        <td>{{ template "status" . }}</td>
+        {{ template "rowActions" (remove $.Kind .ID .Hash .) }}
+    </tr>
+    {{ end }}
+    </tbody>
+    {{ else }}
+    <thead><tr><th>Users</th><th>Clients</th><th>Scopes</th><th>Claims</th><th>Status</th><th></th></tr></thead>
+    <tbody>
+    {{ range $entry := .Entries }}
+    <tr>
+        {{ with .Classification }}
+        <td><a class="primary-link" href="{{ base }}/classifications/{{ $entry.ID }}">{{ range $index, $user := merge .User .Users }}{{ if $index }}, {{ end }}{{ $user }}{{ else }}No users{{ end }}</a></td>
+        <td>{{ range merge .Client .Clients }}<span class="pill">{{ . }}</span> {{ else }}<span class="muted">None</span>{{ end }}</td>
+        <td>{{ range merge .Scope .Scopes }}<span class="pill">{{ . }}</span> {{ else }}<span class="muted">All</span>{{ end }}</td>
+        <td>{{ range .Claims }}<span class="pill accent">{{ .Name }}</span> {{ end }}</td>
+        {{ else }}
+        <td colspan="4"><a class="primary-link" href="{{ base }}/classifications/{{ .ID }}">Unnamed classification</a><div class="hint error-text">{{ .Error }}</div></td>
+        {{ end }}
+        <td>{{ template "status" . }}</td>
+        {{ template "rowActions" (remove $.Kind .ID .Hash .) }}
+    </tr>
+    {{ end }}
+    </tbody>
+    {{ end }}
+</table>
+</div>
+{{ else }}
+<div class="card empty">
+    <div class="empty-icon">{{ template "icon" .Kind.Name }}</div>
+    <h2>No {{ lower .Kind.Title }} yet</h2>
+    <p class="muted">Create the first {{ lower .Kind.Singular }} to get started.</p>
+    <a class="button primary" href="{{ base }}/{{ .Kind.Name }}/new">{{ template "icon" "plus" }}New {{ lower .Kind.Singular }}</a>
+</div>
+{{ end }}
+{{ end }}

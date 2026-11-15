@@ -1,0 +1,87 @@
+{{ define "content" }}
+<form method="post" class="form">
+    <input type="hidden" name="hash" value="{{ .Hash }}" />
+    {{ with .Doc }}
+    <section class="card">
+        <header class="card-header">
+            <h2>Account</h2>
+            <p>Credentials used to sign in.</p>
+        </header>
+        <div class="grid">
+            <div class="field">
+                <label for="username">Username</label>
+                <input id="username" name="username" value="{{ .Username }}" required autocomplete="off" />
+            </div>
+            <div class="field">
+                <label for="secret">{{ if $.HasSecret }}New password{{ else }}Password{{ end }}</label>
+                <input id="secret" type="password" name="secret" autocomplete="new-password"{{ if not $.HasSecret }} required{{ end }} />
+                {{ if $.HasSecret }}<p class="hint">Leave empty to keep the current password.</p>{{ end }}
+            </div>
+        </div>
+        {{ template "switch" (switch "admin" .Admin "Administrator" "Allowed to sign in to the admin web user interface.") }}
+    </section>
+
+    {{ with .UserProfile }}
+    <section class="card">
+        <header class="card-header">
+            <h2>Profile</h2>
+            <p>Returned as claims of the <code>profile</code> scope.</p>
+        </header>
+        <div class="grid three">
+            {{ template "text" (text "givenName" "Given name" .GivenName "") }}
+            {{ template "text" (text "middleName" "Middle name" .MiddleName "") }}
+            {{ template "text" (text "familyName" "Family name" .FamilyName "") }}
+            {{ template "text" (text "nickname" "Nickname" .Nickname "") }}
+            {{ template "text" (text "preferredUserName" "Preferred username" .PreferredUserName "") }}
+            {{ template "text" (text "gender" "Gender" .Gender "") }}
+            {{ template "text" (text "birthDate" "Birth date" .BirthDate "YYYY-MM-DD") }}
+            {{ template "text" (text "zoneInfo" "Time zone" .ZoneInfo "Europe/Berlin") }}
+            {{ template "text" (text "locale" "Locale" .Locale "en-US") }}
+            {{ template "text" (text "website" "Website" .Website "https://") }}
+            {{ template "text" (text "profile" "Profile page" .Profile "https://") }}
+            {{ template "text" (text "picture" "Picture" .Picture "https://") }}
+        </div>
+    </section>
+    {{ end }}
+
+    {{ with .UserInformation }}
+    <section class="card">
+        <header class="card-header">
+            <h2>Contact</h2>
+            <p>Returned as claims of the <code>email</code> and <code>phone</code> scopes.</p>
+        </header>
+        <div class="grid">
+            <div class="field">
+                <label for="email">Email</label>
+                <input id="email" type="email" name="email" value="{{ .Email }}" />
+                {{ template "switch" (switch "emailVerified" .EmailVerified "Verified" "") }}
+            </div>
+            <div class="field">
+                <label for="phoneNumber">Phone number</label>
+                <input id="phoneNumber" name="phoneNumber" value="{{ .PhoneNumber }}" />
+                {{ template "switch" (switch "phoneNumberVerified" .PhoneVerified "Verified" "") }}
+            </div>
+        </div>
+    </section>
+    {{ end }}
+
+    {{ with .Address }}
+    <section class="card">
+        <header class="card-header">
+            <h2>Address</h2>
+            <p>Returned as claim of the <code>address</code> scope.</p>
+        </header>
+        <div class="grid three">
+            {{ template "text" (text "street" "Street" .Street "") }}
+            {{ template "text" (text "postalCode" "Postal code" .PostalCode "") }}
+            {{ template "text" (text "city" "City" .City "") }}
+            {{ template "text" (text "region" "Region" .Region "") }}
+            {{ template "text" (text "country" "Country" .Country "") }}
+        </div>
+    </section>
+    {{ end }}
+    {{ end }}
+    {{ template "formActions" . }}
+</form>
+{{ if not .IsNew }}{{ template "deleteDialog" (remove .Kind .ID .Hash .Entry) }}{{ end }}
+{{ end }}
