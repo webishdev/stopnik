@@ -342,6 +342,12 @@ func ValidateClient(client *Client) error {
 		return fmt.Errorf("client configuration invalid, for client with id %s, missing redirects", client.Id)
 	}
 
+	for _, redirect := range client.Redirects {
+		if redirectError := validateConfiguredRedirect(redirect); redirectError != nil {
+			return fmt.Errorf("client configuration invalid, for client with id %s, invalid redirect %s, %w", client.Id, redirect, redirectError)
+		}
+	}
+
 	for _, grantType := range client.GrantTypes {
 		if _, validGrantType := oauth2.GrantTypeFromString(grantType); !validGrantType {
 			return fmt.Errorf("client configuration invalid, for client with id %s, unknown grant type %s", client.Id, grantType)
@@ -687,7 +693,7 @@ func (client *Client) IsGrantTypeAllowed(grantType oauth2.GrantType) bool {
 
 // ValidateRedirect returns whether the redirect is valid for a given Client or not.
 func (client *Client) ValidateRedirect(redirect string) bool {
-	return validateRedirect(client.Id, client.Redirects, redirect)
+	return validateRedirect(client, redirect)
 }
 
 // GetPreferredUsername returns the preferred username for a given User, or just the username.
@@ -747,58 +753,148 @@ func (claim *claim) GetName() string {
 	return claim.Name
 }
 
-// validateRedirect validated a given redirect against an array of redirects. Given clientId is used for logging.
-func validateRedirect(clientId string, redirects []string, redirect string) bool {
+// validateRedirect validates a given redirect against the redirects configured for the given Client.
+// https://datatracker.ietf.org/doc/html/rfc9700#section-2.1
+// Regular clients must use exact string matching, only the ForwardAuth client is allowed to use wildcards.
+func validateRedirect(client *Client, redirect string) bool {
 	if redirect == "" {
-		log.Error("Redirect provided for client %s was empty", clientId)
+		log.Error("Redirect provided for client %s was empty", client.Id)
 		return false
 	}
 
-	redirectCount := len(redirects)
-
-	if redirectCount > 0 {
-
-		parsedRedirect, parseRedirectError := url.Parse(redirect)
-		if parseRedirectError != nil {
-			return false
-		}
-
-		for redirectIndex := range redirectCount {
-			clientRedirect := redirects[redirectIndex]
-			parsedClientRedirect, parseClientRedirectError := url.Parse(clientRedirect)
-			if parseClientRedirectError != nil {
-				continue
-			}
-			matchesRedirect := redirectMatches(parsedClientRedirect, parsedRedirect)
-			if matchesRedirect {
-				return true
-			}
-		}
-
-		return false
-	} else {
-		log.Error("Client %s has no redirect URI(s) configured!", clientId)
+	if len(client.Redirects) == 0 {
+		log.Error("Client %s has no redirect URI(s) configured!", client.Id)
 		return false
 	}
+
+	parsedRedirect, parseRedirectError := url.Parse(redirect)
+	if parseRedirectError != nil {
+		return false
+	}
+
+	// https://datatracker.ietf.org/doc/html/rfc6749#section-3.1.2
+	// The redirection endpoint URI MUST be an absolute URI and MUST NOT include a fragment component.
+	hasFragment := parsedRedirect.Fragment != "" || strings.Contains(redirect, "#")
+	if hasFragment || parsedRedirect.User != nil || parsedRedirect.Scheme == "" || parsedRedirect.Host == "" {
+		return false
+	}
+
+	for _, clientRedirect := range client.Redirects {
+		var matchesRedirect bool
+		if client.isForwardAuth {
+			matchesRedirect = forwardAuthRedirectMatches(clientRedirect, redirect, parsedRedirect)
+		} else {
+			matchesRedirect = exactRedirectMatches(clientRedirect, redirect, parsedRedirect)
+		}
+		if matchesRedirect {
+			return true
+		}
+	}
+
+	return false
 }
 
-// redirectMatches check two given url.URL whether they match for a redirect or not
-func redirectMatches(clientRedirect *url.URL, redirect *url.URL) bool {
-	parsedRedirectPath := removeLeadingSlash(redirect.EscapedPath())
-	parsedClientRedirectPath := removeLeadingSlash(clientRedirect.EscapedPath())
-
-	matchesScheme := redirect.Scheme == clientRedirect.Scheme
-	matchesHost := redirect.Host == clientRedirect.Host
-
-	endsWithWildcard := strings.HasSuffix(clientRedirect.Path, "*")
-	var matchesPath bool
-	if endsWithWildcard {
-		pathWithoutWildcard := parsedClientRedirectPath[:len(parsedClientRedirectPath)-1]
-		matchesPath = strings.HasPrefix(parsedRedirectPath, pathWithoutWildcard)
-	} else {
-		matchesPath = parsedRedirectPath == parsedClientRedirectPath
+// exactRedirectMatches checks whether the redirect is identical to the redirect configured for a Client.
+// https://datatracker.ietf.org/doc/html/rfc8252#section-7.3
+// For loopback IP redirects the port is ignored, as native apps listen on an ephemeral port.
+func exactRedirectMatches(clientRedirect string, redirect string, parsedRedirect *url.URL) bool {
+	if clientRedirect == redirect {
+		return true
 	}
-	return matchesScheme && matchesHost && matchesPath
+
+	parsedClientRedirect, parseClientRedirectError := url.Parse(clientRedirect)
+	if parseClientRedirectError != nil {
+		return false
+	}
+
+	if !isLoopbackRedirect(parsedClientRedirect) {
+		return false
+	}
+
+	matchesScheme := parsedRedirect.Scheme == parsedClientRedirect.Scheme
+	matchesHostname := parsedRedirect.Hostname() == parsedClientRedirect.Hostname()
+	matchesPath := parsedRedirect.EscapedPath() == parsedClientRedirect.EscapedPath()
+	matchesQuery := parsedRedirect.RawQuery == parsedClientRedirect.RawQuery
+	return matchesScheme && matchesHostname && matchesPath && matchesQuery
+}
+
+// isLoopbackRedirect returns whether the redirect uses http with a loopback IP literal.
+// The name localhost is not a loopback redirect, as it may be resolved to something else.
+func isLoopbackRedirect(redirect *url.URL) bool {
+	hostname := redirect.Hostname()
+	return redirect.Scheme == "http" && (hostname == "127.0.0.1" || hostname == "::1")
+}
+
+// forwardAuthRedirectMatches checks whether the redirect matches a redirect configured for ForwardAuth.
+// ForwardAuth redirects back to an arbitrary URL of the protected application and appends an own query parameter,
+// therefore the query is ignored and a configured redirect ending with * matches all paths below its prefix.
+func forwardAuthRedirectMatches(clientRedirect string, redirect string, parsedRedirect *url.URL) bool {
+	parsedClientRedirect, parseClientRedirectError := url.Parse(clientRedirect)
+	if parseClientRedirectError != nil {
+		return false
+	}
+
+	if parsedRedirect.Scheme != parsedClientRedirect.Scheme || parsedRedirect.Host != parsedClientRedirect.Host {
+		return false
+	}
+
+	if hasUnsafePath(redirect, parsedRedirect) {
+		return false
+	}
+
+	redirectPath := cmp.Or(parsedRedirect.EscapedPath(), "/")
+	clientRedirectPath := cmp.Or(parsedClientRedirect.EscapedPath(), "/")
+
+	if !strings.HasSuffix(clientRedirectPath, "*") {
+		return redirectPath == clientRedirectPath
+	}
+
+	prefix := strings.TrimSuffix(clientRedirectPath, "*")
+	if redirectPath == prefix {
+		return true
+	}
+	if !strings.HasSuffix(prefix, "/") {
+		prefix = prefix + "/"
+	}
+	return strings.HasPrefix(redirectPath, prefix)
+}
+
+// hasUnsafePath returns whether the path of the redirect could be interpreted as a different path,
+// e.g. by dot segments, encoded dots and slashes or backslashes.
+func hasUnsafePath(redirect string, parsedRedirect *url.URL) bool {
+	if strings.Contains(redirect, "\\") {
+		return true
+	}
+	escapedPath := strings.ToLower(parsedRedirect.EscapedPath())
+	for _, encoded := range []string{"%2e", "%2f", "%5c"} {
+		if strings.Contains(escapedPath, encoded) {
+			return true
+		}
+	}
+	for _, segment := range strings.Split(escapedPath, "/") {
+		if segment == "." || segment == ".." {
+			return true
+		}
+	}
+	return false
+}
+
+// validateConfiguredRedirect validates a redirect configured for a regular Client.
+func validateConfiguredRedirect(redirect string) error {
+	if strings.Contains(redirect, "*") {
+		return errors.New("wildcards are not supported, redirects must match exactly")
+	}
+	if strings.Contains(redirect, "#") {
+		return errors.New("fragments are not allowed")
+	}
+	parsedRedirect, parseRedirectError := url.Parse(redirect)
+	if parseRedirectError != nil || parsedRedirect.Scheme == "" || parsedRedirect.Host == "" {
+		return errors.New("not an absolute URL")
+	}
+	if parsedRedirect.User != nil {
+		return errors.New("user information is not allowed")
+	}
+	return nil
 }
 
 // isSupportedHash checks whether the given value is a bcrypt hash or a hex encoded SHA512 hash.
@@ -816,14 +912,6 @@ func isSupportedHash(value string) bool {
 		}
 	}
 	return true
-}
-
-// removeLeadingSlash removes the leading "/" if existing
-func removeLeadingSlash(s string) string {
-	if strings.HasPrefix(s, "/") {
-		return s[1:]
-	}
-	return s
 }
 
 // mergeIntoSet merges an array and a single value into a string based [store.Set]

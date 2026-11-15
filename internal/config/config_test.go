@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"reflect"
+	"strings"
 	"testing"
 )
 
@@ -1012,7 +1013,18 @@ func initializeTestEntries(t *testing.T, entries Entries) *Config {
 }
 
 func Test_ValidateRedirects(t *testing.T) {
-	var validRedirects = []string{"http://foo.com/callback", "https://foo.com/callback", "https://foo.com/wildcard/*", "https://bar.com", "https://moo.com/*", "https://moo.com:8080/*"}
+	client := &Client{
+		Id: "fooId",
+		Redirects: []string{
+			"http://foo.com/callback",
+			"https://foo.com/callback",
+			"https://bar.com",
+			"https://query.com/callback?tenant=a",
+			"http://127.0.0.1/callback",
+			"http://[::1]:7000/callback",
+			"http://localhost:8080/callback",
+		},
+	}
 	type redirectParameter struct {
 		redirect       string
 		expectedResult bool
@@ -1021,19 +1033,30 @@ func Test_ValidateRedirects(t *testing.T) {
 	var redirectParameters = []redirectParameter{
 		{"http://foo.com/callback", true},
 		{"https://foo.com/callback", true},
-		{"https://foo.com/callback/more", false},
-		{"https://foo.com/wildcard", false},
-		{"https://foo.com/wildcard/", true},
-		{"https://foo.com/wildcard/more", true},
-		{"https://foo.com/wildcard/more", true},
 		{"https://bar.com", true},
-		{"https://bar.com/nope", false},
-		{"https://moo.com", true},
-		{"https://moo.com/", true},
-		{"https://moo.com/sure", true},
-		{"https://moo.com:9090/sure", false},
-		{"https://moo.com:8080/sure", true},
-		{"https://moo.com/sure?abc=def#hello_world", true},
+		{"https://query.com/callback?tenant=a", true},
+		{"https://foo.com/callback/more", false},
+		{"https://foo.com/callback?foo=bar", false},
+		{"https://query.com/callback?tenant=a&foo=bar", false},
+		{"https://query.com/callback", false},
+		{"https://foo.com/Callback", false},
+		{"https://foo.com/callback/", false},
+		{"https://bar.com/", false},
+		{"https://foo.com/callback#fragment", false},
+		{"https://foo.com/callback#", false},
+		{"https://user@foo.com/callback", false},
+		{"https://user:password@foo.com/callback", false},
+		{"https://foo.com:8443/callback", false},
+		{"http://127.0.0.1/callback", true},
+		{"http://127.0.0.1:51004/callback", true},
+		{"http://127.0.0.1:51004/other", false},
+		{"http://127.0.0.1:51004/callback?foo=bar", false},
+		{"https://127.0.0.1:51004/callback", false},
+		{"http://[::1]:51004/callback", true},
+		{"http://localhost:8080/callback", true},
+		{"http://localhost:51004/callback", false},
+		{"/callback", false},
+		{"foo.com/callback", false},
 		{"broken«ape`was~±here", false},
 		{"", false},
 	}
@@ -1041,7 +1064,7 @@ func Test_ValidateRedirects(t *testing.T) {
 	for index, test := range redirectParameters {
 		testMessage := fmt.Sprintf("Validate redirect %d %s", index, test.redirect)
 		t.Run(testMessage, func(t *testing.T) {
-			result := validateRedirect("fooId", validRedirects, test.redirect)
+			result := client.ValidateRedirect(test.redirect)
 			if result != test.expectedResult {
 				t.Error("Redirect validation did not match")
 			}
@@ -1049,44 +1072,99 @@ func Test_ValidateRedirects(t *testing.T) {
 	}
 }
 
-func Test_EmptyRedirect(t *testing.T) {
-	var validRedirects = []string{"http://foo.com/callback", "https://foo.com/callback", "https://foo.com/wildcard/*"}
-	result := validateRedirect("fooId", validRedirects, "")
-	if result {
-		t.Error("Redirect validation did not match")
+func Test_ValidateRedirectsWildcardIgnoredForRegularClient(t *testing.T) {
+	client := &Client{Id: "fooId", Redirects: []string{"https://app.example/cb*", "https://moo.com/*"}}
+
+	for _, redirect := range []string{"https://app.example/cb", "https://app.example/cbevil", "https://app.example/cb/../anything", "https://moo.com/sure"} {
+		if client.ValidateRedirect(redirect) {
+			t.Errorf("did not expect redirect %s to be valid for a regular client", redirect)
+		}
+	}
+}
+
+func Test_ValidateForwardAuthRedirects(t *testing.T) {
+	client := &Client{
+		Id:            "forwardId",
+		isForwardAuth: true,
+		Redirects:     []string{"https://foo.com/app/*", "https://moo.com/*", "https://moo.com:8080/*", "https://bar.com/cb*", "https://exact.com/page"},
+	}
+	type redirectParameter struct {
+		redirect       string
+		expectedResult bool
+	}
+
+	var redirectParameters = []redirectParameter{
+		{"https://foo.com/app/page?x=1", true},
+		{"https://foo.com/app/", true},
+		{"https://foo.com/app/deep/page?forward_id=abc", true},
+		{"https://foo.com/app", false},
+		{"https://foo.com/application", false},
+		{"https://foo.com/app/../admin", false},
+		{"https://foo.com/app/./admin", false},
+		{"https://foo.com/app/%2e%2e/admin", false},
+		{"https://foo.com/app/%2E%2E/admin", false},
+		{"https://foo.com/app/..%2fadmin", false},
+		{"https://foo.com/app/..%2Fadmin", false},
+		{"https://foo.com/app/..\\admin", false},
+		{"https://foo.com/app/page#fragment", false},
+		{"https://user@foo.com/app/page", false},
+		{"http://foo.com/app/page", false},
+		{"https://evil.com/app/page", false},
+		{"https://moo.com", true},
+		{"https://moo.com/", true},
+		{"https://moo.com/sure", true},
+		{"https://moo.com:9090/sure", false},
+		{"https://moo.com:8080/sure", true},
+		{"https://bar.com/cb", true},
+		{"https://bar.com/cb/more", true},
+		{"https://bar.com/cbevil", false},
+		{"https://exact.com/page?forward_id=abc", true},
+		{"https://exact.com/page/more", false},
+		{"", false},
+	}
+
+	for index, test := range redirectParameters {
+		testMessage := fmt.Sprintf("Validate forward auth redirect %d %s", index, test.redirect)
+		t.Run(testMessage, func(t *testing.T) {
+			result := client.ValidateRedirect(test.redirect)
+			if result != test.expectedResult {
+				t.Error("Redirect validation did not match")
+			}
+		})
 	}
 }
 
 func Test_NoRedirects(t *testing.T) {
-	result := validateRedirect("fooId", []string{}, "http://foo.com/callback")
+	client := &Client{Id: "fooId"}
+	result := client.ValidateRedirect("http://foo.com/callback")
 	if result {
 		t.Error("Redirect validation did not match")
 	}
 }
 
-func Test_RemoveLeadingSlash(t *testing.T) {
-	type parameter struct {
-		value          string
-		expectedResult string
+func Test_InvalidConfiguredRedirects(t *testing.T) {
+	var invalidRedirects = []string{
+		"https://example.com/callback*",
+		"https://example.com/*",
+		"https://example.com/callback#fragment",
+		"https://user@example.com/callback",
+		"/callback",
+		"example.com/callback",
+		"broken«ape`was~±here",
 	}
 
-	var parameters = []parameter{
-		{value: "/foo", expectedResult: "foo"},
-		{value: "foo", expectedResult: "foo"},
-		{value: "/bar", expectedResult: "bar"},
-		{value: "bar", expectedResult: "bar"},
-	}
-
-	for _, test := range parameters {
-		testMessage := fmt.Sprintf("Remove leading slash from %s", test.value)
-		t.Run(testMessage, func(t *testing.T) {
-			result := removeLeadingSlash(test.value)
-			if result != test.expectedResult {
-				t.Error("Removing leading slash did not match")
+	for _, redirect := range invalidRedirects {
+		t.Run(redirect, func(t *testing.T) {
+			client := &Client{Id: "foo", Redirects: []string{"https://example.com/valid", redirect}}
+			validationError := ValidateClient(client)
+			if validationError == nil {
+				t.Fatalf("expected client with redirect %s to be invalid", redirect)
+			}
+			if !strings.Contains(validationError.Error(), "foo") || !strings.Contains(validationError.Error(), redirect) {
+				t.Errorf("expected error to name the client and the redirect, got %v", validationError)
 			}
 		})
 	}
-
 }
 
 func assertDefaultValues[T any](t *testing.T, value T, defaultValue T, ccc func(a T, b T) T, expect func(a T) bool) {

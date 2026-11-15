@@ -173,7 +173,7 @@ func staticTopics(staticConfig *config.Config, store *Store) []*staticTopic {
 					Title:       "Redirects",
 					Description: "Allowed redirects after a login.",
 					Fields: []staticField{
-						listField("Redirect URIs", "A trailing * allows any suffix.", forwardAuth.Redirects),
+						listField("Redirect URIs", "A trailing * allows all paths below.", forwardAuth.Redirects),
 					},
 				},
 			},

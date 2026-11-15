@@ -25,7 +25,7 @@
             <div class="field full">
                 <label for="redirects">Redirect URIs</label>
                 <textarea id="redirects" name="redirects" rows="4" placeholder="https://app.example.com/callback">{{ lines .Redirects }}</textarea>
-                <p class="hint">One URI per line. A trailing <code>*</code> allows any suffix.</p>
+                <p class="hint">One URI per line. The redirect URI of a request must match exactly, wildcards are not supported.</p>
             </div>
         </div>
     </section>

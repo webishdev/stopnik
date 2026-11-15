@@ -154,7 +154,15 @@ Entry `server.forwardAuth`
 | `endpoint`      | Internal endpoint to be called by Traefik           | No       |
 | `externalUrl`   | URL of **STOPnik** to redirect the user for a login | No       |
 | `parameterName` | URL parameter used by **STOPnik** for ForwardAuth   | No       |
-| `redirects`     | List of redirects URIs                              | No       |
+| `redirects`     | List of redirects URIs, see below                   | No       |
+
+ForwardAuth redirects the user back to the originally requested URL of the protected application,
+so the `redirects` of ForwardAuth are matched differently than the [redirects of clients](#redirects).
+
+- Scheme and host (including the port) must match exactly, the query is ignored.
+- A redirect ending with `*` matches the path before the `*` and everything below it,
+  e.g. `https://app.example.com/app/*` matches `/app/` and `/app/page`, but not `/application`.
+- Paths containing `.` or `..` segments, encoded dots or slashes (`%2e`, `%2f`) or backslashes are rejected.
 
 :::warning
 
@@ -220,7 +228,7 @@ A client file may contain the following options
 | `idTTL`                   | OpenId Connect ID token time to live                    | No       |
 | `introspect`              | Introspection scope                                     | No       |
 | `revoke`                  | Revocation scope                                        | No       |
-| `redirects`               | List of redirects URIs                                  | No       |
+| `redirects`               | List of redirects URIs, see [Redirects](#redirects)     | Yes      |
 | `opaqueToken`             | Use opaque token                                        | No       |
 | `passwordFallbackAllowed` | Form auth allowed                                       | No       |
 | `audience`                | Audience                                                | No       |
@@ -234,6 +242,17 @@ If no `clientSecret` is provided, the client is handled as public client, otherw
 
 The OpenId Connect endpoints (discovery and user info) are only available while at least one loaded client has `oidc` enabled.
 Public clients must use [PKCE](https://datatracker.ietf.org/doc/html/rfc7636) for the authorization code grant.
+
+#### Redirects
+
+The `redirect_uri` of an authorization request must be identical to one of the configured `redirects`,
+as required by [RFC 9700](https://datatracker.ietf.org/doc/html/rfc9700#section-2.1).
+This includes the query, a trailing slash and upper and lower case. Wildcards are not supported.
+
+- A redirect must be an absolute URL with scheme and host.
+- A redirect must not contain a `*`, a fragment or user information, such a client is rejected as invalid.
+- For redirects to the loopback addresses `http://127.0.0.1` and `http://[::1]` the port is ignored,
+  as described in [RFC 8252](https://datatracker.ietf.org/doc/html/rfc8252#section-7.3). This does not apply to `localhost`.
 
 #### Scopes
 
