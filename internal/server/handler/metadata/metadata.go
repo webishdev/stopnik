@@ -74,19 +74,16 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 
 		metadataResponse := &response{
-			Issuer:                h.config.GetIssuer(),
-			AuthorizationEndpoint: authorizationEndpoint,
-			TokenEndpoint:         tokenEndpoint,
-			IntrospectionEndpoint: introspectEndpoint,
-			RevocationEndpoint:    revokeEndpoint,
-			JWKsUri:               keysEndpoint,
-			ServiceDocumentation:  "https://stopnik.webish.dev",
-			CodeChallengeMethodsSupported: []pkce.CodeChallengeMethod{
-				pkce.PLAIN,
-				pkce.S256,
-			},
-			GrantTypesSupported:    h.config.GetSupportedGrantTypes(),
-			ResponseTypesSupported: h.config.GetSupportedResponseTypes(),
+			Issuer:                        h.config.GetIssuer(),
+			AuthorizationEndpoint:         authorizationEndpoint,
+			TokenEndpoint:                 tokenEndpoint,
+			IntrospectionEndpoint:         introspectEndpoint,
+			RevocationEndpoint:            revokeEndpoint,
+			JWKsUri:                       keysEndpoint,
+			ServiceDocumentation:          "https://stopnik.webish.dev",
+			CodeChallengeMethodsSupported: h.codeChallengeMethods(),
+			GrantTypesSupported:           h.config.GetSupportedGrantTypes(),
+			ResponseTypesSupported:        h.config.GetSupportedResponseTypes(),
 			ResponseModesSupported: []string{
 				"query",
 				"fragment",
@@ -104,4 +101,12 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		h.errorHandler.MethodNotAllowedHandler(w, r)
 		return
 	}
+}
+
+// codeChallengeMethods returns the supported PKCE methods, plain only when a loaded client is allowed to use it.
+func (h *Handler) codeChallengeMethods() []pkce.CodeChallengeMethod {
+	if h.config.GetPkcePlainAllowed() {
+		return []pkce.CodeChallengeMethod{pkce.S256, pkce.PLAIN}
+	}
+	return []pkce.CodeChallengeMethod{pkce.S256}
 }

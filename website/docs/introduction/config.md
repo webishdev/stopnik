@@ -270,13 +270,30 @@ A client file may contain the following options
 | `privateKey`              | RSA or EC private key to sign tokens                    | No       |
 | `scopes`                  | List of scopes the client is allowed to request         | No       |
 | `grantTypes`              | List of grant types the client is allowed to use        | No       |
+| `requirePkce`             | Require PKCE, see [PKCE](#pkce), defaults to `true`     | No       |
+| `pkcePlainAllowed`        | Allow the PKCE method `plain`, defaults to `false`      | No       |
 
 For `clientSecret` and `salt` see, [Command line - Password](../advanced/cmd.md#password)
 
 If no `clientSecret` is provided, the client is handled as public client, otherwise it will become a confidential client.
 
 The OpenId Connect endpoints (discovery and user info) are only available while at least one loaded client has `oidc` enabled.
-Public clients must use [PKCE](https://datatracker.ietf.org/doc/html/rfc7636) for the authorization code grant.
+
+#### PKCE
+
+Clients must use [PKCE](https://datatracker.ietf.org/doc/html/rfc7636) with the method `S256` for the authorization code grant,
+as recommended by [RFC 9700](https://datatracker.ietf.org/doc/html/rfc9700#section-2.1.1).
+
+- `code_challenge` must be a base64url encoded SHA-256 hash (43 characters) and `code_challenge_method` must be `S256`,
+  otherwise the request is rejected with `invalid_request`. A missing `code_challenge_method` means `plain`.
+- `code_verifier` must have 43 to 128 characters of `A-Z`, `a-z`, `0-9`, `-`, `.`, `_` and `~`.
+  A missing, invalid or not matching `code_verifier` is rejected with `invalid_grant`.
+- With `requirePkce = false` a confidential client may use the authorization code grant without PKCE.
+  Public clients always require PKCE.
+- With `pkcePlainAllowed = true` a legacy client may use the method `plain` or omit the method.
+  `plain` offers no protection when the authorization request is observed.
+
+The metadata endpoints only list `plain` in `code_challenge_methods_supported`, when a loaded client allows it.
 
 #### Redirects
 

@@ -158,19 +158,25 @@ func (h *Handler) authorizationCodeGrant(r *http.Request, client *config.Client)
 
 	codeVerifier := r.PostFormValue(pkce.ParameterCodeVerifier) // https://datatracker.ietf.org/doc/html/rfc7636#section-4.1
 	// https://datatracker.ietf.org/doc/html/rfc7636#section-4.6
-	// When a code challenge was provided, the code verifier is mandatory
-	if authorizationCode.CodeChallenge != "" && codeVerifier == "" {
+	// When a code challenge was provided, the code verifier is mandatory, a code verifier without code challenge is rejected
+	if authorizationCode.CodeChallenge == "" && codeVerifier == "" {
+		return &tokenGrant{
+			scopes:            authorizationCode.Scopes,
+			username:          authorizationCode.Username,
+			nonce:             authorizationCode.Nonce,
+			requestedClaims:   authorizationCode.RequestedClaims,
+			authTime:          authorizationCode.AuthTime,
+			authorizationCode: code,
+		}, nil
+	}
+	if authorizationCode.CodeChallenge == "" || !pkce.IsValidCodeVerifier(codeVerifier) {
+		log.Error("Missing, unexpected or invalid code verifier for client %s", client.Id)
 		return nil, &oauth2.TokenErrorResponseParameter{Error: oauth2.TokenEtInvalidGrant}
 	}
-	if codeVerifier != "" {
-		codeChallengeMethod, codeChallengeMethodExists := pkce.CodeChallengeMethodFromString(authorizationCode.CodeChallengeMethod)
-		if !codeChallengeMethodExists {
-			return nil, &oauth2.TokenErrorResponseParameter{Error: oauth2.TokenEtInvalidRequest}
-		}
-		validPKCE := pkce.ValidatePKCE(codeChallengeMethod, authorizationCode.CodeChallenge, codeVerifier)
-		if !validPKCE {
-			return nil, &oauth2.TokenErrorResponseParameter{Error: oauth2.TokenEtInvalidRequest}
-		}
+	codeChallengeMethod, codeChallengeMethodExists := pkce.CodeChallengeMethodFromString(authorizationCode.CodeChallengeMethod)
+	if !codeChallengeMethodExists || !pkce.ValidatePKCE(codeChallengeMethod, authorizationCode.CodeChallenge, codeVerifier) {
+		log.Error("Code verifier does not match the code challenge for client %s", client.Id)
+		return nil, &oauth2.TokenErrorResponseParameter{Error: oauth2.TokenEtInvalidGrant}
 	}
 
 	return &tokenGrant{

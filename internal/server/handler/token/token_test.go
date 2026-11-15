@@ -233,8 +233,8 @@ func Test_TokenAuthorizationCodeGrantType(t *testing.T) {
 		{"abc", "", "", nil},
 		{"", "foo:moo", "", nil},
 		{"abc", "foo:moo", "", nil},
-		{"abc", "foo:moo", uuid.New().String(), &ccmS256},
-		{"abc", "foo:moo", uuid.New().String(), &ccmPlain},
+		{"abc", "foo:moo", pkce.GenerateCodeVerifier(), &ccmS256},
+		{"abc", "foo:moo", pkce.GenerateCodeVerifier(), &ccmPlain},
 	}
 
 	for _, test := range authorizationGrantParameters {
@@ -431,6 +431,65 @@ func Test_TokenAuthorizationCodeReuse(t *testing.T) {
 	_, accessTokenExists = tokenManager.GetAccessToken(accessTokenResponse.AccessTokenValue)
 	if accessTokenExists {
 		t.Errorf("access token was not revoked after the code was used again")
+	}
+}
+
+func Test_TokenCodeVerifierValidation(t *testing.T) {
+	codeVerifier := pkce.GenerateCodeVerifier()
+	codeChallenge := pkce.CalculatePKCE(pkce.S256, codeVerifier)
+
+	type codeVerifierParameter struct {
+		name          string
+		codeChallenge string
+		codeVerifier  string
+		expectedCode  int
+	}
+
+	var codeVerifierParameters = []codeVerifierParameter{
+		{"Valid code verifier", codeChallenge, codeVerifier, http.StatusOK},
+		{"Code verifier does not match", codeChallenge, pkce.GenerateCodeVerifier(), http.StatusBadRequest},
+		{"Code verifier too short", pkce.CalculatePKCE(pkce.S256, "short"), "short", http.StatusBadRequest},
+		{"Code verifier too long", pkce.CalculatePKCE(pkce.S256, strings.Repeat("a", 129)), strings.Repeat("a", 129), http.StatusBadRequest},
+		{"Code verifier with invalid characters", pkce.CalculatePKCE(pkce.S256, codeVerifier[:42]+"+"), codeVerifier[:42] + "+", http.StatusBadRequest},
+		{"Missing code verifier", codeChallenge, "", http.StatusBadRequest},
+		{"Code verifier without code challenge", "", codeVerifier, http.StatusBadRequest},
+	}
+
+	for _, test := range codeVerifierParameters {
+		t.Run(test.name, func(t *testing.T) {
+			code := session.GenerateAuthorizationCode()
+			authorizationCodeManager := session.GetAuthorizationCodeManagerInstance()
+			authorizationCodeManager.StartSession(&session.AuthorizationCode{
+				Code:                code,
+				Redirect:            "https://example.com/callback",
+				ClientId:            "foo",
+				Username:            "foo",
+				Scopes:              []string{"foo:bar"},
+				CodeChallenge:       test.codeChallenge,
+				CodeChallengeMethod: string(pkce.S256),
+			})
+
+			bodyString := testCreateBody(
+				oauth2.ParameterGrantType, oauth2.GtAuthorizationCode,
+				oauth2.ParameterCode, code,
+				oauth2.ParameterRedirectUri, "https://example.com/callback",
+				pkce.ParameterCodeVerifier, test.codeVerifier,
+			)
+			request := httptest.NewRequest(http.MethodPost, endpoint.Token, strings.NewReader(bodyString))
+			request.Header.Add(internalHttp.Authorization, fmt.Sprintf("Basic %s", testTokenCreateBasicAuth("foo", "bar")))
+			request.Header.Add(internalHttp.ContentType, "application/x-www-form-urlencoded")
+
+			rr := httptest.NewRecorder()
+			NewTokenHandler(validation.NewRequestValidator(), authorizationCodeManager, token.GetTokenManagerInstance()).ServeHTTP(rr, request)
+
+			if test.expectedCode == http.StatusOK && rr.Code != http.StatusOK {
+				t.Errorf("handler returned wrong status code: got %v want %v", rr.Code, http.StatusOK)
+			}
+			if test.expectedCode != http.StatusOK {
+				// https://datatracker.ietf.org/doc/html/rfc7636#section-4.6
+				testTokenAssertError(t, rr, oauth2.TokenEtInvalidGrant)
+			}
+		})
 	}
 }
 

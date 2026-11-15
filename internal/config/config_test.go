@@ -1566,3 +1566,29 @@ func Test_TrustedProxies(t *testing.T) {
 		t.Error("expected validation error for invalid trusted proxy")
 	}
 }
+
+func Test_GetRequirePkce(t *testing.T) {
+	required := true
+	notRequired := false
+
+	type pkceParameter struct {
+		name     string
+		client   Client
+		expected bool
+	}
+
+	var pkceParameters = []pkceParameter{
+		{"Required by default for confidential client", Client{ClientSecret: "abc"}, true},
+		{"Required when configured", Client{ClientSecret: "abc", RequirePkce: &required}, true},
+		{"Not required when disabled for confidential client", Client{ClientSecret: "abc", RequirePkce: &notRequired}, false},
+		{"Always required for public client", Client{RequirePkce: &notRequired}, true},
+	}
+
+	for _, test := range pkceParameters {
+		t.Run(test.name, func(t *testing.T) {
+			if result := test.client.GetRequirePkce(); result != test.expected {
+				t.Errorf("result %t did not match %t", result, test.expected)
+			}
+		})
+	}
+}

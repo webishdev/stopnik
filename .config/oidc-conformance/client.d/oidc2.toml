@@ -6,4 +6,6 @@ refreshTTL = 45
 idTTL = 45
 oidc = true
 privateKey = "./.test_files/ecdsa521key.pem"
+# The OpenID Connect conformance tests for confidential clients do not use PKCE
+requirePkce = false
 redirects = ["https://localhost.emobix.co.uk:8443/test/a/instructions-example/callback"]

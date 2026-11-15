@@ -50,6 +50,8 @@ type clientDocument struct {
 	Audience                []string `toml:"audience,omitempty"`
 	Scopes                  []string `toml:"scopes,omitempty"`
 	GrantTypes              []string `toml:"grantTypes,omitempty"`
+	PkcePlainAllowed        bool     `toml:"pkcePlainAllowed,omitempty"`
+	RequirePkce             *bool    `toml:"requirePkce,omitempty"`
 }
 
 func (doc *clientDocument) key() string {
@@ -75,6 +77,13 @@ func (doc *clientDocument) applyForm(values url.Values) error {
 	doc.Revoke = formBool(values, "revoke")
 	doc.OpaqueToken = formBool(values, "opaqueToken")
 	doc.PasswordFallbackAllowed = formBool(values, "passwordFallbackAllowed")
+	doc.PkcePlainAllowed = formBool(values, "pkcePlainAllowed")
+	// PKCE is required by default, so only the exception is written
+	doc.RequirePkce = nil
+	if formBool(values, "pkceOptional") {
+		requirePkce := false
+		doc.RequirePkce = &requirePkce
+	}
 	doc.PrivateKey = strings.TrimSpace(values.Get("privateKey"))
 	doc.Redirects = formLines(values, "redirects")
 	doc.Audience = formLines(values, "audience")
@@ -95,6 +104,11 @@ func (doc *clientDocument) applyForm(values url.Values) error {
 func (doc *clientDocument) setSecret(hash string) {
 	doc.ClientSecret = hash
 	doc.Salt = ""
+}
+
+// PkceOptional returns whether PKCE is optional for the client, used by the template.
+func (doc *clientDocument) PkceOptional() bool {
+	return doc.RequirePkce != nil && !*doc.RequirePkce
 }
 
 // HasGrantType returns whether the given grant type is selected, used by the template.

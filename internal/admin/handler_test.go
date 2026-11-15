@@ -232,12 +232,14 @@ func Test_HandlerCreateAndEditClient(t *testing.T) {
 	baseDir, store, handler := setupHandler(t)
 
 	recorder := post(t, handler, "/clients/new", url.Values{
-		"id":         {"my client"},
-		"secret":     {"s3cret"},
-		"redirects":  {"https://example.com/a\r\n\r\nhttps://example.com/b"},
-		"oidc":       {"true"},
-		"grantTypes": {"authorization_code", "refresh_token"},
-		"accessTTL":  {"10"},
+		"id":               {"my client"},
+		"secret":           {"s3cret"},
+		"redirects":        {"https://example.com/a\r\n\r\nhttps://example.com/b"},
+		"oidc":             {"true"},
+		"grantTypes":       {"authorization_code", "refresh_token"},
+		"accessTTL":        {"10"},
+		"pkceOptional":     {"true"},
+		"pkcePlainAllowed": {"true"},
 	})
 	if recorder.Code != http.StatusSeeOther || recorder.Header().Get("Location") != "/clients?done=saved&name=my+client" {
 		t.Fatalf("expected redirect, got %d: %s", recorder.Code, recorder.Body.String())
@@ -254,6 +256,9 @@ func Test_HandlerCreateAndEditClient(t *testing.T) {
 	}
 	if client.Id != "my client" || !client.Oidc || client.AccessTTL != 10 || len(client.Redirects) != 2 || len(client.GrantTypes) != 2 {
 		t.Errorf("unexpected client %+v", client)
+	}
+	if client.GetRequirePkce() || !client.PkcePlainAllowed {
+		t.Errorf("expected PKCE to be optional and plain to be allowed, got %+v", client)
 	}
 	if !crypto.VerifySecret("s3cret", client.Salt, client.ClientSecret) {
 		t.Error("expected secret to be hashed")
@@ -273,6 +278,9 @@ func Test_HandlerCreateAndEditClient(t *testing.T) {
 	edited, _ := config.ParseClient([]byte(content), toml.Unmarshal, nil)
 	if edited.ClientSecret != client.ClientSecret || edited.Oidc || len(edited.Redirects) != 1 || edited.AccessTTL != 0 {
 		t.Errorf("unexpected client %+v", edited)
+	}
+	if !edited.GetRequirePkce() || edited.PkcePlainAllowed || strings.Contains(content, "requirePkce") {
+		t.Errorf("expected PKCE to be required by default again, got %s", content)
 	}
 
 	// a stale hash is rejected

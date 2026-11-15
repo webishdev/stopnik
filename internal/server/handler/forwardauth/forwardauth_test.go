@@ -150,7 +150,7 @@ func Test_ForwardAuthCodeUsage(t *testing.T) {
 			loginSessionManager := session.GetLoginSessionManagerInstance()
 			templateManager := template.GetTemplateManagerInstance()
 
-			codeVerifier := uuid.New().String()
+			codeVerifier := pkce.GenerateCodeVerifier()
 			clientId := forwardAuthClient.Id
 			if test.otherClient {
 				clientId = "foo"
@@ -159,13 +159,13 @@ func Test_ForwardAuthCodeUsage(t *testing.T) {
 				Code:                session.GenerateAuthorizationCode(),
 				ClientId:            clientId,
 				Username:            test.username,
-				CodeChallenge:       codeVerifier,
+				CodeChallenge:       pkce.CalculatePKCE(pkce.S256, codeVerifier),
 				CodeChallengeMethod: string(pkce.S256),
 			}
 			authorizationCodeManager.StartSession(authorizationCode)
 			forwardSession := &session.ForwardSession{
 				Id:                    uuid.New().String(),
-				CodeChallengeVerifier: pkce.CalculatePKCE(pkce.S256, codeVerifier),
+				CodeChallengeVerifier: codeVerifier,
 				RedirectUri:           "http://localhost:8080/blabla",
 				State:                 "xyz",
 			}

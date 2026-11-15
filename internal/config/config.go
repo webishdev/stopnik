@@ -153,6 +153,8 @@ type Client struct {
 	PrivateKey              string   `toml:"privateKey"`
 	Scopes                  []string `toml:"scopes"`
 	GrantTypes              []string `toml:"grantTypes"`
+	PkcePlainAllowed        bool     `toml:"pkcePlainAllowed"`
+	RequirePkce             *bool    `toml:"requirePkce"`
 	isForwardAuth           bool
 }
 
@@ -795,6 +797,20 @@ func (client *Client) getDefaultScopes() []string {
 // https://datatracker.ietf.org/doc/html/rfc9700#section-2.4
 // The implicit and the password grant are deprecated and must be allowed explicitly.
 var defaultGrantTypes = []oauth2.GrantType{oauth2.GtAuthorizationCode, oauth2.GtRefreshToken}
+
+// GetRequirePkce returns whether the Client must use PKCE for the authorization code grant.
+// https://datatracker.ietf.org/doc/html/rfc9700#section-2.1.1
+// When no value is provided, PKCE is required. Public clients always require PKCE.
+func (client *Client) GetRequirePkce() bool {
+	return client.GetClientType() == oauth2.CtPublic || client.RequirePkce == nil || *client.RequirePkce
+}
+
+// GetPkcePlainAllowed returns whether any of the currently loaded clients is allowed to use the PKCE method plain.
+func (config *Config) GetPkcePlainAllowed() bool {
+	return slices.ContainsFunc(config.GetClients(), func(client *Client) bool {
+		return client.PkcePlainAllowed
+	})
+}
 
 // IsGrantTypeAllowed returns whether the Client is allowed to use the given grant type.
 // When the Client has a list of grant types configured, only these grant types are allowed.

@@ -102,8 +102,8 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	codeChallenge := uuid.New().String()
-	codeChallengeVerifier := pkce.CalculatePKCE(pkce.S256, codeChallenge)
+	codeVerifier := pkce.GenerateCodeVerifier()
+	codeChallenge := pkce.CalculatePKCE(pkce.S256, codeVerifier)
 	forwardSessionId := uuid.New().String()
 	forwardSessionState := uuid.New().String()
 
@@ -132,7 +132,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	forwardSession := &session.ForwardSession{
 		Id:                    forwardSessionId,
-		CodeChallengeVerifier: codeChallengeVerifier,
+		CodeChallengeVerifier: codeVerifier,
 		RedirectUri:           forwardString,
 		State:                 forwardSessionState,
 	}
@@ -157,7 +157,7 @@ func (h *Handler) validatePKCEAndState(forwardAuthClient *config.Client, code st
 	}
 	codeChallengeMethod, codeChallengeMethodExists := pkce.CodeChallengeMethodFromString(authorizationCode.CodeChallengeMethod)
 	if codeChallengeMethodExists && forwardSession.State == state {
-		validatePKCE := pkce.ValidatePKCE(codeChallengeMethod, forwardSession.CodeChallengeVerifier, authorizationCode.CodeChallenge)
+		validatePKCE := pkce.ValidatePKCE(codeChallengeMethod, authorizationCode.CodeChallenge, forwardSession.CodeChallengeVerifier)
 		if validatePKCE {
 			return authorizationCode, forwardSession, true
 		}

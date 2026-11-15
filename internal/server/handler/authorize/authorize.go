@@ -1,6 +1,7 @@
 package authorize
 
 import (
+	"cmp"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -347,26 +348,59 @@ func (h *Handler) validateNonce(client *config.Client, authorizeRequest *authori
 }
 
 func (h *Handler) validateCodeChallenge(client *config.Client, responseTypes []oauth2.ResponseType, authorizeRequest *authorizeRequestValues, redirectURL *url.URL) http.Handler {
-	isUnexpectedCodeChallenge := !slices.Contains(responseTypes, oauth2.RtCode) && authorizeRequest.codeChallengeParameter != "" && authorizeRequest.codeChallengeMethodParameter != ""
-	if isUnexpectedCodeChallenge {
-		errorMessage := fmt.Sprintf("Code challenge should only be used for response type %s", oauth2.RtCode)
+	invalidRequest := func(errorMessage string) http.Handler {
 		authorizeError := &oauth2.AuthorizationErrorResponseParameter{Error: oauth2.AuthorizationEtInvalidRequest, Description: errorMessage}
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			oauth2.AuthorizationErrorResponseHandler(w, redirectURL, authorizeRequest.stateParameter, authorizeError)
 		})
 	}
 
-	// https://datatracker.ietf.org/doc/html/rfc9700#section-2.1.1
-	// Public clients can not authenticate at the token endpoint, PKCE is their only protection against code injection
-	isMissingCodeChallenge := slices.Contains(responseTypes, oauth2.RtCode) && client.GetClientType() == oauth2.CtPublic && authorizeRequest.codeChallengeParameter == ""
-	if isMissingCodeChallenge {
-		log.Error("Missing code challenge for public client %s", client.Id)
-		errorMessage := "Code challenge is required for public clients"
-		authorizeError := &oauth2.AuthorizationErrorResponseParameter{Error: oauth2.AuthorizationEtInvalidRequest, Description: errorMessage}
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			oauth2.AuthorizationErrorResponseHandler(w, redirectURL, authorizeRequest.stateParameter, authorizeError)
-		})
+	isCodeRequest := slices.Contains(responseTypes, oauth2.RtCode)
+	codeChallenge := authorizeRequest.codeChallengeParameter
+
+	if !isCodeRequest && (codeChallenge != "" || authorizeRequest.codeChallengeMethodParameter != "") {
+		return invalidRequest(fmt.Sprintf("Code challenge should only be used for response type %s", oauth2.RtCode))
 	}
+
+	if !isCodeRequest {
+		return nil
+	}
+
+	// https://datatracker.ietf.org/doc/html/rfc9700#section-2.1.1
+	// Public clients can not authenticate at the token endpoint, PKCE is their only protection against code injection,
+	// PKCE is required for confidential clients as well, unless disabled for the client
+	if codeChallenge == "" {
+		if client.GetRequirePkce() {
+			log.Error("Missing code challenge for client %s", client.Id)
+			return invalidRequest("Code challenge is required")
+		}
+		if authorizeRequest.codeChallengeMethodParameter != "" {
+			return invalidRequest("Code challenge method without code challenge")
+		}
+		return nil
+	}
+
+	// https://datatracker.ietf.org/doc/html/rfc7636#section-4.3
+	// When the method is missing, it defaults to plain, plain offers no protection when the authorization request is observed
+	codeChallengeMethod, validCodeChallengeMethod := pkce.CodeChallengeMethodFromString(cmp.Or(authorizeRequest.codeChallengeMethodParameter, string(pkce.PLAIN)))
+	if !validCodeChallengeMethod {
+		return invalidRequest(fmt.Sprintf("Invalid %s parameter value", pkce.ParameterCodeChallengeMethod))
+	}
+	if codeChallengeMethod != pkce.S256 && !client.PkcePlainAllowed {
+		log.Error("Code challenge method %s is not allowed for client %s", codeChallengeMethod, client.Id)
+		return invalidRequest(fmt.Sprintf("Code challenge method %s is required", pkce.S256))
+	}
+
+	// For plain the code challenge is the code verifier itself
+	validCodeChallenge := pkce.IsValidS256CodeChallenge(codeChallenge)
+	if codeChallengeMethod == pkce.PLAIN {
+		validCodeChallenge = pkce.IsValidCodeVerifier(codeChallenge)
+	}
+	if !validCodeChallenge {
+		return invalidRequest(fmt.Sprintf("Invalid %s parameter value", pkce.ParameterCodeChallenge))
+	}
+
+	authorizeRequest.codeChallengeMethodParameter = string(codeChallengeMethod)
 	return nil
 }
 

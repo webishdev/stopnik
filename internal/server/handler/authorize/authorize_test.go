@@ -549,8 +549,8 @@ func Test_AuthorizeAuthorizationGrant(t *testing.T) {
 		{"abc", "", "", nil},
 		{"", "foo:moo", "", nil},
 		{"abc", "foo:moo", "", nil},
-		{"abc", "foo:moo", uuid.New().String(), &ccmS256},
-		{"abc", "foo:moo", uuid.New().String(), &ccmPlain},
+		{"abc", "foo:moo", pkce.GenerateCodeVerifier(), &ccmS256},
+		{"abc", "foo:moo", pkce.GenerateCodeVerifier(), &ccmPlain},
 	}
 
 	for _, test := range authorizationGrantParameters {
@@ -570,6 +570,7 @@ func Test_AuthorizeAuthorizationGrant(t *testing.T) {
 				if test.pkceCodeChallenge != "" && test.pkceCodeChallengeMethod != nil {
 					pkceCodeChallenge = pkce.CalculatePKCE(*test.pkceCodeChallengeMethod, test.pkceCodeChallenge)
 					query.Set(pkce.ParameterCodeChallenge, pkceCodeChallenge)
+					query.Set(pkce.ParameterCodeChallengeMethod, string(*test.pkceCodeChallengeMethod))
 				}
 			})
 			requestValidator := validation.NewRequestValidator()
@@ -655,8 +656,9 @@ func Test_AuthorizeAuthorizationGrantPromptLogin(t *testing.T) {
 		query.Set(oauth2.ParameterResponseType, oauth2.ParameterCode)
 		query.Set(oauth2.ParameterState, "some_state")
 		query.Set(oauth2.ParameterScope, oidc.ScopeOpenId)
-		pkceCodeChallenge = pkce.CalculatePKCE(pkce.S256, uuid.New().String())
+		pkceCodeChallenge = pkce.CalculatePKCE(pkce.S256, pkce.GenerateCodeVerifier())
 		query.Set(pkce.ParameterCodeChallenge, pkceCodeChallenge)
+		query.Set(pkce.ParameterCodeChallengeMethod, string(pkce.S256))
 		query.Set(oidc.ParameterPrompt, string(oidc.PtLogin))
 	})
 	requestValidator := validation.NewRequestValidator()
@@ -714,8 +716,9 @@ func Test_AuthorizeAuthorizationGrantUnknownPrompt(t *testing.T) {
 		query.Set(oauth2.ParameterResponseType, oauth2.ParameterCode)
 		query.Set(oauth2.ParameterState, "some_state")
 		query.Set(oauth2.ParameterScope, oidc.ScopeOpenId)
-		pkceCodeChallenge = pkce.CalculatePKCE(pkce.S256, uuid.New().String())
+		pkceCodeChallenge = pkce.CalculatePKCE(pkce.S256, pkce.GenerateCodeVerifier())
 		query.Set(pkce.ParameterCodeChallenge, pkceCodeChallenge)
+		query.Set(pkce.ParameterCodeChallengeMethod, string(pkce.S256))
 		query.Set(oidc.ParameterPrompt, "foo_bar")
 	})
 	requestValidator := validation.NewRequestValidator()
@@ -1425,31 +1428,120 @@ func Test_AuthorizeWithSessionCreatesOnlyNeededTokens(t *testing.T) {
 	}
 }
 
+func Test_AuthorizeCodeChallengeValidation(t *testing.T) {
+	createTestConfig(t)
+
+	validCodeChallenge := pkce.CalculatePKCE(pkce.S256, pkce.GenerateCodeVerifier())
+	validPlainCodeChallenge := pkce.GenerateCodeVerifier()
+
+	type codeChallengeParameter struct {
+		name                string
+		clientId            string
+		codeChallenge       string
+		codeChallengeMethod string
+		expectedError       oauth2.AuthorizationErrorType
+	}
+
+	var codeChallengeParameters = []codeChallengeParameter{
+		{"PKCE required by default for confidential client", "pkce", "", "", oauth2.AuthorizationEtInvalidRequest},
+		{"Valid S256 code challenge", "pkce", validCodeChallenge, "S256", ""},
+		{"PKCE not required when disabled", "bar", "", "", ""},
+		{"Missing method defaults to plain", "bar", validCodeChallenge, "", oauth2.AuthorizationEtInvalidRequest},
+		{"Plain not allowed", "bar", validPlainCodeChallenge, "plain", oauth2.AuthorizationEtInvalidRequest},
+		{"Unknown method", "bar", validCodeChallenge, "S512", oauth2.AuthorizationEtInvalidRequest},
+		{"Method is case sensitive", "bar", validCodeChallenge, "s256", oauth2.AuthorizationEtInvalidRequest},
+		{"S256 code challenge too short", "bar", validCodeChallenge[:42], "S256", oauth2.AuthorizationEtInvalidRequest},
+		{"S256 code challenge with invalid characters", "bar", validCodeChallenge[:42] + "+", "S256", oauth2.AuthorizationEtInvalidRequest},
+		{"Method without code challenge", "bar", "", "S256", oauth2.AuthorizationEtInvalidRequest},
+		{"Plain allowed for legacy client", "foo", validPlainCodeChallenge, "plain", ""},
+		{"Missing method allowed for legacy client", "foo", validPlainCodeChallenge, "", ""},
+		{"Plain code challenge too short for legacy client", "foo", "abc", "plain", oauth2.AuthorizationEtInvalidRequest},
+	}
+
+	for _, test := range codeChallengeParameters {
+		t.Run(test.name, func(t *testing.T) {
+			parsedUri := createUri(t, endpoint.Authorization, func(query url.Values) {
+				query.Set(oauth2.ParameterClientId, test.clientId)
+				query.Set(oauth2.ParameterRedirectUri, "https://example.com/callback")
+				query.Set(oauth2.ParameterResponseType, oauth2.ParameterCode)
+				if test.codeChallenge != "" {
+					query.Set(pkce.ParameterCodeChallenge, test.codeChallenge)
+				}
+				if test.codeChallengeMethod != "" {
+					query.Set(pkce.ParameterCodeChallengeMethod, test.codeChallengeMethod)
+				}
+			})
+			requestValidator := validation.NewRequestValidator()
+			authSessionManager := session.GetAuthSessionManagerInstance()
+			loginSessionManager := session.GetLoginSessionManagerInstance()
+			cookieManager := cookie.GetCookieManagerInstance()
+			templateManager := template.GetTemplateManagerInstance()
+
+			authorizeHandler := NewAuthorizeHandler(requestValidator, cookieManager, authSessionManager, session.GetAuthorizationCodeManagerInstance(), loginSessionManager, &token.Manager{}, templateManager)
+
+			rr := httptest.NewRecorder()
+			authorizeHandler.ServeHTTP(rr, httptest.NewRequest(http.MethodGet, parsedUri.String(), nil))
+
+			if test.expectedError == "" {
+				// Without a session the login page is shown
+				if rr.Code != http.StatusOK {
+					t.Errorf("handler returned wrong status code: got %v want %v, location %s", rr.Code, http.StatusOK, rr.Header().Get(internalHttp.Location))
+				}
+				return
+			}
+
+			if rr.Code != http.StatusFound {
+				t.Fatalf("handler returned wrong status code: got %v want %v", rr.Code, http.StatusFound)
+			}
+			location, locationError := rr.Result().Location()
+			if locationError != nil {
+				t.Fatalf("location was not provided: %v", locationError)
+			}
+			if errorParameter := location.Query().Get(oauth2.ParameterError); errorParameter != string(test.expectedError) {
+				t.Errorf("error %s did not match %s", errorParameter, test.expectedError)
+			}
+			if location.Query().Get(oauth2.ParameterErrorDescription) == "" {
+				t.Error("expected an error description")
+			}
+		})
+	}
+}
+
 func createTestConfig(t *testing.T) *config.Config {
+	pkceNotRequired := false
 	testConfigEntries := config.Entries{
 		Clients: []config.Client{
 			{
-				Id:           "foo",
-				ClientSecret: "d82c4eb5261cb9c8aa9855edd67d1bd10482f41529858d925094d173fa662aa91ff39bc5b188615273484021dfb16fd8284cf684ccf0fc795be3aa2fc1e6c181",
-				Redirects:    []string{"https://example.com/callback"},
-				Scopes:       []string{"foo:moo"},
-				GrantTypes:   []string{"authorization_code", "implicit"},
+				Id:               "foo",
+				ClientSecret:     "d82c4eb5261cb9c8aa9855edd67d1bd10482f41529858d925094d173fa662aa91ff39bc5b188615273484021dfb16fd8284cf684ccf0fc795be3aa2fc1e6c181",
+				Redirects:        []string{"https://example.com/callback"},
+				Scopes:           []string{"foo:moo"},
+				GrantTypes:       []string{"authorization_code", "implicit"},
+				RequirePkce:      &pkceNotRequired,
+				PkcePlainAllowed: true,
 			},
 			{
 				Id:           "bar",
 				ClientSecret: "d82c4eb5261cb9c8aa9855edd67d1bd10482f41529858d925094d173fa662aa91ff39bc5b188615273484021dfb16fd8284cf684ccf0fc795be3aa2fc1e6c181",
 				Redirects:    []string{"https://example.com/callback"},
 				Oidc:         true,
+				RequirePkce:  &pkceNotRequired,
 			},
 			{
 				Id:        "public",
 				Redirects: []string{"https://example.com/callback"},
 			},
 			{
+				Id:           "pkce",
+				ClientSecret: "d82c4eb5261cb9c8aa9855edd67d1bd10482f41529858d925094d173fa662aa91ff39bc5b188615273484021dfb16fd8284cf684ccf0fc795be3aa2fc1e6c181",
+				Redirects:    []string{"https://example.com/callback"},
+			},
+			{
 				Id:           "sso-code",
 				ClientSecret: "d82c4eb5261cb9c8aa9855edd67d1bd10482f41529858d925094d173fa662aa91ff39bc5b188615273484021dfb16fd8284cf684ccf0fc795be3aa2fc1e6c181",
 				Redirects:    []string{"https://example.com/callback"},
 				RefreshTTL:   100,
+				RequirePkce:  &pkceNotRequired,
 			},
 			{
 				Id:           "sso-implicit",
@@ -1457,6 +1549,7 @@ func createTestConfig(t *testing.T) *config.Config {
 				Redirects:    []string{"https://example.com/callback"},
 				RefreshTTL:   100,
 				GrantTypes:   []string{"implicit"},
+				RequirePkce:  &pkceNotRequired,
 			},
 			{
 				Id:           "sso-oidc",
@@ -1466,11 +1559,13 @@ func createTestConfig(t *testing.T) *config.Config {
 				IdTTL:        100,
 				Oidc:         true,
 				GrantTypes:   []string{"implicit"},
+				RequirePkce:  &pkceNotRequired,
 			},
 			{
 				Id:           "minimal",
 				ClientSecret: "d82c4eb5261cb9c8aa9855edd67d1bd10482f41529858d925094d173fa662aa91ff39bc5b188615273484021dfb16fd8284cf684ccf0fc795be3aa2fc1e6c181",
 				Redirects:    []string{"https://example.com/callback"},
+				RequirePkce:  &pkceNotRequired,
 			},
 		},
 		Users: []config.User{

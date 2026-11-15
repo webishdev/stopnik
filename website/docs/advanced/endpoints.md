@@ -52,7 +52,7 @@ Following the [OAuth 2.0 Security Best Current Practice](https://datatracker.iet
 - an authorization code is a random value created after the login, it expires after 60 seconds and can only be redeemed once,
   by the client it was issued to and with the same `redirect_uri` used for the authorization request
 - when an authorization code is redeemed again, all tokens issued for it are revoked
-- when a `code_challenge` was provided, the `code_verifier` is required, public clients must use [PKCE](https://datatracker.ietf.org/doc/html/rfc7636)
+- [PKCE](https://datatracker.ietf.org/doc/html/rfc7636) with the method `S256` is required by default, see [PKCE](../introduction/config.md#pkce)
 - refresh tokens are rotated, each refresh token can only be used once and a new refresh token is returned
 - when a used refresh token is presented again, all access and refresh tokens of the same authorization are revoked
 - a refresh token can only be used by the client it was issued to, the optional `scope` parameter may narrow the original scope

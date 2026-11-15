@@ -7,6 +7,7 @@ import (
 	"github.com/webishdev/stopnik/internal/endpoint"
 	"github.com/webishdev/stopnik/internal/manager/key"
 	"github.com/webishdev/stopnik/internal/oauth2"
+	"github.com/webishdev/stopnik/internal/pkce"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -139,6 +140,37 @@ func Test_MetadataSupportedGrantAndResponseTypes(t *testing.T) {
 	expectedResponseTypes := []oauth2.ResponseType{oauth2.RtCode, oauth2.RtToken}
 	if !reflect.DeepEqual(metadata.ResponseTypesSupported, expectedResponseTypes) {
 		t.Errorf("response_types_supported %v did not match %v", metadata.ResponseTypesSupported, expectedResponseTypes)
+	}
+}
+
+func Test_MetadataCodeChallengeMethods(t *testing.T) {
+	testConfig := initializeConfig(t, "", "https://auth.example.com")
+	metadataHandler := NewMetadataHandler(key.GetKeyMangerInstance())
+
+	requestMetadata := func() response {
+		rr := httptest.NewRecorder()
+		metadataHandler.ServeHTTP(rr, httptest.NewRequest(http.MethodGet, endpoint.Metadata, nil))
+		return testMetadataParse(t, rr.Result())
+	}
+
+	applyError := testConfig.ApplyEntries(config.Entries{
+		Clients: []config.Client{{Id: "foo", Redirects: []string{"https://example.com/callback"}}},
+	})
+	if applyError != nil {
+		t.Fatal(applyError)
+	}
+	if methods := requestMetadata().CodeChallengeMethodsSupported; !reflect.DeepEqual(methods, []pkce.CodeChallengeMethod{pkce.S256}) {
+		t.Errorf("expected only S256, got %v", methods)
+	}
+
+	applyError = testConfig.ApplyEntries(config.Entries{
+		Clients: []config.Client{{Id: "foo", Redirects: []string{"https://example.com/callback"}, PkcePlainAllowed: true}},
+	})
+	if applyError != nil {
+		t.Fatal(applyError)
+	}
+	if methods := requestMetadata().CodeChallengeMethodsSupported; !reflect.DeepEqual(methods, []pkce.CodeChallengeMethod{pkce.S256, pkce.PLAIN}) {
+		t.Errorf("expected S256 and plain, got %v", methods)
 	}
 }
 
