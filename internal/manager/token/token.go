@@ -183,7 +183,6 @@ func (tokenManager *Manager) RevokeAccessTokenByAuthorizationCode(authorizationC
 func (tokenManager *Manager) CreateAccessTokenResponse(r *http.Request, username string, client *config.Client, authTime *time.Time, scopes []string, requestedClaims *oidc.ClaimsParameter, nonce string, authorizationCode string) oauth2.AccessTokenResponse {
 	log.Debug("Creating new access token for %s, access TTL %d, refresh TTL %d", client.Id, client.GetAccessTTL(), client.GetRefreshTTL())
 
-	requestData := internalHttp.NewRequestData(r)
 	currentClientStores := tokenManager.getClientStores(client)
 	accessTokenStore := *currentClientStores.accessTokenStore
 	refreshTokenStore := *currentClientStores.refreshTokenStore
@@ -212,7 +211,7 @@ func (tokenManager *Manager) CreateAccessTokenResponse(r *http.Request, username
 
 	if (!client.Oidc && client.GetRefreshTTL() > 0) || (client.Oidc && oidc.HasOfflineAccessScope(scopes) && client.GetRefreshTTL() > 0) {
 		refreshTokenDuration := time.Minute * time.Duration(client.GetRefreshTTL())
-		refreshTokenKey := tokenManager.generateRefreshToken(requestData, username, client, scopes, refreshTokenDuration)
+		refreshTokenKey := tokenManager.generateRefreshToken(username, client, scopes, refreshTokenDuration)
 		refreshToken := &oauth2.RefreshToken{
 			Key:      refreshTokenKey,
 			Username: username,
@@ -263,15 +262,13 @@ func (tokenManager *Manager) CreateAccessTokenResponse(r *http.Request, username
 
 func (tokenManager *Manager) createIdToken(r *http.Request, idTokenInput IdTokenInput) string {
 	if idTokenInput.Client.Oidc && oidc.HasOidcScope(idTokenInput.Scopes) {
-		requestData := internalHttp.NewRequestData(r)
-		return tokenManager.generateIdToken(requestData, idTokenInput)
+		return tokenManager.generateIdToken(idTokenInput)
 	}
 	return ""
 }
 
 func (tokenManager *Manager) CreateAccessToken(r *http.Request, username string, client *config.Client, scopes []string, accessTokenDuration time.Duration) string {
-	requestData := internalHttp.NewRequestData(r)
-	return tokenManager.generateAccessToken(requestData, username, client, scopes, accessTokenDuration)
+	return tokenManager.generateAccessToken(username, client, scopes, accessTokenDuration)
 }
 
 func (tokenManager *Manager) CreateAccessTokenHash(client *config.Client, accessTokenKey string) string {
@@ -338,27 +335,27 @@ func (tokenManager *Manager) validateAccessToken(accessTokenValue string) (*Vali
 	return validAccessToken, true
 }
 
-func (tokenManager *Manager) generateIdToken(requestData *internalHttp.RequestData, idTokenInput IdTokenInput) string {
+func (tokenManager *Manager) generateIdToken(idTokenInput IdTokenInput) string {
 	client := idTokenInput.Client
-	idToken := generateIdToken(requestData, tokenManager.config, idTokenInput)
+	idToken := generateIdToken(tokenManager.config, idTokenInput)
 	return tokenManager.generateJWTToken(client, idToken)
 }
 
-func (tokenManager *Manager) generateAccessToken(requestData *internalHttp.RequestData, username string, client *config.Client, scopes []string, duration time.Duration) string {
+func (tokenManager *Manager) generateAccessToken(username string, client *config.Client, scopes []string, duration time.Duration) string {
 	tokenId := uuid.New()
 	if client.OpaqueToken {
 		return tokenManager.generateOpaqueToken(tokenId.String())
 	}
-	accessToken := generateAccessToken(requestData, tokenManager.config, client, tokenId.String(), duration, username, scopes)
+	accessToken := generateAccessToken(tokenManager.config, client, tokenId.String(), duration, username, scopes)
 	return tokenManager.generateJWTToken(client, accessToken)
 }
 
-func (tokenManager *Manager) generateRefreshToken(requestData *internalHttp.RequestData, username string, client *config.Client, scopes []string, duration time.Duration) string {
+func (tokenManager *Manager) generateRefreshToken(username string, client *config.Client, scopes []string, duration time.Duration) string {
 	tokenId := uuid.New()
 	if client.OpaqueToken {
 		return tokenManager.generateOpaqueToken(tokenId.String())
 	}
-	accessToken := generateRefreshToken(requestData, tokenManager.config, client, tokenId.String(), duration, username, scopes)
+	accessToken := generateRefreshToken(tokenManager.config, client, tokenId.String(), duration, username, scopes)
 	return tokenManager.generateJWTToken(client, accessToken)
 }
 
@@ -395,7 +392,7 @@ func (tokenManager *Manager) generateJWTToken(client *config.Client, token jwt.T
 
 }
 
-func generateIdToken(requestData *internalHttp.RequestData, config *config.Config, idTokenInput IdTokenInput) jwt.Token {
+func generateIdToken(config *config.Config, idTokenInput IdTokenInput) jwt.Token {
 	user := idTokenInput.User
 	client := idTokenInput.Client
 	atHash := idTokenInput.AtHash
@@ -412,7 +409,7 @@ func generateIdToken(requestData *internalHttp.RequestData, config *config.Confi
 	builder.JwtID(tokenId)
 
 	// https://www.rfc-editor.org/rfc/rfc7519.html#section-4.1.1
-	builder.Issuer(config.GetIssuer(requestData))
+	builder.Issuer(config.GetIssuer())
 
 	// https://www.rfc-editor.org/rfc/rfc7519.html#section-4.1.2
 	builder.Subject(user.Username)
@@ -485,7 +482,7 @@ func generateIdToken(requestData *internalHttp.RequestData, config *config.Confi
 	return token
 }
 
-func generateAccessToken(requestData *internalHttp.RequestData, config *config.Config, client *config.Client, tokenId string, duration time.Duration, username string, scopes []string) jwt.Token {
+func generateAccessToken(config *config.Config, client *config.Client, tokenId string, duration time.Duration, username string, scopes []string) jwt.Token {
 	builder := jwt.NewBuilder().
 		Expiration(time.Now().Add(duration)). // https://www.rfc-editor.org/rfc/rfc7519.html#section-4.1.4
 		IssuedAt(time.Now())                  // https://www.rfc-editor.org/rfc/rfc7519.html#section-4.1.6
@@ -494,7 +491,7 @@ func generateAccessToken(requestData *internalHttp.RequestData, config *config.C
 	builder.JwtID(tokenId)
 
 	// https://www.rfc-editor.org/rfc/rfc7519.html#section-4.1.1
-	builder.Issuer(config.GetIssuer(requestData))
+	builder.Issuer(config.GetIssuer())
 
 	// https://www.rfc-editor.org/rfc/rfc7519.html#section-4.1.2
 	builder.Subject(username)
@@ -519,7 +516,7 @@ func generateAccessToken(requestData *internalHttp.RequestData, config *config.C
 	return token
 }
 
-func generateRefreshToken(requestData *internalHttp.RequestData, config *config.Config, client *config.Client, tokenId string, duration time.Duration, username string, scopes []string) jwt.Token {
+func generateRefreshToken(config *config.Config, client *config.Client, tokenId string, duration time.Duration, username string, scopes []string) jwt.Token {
 	builder := jwt.NewBuilder().
 		Expiration(time.Now().Add(duration)). // https://www.rfc-editor.org/rfc/rfc7519.html#section-4.1.4
 		IssuedAt(time.Now())                  // https://www.rfc-editor.org/rfc/rfc7519.html#section-4.1.6
@@ -528,7 +525,7 @@ func generateRefreshToken(requestData *internalHttp.RequestData, config *config.
 	builder.JwtID(tokenId)
 
 	// https://www.rfc-editor.org/rfc/rfc7519.html#section-4.1.1
-	builder.Issuer(config.GetIssuer(requestData))
+	builder.Issuer(config.GetIssuer())
 
 	// https://www.rfc-editor.org/rfc/rfc7519.html#section-4.1.2
 	builder.Subject(username)

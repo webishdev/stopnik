@@ -88,7 +88,7 @@ func staticTopics(staticConfig *config.Config, store *Store) []*staticTopic {
 					Fields: []staticField{
 						textField("Address", "Address STOPnik listens to.", server.Addr),
 						textField("Base path", "Path prefix of all endpoints.", staticConfig.GetBasePath()),
-						withDefault("Issuer", "Issuer of the tokens.", server.Issuer, "Mirrored from request"),
+						textField("Issuer", "External URL of STOPnik, used as issuer of the tokens. Required.", server.Issuer),
 						withDefault("Log level", "One of debug, info, warn or error.", server.LogLevel, "info"),
 						fullWidth(textField("Logout redirect", "Target after a logout without redirect.", server.LogoutRedirect)),
 					},

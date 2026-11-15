@@ -72,9 +72,14 @@ func Test_LoadStaticConfiguration(t *testing.T) {
 	var loadParameters = []loadParameter{
 		{"Minimal", `[server]
 addr = ":8080"
+issuer = "http://localhost:8080"
 `, false},
+		{"Missing issuer", `[server]
+addr = ":8080"
+`, true},
 		{"With keys and TLS", fmt.Sprintf(`[server]
 addr = ":8080"
+issuer = "https://auth.example.com"
 privateKey = %q
 
 [server.tls]
@@ -89,10 +94,12 @@ key = %q
 `, true},
 		{"Missing private key", `[server]
 addr = ":8080"
+issuer = "http://localhost:8080"
 privateKey = "does-not-exist.pem"
 `, true},
 		{"Invalid TLS keys", fmt.Sprintf(`[server]
 addr = ":8080"
+issuer = "http://localhost:8080"
 
 [server.tls]
 addr = ":8081"

@@ -54,9 +54,6 @@ func start(configurationDir *string) error {
 
 	logger.SetLogLevel(currentConfig.Server.LogLevel)
 	logger.Info("Config loaded from %s", filepath.Join(*configurationDir, config.StaticFileName))
-	if currentConfig.Server.Issuer == "" {
-		logger.Warn("No issuer configured, the issuer will be derived from the Host header of each request, configure server.issuer to avoid manipulated issuer values")
-	}
 
 	dynamicStore := config.NewDynamicStore(currentConfig, toml.Unmarshal, key.ValidateClientKey)
 	dynamicStore.Load()

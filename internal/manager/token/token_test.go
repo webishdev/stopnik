@@ -226,6 +226,34 @@ func Test_HashToken(t *testing.T) {
 
 }
 
+func Test_TokenIssuerNotFromHostHeader(t *testing.T) {
+	testConfig := createTestConfig(t, false, 100, 100, "../../../.test_files/ecdsa521key.pem")
+	tokenManager := GetTokenManagerInstance()
+	client, _ := testConfig.GetClient("foo")
+
+	// The Host header can be manipulated by a client and must not be used for the issuer
+	request := httptest.NewRequest(http.MethodPost, endpoint.Token, nil)
+	request.Host = "evil.example"
+	requestScopes := []string{oidc.ScopeOpenId, oidc.ScopeOfflineAccess}
+	accessTokenResponse := tokenManager.CreateAccessTokenResponse(request, "foo", client, nil, requestScopes, nil, "", "")
+
+	tokenValues := map[string]string{
+		"access token":  accessTokenResponse.AccessTokenValue,
+		"refresh token": accessTokenResponse.RefreshTokenValue,
+		"id token":      accessTokenResponse.IdTokenValue,
+	}
+	for name, tokenValue := range tokenValues {
+		parsedToken, parseError := jwt.ParseInsecure([]byte(tokenValue))
+		if parseError != nil {
+			t.Fatalf("could not parse %s: %v", name, parseError)
+		}
+		issuer, _ := parsedToken.Issuer()
+		if issuer != "https://auth.example.com" {
+			t.Errorf("issuer of %s was %s, expected the configured issuer", name, issuer)
+		}
+	}
+}
+
 func assertAuthorizationHeader(t *testing.T, tokenManager *Manager, authorizationHeader string, requestScopes []string) {
 	validAccessToken, valid := tokenManager.validateAccessTokenHeader(authorizationHeader)
 	if !valid {
@@ -321,6 +349,7 @@ func createTestConfig(t *testing.T, opaque bool, refreshTokenTTL int, idTTokenTT
 	}
 	testConfig := &config.Config{
 		Server: config.Server{
+			Issuer: "https://auth.example.com",
 			ForwardAuth: config.ForwardAuth{
 				Enabled:     true,
 				ExternalUrl: "http://localhost:8082",

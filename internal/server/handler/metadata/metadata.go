@@ -52,21 +52,22 @@ func NewMetadataHandler() *Handler {
 func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	log.AccessLogRequest(r)
 	if r.Method == http.MethodGet {
-		requestData := internalHttp.NewRequestData(r)
-		urlFromRequest, parseError := requestData.BaseURL(h.config.GetBasePath())
-		if parseError != nil {
-			h.errorHandler.InternalServerErrorHandler(w, r, parseError)
-			return
+		endpointURL := func(endpointPath string) string {
+			endpointURLString, endpointURLError := h.config.GetEndpointURL(endpointPath)
+			if endpointURLError != nil {
+				log.Error("Could not create URL for endpoint %s: %v", endpointPath, endpointURLError)
+			}
+			return endpointURLString
 		}
 
 		// OAuth2
-		authorizationEndpoint := urlFromRequest.JoinPath(endpoint.Authorization)
-		tokenEndpoint := urlFromRequest.JoinPath(endpoint.Token)
+		authorizationEndpoint := endpointURL(endpoint.Authorization)
+		tokenEndpoint := endpointURL(endpoint.Token)
 
 		// OAuth2 extensions
-		introspectEndpoint := urlFromRequest.JoinPath(endpoint.Introspect)
-		revokeEndpoint := urlFromRequest.JoinPath(endpoint.Revoke)
-		keysEndpoint := urlFromRequest.JoinPath(endpoint.Keys)
+		introspectEndpoint := endpointURL(endpoint.Introspect)
+		revokeEndpoint := endpointURL(endpoint.Revoke)
+		keysEndpoint := endpointURL(endpoint.Keys)
 
 		authMethodsSupported := []string{
 			"client_secret_basic",
@@ -82,12 +83,12 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 
 		metadataResponse := &response{
-			Issuer:                h.config.GetIssuer(requestData),
-			AuthorizationEndpoint: authorizationEndpoint.String(),
-			TokenEndpoint:         tokenEndpoint.String(),
-			IntrospectionEndpoint: introspectEndpoint.String(),
-			RevocationEndpoint:    revokeEndpoint.String(),
-			JWKsUri:               keysEndpoint.String(),
+			Issuer:                h.config.GetIssuer(),
+			AuthorizationEndpoint: authorizationEndpoint,
+			TokenEndpoint:         tokenEndpoint,
+			IntrospectionEndpoint: introspectEndpoint,
+			RevocationEndpoint:    revokeEndpoint,
+			JWKsUri:               keysEndpoint,
 			ServiceDocumentation:  "https://stopnik.webish.dev",
 			CodeChallengeMethodsSupported: []pkce.CodeChallengeMethod{
 				pkce.PLAIN,

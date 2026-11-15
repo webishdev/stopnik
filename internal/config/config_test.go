@@ -2,11 +2,8 @@ package config
 
 import (
 	"fmt"
-	internalHttp "github.com/webishdev/stopnik/internal/http"
 	"github.com/webishdev/stopnik/internal/oauth2"
 	"github.com/webishdev/stopnik/internal/system"
-	"net/http"
-	"net/http/httptest"
 	"reflect"
 	"strings"
 	"testing"
@@ -183,7 +180,7 @@ func Test_SimpleServerConfiguration(t *testing.T) {
 		t.Error("expected server secret to be '5XyLSgKpo5kWrJqm'")
 	}
 
-	issuer := config.GetIssuer(&internalHttp.RequestData{})
+	issuer := config.GetIssuer()
 	if issuer != "http://foo.com/bar" {
 		t.Error("expected issuer to be 'http://foo.com/bar'")
 	}
@@ -251,7 +248,8 @@ func Test_ForwardAuthMissingExternalUrl(t *testing.T) {
 		origin := out.(*Config)
 		*origin = Config{
 			Server: Server{
-				Addr: ":8080",
+				Addr:   ":8080",
+				Issuer: "https://auth.example.com",
 				ForwardAuth: ForwardAuth{
 					Enabled: true,
 				},
@@ -274,7 +272,8 @@ func Test_SameCookieNameAuthAndMessage(t *testing.T) {
 		origin := out.(*Config)
 		*origin = Config{
 			Server: Server{
-				Addr: ":8080",
+				Addr:   ":8080",
+				Issuer: "https://auth.example.com",
 				Cookies: Cookies{
 					AuthName:    "foo",
 					MessageName: "foo",
@@ -298,7 +297,8 @@ func Test_SameCookieNameForwardAuthAndMessage(t *testing.T) {
 		origin := out.(*Config)
 		*origin = Config{
 			Server: Server{
-				Addr: ":8080",
+				Addr:   ":8080",
+				Issuer: "https://auth.example.com",
 				Cookies: Cookies{
 					ForwardAuthName: "foo",
 					MessageName:     "foo",
@@ -322,7 +322,8 @@ func Test_SameCookieNameForwardAuthAndAuth(t *testing.T) {
 		origin := out.(*Config)
 		*origin = Config{
 			Server: Server{
-				Addr: ":8080",
+				Addr:   ":8080",
+				Issuer: "https://auth.example.com",
 				Cookies: Cookies{
 					ForwardAuthName: "foo",
 					AuthName:        "foo",
@@ -851,7 +852,8 @@ func Test_NoDynamicEntries(t *testing.T) {
 		origin := out.(*Config)
 		*origin = Config{
 			Server: Server{
-				Addr: ":8080",
+				Addr:   ":8080",
+				Issuer: "https://auth.example.com",
 			},
 		}
 		return nil
@@ -879,7 +881,8 @@ func Test_TLSWithoutKey(t *testing.T) {
 		origin := out.(*Config)
 		*origin = Config{
 			Server: Server{
-				Addr: ":8080",
+				Addr:   ":8080",
+				Issuer: "https://auth.example.com",
 				TLS: TLS{
 					Addr: ":8443",
 					Keys: Keys{
@@ -905,7 +908,8 @@ func Test_TLSWithoutCertificate(t *testing.T) {
 		origin := out.(*Config)
 		*origin = Config{
 			Server: Server{
-				Addr: ":8080",
+				Addr:   ":8080",
+				Issuer: "https://auth.example.com",
 				TLS: TLS{
 					Addr: ":8443",
 					Keys: Keys{
@@ -931,7 +935,8 @@ func Test_MinimalConfiguration(t *testing.T) {
 		origin := out.(*Config)
 		*origin = Config{
 			Server: Server{
-				Addr: ":8080",
+				Addr:   ":8080",
+				Issuer: "https://auth.example.com",
 				TLS: TLS{
 					Addr: ":8443",
 					Keys: Keys{
@@ -974,7 +979,7 @@ func Test_DynamicDirectories(t *testing.T) {
 				return make([]byte, 10), nil
 			}, func(in []byte, out interface{}) (err error) {
 				origin := out.(*Config)
-				*origin = Config{Server: Server{Addr: ":8080"}}
+				*origin = Config{Server: Server{Addr: ":8080", Issuer: "https://auth.example.com"}}
 				return nil
 			})
 
@@ -1461,7 +1466,7 @@ func Test_ValidateBasePath(t *testing.T) {
 				t.Errorf("result %t did not match %t", result, test.valid)
 			}
 			if !test.valid {
-				testConfig := &Config{Server: Server{Addr: ":8080", BasePath: test.basePath}}
+				testConfig := &Config{Server: Server{Addr: ":8080", Issuer: "https://auth.example.com", BasePath: test.basePath}}
 				if validationError := testConfig.Validate(); validationError == nil {
 					t.Error("expected validation error for invalid base path")
 				}
@@ -1470,27 +1475,74 @@ func Test_ValidateBasePath(t *testing.T) {
 	}
 }
 
-func Test_GetIssuerWithBasePath(t *testing.T) {
-	requestData := internalHttp.NewRequestData(httptest.NewRequest(http.MethodGet, "/auth/token", nil))
+func Test_GetEndpointURL(t *testing.T) {
+	type endpointParameter struct {
+		name        string
+		basePath    string
+		issuer      string
+		expectedURL string
+	}
 
+	var endpointParameters = []endpointParameter{
+		{"No base path", "", "https://auth.example.com", "https://auth.example.com/token"},
+		{"No base path, issuer with trailing slash", "", "https://auth.example.com/", "https://auth.example.com/token"},
+		{"Issuer ends with base path", "/auth", "https://example.com/auth", "https://example.com/auth/token"},
+		{"Issuer ends with base path and trailing slash", "/auth", "https://example.com/auth/", "https://example.com/auth/token"},
+		{"Issuer without base path", "/auth", "https://auth.example.com", "https://auth.example.com/auth/token"},
+		{"Issuer with other path", "/auth", "https://example.com/stopnik", "https://example.com/stopnik/auth/token"},
+	}
+
+	for _, test := range endpointParameters {
+		t.Run(test.name, func(t *testing.T) {
+			testConfig := &Config{Server: Server{BasePath: test.basePath, Issuer: test.issuer}}
+			if issuer := testConfig.GetIssuer(); issuer != test.issuer {
+				t.Errorf("issuer %s did not match %s", issuer, test.issuer)
+			}
+			endpointURL, endpointURLError := testConfig.GetEndpointURL("/token")
+			if endpointURLError != nil {
+				t.Fatal(endpointURLError)
+			}
+			if endpointURL != test.expectedURL {
+				t.Errorf("endpoint URL %s did not match %s", endpointURL, test.expectedURL)
+			}
+		})
+	}
+}
+
+func Test_ValidateIssuer(t *testing.T) {
 	type issuerParameter struct {
-		name           string
-		basePath       string
-		issuer         string
-		expectedIssuer string
+		issuer string
+		valid  bool
 	}
 
 	var issuerParameters = []issuerParameter{
-		{"No base path", "", "", "http://example.com"},
-		{"Base path", "/auth", "", "http://example.com/auth"},
-		{"Configured issuer", "/auth", "https://issuer.example.com", "https://issuer.example.com"},
+		{"https://auth.example.com", true},
+		{"https://example.com/auth", true},
+		{"http://localhost:8080", true},
+		{"http://127.0.0.1:8080", true},
+		{"http://[::1]:8080", true},
+		{"http://auth.example.com", true},
+		{"", false},
+		{"auth.example.com", false},
+		{"/auth", false},
+		{"https://auth.example.com?foo=bar", false},
+		{"https://auth.example.com?", false},
+		{"https://auth.example.com#foo", false},
+		{"https://user@auth.example.com", false},
+		{"ftp://auth.example.com", false},
+		{"broken«ape`was~±here", false},
 	}
 
 	for _, test := range issuerParameters {
-		t.Run(test.name, func(t *testing.T) {
-			testConfig := &Config{Server: Server{BasePath: test.basePath, Issuer: test.issuer}}
-			if result := testConfig.GetIssuer(requestData); result != test.expectedIssuer {
-				t.Errorf("issuer %s did not match %s", result, test.expectedIssuer)
+		testMessage := fmt.Sprintf("Issuer '%s'", test.issuer)
+		t.Run(testMessage, func(t *testing.T) {
+			testConfig := &Config{Server: Server{Addr: ":8080", Issuer: test.issuer}}
+			validationError := testConfig.Validate()
+			if test.valid && validationError != nil {
+				t.Errorf("did not expect validation error, %v", validationError)
+			}
+			if !test.valid && validationError == nil {
+				t.Error("expected validation error")
 			}
 		})
 	}

@@ -19,6 +19,7 @@ func Test_Start(t *testing.T) {
 `, ""},
 		{"Invalid listen address", `[server]
 addr = ":8080"
+issuer = "http://localhost:8080"
 `, "/admin"},
 	}
 

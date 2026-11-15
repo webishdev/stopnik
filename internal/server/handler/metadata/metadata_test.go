@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"reflect"
+	"strings"
 	"testing"
 )
 
@@ -22,11 +23,11 @@ func Test_Metadata(t *testing.T) {
 	}
 
 	var basePathParameters = []basePathParameter{
-		{basePath: "", expectedIssuer: "http://example.com", expectedBaseURL: "http://example.com"},
-		{basePath: "/", expectedIssuer: "http://example.com", expectedBaseURL: "http://example.com"},
-		{basePath: "/auth", expectedIssuer: "http://example.com/auth", expectedBaseURL: "http://example.com/auth"},
-		{basePath: "auth/", expectedIssuer: "http://example.com/auth", expectedBaseURL: "http://example.com/auth"},
-		{basePath: "/auth", issuer: "https://issuer.example.com", expectedIssuer: "https://issuer.example.com", expectedBaseURL: "http://example.com/auth"},
+		{basePath: "", issuer: "https://auth.example.com", expectedIssuer: "https://auth.example.com", expectedBaseURL: "https://auth.example.com"},
+		{basePath: "/", issuer: "https://auth.example.com", expectedIssuer: "https://auth.example.com", expectedBaseURL: "https://auth.example.com"},
+		{basePath: "/auth", issuer: "https://example.com/auth", expectedIssuer: "https://example.com/auth", expectedBaseURL: "https://example.com/auth"},
+		{basePath: "auth/", issuer: "https://example.com/auth", expectedIssuer: "https://example.com/auth", expectedBaseURL: "https://example.com/auth"},
+		{basePath: "/auth", issuer: "https://issuer.example.com", expectedIssuer: "https://issuer.example.com", expectedBaseURL: "https://issuer.example.com/auth"},
 	}
 
 	for _, test := range basePathParameters {
@@ -37,11 +38,17 @@ func Test_Metadata(t *testing.T) {
 
 			rr := httptest.NewRecorder()
 			request := httptest.NewRequest(http.MethodGet, endpoint.Keys, nil)
+			// The Host header can be manipulated by a client and must not be used
+			request.Host = "evil.example"
 
 			metadataHandler.ServeHTTP(rr, request)
 
 			if rr.Code != http.StatusOK {
 				t.Errorf("handler returned wrong status code: got %v want %v", rr.Code, http.StatusOK)
+			}
+
+			if strings.Contains(rr.Body.String(), "evil.example") {
+				t.Errorf("response contains a value derived from the Host header: %s", rr.Body.String())
 			}
 
 			requestResponse := rr.Result()
@@ -90,7 +97,7 @@ func Test_MetadataNotAllowedHttpMethods(t *testing.T) {
 	for _, method := range testInvalidMetadataHttpMethods {
 		testMessage := fmt.Sprintf("Metadata with unsupported method %s", method)
 		t.Run(testMessage, func(t *testing.T) {
-			initializeConfig(t, "", "")
+			initializeConfig(t, "", "https://auth.example.com")
 			metadataHandler := NewMetadataHandler()
 
 			rr := httptest.NewRecorder()
@@ -105,7 +112,7 @@ func Test_MetadataNotAllowedHttpMethods(t *testing.T) {
 }
 
 func Test_MetadataSupportedGrantAndResponseTypes(t *testing.T) {
-	testConfig := initializeConfig(t, "", "")
+	testConfig := initializeConfig(t, "", "https://auth.example.com")
 	applyError := testConfig.ApplyEntries(config.Entries{
 		Clients: []config.Client{
 			{Id: "foo", Redirects: []string{"https://example.com/callback"}},

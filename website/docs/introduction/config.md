@@ -77,19 +77,23 @@ Root entry named `server`
 | `introspectScope`             | Scope which allows token introspection                                                            | No       |
 | `revokeScopeScope`            | Scope which allows token revocation                                                               | No       |
 | `sessionTimeoutSeconds`       | Seconds until session will end                                                                    | No       |
-| `issuer`                      | Issuer, see [Issuer](#issuer)                                                                     | No       |
+| `issuer`                      | External URL of **STOPnik**, see [Issuer](#issuer)                                                | Yes      |
 | [`forwardAuth`](#forwardauth) | [Traefik ForwardAuth](https://doc.traefik.io/traefik/middlewares/http/forwardauth/) configuration | No       |
 
 #### Issuer
 
-The issuer is used as `iss` value in tokens and in the metadata endpoints.
+The issuer is the external URL of **STOPnik** as seen by clients, e.g. `https://auth.example.com`.
+It is used as `iss` value in tokens and all URLs in the metadata endpoints are derived from it.
+The issuer is never derived from the `Host` header of a request, as it can be manipulated by a client.
 
-When no `issuer` is configured, the issuer will be derived from the `Host` header of each request,
-which can be manipulated by a client. **STOPnik** will log a warning on startup in this case.
-Configure an `issuer` for production use.
+- `issuer` is required, **STOPnik** does not start without it.
+- It must be an absolute URL with the scheme `https` or `http`, without query, fragment or user information.
+- `http` is meant for local development, for other hosts than `localhost`, `127.0.0.1` and `[::1]`
+  **STOPnik** logs a warning on startup.
 
-When a [base path](#base-path) is configured, the derived issuer contains the base path, e.g. `https://example.com/auth`.
-A configured `issuer` is used as it is.
+The configured `issuer` is used as it is.
+When a [base path](#base-path) is configured, the endpoint URLs are `issuer` + endpoint path when the `issuer` already ends with
+the base path (e.g. `https://example.com/auth/token`), and `issuer` + base path + endpoint path otherwise.
 
 #### Base path
 
@@ -97,7 +101,7 @@ With `basePath` all endpoints are served below the given path, e.g. with `basePa
 the account page is available at `/auth/account` and the OIDC discovery at `/auth/.well-known/openid-configuration`.
 This allows running **STOPnik** behind a reverse proxy on a sub path, without stripping the prefix in the proxy.
 
-The URLs in the metadata endpoints and the `/authorize` URL used for [ForwardAuth](#forwardauth) contain the base path,
+The URLs in the metadata endpoints (see [Issuer](#issuer)) and the `/authorize` URL used for [ForwardAuth](#forwardauth) contain the base path,
 the cookies of **STOPnik** are restricted to the base path.
 The ForwardAuth cookie is still set for `/`, as it is used for the protected application.
 
@@ -435,7 +439,7 @@ If the parent classification has set scopes the scopes are used in addition to t
 
 ### Minimal configuration
 
-The minimal configuration only defines the HTTP port **STOPnik** should listen on, one client and one user.
+The minimal configuration only defines the HTTP port **STOPnik** should listen on, the issuer, one client and one user.
 
 It can be found in the repository at
 
@@ -453,6 +457,7 @@ After starting locally with this configuration, **STOPnik** will be accessible a
 ```toml
 [server]
 addr = ":8080"
+issuer = "http://localhost:8080"
 ```
 
 `.config/minimal/client.d/testclient.toml`

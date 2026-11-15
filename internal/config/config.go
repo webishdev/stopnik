@@ -5,7 +5,6 @@ import (
 	"cmp"
 	"errors"
 	"fmt"
-	internalHttp "github.com/webishdev/stopnik/internal/http"
 	"github.com/webishdev/stopnik/internal/oauth2"
 	"github.com/webishdev/stopnik/internal/oidc"
 	"github.com/webishdev/stopnik/internal/store"
@@ -379,6 +378,10 @@ func (config *Config) validateServer() error {
 		return errors.New("no server address provided")
 	}
 
+	if issuerError := validateIssuer(config.Server.Issuer); issuerError != nil {
+		return issuerError
+	}
+
 	if config.Server.TLS.Addr != "" && config.Server.TLS.Keys.Key == "" {
 		return errors.New("key for TLS is missing")
 	}
@@ -408,6 +411,38 @@ func (config *Config) validateServer() error {
 	}
 
 	return nil
+}
+
+// validateIssuer validates the configured issuer.
+// https://datatracker.ietf.org/doc/html/rfc8414#section-2
+// The issuer is a URL using the https scheme with no query or fragment components.
+// Plain http is accepted, but only expected for local development.
+func validateIssuer(issuer string) error {
+	if issuer == "" {
+		return errors.New("no issuer provided, configure server.issuer with the external URL of STOPnik, e.g. https://auth.example.com")
+	}
+	parsedIssuer, parseError := url.Parse(issuer)
+	if parseError != nil || parsedIssuer.Scheme == "" || parsedIssuer.Host == "" {
+		return fmt.Errorf("issuer '%s' is not an absolute URL", issuer)
+	}
+	if parsedIssuer.RawQuery != "" || parsedIssuer.Fragment != "" || strings.ContainsAny(issuer, "?#") {
+		return fmt.Errorf("issuer '%s' must not contain a query or fragment", issuer)
+	}
+	if parsedIssuer.User != nil {
+		return fmt.Errorf("issuer '%s' must not contain user information", issuer)
+	}
+	if parsedIssuer.Scheme != "https" && parsedIssuer.Scheme != "http" {
+		return fmt.Errorf("issuer '%s' must use the https or http scheme", issuer)
+	}
+	if parsedIssuer.Scheme == "http" && !isLocalHost(parsedIssuer.Hostname()) {
+		log.Warn("Issuer %s does not use HTTPS, use HTTPS for production", issuer)
+	}
+	return nil
+}
+
+// isLocalHost returns whether the given hostname refers to the local machine.
+func isLocalHost(hostname string) bool {
+	return hostname == "localhost" || hostname == "127.0.0.1" || hostname == "::1"
 }
 
 // GetUser returns a User for the given username.
@@ -573,12 +608,26 @@ func (config *Config) GetSupportedResponseTypes() []oauth2.ResponseType {
 	return supportedResponseTypes
 }
 
-// GetIssuer returns the issuer, either by mirroring from request, from Server configuration or default value.
-func (config *Config) GetIssuer(requestData *internalHttp.RequestData) string {
-	if requestData == nil || !requestData.Valid() {
-		return cmp.Or(config.Server.Issuer, "STOPnik")
+// GetIssuer returns the configured issuer unchanged.
+// The issuer is never derived from a request, as the Host header can be manipulated by a client.
+func (config *Config) GetIssuer() string {
+	return config.Server.Issuer
+}
+
+// GetEndpointURL returns the absolute URL of the given endpoint, derived from the configured issuer.
+// When the path of the issuer already ends with the base path, the endpoint is appended to the issuer,
+// otherwise the base path is added in between.
+func (config *Config) GetEndpointURL(endpoint string) (string, error) {
+	issuerURL, parseError := url.Parse(config.GetIssuer())
+	if parseError != nil {
+		return "", parseError
 	}
-	return cmp.Or(config.Server.Issuer, requestData.IssuerString()+config.GetBasePath())
+	issuerPath := strings.TrimSuffix(issuerURL.Path, "/")
+	basePath := config.GetBasePath()
+	if basePath != "" && !strings.HasSuffix(issuerPath, basePath) {
+		issuerURL = issuerURL.JoinPath(basePath)
+	}
+	return issuerURL.JoinPath(endpoint).String(), nil
 }
 
 // GetBasePath returns the normalized path prefix under which all endpoints are served.

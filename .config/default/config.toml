@@ -10,6 +10,7 @@
 secret = "WRYldij9ebtDZ5VJSsxNAfCZ"
 privateKey = "./.test_files/rsa256key.pem"
 addr = ":8082"
+issuer = "http://localhost:8082"
 
 [server.cookies]
 authName = "stopnik_auth"

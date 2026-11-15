@@ -3,6 +3,7 @@ logLevel = "debug"
 secret = "WRYldij9ebtDZ5VJSsxNAfCZ"
 privateKey = "./.test_files/rsa256key.pem"
 addr = ":8082"
+issuer = "https://localhost:8083"
 
 [server.tls]
 addr = ":8083"
