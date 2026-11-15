@@ -71,3 +71,9 @@ func (authManager *AuthManager) SessionCount() int {
 	authSessionStore := *authManager.authSessionStore
 	return authSessionStore.Len()
 }
+
+// Sessions returns all currently stored auth sessions.
+func (authManager *AuthManager) Sessions() []*AuthSession {
+	authSessionStore := *authManager.authSessionStore
+	return authSessionStore.GetValues()
+}

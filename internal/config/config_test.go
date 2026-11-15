@@ -1364,6 +1364,12 @@ func Test_GetSupportedGrantAndResponseTypes(t *testing.T) {
 			[]oauth2.ResponseType{oauth2.RtCode, oauth2.RtToken},
 		},
 		{
+			"ID token response types for OpenId Connect client with implicit grant",
+			[]Client{{Id: "foo", Oidc: true, GrantTypes: []string{"authorization_code", "implicit"}}},
+			[]oauth2.GrantType{oauth2.GtAuthorizationCode, oauth2.GtImplicit},
+			[]oauth2.ResponseType{oauth2.RtCode, oauth2.RtToken, oauth2.RtIdToken, oauth2.RtIdTokenToken},
+		},
+		{
 			"Client credentials only for confidential client",
 			[]Client{{Id: "moo", GrantTypes: []string{"password", "client_credentials"}}},
 			[]oauth2.GrantType{oauth2.GtPassword},

@@ -2,6 +2,7 @@ package authorize
 
 import (
 	"fmt"
+	"github.com/lestrrat-go/jwx/v4/jwt"
 	"github.com/webishdev/stopnik/internal/config"
 	"github.com/webishdev/stopnik/internal/endpoint"
 	internalHttp "github.com/webishdev/stopnik/internal/http"
@@ -450,8 +451,8 @@ func Test_AuthorizeInvalidResponseType(t *testing.T) {
 		t.Errorf("error type could not be parsed: %v", errorQueryParameter)
 	}
 
-	if errorType != oauth2.AuthorizationEtInvalidRequest {
-		t.Errorf("error type was not Invalid: %v", errorQueryParameter)
+	if errorType != oauth2.AuthorizationEtUnsupportedResponseType {
+		t.Errorf("error type was not unsupported response type: %v", errorQueryParameter)
 	}
 }
 
@@ -1502,6 +1503,153 @@ func Test_AuthorizeCodeChallengeValidation(t *testing.T) {
 			}
 			if location.Query().Get(oauth2.ParameterErrorDescription) == "" {
 				t.Error("expected an error description")
+			}
+		})
+	}
+}
+
+func Test_AuthorizeResponseTypes(t *testing.T) {
+	createTestConfig(t)
+
+	type responseTypeParameter struct {
+		name          string
+		responseType  string
+		scope         string
+		nonce         string
+		expectedError oauth2.AuthorizationErrorType
+	}
+
+	var responseTypeParameters = []responseTypeParameter{
+		{"ID token", "id_token", "openid", "abc", ""},
+		{"ID token and token", "id_token token", "openid", "abc", ""},
+		{"Token and ID token in other order", "token id_token", "openid", "abc", ""},
+		{"Missing response type", "", "openid", "abc", oauth2.AuthorizationEtInvalidRequest},
+		{"Hybrid code id_token", "code id_token", "openid", "abc", oauth2.AuthorizationEtUnsupportedResponseType},
+		{"Hybrid code token", "code token", "openid", "abc", oauth2.AuthorizationEtUnsupportedResponseType},
+		{"Hybrid code id_token token", "code id_token token", "openid", "abc", oauth2.AuthorizationEtUnsupportedResponseType},
+		{"Duplicate response type", "token token", "openid", "abc", oauth2.AuthorizationEtUnsupportedResponseType},
+		{"Password is no response type", "password", "openid", "abc", oauth2.AuthorizationEtUnsupportedResponseType},
+		{"Client credentials is no response type", "client_credentials", "openid", "abc", oauth2.AuthorizationEtUnsupportedResponseType},
+		{"ID token without nonce", "id_token", "openid", "", oauth2.AuthorizationEtInvalidRequest},
+		{"ID token and token without nonce", "id_token token", "openid", "", oauth2.AuthorizationEtInvalidRequest},
+		{"ID token without openid scope", "id_token", "profile", "abc", oauth2.AuthorizationEtInvalidRequest},
+	}
+
+	for _, test := range responseTypeParameters {
+		t.Run(test.name, func(t *testing.T) {
+			parsedUri := createUri(t, endpoint.Authorization, func(query url.Values) {
+				query.Set(oauth2.ParameterClientId, "sso-oidc")
+				query.Set(oauth2.ParameterRedirectUri, "https://example.com/callback")
+				query.Set(oauth2.ParameterResponseType, test.responseType)
+				query.Set(oauth2.ParameterScope, test.scope)
+				if test.nonce != "" {
+					query.Set(oidc.ParameterNonce, test.nonce)
+				}
+			})
+			authorizeHandler := NewAuthorizeHandler(validation.NewRequestValidator(), cookie.GetCookieManagerInstance(), session.GetAuthSessionManagerInstance(), session.GetAuthorizationCodeManagerInstance(), session.GetLoginSessionManagerInstance(), token.GetTokenManagerInstance(), template.GetTemplateManagerInstance())
+
+			rr := httptest.NewRecorder()
+			authorizeHandler.ServeHTTP(rr, httptest.NewRequest(http.MethodGet, parsedUri.String(), nil))
+
+			if test.expectedError == "" {
+				if rr.Code != http.StatusOK {
+					t.Errorf("expected login page, got %v %s", rr.Code, rr.Header().Get(internalHttp.Location))
+				}
+				return
+			}
+			location, locationError := rr.Result().Location()
+			if locationError != nil {
+				t.Fatalf("location was not provided: %v", locationError)
+			}
+			if errorParameter := location.Query().Get(oauth2.ParameterError); errorParameter != string(test.expectedError) {
+				t.Errorf("error %s did not match %s", errorParameter, test.expectedError)
+			}
+		})
+	}
+}
+
+func Test_AuthorizeIdTokenWithLogin(t *testing.T) {
+	createTestConfig(t)
+
+	type idTokenParameter struct {
+		responseType        string
+		expectedAccessToken bool
+	}
+
+	for _, test := range []idTokenParameter{{"id_token", false}, {"id_token token", true}} {
+		t.Run(test.responseType, func(t *testing.T) {
+			parsedUri := createUri(t, endpoint.Authorization, func(query url.Values) {
+				query.Set(oauth2.ParameterClientId, "sso-oidc")
+				query.Set(oauth2.ParameterRedirectUri, "https://example.com/callback")
+				query.Set(oauth2.ParameterResponseType, test.responseType)
+				query.Set(oauth2.ParameterScope, "openid")
+				query.Set(oauth2.ParameterState, "xyz")
+				query.Set(oidc.ParameterNonce, "abc")
+			})
+			requestValidator := validation.NewRequestValidator()
+			authSessionManager := session.GetAuthSessionManagerInstance()
+			templateManager := template.GetTemplateManagerInstance()
+			authorizeHandler := NewAuthorizeHandler(requestValidator, cookie.GetCookieManagerInstance(), authSessionManager, session.GetAuthorizationCodeManagerInstance(), session.GetLoginSessionManagerInstance(), token.GetTokenManagerInstance(), templateManager)
+
+			// A fresh browser gets the login page, the auth session is stored for the form post
+			authSessionCount := authSessionManager.SessionCount()
+			loginPage := httptest.NewRecorder()
+			authorizeHandler.ServeHTTP(loginPage, httptest.NewRequest(http.MethodGet, parsedUri.String(), nil))
+			if loginPage.Code != http.StatusOK {
+				t.Fatalf("expected login page, got %v", loginPage.Code)
+			}
+			if authSessionManager.SessionCount() != authSessionCount+1 {
+				t.Fatal("expected the auth session to be stored before the login page")
+			}
+
+			var authSessionId string
+			for _, authSession := range authSessionManager.(*session.AuthManager).Sessions() {
+				if authSession.AuthURI == parsedUri.RequestURI() {
+					authSessionId = authSession.Id
+				}
+			}
+			if authSessionId == "" {
+				t.Fatal("auth session not found")
+			}
+
+			bodyString := testCreateBody(
+				"stopnik_auth_session", requestValidator.NewLoginToken(authSessionId),
+				"stopnik_username", "foo",
+				"stopnik_password", "bar",
+			)
+			request := httptest.NewRequest(http.MethodPost, parsedUri.String(), strings.NewReader(bodyString))
+			request.Header.Add(internalHttp.ContentType, "application/x-www-form-urlencoded")
+			rr := httptest.NewRecorder()
+			authorizeHandler.ServeHTTP(rr, request)
+
+			if rr.Code != http.StatusFound {
+				t.Fatalf("handler returned wrong status code: got %v want %v", rr.Code, http.StatusFound)
+			}
+			location, locationError := rr.Result().Location()
+			if locationError != nil {
+				t.Fatalf("location was not provided: %v", locationError)
+			}
+			fragment := testFragmentValues(t, location)
+			if fragment.Get(oidc.ParameterIdToken) == "" || fragment.Get(oauth2.ParameterState) != "xyz" {
+				t.Errorf("expected id token and state in the fragment, got %v", fragment)
+			}
+			if location.Query().Get(oidc.ParameterIdToken) != "" {
+				t.Error("id token must not be part of the query")
+			}
+			if hasAccessToken := fragment.Get(oauth2.ParameterAccessToken) != ""; hasAccessToken != test.expectedAccessToken {
+				t.Errorf("access token in fragment %t, expected %t", hasAccessToken, test.expectedAccessToken)
+			}
+
+			idToken, parseError := jwt.ParseInsecure([]byte(fragment.Get(oidc.ParameterIdToken)))
+			if parseError != nil {
+				t.Fatal(parseError)
+			}
+			if nonce, _ := idToken.Field(oidc.ClaimNonce); nonce != "abc" {
+				t.Errorf("expected nonce abc, got %v", nonce)
+			}
+			// https://openid.net/specs/openid-connect-core-1_0.html#ImplicitIDToken
+			if idToken.Has(oidc.ClaimAtHash) != test.expectedAccessToken {
+				t.Errorf("at_hash present %t, expected %t", idToken.Has(oidc.ClaimAtHash), test.expectedAccessToken)
 			}
 		})
 	}

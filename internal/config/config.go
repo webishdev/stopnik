@@ -644,6 +644,7 @@ func (config *Config) GetSupportedGrantTypes() []oauth2.GrantType {
 }
 
 // GetSupportedResponseTypes returns the response types which at least one of the currently loaded clients is allowed to use.
+// The ID token response types are only supported for OpenId Connect clients with the implicit grant.
 func (config *Config) GetSupportedResponseTypes() []oauth2.ResponseType {
 	var supportedResponseTypes []oauth2.ResponseType
 	for _, grantType := range config.GetSupportedGrantTypes() {
@@ -653,6 +654,12 @@ func (config *Config) GetSupportedResponseTypes() []oauth2.ResponseType {
 		case oauth2.GtImplicit:
 			supportedResponseTypes = append(supportedResponseTypes, oauth2.RtToken)
 		}
+	}
+	oidcImplicitAllowed := slices.ContainsFunc(config.GetClients(), func(client *Client) bool {
+		return client.Oidc && client.IsGrantTypeAllowed(oauth2.GtImplicit)
+	})
+	if oidcImplicitAllowed {
+		supportedResponseTypes = append(supportedResponseTypes, oauth2.RtIdToken, oauth2.RtIdTokenToken)
 	}
 	return supportedResponseTypes
 }

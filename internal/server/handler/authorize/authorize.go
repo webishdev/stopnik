@@ -16,7 +16,6 @@ import (
 	"github.com/webishdev/stopnik/internal/pkce"
 	"github.com/webishdev/stopnik/internal/server/handler/error"
 	"github.com/webishdev/stopnik/internal/server/validation"
-	"github.com/webishdev/stopnik/internal/system"
 	"github.com/webishdev/stopnik/internal/template"
 	"github.com/webishdev/stopnik/log"
 	"net/http"
@@ -244,6 +243,12 @@ func (h *Handler) handleAuthorizeRequest(w http.ResponseWriter, r *http.Request,
 		return
 	}
 
+	invalidIdTokenRequestHandler := h.validateIdTokenRequest(client, responseTypes, authorizeRequest, redirectURL)
+	if invalidIdTokenRequestHandler != nil {
+		invalidIdTokenRequestHandler.ServeHTTP(w, r)
+		return
+	}
+
 	user, loginSession, validCookie := h.cookieManager.ValidateAuthCookie(r)
 
 	promptType, invalidPromptTypeHandler := h.validatePromptType(client, authorizeRequest, validCookie, redirectURL)
@@ -268,17 +273,13 @@ func (h *Handler) handleAuthorizeRequest(w http.ResponseWriter, r *http.Request,
 
 		sendFound(w, redirectURL, query, useFragment(responseTypes))
 	} else {
-		idTokenRequest := slices.Contains(responseTypes, oauth2.RtIdToken) && len(responseTypes) == 1
-
-		if !idTokenRequest {
-			// Every authorization request which needs a login creates a session, limit them to avoid running out of memory
-			if h.authSessionManager.SessionCount() >= maxAuthSessions {
-				log.Error("Too many open authorization sessions, rejecting authorization request for client %s", client.Id)
-				oauth2.AuthorizationErrorResponseHandler(w, redirectURL, authorizeRequest.stateParameter, &oauth2.AuthorizationErrorResponseParameter{Error: oauth2.AuthorizationEtTemporaryUnavailable})
-				return
-			}
-			h.authSessionManager.StartSession(authSession)
+		// Every authorization request which needs a login creates a session, limit them to avoid running out of memory
+		if h.authSessionManager.SessionCount() >= maxAuthSessions {
+			log.Error("Too many open authorization sessions, rejecting authorization request for client %s", client.Id)
+			oauth2.AuthorizationErrorResponseHandler(w, redirectURL, authorizeRequest.stateParameter, &oauth2.AuthorizationErrorResponseParameter{Error: oauth2.AuthorizationEtTemporaryUnavailable})
+			return
 		}
+		h.authSessionManager.StartSession(authSession)
 
 		// Show login page
 		h.sendLogin(w, r, authSession.Id)
@@ -426,17 +427,53 @@ func (h *Handler) validateGrantAndScopes(client *config.Client, responseTypes []
 	return nil
 }
 
+// validResponseTypes parses the response types and accepts only the supported combinations.
+// https://datatracker.ietf.org/doc/html/rfc6749#section-3.1.1
+// Hybrid flows (code id_token, code token, code id_token token) are not supported.
 func (h *Handler) validResponseTypes(authorizeRequest *authorizeRequestValues, client *config.Client, redirectURL *url.URL) ([]oauth2.ResponseType, http.Handler) {
-	responseTypes, validResponseTypes := h.getResponseTypes(authorizeRequest.responseTypeParameter)
-	if !validResponseTypes {
-		log.Error("Invalid %s parameter with value %s for client %s", oauth2.ParameterResponseType, authorizeRequest.responseTypeParameter, client.Id)
-		errorMessage := fmt.Sprintf("Invalid %s parameter value", oauth2.ParameterResponseType)
+	if authorizeRequest.responseTypeParameter == "" {
+		log.Error("Missing %s parameter for client %s", oauth2.ParameterResponseType, client.Id)
+		errorMessage := fmt.Sprintf("Missing %s parameter", oauth2.ParameterResponseType)
 		authorizeError := &oauth2.AuthorizationErrorResponseParameter{Error: oauth2.AuthorizationEtInvalidRequest, Description: errorMessage}
 		return nil, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			oauth2.AuthorizationErrorResponseHandler(w, redirectURL, authorizeRequest.stateParameter, authorizeError)
 		})
 	}
+	responseTypes, validResponseTypes := getResponseTypes(authorizeRequest.responseTypeParameter)
+	if !validResponseTypes {
+		log.Error("Unsupported %s parameter with value %s for client %s", oauth2.ParameterResponseType, authorizeRequest.responseTypeParameter, client.Id)
+		errorMessage := fmt.Sprintf("Unsupported %s parameter value", oauth2.ParameterResponseType)
+		authorizeError := &oauth2.AuthorizationErrorResponseParameter{Error: oauth2.AuthorizationEtUnsupportedResponseType, Description: errorMessage}
+		return nil, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			oauth2.AuthorizationErrorResponseHandler(w, redirectURL, authorizeRequest.stateParameter, authorizeError)
+		})
+	}
 	return responseTypes, nil
+}
+
+// validateIdTokenRequest validates requests for an ID token from the authorization endpoint.
+// https://openid.net/specs/openid-connect-core-1_0.html#ImplicitAuthRequest
+// The client must use OpenId Connect, request the openid scope and send a nonce.
+func (h *Handler) validateIdTokenRequest(client *config.Client, responseTypes []oauth2.ResponseType, authorizeRequest *authorizeRequestValues, redirectURL *url.URL) http.Handler {
+	if !slices.Contains(responseTypes, oauth2.RtIdToken) {
+		return nil
+	}
+	var errorMessage string
+	if !client.Oidc {
+		errorMessage = "ID token requested by a client without OpenID Connect"
+	} else if !oidc.HasOidcScope(authorizeRequest.requestedScopes) {
+		errorMessage = fmt.Sprintf("ID token requested without %s scope", oidc.ScopeOpenId)
+	} else if authorizeRequest.nonceParameter == "" {
+		errorMessage = fmt.Sprintf("ID token requested without %s", oidc.ParameterNonce)
+	}
+	if errorMessage == "" {
+		return nil
+	}
+	log.Error("Invalid ID token request for client %s: %s", client.Id, errorMessage)
+	authorizeError := &oauth2.AuthorizationErrorResponseParameter{Error: oauth2.AuthorizationEtInvalidRequest, Description: errorMessage}
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		oauth2.AuthorizationErrorResponseHandler(w, redirectURL, authorizeRequest.stateParameter, authorizeError)
+	})
 }
 
 func (h *Handler) validateRedirect(client *config.Client, redirect string) http.Handler {
@@ -469,9 +506,16 @@ func (h *Handler) createLocationResponseQuery(r *http.Request, redirectURL *url.
 	authTime := loginSession.StartTime
 	if slices.Contains(responseTypes, oauth2.RtToken) {
 		// https://datatracker.ietf.org/doc/html/rfc6749#section-4.2.2
-		// The implicit grant must not issue a refresh token, so none is created
+		// The implicit grant must not issue a refresh token, so none is created,
+		// for response_type=id_token token the ID token contains the at_hash of the access token
 		accessTokenResponse := h.tokenManager.CreateAccessTokenResponseWithoutRefreshToken(r, user.Username, client, &authTime, authSession.Scopes, authSession.RequestedClaims, authSession.Nonce)
 		setImplicitGrantParameter(query, accessTokenResponse)
+		if slices.Contains(responseTypes, oauth2.RtIdToken) {
+			idToken = accessTokenResponse.IdTokenValue
+			if idToken == "" {
+				return nil, &oauth2.AuthorizationErrorResponseParameter{Error: oauth2.AuthorizationEtServerError}
+			}
+		}
 	} else if slices.Contains(responseTypes, oauth2.RtCode) {
 		// Tokens are only created when the code is exchanged at the token endpoint
 		authorizationCode, authorizationCodeIssued := h.issueAuthorizationCode(user, client, authSession, loginSession)
@@ -479,10 +523,10 @@ func (h *Handler) createLocationResponseQuery(r *http.Request, redirectURL *url.
 			return nil, &oauth2.AuthorizationErrorResponseParameter{Error: oauth2.AuthorizationEtTemporaryUnavailable}
 		}
 		setAuthorizationGrantParameter(query, authorizationCode.Code)
-	} else if slices.Contains(responseTypes, oauth2.RtIdToken) && len(responseTypes) == 1 {
+	} else if slices.Contains(responseTypes, oauth2.RtIdToken) {
 		idToken = h.tokenManager.CreateIdToken(r, user.Username, client, &authTime, authSession.Scopes, authSession.RequestedClaims, authSession.Nonce)
 		if idToken == "" {
-			system.CriticalError(errors.New("no id_token created"))
+			return nil, &oauth2.AuthorizationErrorResponseParameter{Error: oauth2.AuthorizationEtServerError}
 		}
 	} else {
 		log.Error("Invalid response type %v", responseTypes)
@@ -563,17 +607,34 @@ func (h *Handler) forceLogin(loginSession *session.LoginSession, promptType *oid
 	return false
 }
 
-func (h *Handler) getResponseTypes(responseTypeQueryParameter string) ([]oauth2.ResponseType, bool) {
+// supportedResponseTypes are the accepted combinations of response types.
+var supportedResponseTypes = [][]oauth2.ResponseType{
+	{oauth2.RtCode},
+	{oauth2.RtToken},
+	{oauth2.RtIdToken},
+	{oauth2.RtIdToken, oauth2.RtToken},
+}
+
+// getResponseTypes parses the space-delimited response types, unknown, duplicate and unsupported combinations are rejected.
+// https://datatracker.ietf.org/doc/html/rfc6749#section-3.1.1
+// The order of the values does not matter.
+func getResponseTypes(responseTypeQueryParameter string) ([]oauth2.ResponseType, bool) {
 	var responseTypes []oauth2.ResponseType
-	responseTypeQueryParameters := strings.Split(responseTypeQueryParameter, " ")
-	for _, currentQueryParameter := range responseTypeQueryParameters {
+	for _, currentQueryParameter := range strings.Split(responseTypeQueryParameter, " ") {
 		responseType, validResponseType := oauth2.ResponseTypeFromString(currentQueryParameter)
-		if !validResponseType {
+		if !validResponseType || slices.Contains(responseTypes, responseType) {
 			return nil, false
 		}
 		responseTypes = append(responseTypes, responseType)
 	}
-	return responseTypes, true
+	for _, supported := range supportedResponseTypes {
+		if len(supported) == len(responseTypes) && !slices.ContainsFunc(responseTypes, func(responseType oauth2.ResponseType) bool {
+			return !slices.Contains(supported, responseType)
+		}) {
+			return responseTypes, true
+		}
+	}
+	return nil, false
 }
 
 func setAuthorizationGrantParameter(query url.Values, code string) {

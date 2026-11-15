@@ -59,6 +59,10 @@ Following the [OAuth 2.0 Security Best Current Practice](https://datatracker.iet
 - the authorization endpoint only creates the tokens the `response_type` needs, the implicit and the client credentials
   grant never issue refresh tokens
 - tokens of the implicit grant are returned in the fragment of the redirect URI, not in the query
+- the supported `response_type` values are `code`, `token`, `id_token` and `id_token token`,
+  hybrid flows like `code id_token` and duplicate values are rejected with `unsupported_response_type`
+- `id_token` and `id_token token` require a client with `oidc` enabled, the `openid` scope and a `nonce`,
+  for `id_token token` the ID token contains the `at_hash` of the access token
 - request objects (`request` parameter) are not supported and rejected with `request_not_supported`
 
 Errors of the token endpoint follow [RFC 6749](https://datatracker.ietf.org/doc/html/rfc6749#section-5.2),

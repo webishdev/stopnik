@@ -41,8 +41,8 @@ func Test_ResponseTypeFromString(t *testing.T) {
 	var responseTypeParameters = []parameter{
 		{string(RtCode), true, "code"},
 		{string(RtToken), true, "token"},
-		{string(RtPassword), true, "password"},
-		{string(RtClientCredentials), true, "client_credentials"},
+		{"password", false, ""},
+		{"client_credentials", false, ""},
 		{string(RtIdToken), true, "id_token"},
 		{"foo", false, ""},
 	}

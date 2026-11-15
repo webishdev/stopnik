@@ -27,19 +27,17 @@ var grantTypeMap = map[string]GrantType{
 type ResponseType string
 
 const (
-	RtCode              ResponseType = "code"
-	RtToken             ResponseType = "token"
-	RtPassword          ResponseType = "password" // aka "implicit" grant
-	RtClientCredentials ResponseType = "client_credentials"
-	RtIdToken           ResponseType = "id_token"
+	RtCode    ResponseType = "code"
+	RtToken   ResponseType = "token"
+	RtIdToken ResponseType = "id_token" // https://openid.net/specs/openid-connect-core-1_0.html#Authentication
+	// RtIdTokenToken is the combination of id_token and token, only used to advertise the supported response types
+	RtIdTokenToken ResponseType = "id_token token"
 )
 
 var responseTypeMap = map[string]ResponseType{
-	"code":               RtCode,
-	"token":              RtToken,
-	"password":           RtPassword,
-	"client_credentials": RtClientCredentials,
-	"id_token":           RtIdToken,
+	"code":     RtCode,
+	"token":    RtToken,
+	"id_token": RtIdToken,
 }
 
 // ClientType as described in https://datatracker.ietf.org/doc/html/rfc6749#section-2.1
