@@ -32,15 +32,19 @@ func GetLoginSessionManagerInstance() LoginManager[LoginSession] {
 	loginSessionManagerLock.Lock()
 	defer loginSessionManagerLock.Unlock()
 	if loginSessionManagerSingleton == nil {
-		currentConfig := config.GetConfigInstance()
-		duration := time.Minute * time.Duration(currentConfig.GetSessionTimeoutSeconds())
-		loginSessionStore := store.NewTimedStore[LoginSession](duration)
-		loginSessionManagerSingleton = &loginManager{
-			config:            currentConfig,
-			loginSessionStore: &loginSessionStore,
-		}
+		loginSessionManagerSingleton = newLoginManager(config.GetConfigInstance(), store.NewTimer())
 	}
 	return loginSessionManagerSingleton
+}
+
+// newLoginManager creates a login manager, whose sessions expire after the configured session timeout.
+func newLoginManager(currentConfig *config.Config, timer *store.Timer) *loginManager {
+	duration := time.Second * time.Duration(currentConfig.GetSessionTimeoutSeconds())
+	loginSessionStore := store.NewTimedStoreWithTimer[LoginSession](duration, timer)
+	return &loginManager{
+		config:            currentConfig,
+		loginSessionStore: &loginSessionStore,
+	}
 }
 
 func (loginManager *loginManager) StartSession(loginSession *LoginSession) {
