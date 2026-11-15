@@ -1643,3 +1643,36 @@ func Test_LegacyHashWarning(t *testing.T) {
 		t.Error("did not expect warning for client without legacy hash")
 	}
 }
+
+func Test_ServerAddresses(t *testing.T) {
+	type addressParameter struct {
+		name    string
+		addr    string
+		tlsAddr string
+		valid   bool
+	}
+
+	var addressParameters = []addressParameter{
+		{"HTTP only", ":8080", "", true},
+		{"TLS only", "", ":8443", true},
+		{"HTTP and TLS", ":8080", ":8443", true},
+		{"No address", "", "", false},
+	}
+
+	for _, test := range addressParameters {
+		t.Run(test.name, func(t *testing.T) {
+			testConfig := &Config{Server: Server{
+				Addr:   test.addr,
+				Issuer: "https://auth.example.com",
+				TLS:    TLS{Addr: test.tlsAddr, Keys: Keys{Cert: "foo.crt", Key: "foo.key"}},
+			}}
+			validationError := testConfig.Validate()
+			if test.valid && validationError != nil {
+				t.Errorf("did not expect validation error, %v", validationError)
+			}
+			if !test.valid && validationError == nil {
+				t.Error("expected validation error")
+			}
+		})
+	}
+}

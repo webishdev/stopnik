@@ -1,6 +1,7 @@
 package server
 
 import (
+	"crypto/tls"
 	"errors"
 	"fmt"
 	"net"
@@ -220,21 +221,45 @@ func Test_Server(t *testing.T) {
 }
 
 func Test_SetSecurityHeaders(t *testing.T) {
-	rr := httptest.NewRecorder()
-
-	setSecurityHeaders(rr)
-
 	expectedHeaders := map[string]string{
 		"X-Frame-Options":         "DENY",
-		"Content-Security-Policy": "frame-ancestors 'none'",
+		"Content-Security-Policy": "default-src 'none'; style-src 'self'; img-src 'self' data:; base-uri 'none'; frame-ancestors 'none'",
 		"X-Content-Type-Options":  "nosniff",
 		"Referrer-Policy":         "no-referrer",
 		"Cache-Control":           "no-store",
 	}
 
-	for name, expected := range expectedHeaders {
-		if value := rr.Header().Get(name); value != expected {
-			t.Errorf("header %s was %q, expected %q", name, value, expected)
-		}
+	type hstsParameter struct {
+		name         string
+		issuer       string
+		tls          bool
+		expectedHSTS string
+	}
+
+	var hstsParameters = []hstsParameter{
+		{"Plain HTTP with HTTP issuer", "http://localhost:8080", false, ""},
+		{"TLS request", "http://localhost:8080", true, "max-age=31536000; includeSubDomains"},
+		{"HTTPS issuer behind TLS-terminating proxy", "https://auth.example.com", false, "max-age=31536000; includeSubDomains"},
+	}
+
+	for _, test := range hstsParameters {
+		t.Run(test.name, func(t *testing.T) {
+			rr := httptest.NewRecorder()
+			request := httptest.NewRequest(http.MethodGet, "/account", nil)
+			if test.tls {
+				request.TLS = &tls.ConnectionState{}
+			}
+
+			setSecurityHeaders(rr, request, &config.Config{Server: config.Server{Issuer: test.issuer}})
+
+			for name, expected := range expectedHeaders {
+				if value := rr.Header().Get(name); value != expected {
+					t.Errorf("header %s was %q, expected %q", name, value, expected)
+				}
+			}
+			if value := rr.Header().Get("Strict-Transport-Security"); value != test.expectedHSTS {
+				t.Errorf("Strict-Transport-Security was %q, expected %q", value, test.expectedHSTS)
+			}
+		})
 	}
 }

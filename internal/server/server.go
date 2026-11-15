@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"crypto/tls"
 	"errors"
 	"github.com/webishdev/stopnik/internal/config"
 	"github.com/webishdev/stopnik/internal/endpoint"
@@ -27,6 +28,7 @@ import (
 	"github.com/webishdev/stopnik/log"
 	"net"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 )
@@ -36,10 +38,11 @@ type ListenAndServe func(stopnikServer *StopnikServer, listener *net.Listener, s
 type middlewareHandler struct {
 	next   http.Handler
 	assets *assets.Handler
+	config *config.Config
 }
 
 func (mh middlewareHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	setSecurityHeaders(w)
+	setSecurityHeaders(w, r, mh.config)
 	if mh.assets.Matches(r) {
 		mh.assets.ServeHTTP(w, r)
 	} else {
@@ -47,14 +50,27 @@ func (mh middlewareHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// contentSecurityPolicy only allows the stylesheet, images and forms of STOPnik itself.
+// form-action is not restricted, as browsers apply it to the redirect after the login form,
+// which leads to the redirect URI of the client on another origin.
+const contentSecurityPolicy = "default-src 'none'; style-src 'self'; img-src 'self' data:; base-uri 'none'; frame-ancestors 'none'"
+
+// strictTransportSecurity tells browsers to use HTTPS only for one year.
+// https://datatracker.ietf.org/doc/html/rfc6797
+const strictTransportSecurity = "max-age=31536000; includeSubDomains"
+
 // setSecurityHeaders sets headers which protect the login and logout pages against clickjacking and content sniffing.
 // Responses are not cached by default, handlers like the assets handler may overwrite the Cache-Control header.
-func setSecurityHeaders(w http.ResponseWriter) {
+// HSTS is sent for TLS requests and when the configured issuer uses HTTPS, e.g. behind a TLS-terminating proxy.
+func setSecurityHeaders(w http.ResponseWriter, r *http.Request, currentConfig *config.Config) {
 	w.Header().Set(internalHttp.XFrameOptions, "DENY")
-	w.Header().Set(internalHttp.ContentSecurityPolicy, "frame-ancestors 'none'")
+	w.Header().Set(internalHttp.ContentSecurityPolicy, contentSecurityPolicy)
 	w.Header().Set(internalHttp.XContentTypeOptions, "nosniff")
 	w.Header().Set(internalHttp.ReferrerPolicy, "no-referrer")
 	w.Header().Set(internalHttp.CacheControl, "no-store")
+	if r.TLS != nil || (currentConfig != nil && strings.HasPrefix(currentConfig.GetIssuer(), "https://")) {
+		w.Header().Set(internalHttp.StrictTransportSecurity, strictTransportSecurity)
+	}
 }
 
 type StopnikServer struct {
@@ -98,6 +114,7 @@ func NewStopnikServer() *StopnikServer {
 		if stopnikServer.config.Server.TLS.Keys.Cert == "" || stopnikServer.config.Server.TLS.Keys.Key == "" {
 			return errors.New("TLS Keys not configured")
 		}
+		server.TLSConfig = &tls.Config{MinVersion: tls.VersionTLS12}
 		log.Info("Will accept TLS connections at %s", server.Addr)
 		return server.ServeTLS(*listener, stopnikServer.config.Server.TLS.Keys.Cert, stopnikServer.config.Server.TLS.Keys.Key)
 	}
@@ -111,6 +128,7 @@ func newStopnikServerWithServe(rwMutex *sync.RWMutex, mux *http.ServeMux, serve 
 	middleware := &middlewareHandler{
 		next:   mux,
 		assets: assets.NewAssetHandler(),
+		config: currentConfig,
 	}
 	return &StopnikServer{
 		config:            currentConfig,

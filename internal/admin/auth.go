@@ -105,14 +105,15 @@ func (auth *authenticator) logout(r *http.Request) {
 }
 
 // sessionCookie returns the session cookie for the given value, a negative maxAge removes the cookie.
-func sessionCookie(r *http.Request, basePath string, value string, maxAge int) *http.Cookie {
+// The cookie is secure for TLS requests and always when secure is set, e.g. behind a TLS-terminating proxy.
+func sessionCookie(r *http.Request, basePath string, value string, maxAge int, secure bool) *http.Cookie {
 	return &http.Cookie{
 		Name:     sessionCookieName,
 		Value:    value,
 		Path:     basePath + "/",
 		MaxAge:   maxAge,
 		HttpOnly: true,
-		Secure:   r.TLS != nil,
+		Secure:   secure || r.TLS != nil,
 		SameSite: http.SameSiteStrictMode,
 	}
 }

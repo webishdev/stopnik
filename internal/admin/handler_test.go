@@ -23,7 +23,7 @@ func setupHandler(t *testing.T) (string, *Store, http.Handler) {
 		Server: config.Server{Addr: ":8082", Secret: "very-secret-value"},
 		UI:     config.UI{Title: "Test realm"},
 	}
-	handler, handlerError := NewHandler(store, staticConfig, "")
+	handler, handlerError := NewHandler(store, staticConfig, "", false)
 	if handlerError != nil {
 		t.Fatal(handlerError)
 	}
@@ -171,7 +171,7 @@ func Test_HandlerOverviewStaticConfig(t *testing.T) {
 		}
 	}
 
-	withoutConfig, handlerError := NewHandler(store, nil, "")
+	withoutConfig, handlerError := NewHandler(store, nil, "", false)
 	if handlerError != nil {
 		t.Fatal(handlerError)
 	}
@@ -443,7 +443,7 @@ func Test_HandlerRejectsCrossOriginPost(t *testing.T) {
 
 func Test_HandlerBasePath(t *testing.T) {
 	baseDir, store := setupStore(t)
-	handler, handlerError := NewHandler(store, &config.Config{}, "admin/")
+	handler, handlerError := NewHandler(store, &config.Config{}, "admin/", false)
 	if handlerError != nil {
 		t.Fatal(handlerError)
 	}

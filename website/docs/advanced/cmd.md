@@ -93,9 +93,14 @@ Usage of ./stopnik-admin:
         Configuration directory containing config.toml, client.d, user.d and classification.d (default ".config/default")
   -help
         Show help message
+  -secure-cookie
+        Always mark the session cookie as secure, use it behind a TLS-terminating proxy
   -version
         Show version information
 ```
+
+The session cookie is marked as `Secure` for TLS requests. Behind a TLS-terminating proxy use `-secure-cookie`,
+which also sends `Strict-Transport-Security`.
 
 With `-base-path` all pages are served below the given path, e.g. `-base-path /admin` serves the overview at `/admin/`,
 which allows to make the admin web user interface available through a reverse proxy next to **STOPnik**.

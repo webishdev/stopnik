@@ -66,7 +66,7 @@ Root entry named `server`
 | Property                      | Description                                                                                       | Required |
 |-------------------------------|---------------------------------------------------------------------------------------------------|----------|
 | `logLevel`                    | Log level                                                                                         | No       |
-| `addr`                        | [Go like address](https://pkg.go.dev/net#Dial), may contain IP and port                           | Yes      |
+| `addr`                        | [Go like address](https://pkg.go.dev/net#Dial), may contain IP and port, see [TLS](#tls)          | Yes      |
 | `basePath`                    | Path prefix for all endpoints, see [Base path](#base-path)                                        | No       |
 | [`cookies`](#cookies)         | Configuration related to cookie names                                                             | No       |
 | `secureCookie`                | Only send cookies via HTTPS, defaults to `true`                                                   | No       |
@@ -146,7 +146,12 @@ Set `secureCookie: false` only for local development via plain HTTP on other hos
 
 #### TLS
 
-Public and private keys to sign tokens
+Configuration of the HTTPS listener, which accepts TLS 1.2 and newer.
+
+At least one of `server.addr` and `server.tls.addr` is required, so **STOPnik** can also run with HTTPS only.
+
+When a request uses TLS, or when the configured `issuer` uses `https`, e.g. behind a TLS-terminating proxy,
+responses contain `Strict-Transport-Security: max-age=31536000; includeSubDomains`.
 
 Entry `server.tls`
 

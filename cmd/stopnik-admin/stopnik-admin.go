@@ -29,6 +29,7 @@ func main() {
 	addr := flag.String("addr", "localhost:9999", "Address the admin web user interface listens to, e.g. 0.0.0.0:9999")
 	basePath := flag.String("base-path", "", "Path prefix the admin web user interface is served under, e.g. /admin")
 	configurationDir := flag.String("config-dir", ".config/default", "Configuration directory containing config.toml, client.d, user.d and classification.d")
+	secureCookie := flag.Bool("secure-cookie", false, "Always mark the session cookie as secure, use it behind a TLS-terminating proxy")
 	flag.Parse()
 
 	if *isHelp {
@@ -40,7 +41,7 @@ func main() {
 		os.Exit(0)
 	}
 
-	if startError := start(*addr, *basePath, *configurationDir); startError != nil {
+	if startError := start(*addr, *basePath, *configurationDir, *secureCookie); startError != nil {
 		fmt.Printf("STOPnik Admin %s - %s\n\n", Version, GitHash)
 		fmt.Printf("%v\n", startError)
 		os.Exit(1)
@@ -49,7 +50,7 @@ func main() {
 
 // start serves the admin web user interface below basePath for the dynamic configuration inside configurationDir.
 // Only users with the admin flag can sign in to the web user interface.
-func start(addr string, basePath string, configurationDir string) error {
+func start(addr string, basePath string, configurationDir string, secureCookie bool) error {
 	configLoader := config.NewConfigLoader(os.ReadFile, toml.Unmarshal)
 	if configError := configLoader.LoadConfig(configurationDir, true); configError != nil {
 		return configError
@@ -61,7 +62,7 @@ func start(addr string, basePath string, configurationDir string) error {
 	logger.Info("Managing clients in %s, users in %s and classifications in %s", currentConfig.GetClientsDir(), currentConfig.GetUsersDir(), currentConfig.GetClassificationsDir())
 
 	store := admin.NewStore(currentConfig.GetClientsDir(), currentConfig.GetUsersDir(), currentConfig.GetClassificationsDir(), key.ValidateClientKey, currentConfig.GetAllowLegacyHashes())
-	handler, handlerError := admin.NewHandler(store, currentConfig, basePath)
+	handler, handlerError := admin.NewHandler(store, currentConfig, basePath, secureCookie)
 	if handlerError != nil {
 		return handlerError
 	}

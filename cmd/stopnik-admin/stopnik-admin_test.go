@@ -30,7 +30,7 @@ issuer = "http://localhost:8080"
 				t.Fatal(writeError)
 			}
 
-			startError := start("localhost:-1", test.basePath, dir)
+			startError := start("localhost:-1", test.basePath, dir, false)
 
 			if startError == nil {
 				t.Error("Expected error")
@@ -39,7 +39,7 @@ issuer = "http://localhost:8080"
 	}
 
 	t.Run("Missing directory", func(t *testing.T) {
-		startError := start("localhost:-1", "", filepath.Join(t.TempDir(), "missing"))
+		startError := start("localhost:-1", "", filepath.Join(t.TempDir(), "missing"), false)
 
 		if startError == nil {
 			t.Error("Expected error")

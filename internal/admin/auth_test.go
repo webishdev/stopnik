@@ -1,6 +1,7 @@
 package admin
 
 import (
+	"crypto/tls"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -15,7 +16,7 @@ import (
 func setupUnauthenticatedHandler(t *testing.T) (string, *Store, http.Handler) {
 	t.Helper()
 	baseDir, store := setupStore(t)
-	handler, handlerError := NewHandler(store, &config.Config{}, "")
+	handler, handlerError := NewHandler(store, &config.Config{}, "", false)
 	if handlerError != nil {
 		t.Fatal(handlerError)
 	}
@@ -208,5 +209,33 @@ func Test_AuthOwnUser(t *testing.T) {
 				t.Errorf("expected other administrator to be deleted, got %d", recorder.Code)
 			}
 		}
+	}
+}
+
+func Test_AuthSecureCookie(t *testing.T) {
+	type secureParameter struct {
+		name           string
+		secureCookie   bool
+		tls            bool
+		expectedSecure bool
+	}
+
+	var secureParameters = []secureParameter{
+		{"Plain HTTP", false, false, false},
+		{"TLS request", false, true, true},
+		{"Secure cookie behind TLS-terminating proxy", true, false, true},
+	}
+
+	for _, test := range secureParameters {
+		t.Run(test.name, func(t *testing.T) {
+			request := httptest.NewRequest(http.MethodPost, "/login", nil)
+			if test.tls {
+				request.TLS = &tls.ConnectionState{}
+			}
+			cookie := sessionCookie(request, "", "value", 60, test.secureCookie)
+			if cookie.Secure != test.expectedSecure {
+				t.Errorf("secure flag %t did not match %t", cookie.Secure, test.expectedSecure)
+			}
+		})
 	}
 }

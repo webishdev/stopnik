@@ -400,8 +400,8 @@ func ValidateClassification(classification *Classification) error {
 
 // validateServer validates the Server part of the current Config.
 func (config *Config) validateServer() error {
-	if config.Server.Addr == "" {
-		return errors.New("no server address provided")
+	if config.Server.Addr == "" && config.Server.TLS.Addr == "" {
+		return errors.New("no server address provided, configure server.addr or server.tls.addr")
 	}
 
 	if issuerError := validateIssuer(config.Server.Issuer); issuerError != nil {

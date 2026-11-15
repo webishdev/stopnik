@@ -17,6 +17,7 @@ const (
 	XContentTypeOptions      string = "X-Content-Type-Options"
 	ContentSecurityPolicy    string = "Content-Security-Policy"
 	ReferrerPolicy           string = "Referrer-Policy"
+	StrictTransportSecurity  string = "Strict-Transport-Security"
 )
 
 const (

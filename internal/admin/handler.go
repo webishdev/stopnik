@@ -32,6 +32,7 @@ type Handler struct {
 	routes    http.Handler
 	public    map[string]bool
 	auth      *authenticator
+	secure    bool
 
 	invalidCredentialsMessage string
 }
@@ -41,7 +42,8 @@ type Handler struct {
 // All pages are served below the optional basePath, e.g. /admin.
 // Only users with the administrator flag can sign in, all pages except the sign-in page and the assets require a signed-in administrator.
 // The returned handler sets security headers and rejects cross-origin requests which modify data.
-func NewHandler(store *Store, staticConfig *config.Config, basePath string) (http.Handler, error) {
+// With secureCookie the session cookie is always marked as secure, use it behind a TLS-terminating proxy.
+func NewHandler(store *Store, staticConfig *config.Config, basePath string, secureCookie bool) (http.Handler, error) {
 	basePath = normalizeBasePath(basePath)
 	templates, templateError := parseTemplates(basePath)
 	if templateError != nil {
@@ -65,6 +67,7 @@ func NewHandler(store *Store, staticConfig *config.Config, basePath string) (htt
 		mux:                       http.NewServeMux(),
 		public:                    map[string]bool{},
 		auth:                      newAuthenticator(store, sessionTimeout, trustedProxies),
+		secure:                    secureCookie,
 		invalidCredentialsMessage: invalidCredentialsMessage,
 	}
 	handler.routes = http.StripPrefix(basePath, http.HandlerFunc(handler.requireAdmin))
@@ -100,7 +103,10 @@ func NewHandler(store *Store, staticConfig *config.Config, basePath string) (htt
 
 func (handler *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set(internalHttp.XFrameOptions, "DENY")
-	w.Header().Set(internalHttp.ContentSecurityPolicy, "default-src 'self'; frame-ancestors 'none'")
+	w.Header().Set(internalHttp.ContentSecurityPolicy, "default-src 'self'; base-uri 'none'; frame-ancestors 'none'")
+	if r.TLS != nil || handler.secure {
+		w.Header().Set(internalHttp.StrictTransportSecurity, "max-age=31536000; includeSubDomains")
+	}
 	w.Header().Set(internalHttp.XContentTypeOptions, "nosniff")
 	w.Header().Set(internalHttp.ReferrerPolicy, "no-referrer")
 	w.Header().Set(internalHttp.CacheControl, "no-store")
@@ -169,14 +175,14 @@ func (handler *Handler) login(w http.ResponseWriter, r *http.Request) {
 	}
 	// a new session is used for every sign in, an existing session is ended
 	handler.auth.logout(r)
-	http.SetCookie(w, sessionCookie(r, handler.basePath, sessionId, int(handler.auth.sessionTimeout.Seconds())))
+	http.SetCookie(w, sessionCookie(r, handler.basePath, sessionId, int(handler.auth.sessionTimeout.Seconds()), handler.secure))
 	log.Info("User '%s' signed in", username)
 	http.Redirect(w, r, handler.basePath+"/", http.StatusSeeOther)
 }
 
 func (handler *Handler) logout(w http.ResponseWriter, r *http.Request) {
 	handler.auth.logout(r)
-	http.SetCookie(w, sessionCookie(r, handler.basePath, "", -1))
+	http.SetCookie(w, sessionCookie(r, handler.basePath, "", -1, handler.secure))
 	log.Info("User '%s' signed out", signedIn(r))
 	http.Redirect(w, r, handler.basePath+"/login", http.StatusSeeOther)
 }
