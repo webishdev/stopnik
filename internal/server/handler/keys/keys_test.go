@@ -24,7 +24,14 @@ type response struct {
 	Keys []responseKeys `json:"keys"`
 }
 
-func Test_Keys(t *testing.T) {
+var keysTestConfig *config.Config
+
+// initializeKeysTestConfig initializes the configuration once, as the key manager keeps the configuration it was created with.
+func initializeKeysTestConfig(t *testing.T) *config.Config {
+	t.Helper()
+	if keysTestConfig != nil {
+		return keysTestConfig
+	}
 	testConfigEntries := config.Entries{
 		Clients: []config.Client{
 			{
@@ -60,6 +67,12 @@ func Test_Keys(t *testing.T) {
 	if applyError := testConfig.ApplyEntries(testConfigEntries); applyError != nil {
 		t.Fatal(applyError)
 	}
+	keysTestConfig = testConfig
+	return testConfig
+}
+
+func Test_Keys(t *testing.T) {
+	initializeKeysTestConfig(t)
 
 	keyManger := key.GetKeyMangerInstance()
 
@@ -104,6 +117,61 @@ func Test_Keys(t *testing.T) {
 
 	if !containsRSA256 {
 		t.Error("key for RS256 was missing")
+	}
+}
+
+func Test_KeysFollowDynamicConfiguration(t *testing.T) {
+	testConfig := initializeKeysTestConfig(t)
+
+	keysHandler := NewKeysHandler(key.GetKeyMangerInstance())
+	keysHandler.config = testConfig
+
+	requestKeys := func() response {
+		rr := httptest.NewRecorder()
+		keysHandler.ServeHTTP(rr, httptest.NewRequest(http.MethodGet, endpoint.Keys, nil))
+		if rr.Code != http.StatusOK {
+			t.Fatalf("handler returned wrong status code: got %v want %v", rr.Code, http.StatusOK)
+		}
+		return testKeyParse(t, rr.Result())
+	}
+
+	containsAlgorithm := func(keys response, algorithm string) bool {
+		return slices.ContainsFunc(keys.Keys, func(r responseKeys) bool {
+			return r.Alg == algorithm
+		})
+	}
+
+	initialKeys := requestKeys()
+	if containsAlgorithm(initialKeys, jwa.ES384().String()) {
+		t.Fatal("ES384 key should not exist before the client was added")
+	}
+
+	applyError := testConfig.ApplyEntries(config.Entries{
+		Clients: []config.Client{
+			{
+				Id:         "new",
+				Redirects:  []string{"https://example.com/callback"},
+				PrivateKey: "../../../../.test_files/ecdsa384key.pem",
+			},
+		},
+	})
+	if applyError != nil {
+		t.Fatal(applyError)
+	}
+
+	updatedKeys := requestKeys()
+	if !containsAlgorithm(updatedKeys, jwa.ES384().String()) {
+		t.Error("key of the added client should be served after the dynamic configuration changed")
+	}
+
+	newKid := ""
+	for _, currentKey := range updatedKeys.Keys {
+		if currentKey.Alg == jwa.ES384().String() {
+			newKid = currentKey.Kid
+		}
+	}
+	if newKid == "" || slices.ContainsFunc(initialKeys.Keys, func(r responseKeys) bool { return r.Kid == newKid }) {
+		t.Errorf("expected a new kid, got %q", newKid)
 	}
 }
 
