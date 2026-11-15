@@ -77,6 +77,9 @@ const (
 	TokenEtInvalidScope         TokenErrorType = "invalid_scope"
 	// TokenEtUnsupportedTokenType https://datatracker.ietf.org/doc/html/rfc7009#section-2.2.1
 	TokenEtUnsupportedTokenType TokenErrorType = "unsupported_token_type"
+	// TokenEtInvalidToken and TokenEtInsufficientScope https://datatracker.ietf.org/doc/html/rfc6750#section-3.1
+	TokenEtInvalidToken      TokenErrorType = "invalid_token"
+	TokenEtInsufficientScope TokenErrorType = "insufficient_scope"
 )
 
 var tokenErrorTypeMap = map[string]TokenErrorType{
@@ -87,6 +90,8 @@ var tokenErrorTypeMap = map[string]TokenErrorType{
 	"unsupported_grant_type": TokenEtUnsupportedGrandType,
 	"invalid_scope":          TokenEtInvalidScope,
 	"unsupported_token_type": TokenEtUnsupportedTokenType,
+	"invalid_token":          TokenEtInvalidToken,
+	"insufficient_scope":     TokenEtInsufficientScope,
 }
 
 func AuthorizationErrorTypeFromString(value string) (AuthorizationErrorType, bool) {

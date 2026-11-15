@@ -88,8 +88,8 @@ func Test_RevokeInvalidClientCredentials(t *testing.T) {
 
 	revokeHandler.ServeHTTP(rr, request)
 
-	if rr.Code != http.StatusUnauthorized {
-		t.Errorf("handler returned wrong status code: got %v want %v", rr.Code, http.StatusUnauthorized)
+	if rr.Code != http.StatusUnauthorized || !strings.Contains(rr.Body.String(), string(oauth2.TokenEtInvalidClient)) {
+		t.Errorf("handler returned wrong response: got %v %s want %v", rr.Code, rr.Body.String(), http.StatusUnauthorized)
 	}
 }
 
@@ -461,8 +461,9 @@ func Test_RevokeBoundToClient(t *testing.T) {
 
 		rr := testRevokeRequestWithHeader(t, accessTokenResponse.AccessTokenValue, oauth2.ItAccessToken, internalHttp.AuthBearer+" "+adminTokenResponse.AccessTokenValue)
 
-		if rr.Code != http.StatusUnauthorized {
-			t.Errorf("handler returned wrong status code: got %v want %v", rr.Code, http.StatusUnauthorized)
+		// https://datatracker.ietf.org/doc/html/rfc6750#section-3.1
+		if rr.Code != http.StatusForbidden || !strings.Contains(rr.Body.String(), string(oauth2.TokenEtInsufficientScope)) {
+			t.Errorf("handler returned wrong response: got %v %s want %v", rr.Code, rr.Body.String(), http.StatusForbidden)
 		}
 
 		_, accessTokenExists := tokenManager.GetAccessToken(accessTokenResponse.AccessTokenValue)

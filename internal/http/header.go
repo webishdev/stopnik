@@ -18,6 +18,8 @@ const (
 	ContentSecurityPolicy    string = "Content-Security-Policy"
 	ReferrerPolicy           string = "Referrer-Policy"
 	StrictTransportSecurity  string = "Strict-Transport-Security"
+	Pragma                   string = "Pragma"
+	WWWAuthenticate          string = "WWW-Authenticate"
 )
 
 const (

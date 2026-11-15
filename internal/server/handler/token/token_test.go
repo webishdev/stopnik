@@ -822,6 +822,74 @@ func testTokenAssertError(t *testing.T, rr *httptest.ResponseRecorder, expectedE
 	}
 }
 
+func Test_TokenErrorResponses(t *testing.T) {
+	type errorParameter struct {
+		name          string
+		body          string
+		clientId      string
+		clientSecret  string
+		expectedError oauth2.TokenErrorType
+	}
+
+	var errorParameters = []errorParameter{
+		{"Missing grant type", testCreateBody(oauth2.ParameterScope, "foo:bar"), "foo", "bar", oauth2.TokenEtInvalidRequest},
+		{"Unknown grant type", testCreateBody(oauth2.ParameterGrantType, "foobar"), "foo", "bar", oauth2.TokenEtUnsupportedGrandType},
+		{"Wrong password", testCreateBody(oauth2.ParameterGrantType, oauth2.GtPassword, oauth2.ParameterUsername, "foo", oauth2.ParameterPassword, "xxx"), "foo", "bar", oauth2.TokenEtInvalidGrant},
+		{"Unknown refresh token", testCreateBody(oauth2.ParameterGrantType, oauth2.GtRefreshToken, oauth2.ParameterRefreshToken, "unknown"), "foo", "bar", oauth2.TokenEtInvalidGrant},
+		{"Refresh token for client without refresh TTL", testCreateBody(oauth2.ParameterGrantType, oauth2.GtRefreshToken, oauth2.ParameterRefreshToken, "unknown"), "minimal", "bar", oauth2.TokenEtUnauthorizedClient},
+	}
+
+	for _, test := range errorParameters {
+		t.Run(test.name, func(t *testing.T) {
+			request := httptest.NewRequest(http.MethodPost, endpoint.Token, strings.NewReader(test.body))
+			request.Header.Add(internalHttp.Authorization, fmt.Sprintf("Basic %s", testTokenCreateBasicAuth(test.clientId, test.clientSecret)))
+			request.Header.Add(internalHttp.ContentType, "application/x-www-form-urlencoded")
+			rr := httptest.NewRecorder()
+
+			NewTokenHandler(validation.NewRequestValidator(), session.GetAuthorizationCodeManagerInstance(), token.GetTokenManagerInstance()).ServeHTTP(rr, request)
+
+			testTokenAssertError(t, rr, test.expectedError)
+			if rr.Header().Get(internalHttp.Pragma) != "no-cache" || rr.Header().Get(internalHttp.CacheControl) == "" {
+				t.Error("token responses must not be cached")
+			}
+		})
+	}
+}
+
+func Test_TokenFailedClientAuthentication(t *testing.T) {
+	request := httptest.NewRequest(http.MethodPost, endpoint.Token, strings.NewReader(testCreateBody(oauth2.ParameterGrantType, oauth2.GtClientCredentials)))
+	request.Header.Add(internalHttp.Authorization, fmt.Sprintf("Basic %s", testTokenCreateBasicAuth("foo", "xxx")))
+	request.Header.Add(internalHttp.ContentType, "application/x-www-form-urlencoded")
+	rr := httptest.NewRecorder()
+
+	NewTokenHandler(validation.NewRequestValidator(), session.GetAuthorizationCodeManagerInstance(), token.GetTokenManagerInstance()).ServeHTTP(rr, request)
+
+	// https://datatracker.ietf.org/doc/html/rfc6749#section-5.2
+	if rr.Code != http.StatusUnauthorized {
+		t.Errorf("handler returned wrong status code: got %v want %v", rr.Code, http.StatusUnauthorized)
+	}
+	if wwwAuthenticate := rr.Header().Get(internalHttp.WWWAuthenticate); wwwAuthenticate != `Basic realm="STOPnik"` {
+		t.Errorf("WWW-Authenticate %q did not match", wwwAuthenticate)
+	}
+}
+
+func Test_TokenSuccessNotCached(t *testing.T) {
+	request := httptest.NewRequest(http.MethodPost, endpoint.Token, strings.NewReader(testCreateBody(oauth2.ParameterGrantType, oauth2.GtClientCredentials, oauth2.ParameterScope, "foo:bar")))
+	request.Header.Add(internalHttp.Authorization, fmt.Sprintf("Basic %s", testTokenCreateBasicAuth("foo", "bar")))
+	request.Header.Add(internalHttp.ContentType, "application/x-www-form-urlencoded")
+	rr := httptest.NewRecorder()
+
+	NewTokenHandler(validation.NewRequestValidator(), session.GetAuthorizationCodeManagerInstance(), token.GetTokenManagerInstance()).ServeHTTP(rr, request)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("handler returned wrong status code: got %v want %v", rr.Code, http.StatusOK)
+	}
+	// https://datatracker.ietf.org/doc/html/rfc6749#section-5.1
+	if rr.Header().Get(internalHttp.Pragma) != "no-cache" || !strings.Contains(rr.Header().Get(internalHttp.CacheControl), "no-store") {
+		t.Error("token responses must not be cached")
+	}
+}
+
 func Test_TokenNotAllowedHttpMethods(t *testing.T) {
 	var testInvalidTokenHttpMethods = []string{
 		http.MethodGet,

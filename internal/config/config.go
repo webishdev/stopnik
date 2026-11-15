@@ -64,7 +64,8 @@ type Server struct {
 	TLS                   TLS         `toml:"tls"`
 	LogoutRedirect        string      `toml:"logoutRedirect"`
 	IntrospectScope       string      `toml:"introspectScope"`
-	RevokeScope           string      `toml:"revokeScopeScope"`
+	RevokeScope           string      `toml:"revokeScope"`
+	DeprecatedRevokeScope string      `toml:"revokeScopeScope"` // Deprecated: use RevokeScope, will be removed with the next release
 	SessionTimeoutSeconds int         `toml:"sessionTimeoutSeconds"`
 	Issuer                string      `toml:"issuer"`
 	TrustedProxies        []string    `toml:"trustedProxies"`
@@ -254,6 +255,10 @@ func prepare(config *Config) error {
 	}
 	generatedSecret := randomString
 	config.generatedSecret = generatedSecret
+
+	if config.Server.DeprecatedRevokeScope != "" {
+		log.Warn("server.revokeScopeScope is deprecated and will be removed with the next release, use server.revokeScope instead")
+	}
 
 	config.trustedProxies = nil
 	for _, trustedProxy := range config.Server.TrustedProxies {
@@ -532,8 +537,9 @@ func (config *Config) GetIntrospectScope() string {
 
 // GetRevokeScope returns the scope which can be used to revoke tokens.
 // When no scope is provided a default value will be returned.
+// The deprecated revokeScopeScope setting is used, when revokeScope is not set.
 func (config *Config) GetRevokeScope() string {
-	return cmp.Or(config.Server.RevokeScope, "stopnik:revoke")
+	return cmp.Or(config.Server.RevokeScope, config.Server.DeprecatedRevokeScope, "stopnik:revoke")
 }
 
 // GetDisallowedScopes returns the scopes from the given list, which the Client is not allowed to request.

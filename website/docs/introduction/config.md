@@ -75,7 +75,7 @@ Root entry named `server`
 | [`tls`](#tls)                 | Configuration for TLS                                                                             | No       |
 | `logoutRedirect`              | Where to redirect user after logout                                                               | No       |
 | `introspectScope`             | Scope which allows token introspection                                                            | No       |
-| `revokeScopeScope`            | Scope which allows token revocation                                                               | No       |
+| `revokeScope`                 | Scope which allows token revocation, replaces the deprecated `revokeScopeScope`                   | No       |
 | `sessionTimeoutSeconds`       | Seconds until session will end                                                                    | No       |
 | `issuer`                      | External URL of **STOPnik**, see [Issuer](#issuer)                                                | Yes      |
 | `trustedProxies`              | List of proxy IP addresses or CIDRs, see [Trusted proxies](#trusted-proxies)                      | No       |
@@ -322,7 +322,7 @@ When `scopes` is not configured, a client may only request its default scopes.
 
 When `scopes` is configured, a client may only request the listed scopes, the default scopes are no longer applied.
 So do not forget to list scopes like `openid` or `offline_access` when using OpenId Connect.
-The reserved scopes for token introspection and revocation (`server.introspectScope`, `server.revokeScopeScope`,
+The reserved scopes for token introspection and revocation (`server.introspectScope`, `server.revokeScope`,
 by default `stopnik:introspect` and `stopnik:revoke`) always have to be listed explicitly.
 
 Requests for scopes which are not allowed are rejected with `invalid_scope`.

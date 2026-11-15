@@ -61,11 +61,17 @@ Following the [OAuth 2.0 Security Best Current Practice](https://datatracker.iet
 - tokens of the implicit grant are returned in the fragment of the redirect URI, not in the query
 - request objects (`request` parameter) are not supported and rejected with `request_not_supported`
 
+Errors of the token endpoint follow [RFC 6749](https://datatracker.ietf.org/doc/html/rfc6749#section-5.2),
+a failed client authentication with HTTP Basic is answered with `401` and `WWW-Authenticate: Basic realm="STOPnik"`.
+Token responses are sent with `Cache-Control: no-store` and `Pragma: no-cache`.
+
 ### OAuth 2.0 Token Introspection
 
 [RFC 7662](https://datatracker.ietf.org/doc/html/rfc7662)
 
 - `/introspect`
+
+A failed authentication is answered with `401` and `invalid_client`, an access token without the introspect scope with `403` and `insufficient_scope`.
 
 Introspection is allowed for
 
@@ -81,9 +87,11 @@ Active tokens are returned with `scope`, `client_id`, `username`, `token_type`, 
 
 - `/revoke`
 
+A failed authentication is answered with `401` and `invalid_client`, an access token without the revoke scope with `403` and `insufficient_scope`.
+
 - Every client, including public clients, may revoke tokens which were issued to it, the `revoke` flag is not required.
   Requests for tokens of other clients are answered with `200`, but the token stays valid.
-- Access tokens containing the revoke scope (`server.revokeScopeScope`) of a client with `revoke` enabled
+- Access tokens containing the revoke scope (`server.revokeScope`) of a client with `revoke` enabled
   may revoke tokens of all clients.
 - Revoking a refresh token also revokes all access tokens issued for the same authorization.
 

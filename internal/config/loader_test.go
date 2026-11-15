@@ -57,7 +57,8 @@ clients = "/clients"
 		t.Fatal(decodeError)
 	}
 
-	if config.Server.Addr != ":8080" || config.Server.TLS.Keys.Cert != "server.crt" || config.Server.RevokeScope != "revoke" {
+	// the deprecated revokeScopeScope is still accepted
+	if config.Server.Addr != ":8080" || config.Server.TLS.Keys.Cert != "server.crt" || config.GetRevokeScope() != "revoke" {
 		t.Errorf("server not decoded as expected, %v", config.Server)
 	}
 	if config.Server.SecureCookie == nil || *config.Server.SecureCookie {
@@ -114,5 +115,32 @@ values = ["a", "b"]
 	}
 	if classification.User != "foo" || len(classification.Claims[0].Values) != 2 {
 		t.Errorf("classification not decoded as expected, %v", classification)
+	}
+}
+
+func Test_TOMLConfigRevokeScope(t *testing.T) {
+	type revokeScopeParameter struct {
+		name     string
+		data     string
+		expected string
+	}
+
+	var revokeScopeParameters = []revokeScopeParameter{
+		{"Default", "[server]\n", "stopnik:revoke"},
+		{"Revoke scope", "[server]\nrevokeScope = \"new\"\n", "new"},
+		{"Deprecated revoke scope", "[server]\nrevokeScopeScope = \"old\"\n", "old"},
+		{"Revoke scope wins over deprecated", "[server]\nrevokeScope = \"new\"\nrevokeScopeScope = \"old\"\n", "new"},
+	}
+
+	for _, test := range revokeScopeParameters {
+		t.Run(test.name, func(t *testing.T) {
+			config := &Config{}
+			if decodeError := toml.Unmarshal([]byte(test.data), config); decodeError != nil {
+				t.Fatal(decodeError)
+			}
+			if revokeScope := config.GetRevokeScope(); revokeScope != test.expected {
+				t.Errorf("revoke scope %s did not match %s", revokeScope, test.expected)
+			}
+		})
 	}
 }

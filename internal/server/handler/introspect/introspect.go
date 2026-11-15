@@ -57,7 +57,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			// Fall back to access token with scopes
 			validAccessToken, valid := h.tokenManager.ValidateAccessTokenRequest(r)
 			if !valid {
-				oauth2.TokenErrorStatusResponseHandler(w, r, http.StatusUnauthorized, &oauth2.TokenErrorResponseParameter{Error: oauth2.TokenEtInvalidRequest})
+				oauth2.TokenErrorStatusResponseHandler(w, r, http.StatusUnauthorized, &oauth2.TokenErrorResponseParameter{Error: oauth2.TokenEtInvalidClient})
 				return
 			}
 
@@ -66,7 +66,8 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			hasIntrospectScope := slices.Contains(scopes, h.config.GetIntrospectScope())
 
 			if !hasIntrospectScope {
-				oauth2.TokenErrorStatusResponseHandler(w, r, http.StatusUnauthorized, &oauth2.TokenErrorResponseParameter{Error: oauth2.TokenEtInvalidRequest})
+				// https://datatracker.ietf.org/doc/html/rfc6750#section-3.1
+				oauth2.TokenErrorStatusResponseHandler(w, r, http.StatusForbidden, &oauth2.TokenErrorResponseParameter{Error: oauth2.TokenEtInsufficientScope})
 				return
 			}
 		} else {

@@ -62,6 +62,8 @@ func Test_UserInfo(t *testing.T) {
 
 	testOidcUserInfo(t, testConfig)
 
+	testOidcUserInfoErrors(t, testConfig)
+
 	testOidcUserInfoNotAllowedHttpMethods(t)
 }
 
@@ -75,7 +77,7 @@ func testOidcUserInfo(t *testing.T, testConfig *config.Config) {
 		}
 
 		request := httptest.NewRequest(http.MethodPost, endpoint.Token, nil)
-		tokenResponse := tokenManager.CreateAccessTokenResponse(request, "foo", client, nil, []string{"a:foo", "b:bar", oidc.ScopeProfile, oidc.ScopeEmail, oidc.ScopePhone, oidc.ScopeAddress}, nil, "", "", "")
+		tokenResponse := tokenManager.CreateAccessTokenResponse(request, "foo", client, nil, []string{oidc.ScopeOpenId, "a:foo", "b:bar", oidc.ScopeProfile, oidc.ScopeEmail, oidc.ScopePhone, oidc.ScopeAddress}, nil, "", "", "")
 
 		oidcDiscoveryHandler := NewOidcUserInfoHandler(tokenManager)
 
@@ -149,6 +151,46 @@ func testOidcUserInfo(t *testing.T, testConfig *config.Config) {
 			t.Errorf("userinfo formatted did not match")
 		}
 	})
+}
+
+func testOidcUserInfoErrors(t *testing.T, testConfig *config.Config) {
+	tokenManager := token.GetTokenManagerInstance()
+	client, _ := testConfig.GetClient("foo")
+	request := httptest.NewRequest(http.MethodPost, endpoint.Token, nil)
+	withoutOpenIdResponse := tokenManager.CreateAccessTokenResponse(request, "foo", client, nil, []string{oidc.ScopeProfile}, nil, "", "", "")
+
+	type errorParameter struct {
+		name                    string
+		authorizationHeader     string
+		expectedCode            int
+		expectedWWWAuthenticate string
+	}
+
+	var errorParameters = []errorParameter{
+		{"Missing token", "", http.StatusUnauthorized, `Bearer error="invalid_token"`},
+		{"Invalid token", "Bearer invalid", http.StatusUnauthorized, `Bearer error="invalid_token"`},
+		{"Token without openid scope", "Bearer " + withoutOpenIdResponse.AccessTokenValue, http.StatusForbidden, `Bearer error="insufficient_scope", scope="openid"`},
+	}
+
+	for _, test := range errorParameters {
+		t.Run(test.name, func(t *testing.T) {
+			httpRequest := httptest.NewRequest(http.MethodGet, endpoint.OidcUserInfo, nil)
+			if test.authorizationHeader != "" {
+				httpRequest.Header.Set(internalHttp.Authorization, test.authorizationHeader)
+			}
+			rr := httptest.NewRecorder()
+
+			NewOidcUserInfoHandler(tokenManager).ServeHTTP(rr, httpRequest)
+
+			// https://datatracker.ietf.org/doc/html/rfc6750#section-3
+			if rr.Code != test.expectedCode {
+				t.Errorf("handler returned wrong status code: got %v want %v", rr.Code, test.expectedCode)
+			}
+			if wwwAuthenticate := rr.Header().Get(internalHttp.WWWAuthenticate); wwwAuthenticate != test.expectedWWWAuthenticate {
+				t.Errorf("WWW-Authenticate %q did not match %q", wwwAuthenticate, test.expectedWWWAuthenticate)
+			}
+		})
+	}
 }
 
 func testOidcUserInfoNotAllowedHttpMethods(t *testing.T) {

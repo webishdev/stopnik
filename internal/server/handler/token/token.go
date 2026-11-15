@@ -57,21 +57,33 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) handlePostRequest(w http.ResponseWriter, r *http.Request) {
+	// https://datatracker.ietf.org/doc/html/rfc6749#section-5.1
+	// Responses of the token endpoint must not be cached
+	w.Header().Set(internalHttp.Pragma, "no-cache")
+
 	client, fallbackUsed, validClientCredentials := h.validator.ValidateClientCredentials(r)
 	// https://datatracker.ietf.org/doc/html/rfc6749#section-2.3.1
 	if !validClientCredentials {
 		httpStatus := http.StatusUnauthorized
 		if fallbackUsed {
 			httpStatus = http.StatusBadRequest
+		} else {
+			// https://datatracker.ietf.org/doc/html/rfc6749#section-5.2
+			w.Header().Set(internalHttp.WWWAuthenticate, `Basic realm="STOPnik"`)
 		}
 		oauth2.TokenErrorStatusResponseHandler(w, r, httpStatus, &oauth2.TokenErrorResponseParameter{Error: oauth2.TokenEtInvalidClient})
 		return
 	}
 
+	// https://datatracker.ietf.org/doc/html/rfc6749#section-5.2
 	grantTypeValue := r.PostFormValue(oauth2.ParameterGrantType)
+	if grantTypeValue == "" {
+		oauth2.TokenErrorResponseHandler(w, r, &oauth2.TokenErrorResponseParameter{Error: oauth2.TokenEtInvalidRequest})
+		return
+	}
 	grantType, grantTypeExists := oauth2.GrantTypeFromString(grantTypeValue)
 	if !grantTypeExists {
-		oauth2.TokenErrorResponseHandler(w, r, &oauth2.TokenErrorResponseParameter{Error: oauth2.TokenEtInvalidGrant})
+		oauth2.TokenErrorResponseHandler(w, r, &oauth2.TokenErrorResponseParameter{Error: oauth2.TokenEtUnsupportedGrandType})
 		return
 	}
 
@@ -198,7 +210,7 @@ func (h *Handler) passwordGrant(r *http.Request) (*tokenGrant, *oauth2.TokenErro
 
 	user, exists := h.validator.ValidateUserPassword(r, usernameFrom, passwordForm)
 	if !exists {
-		return nil, &oauth2.TokenErrorResponseParameter{Error: oauth2.TokenEtInvalidRequest}
+		return nil, &oauth2.TokenErrorResponseParameter{Error: oauth2.TokenEtInvalidGrant}
 	}
 	return &tokenGrant{
 		scopes:   strings.Split(scopeForm, " "),
@@ -210,7 +222,7 @@ func (h *Handler) passwordGrant(r *http.Request) (*tokenGrant, *oauth2.TokenErro
 // https://datatracker.ietf.org/doc/html/rfc6749#section-6
 func (h *Handler) refreshTokenGrant(r *http.Request, client *config.Client) (*tokenGrant, *oauth2.TokenErrorResponseParameter) {
 	if client.GetRefreshTTL() <= 0 {
-		return nil, &oauth2.TokenErrorResponseParameter{Error: oauth2.TokenEtInvalidRequest}
+		return nil, &oauth2.TokenErrorResponseParameter{Error: oauth2.TokenEtUnauthorizedClient}
 	}
 
 	refreshTokenForm := r.PostFormValue(oauth2.ParameterRefreshToken)

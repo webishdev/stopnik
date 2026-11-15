@@ -5,6 +5,7 @@ import (
 	"github.com/webishdev/stopnik/internal/config"
 	internalHttp "github.com/webishdev/stopnik/internal/http"
 	"github.com/webishdev/stopnik/internal/manager/token"
+	"github.com/webishdev/stopnik/internal/oauth2"
 	"github.com/webishdev/stopnik/internal/oidc"
 	errorHandler "github.com/webishdev/stopnik/internal/server/handler/error"
 	"github.com/webishdev/stopnik/internal/system"
@@ -42,40 +43,48 @@ func (h *UserInfoHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodGet || r.Method == http.MethodPost {
 		response := &UserInfoResponse{}
 		validAccessToken, valid := h.tokenManager.ValidateAccessTokenRequest(r)
-		if valid {
-			user := validAccessToken.User
-			client := validAccessToken.Client
-			scopes := validAccessToken.Scopes
-			requestedClaims := validAccessToken.RequestedClaims
-			response.Subject = user.Username
+		if !valid {
+			// https://datatracker.ietf.org/doc/html/rfc6750#section-3
+			w.Header().Set(internalHttp.WWWAuthenticate, `Bearer error="invalid_token"`)
+			oauth2.TokenErrorStatusResponseHandler(w, r, http.StatusUnauthorized, &oauth2.TokenErrorResponseParameter{Error: oauth2.TokenEtInvalidToken})
+			return
+		}
+		// https://openid.net/specs/openid-connect-core-1_0.html#UserInfo
+		// The access token must have been issued for an OpenID Connect request
+		if !oidc.HasOidcScope(validAccessToken.Scopes) {
+			w.Header().Set(internalHttp.WWWAuthenticate, `Bearer error="insufficient_scope", scope="openid"`)
+			oauth2.TokenErrorStatusResponseHandler(w, r, http.StatusForbidden, &oauth2.TokenErrorResponseParameter{Error: oauth2.TokenEtInsufficientScope})
+			return
+		}
 
-			applyProfileClaims(user, scopes, requestedClaims, response)
-			applyAddressClaims(user, scopes, requestedClaims, response)
-			applyEmailClaims(user, scopes, requestedClaims, response)
-			applyPhoneClaims(user, scopes, requestedClaims, response)
+		user := validAccessToken.User
+		client := validAccessToken.Client
+		scopes := validAccessToken.Scopes
+		requestedClaims := validAccessToken.RequestedClaims
+		response.Subject = user.Username
 
-			var result interface{}
-			result = response
+		applyProfileClaims(user, scopes, requestedClaims, response)
+		applyAddressClaims(user, scopes, requestedClaims, response)
+		applyEmailClaims(user, scopes, requestedClaims, response)
+		applyPhoneClaims(user, scopes, requestedClaims, response)
 
-			claims := h.config.GetClaims(user.Username, client.Id, scopes)
-			for _, claim := range claims {
-				currentClaim := *claim
-				name := currentClaim.GetName()
-				values := currentClaim.GetValues()
-				updateResult, updateError := updateResponse(result, name, values)
-				if updateError == nil {
-					result = updateResult
-				}
+		var result interface{}
+		result = response
+
+		claims := h.config.GetClaims(user.Username, client.Id, scopes)
+		for _, claim := range claims {
+			currentClaim := *claim
+			name := currentClaim.GetName()
+			values := currentClaim.GetValues()
+			updateResult, updateError := updateResponse(result, name, values)
+			if updateError == nil {
+				result = updateResult
 			}
+		}
 
-			jsonError := internalHttp.SendJson(result, w, r)
-			if jsonError != nil {
-				h.errorHandler.InternalServerErrorHandler(w, r, jsonError)
-				return
-			}
-
-		} else {
-			h.errorHandler.BadRequestHandler(w, r)
+		jsonError := internalHttp.SendJson(result, w, r)
+		if jsonError != nil {
+			h.errorHandler.InternalServerErrorHandler(w, r, jsonError)
 			return
 		}
 	} else {
