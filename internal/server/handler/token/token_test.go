@@ -15,6 +15,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"reflect"
 	"strings"
 	"testing"
 	"uuid"
@@ -61,6 +62,12 @@ func Test_Token(t *testing.T) {
 	}
 
 	testTokenRefreshTokenGrantType(t, testConfig)
+
+	testTokenRefreshTokenReuse(t, testConfig)
+
+	testTokenRefreshTokenOtherClient(t, testConfig)
+
+	testTokenRefreshTokenScope(t, testConfig)
 }
 
 func Test_TokenMissingClientCredentials(t *testing.T) {
@@ -615,6 +622,145 @@ func testTokenRefreshTokenGrantType(t *testing.T, testConfig *config.Config) {
 			t.Errorf("handler returned wrong status code for reused refresh token: got %v want %v", replay.Code, http.StatusBadRequest)
 		}
 	})
+}
+
+func testTokenRefreshTokenReuse(t *testing.T, testConfig *config.Config) {
+	t.Run("Refresh token reuse revokes the grant", func(t *testing.T) {
+		tokenManager := token.GetTokenManagerInstance()
+		client, _ := testConfig.GetClient("foo")
+		initialResponse := tokenManager.CreateAccessTokenResponse(httptest.NewRequest(http.MethodPost, endpoint.Token, nil), "foo", client, nil, []string{"foo:bar"}, nil, "", "", "")
+		otherGrantResponse := tokenManager.CreateAccessTokenResponse(httptest.NewRequest(http.MethodPost, endpoint.Token, nil), "foo", client, nil, []string{"foo:bar"}, nil, "", "", "")
+
+		rr := testTokenRefreshRequest(t, initialResponse.RefreshTokenValue, "", "foo", "bar")
+		if rr.Code != http.StatusOK {
+			t.Fatalf("handler returned wrong status code: got %v want %v", rr.Code, http.StatusOK)
+		}
+		refreshedResponse := testTokenParseResponse(t, rr)
+
+		// https://datatracker.ietf.org/doc/html/rfc9700#section-4.14.2
+		replay := testTokenRefreshRequest(t, initialResponse.RefreshTokenValue, "", "foo", "bar")
+		testTokenAssertError(t, replay, oauth2.TokenEtInvalidGrant)
+
+		_, accessTokenExists := tokenManager.GetAccessToken(refreshedResponse.AccessTokenValue)
+		_, refreshTokenExists := tokenManager.GetRefreshToken(refreshedResponse.RefreshTokenValue)
+		if accessTokenExists || refreshTokenExists {
+			t.Error("tokens obtained with the reused refresh token should have been revoked")
+		}
+
+		_, initialAccessTokenExists := tokenManager.GetAccessToken(initialResponse.AccessTokenValue)
+		if initialAccessTokenExists {
+			t.Error("access token of the same grant should have been revoked")
+		}
+
+		_, otherAccessTokenExists := tokenManager.GetAccessToken(otherGrantResponse.AccessTokenValue)
+		_, otherRefreshTokenExists := tokenManager.GetRefreshToken(otherGrantResponse.RefreshTokenValue)
+		if !otherAccessTokenExists || !otherRefreshTokenExists {
+			t.Error("tokens of another grant should stay active")
+		}
+	})
+}
+
+func testTokenRefreshTokenOtherClient(t *testing.T, testConfig *config.Config) {
+	t.Run("Refresh token of other client", func(t *testing.T) {
+		tokenManager := token.GetTokenManagerInstance()
+		client, _ := testConfig.GetClient("foo")
+		initialResponse := tokenManager.CreateAccessTokenResponse(httptest.NewRequest(http.MethodPost, endpoint.Token, nil), "foo", client, nil, []string{"foo:bar"}, nil, "", "", "")
+
+		bodyString := testCreateBody(
+			oauth2.ParameterGrantType, oauth2.GtRefreshToken,
+			oauth2.ParameterRefreshToken, initialResponse.RefreshTokenValue,
+			oauth2.ParameterClientId, "bar",
+		)
+		request := httptest.NewRequest(http.MethodPost, endpoint.Token, strings.NewReader(bodyString))
+		request.Header.Add(internalHttp.ContentType, "application/x-www-form-urlencoded")
+		rr := httptest.NewRecorder()
+		NewTokenHandler(validation.NewRequestValidator(), session.GetAuthorizationCodeManagerInstance(), tokenManager).ServeHTTP(rr, request)
+
+		testTokenAssertError(t, rr, oauth2.TokenEtInvalidGrant)
+
+		// The refresh token was not consumed by the other client
+		ownerResponse := testTokenRefreshRequest(t, initialResponse.RefreshTokenValue, "", "foo", "bar")
+		if ownerResponse.Code != http.StatusOK {
+			t.Errorf("owner of the refresh token should still be able to use it, got %v", ownerResponse.Code)
+		}
+	})
+}
+
+func testTokenRefreshTokenScope(t *testing.T, testConfig *config.Config) {
+	t.Run("Refresh token with scope", func(t *testing.T) {
+		tokenManager := token.GetTokenManagerInstance()
+		client, _ := testConfig.GetClient("foo")
+		initialResponse := tokenManager.CreateAccessTokenResponse(httptest.NewRequest(http.MethodPost, endpoint.Token, nil), "foo", client, nil, []string{"foo:bar", "moo:abc"}, nil, "", "", "")
+
+		// https://datatracker.ietf.org/doc/html/rfc6749#section-6
+		wider := testTokenRefreshRequest(t, initialResponse.RefreshTokenValue, "foo:bar moo:abc other:scope", "foo", "bar")
+		testTokenAssertError(t, wider, oauth2.TokenEtInvalidScope)
+
+		narrower := testTokenRefreshRequest(t, initialResponse.RefreshTokenValue, "foo:bar", "foo", "bar")
+		if narrower.Code != http.StatusOK {
+			t.Fatalf("handler returned wrong status code: got %v want %v", narrower.Code, http.StatusOK)
+		}
+		narrowerResponse := testTokenParseResponse(t, narrower)
+
+		accessToken, accessTokenExists := tokenManager.GetAccessToken(narrowerResponse.AccessTokenValue)
+		if !accessTokenExists || !reflect.DeepEqual(accessToken.Scopes, []string{"foo:bar"}) {
+			t.Errorf("expected access token with narrower scope, got %v", accessToken)
+		}
+
+		withoutScope := testTokenRefreshRequest(t, narrowerResponse.RefreshTokenValue, "", "foo", "bar")
+		if withoutScope.Code != http.StatusOK {
+			t.Fatalf("handler returned wrong status code: got %v want %v", withoutScope.Code, http.StatusOK)
+		}
+		withoutScopeResponse := testTokenParseResponse(t, withoutScope)
+		accessToken, _ = tokenManager.GetAccessToken(withoutScopeResponse.AccessTokenValue)
+		if !reflect.DeepEqual(accessToken.Scopes, []string{"foo:bar"}) {
+			t.Errorf("expected access token to keep the scope of the refresh token, got %v", accessToken.Scopes)
+		}
+	})
+}
+
+func testTokenRefreshRequest(t *testing.T, refreshToken string, scope string, clientId string, clientSecret string) *httptest.ResponseRecorder {
+	t.Helper()
+	bodyString := testCreateBody(
+		oauth2.ParameterGrantType, oauth2.GtRefreshToken,
+		oauth2.ParameterRefreshToken, refreshToken,
+	)
+	if scope != "" {
+		bodyString = testCreateBody(
+			oauth2.ParameterGrantType, oauth2.GtRefreshToken,
+			oauth2.ParameterRefreshToken, refreshToken,
+			oauth2.ParameterScope, scope,
+		)
+	}
+	request := httptest.NewRequest(http.MethodPost, endpoint.Token, strings.NewReader(bodyString))
+	request.Header.Add(internalHttp.Authorization, fmt.Sprintf("Basic %s", testTokenCreateBasicAuth(clientId, clientSecret)))
+	request.Header.Add(internalHttp.ContentType, "application/x-www-form-urlencoded")
+	rr := httptest.NewRecorder()
+	NewTokenHandler(validation.NewRequestValidator(), session.GetAuthorizationCodeManagerInstance(), token.GetTokenManagerInstance()).ServeHTTP(rr, request)
+	return rr
+}
+
+func testTokenParseResponse(t *testing.T, rr *httptest.ResponseRecorder) oauth2.AccessTokenResponse {
+	t.Helper()
+	accessTokenResponse := oauth2.AccessTokenResponse{}
+	if jsonError := json.Unmarshal(rr.Body.Bytes(), &accessTokenResponse); jsonError != nil {
+		t.Fatalf("could not parse response body: %v", jsonError)
+	}
+	return accessTokenResponse
+}
+
+func testTokenAssertError(t *testing.T, rr *httptest.ResponseRecorder, expectedError oauth2.TokenErrorType) {
+	t.Helper()
+	if rr.Code != http.StatusBadRequest {
+		t.Errorf("handler returned wrong status code: got %v want %v", rr.Code, http.StatusBadRequest)
+	}
+	errorResponse := oauth2.TokenErrorResponseParameter{}
+	if jsonError := json.Unmarshal(rr.Body.Bytes(), &errorResponse); jsonError != nil {
+		t.Fatalf("could not parse error response: %v", jsonError)
+	}
+	if errorResponse.Error != expectedError {
+		t.Errorf("wrong error: got %v want %v", errorResponse.Error, expectedError)
+	}
 }
 
 func Test_TokenNotAllowedHttpMethods(t *testing.T) {

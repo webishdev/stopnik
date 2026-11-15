@@ -27,7 +27,15 @@ import (
 type clientStores struct {
 	accessTokenStore       *store.ExpiringStore[oauth2.AccessToken]
 	refreshTokenStore      *store.ExpiringStore[oauth2.RefreshToken]
+	usedRefreshTokenStore  *store.ExpiringStore[usedRefreshToken]
 	authorizationCodeStore *store.ExpiringStore[string]
+}
+
+// usedRefreshToken remembers a refresh token after it was used, to detect a reuse.
+type usedRefreshToken struct {
+	GrantId  string
+	ClientId string
+	Username string
 }
 
 type ValidAccessToken struct {
@@ -94,10 +102,12 @@ func (tokenManager *Manager) getClientStores(client *config.Client) *clientStore
 	refreshStoreTime := time.Minute*time.Duration(client.GetRefreshTTL()) + time.Minute*time.Duration(1)
 	accessTokenStore := store.NewTimedStore[oauth2.AccessToken](accessStoreTime)
 	refreshTokenStore := store.NewTimedStore[oauth2.RefreshToken](refreshStoreTime)
+	usedRefreshTokenStore := store.NewTimedStore[usedRefreshToken](refreshStoreTime)
 	authorizationCodeStore := store.NewDefaultTimedStore[string]()
 	stores = &clientStores{
 		accessTokenStore:       &accessTokenStore,
 		refreshTokenStore:      &refreshTokenStore,
+		usedRefreshTokenStore:  &usedRefreshTokenStore,
 		authorizationCodeStore: &authorizationCodeStore,
 	}
 	tokenManager.clientStores[client.Id] = stores
@@ -160,12 +170,31 @@ func (tokenManager *Manager) GetRefreshToken(token string) (*oauth2.RefreshToken
 }
 
 // TakeRefreshToken returns and removes the refresh token, so it can only be used once.
+// https://datatracker.ietf.org/doc/html/rfc9700#section-4.14.2
+// A used refresh token is remembered, when it is presented again, either the client or an attacker holds a stolen token,
+// so all tokens of its grant are revoked.
 func (tokenManager *Manager) TakeRefreshToken(token string) (*oauth2.RefreshToken, bool) {
 	for _, currentClientStores := range tokenManager.allClientStores() {
 		refreshTokenStore := *currentClientStores.refreshTokenStore
 		refreshToken, refreshTokenExists := refreshTokenStore.Take(token)
 		if refreshTokenExists {
+			usedRefreshTokenStore := *currentClientStores.usedRefreshTokenStore
+			usedRefreshTokenStore.Set(token, &usedRefreshToken{
+				GrantId:  refreshToken.GrantId,
+				ClientId: refreshToken.ClientId,
+				Username: refreshToken.Username,
+			})
 			return refreshToken, true
+		}
+	}
+
+	for _, currentClientStores := range tokenManager.allClientStores() {
+		usedRefreshTokenStore := *currentClientStores.usedRefreshTokenStore
+		usedToken, usedTokenExists := usedRefreshTokenStore.Get(token)
+		if usedTokenExists {
+			log.Warn("Reuse of refresh token detected for client %s and user %s, revoking all tokens of the grant", usedToken.ClientId, usedToken.Username)
+			tokenManager.RevokeGrant(usedToken.GrantId)
+			return nil, false
 		}
 	}
 	return nil, false
@@ -201,15 +230,15 @@ func (tokenManager *Manager) RevokeGrant(grantId string) {
 	}
 }
 
+// RevokeAccessTokenByAuthorizationCode revokes all access and refresh tokens, which were issued for the given authorization code.
+// https://datatracker.ietf.org/doc/html/rfc6749#section-4.1.2
+// If an authorization code is used more than once, all tokens previously issued based on that code should be revoked.
 func (tokenManager *Manager) RevokeAccessTokenByAuthorizationCode(authorizationCode string) {
 	for _, currentClientStores := range tokenManager.allClientStores() {
 		authorizationCodeStore := *currentClientStores.authorizationCodeStore
-		accessTokenKey, accessTokenKeyExists := authorizationCodeStore.Get(authorizationCode)
-		if accessTokenKeyExists {
-			accessToken, accessTokenExists := tokenManager.GetAccessToken(*accessTokenKey)
-			if accessTokenExists {
-				tokenManager.RevokeAccessToken(accessToken)
-			}
+		grantId, grantIdExists := authorizationCodeStore.Get(authorizationCode)
+		if grantIdExists {
+			tokenManager.RevokeGrant(*grantId)
 		}
 	}
 }
@@ -336,7 +365,7 @@ func (tokenManager *Manager) createAccessTokenResponse(r *http.Request, username
 	}
 
 	if authorizationCode != "" {
-		authorizationCodeStore.Set(authorizationCode, &accessToken.Key)
+		authorizationCodeStore.Set(authorizationCode, &grantId)
 	}
 
 	return accessTokenResponse

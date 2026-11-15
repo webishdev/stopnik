@@ -12,9 +12,21 @@ import (
 	"github.com/webishdev/stopnik/internal/server/validation"
 	"github.com/webishdev/stopnik/log"
 	"net/http"
+	"slices"
 	"strings"
 	"time"
 )
+
+// tokenGrant holds the values of a validated grant, which are used to create the tokens.
+type tokenGrant struct {
+	scopes            []string
+	username          string
+	requestedClaims   *oidc.ClaimsParameter
+	nonce             string
+	authorizationCode string
+	grantId           string
+	authTime          time.Time
+}
 
 type Handler struct {
 	config                   *config.Config
@@ -69,119 +81,26 @@ func (h *Handler) handlePostRequest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var scopes []string
-	var username string
-	var requestedClaims *oidc.ClaimsParameter
-	nonce := ""
-	authCode := ""
-	grantId := ""
-	var authTime time.Time
-
-	if grantType == oauth2.GtAuthorizationCode {
-		// https://datatracker.ietf.org/doc/html/rfc6749#section-4.1.3
-		code := r.PostFormValue(oauth2.ParameterCode)
-		// Taking the code removes it, so a code can only be redeemed once, even for concurrent requests
-		authorizationCode, authorizationCodeExists := h.authorizationCodeManager.TakeSession(code)
-		if !authorizationCodeExists {
-			h.tokenManager.RevokeAccessTokenByAuthorizationCode(code)
-			oauth2.TokenErrorResponseHandler(w, r, &oauth2.TokenErrorResponseParameter{Error: oauth2.TokenEtInvalidGrant})
-			return
-		}
-
-		// https://datatracker.ietf.org/doc/html/rfc6749#section-4.1.3
-		// The code must have been issued to the authenticated client
-		if authorizationCode.ClientId != client.Id {
-			log.Error("Authorization code issued for client %s was used by client %s", authorizationCode.ClientId, client.Id)
-			oauth2.TokenErrorResponseHandler(w, r, &oauth2.TokenErrorResponseParameter{Error: oauth2.TokenEtInvalidGrant})
-			return
-		}
-
-		// The redirect_uri must be identical to the one used in the authorization request
-		redirectUri := r.PostFormValue(oauth2.ParameterRedirectUri)
-		if redirectUri != authorizationCode.Redirect {
-			log.Error("Invalid redirect URI %s for authorization code of client %s", redirectUri, client.Id)
-			oauth2.TokenErrorResponseHandler(w, r, &oauth2.TokenErrorResponseParameter{Error: oauth2.TokenEtInvalidGrant})
-			return
-		}
-
-		// Codes are only issued after the user logged in, checked anyway as defence in depth
-		if authorizationCode.Username == "" {
-			oauth2.TokenErrorResponseHandler(w, r, &oauth2.TokenErrorResponseParameter{Error: oauth2.TokenEtInvalidGrant})
-			return
-		}
-
-		codeVerifier := r.PostFormValue(pkce.ParameterCodeVerifier) // https://datatracker.ietf.org/doc/html/rfc7636#section-4.1
-		// https://datatracker.ietf.org/doc/html/rfc7636#section-4.6
-		// When a code challenge was provided, the code verifier is mandatory
-		if authorizationCode.CodeChallenge != "" && codeVerifier == "" {
-			oauth2.TokenErrorResponseHandler(w, r, &oauth2.TokenErrorResponseParameter{Error: oauth2.TokenEtInvalidGrant})
-			return
-		}
-		if codeVerifier != "" {
-			codeChallengeMethod, codeChallengeMethodExists := pkce.CodeChallengeMethodFromString(authorizationCode.CodeChallengeMethod)
-			if !codeChallengeMethodExists {
-				oauth2.TokenErrorResponseHandler(w, r, &oauth2.TokenErrorResponseParameter{Error: oauth2.TokenEtInvalidRequest})
-				return
-			}
-			validPKCE := pkce.ValidatePKCE(codeChallengeMethod, authorizationCode.CodeChallenge, codeVerifier)
-			if !validPKCE {
-				oauth2.TokenErrorResponseHandler(w, r, &oauth2.TokenErrorResponseParameter{Error: oauth2.TokenEtInvalidRequest})
-				return
-			}
-		}
-
-		scopes = authorizationCode.Scopes
-		username = authorizationCode.Username
-		nonce = authorizationCode.Nonce
-		requestedClaims = authorizationCode.RequestedClaims
-		authTime = authorizationCode.AuthTime
-		authCode = code
-	} else if grantType == oauth2.GtPassword {
-		// https://datatracker.ietf.org/doc/html/rfc6749#section-4.3.2
-		usernameFrom := r.PostFormValue(oauth2.ParameterUsername)
-		passwordForm := r.PostFormValue(oauth2.ParameterPassword)
-		scopeForm := r.PostFormValue(oauth2.ParameterScope)
-
-		user, exists := h.validator.ValidateUserPassword(usernameFrom, passwordForm)
-		if !exists {
-			oauth2.TokenErrorResponseHandler(w, r, &oauth2.TokenErrorResponseParameter{Error: oauth2.TokenEtInvalidRequest})
-			return
-		}
-		scopes = strings.Split(scopeForm, " ")
-		username = user.Username
-	} else if grantType == oauth2.GtClientCredentials {
+	var grant *tokenGrant
+	var grantError *oauth2.TokenErrorResponseParameter
+	switch grantType {
+	case oauth2.GtAuthorizationCode:
+		grant, grantError = h.authorizationCodeGrant(r, client)
+	case oauth2.GtPassword:
+		grant, grantError = h.passwordGrant(r)
+	case oauth2.GtClientCredentials:
 		// https://datatracker.ietf.org/doc/html/rfc6749#section-4.4.2
-		scopeForm := r.PostFormValue(oauth2.ParameterScope)
-
-		scopes = strings.Split(scopeForm, " ")
-	} else if grantType == oauth2.GtRefreshToken && client.GetRefreshTTL() <= 0 {
-		oauth2.TokenErrorResponseHandler(w, r, &oauth2.TokenErrorResponseParameter{Error: oauth2.TokenEtInvalidRequest})
-		return
-	} else if grantType == oauth2.GtRefreshToken && client.GetRefreshTTL() > 0 {
-		// https://datatracker.ietf.org/doc/html/rfc6749#section-6
-		refreshTokenForm := r.PostFormValue(oauth2.ParameterRefreshToken)
-		// https://datatracker.ietf.org/doc/html/rfc9700#section-4.14.2
-		// Refresh tokens are rotated, a new refresh token is issued and the used one becomes invalid
-		refreshToken, refreshTokenExists := h.tokenManager.TakeRefreshToken(refreshTokenForm)
-		if !refreshTokenExists {
-			oauth2.TokenErrorResponseHandler(w, r, &oauth2.TokenErrorResponseParameter{Error: oauth2.TokenEtInvalidRequest})
-			return
-		}
-
-		if refreshToken.ClientId != client.Id {
-			oauth2.TokenErrorResponseHandler(w, r, &oauth2.TokenErrorResponseParameter{Error: oauth2.TokenEtInvalidGrant})
-			return
-		}
-
-		username = refreshToken.Username
-		scopes = refreshToken.Scopes
-		authTime = refreshToken.AuthTime
-		requestedClaims = refreshToken.RequestedClaims
-		grantId = refreshToken.GrantId
-	} else {
-		oauth2.TokenErrorResponseHandler(w, r, &oauth2.TokenErrorResponseParameter{Error: oauth2.TokenEtUnsupportedGrandType})
+		grant = &tokenGrant{scopes: strings.Split(r.PostFormValue(oauth2.ParameterScope), " ")}
+	case oauth2.GtRefreshToken:
+		grant, grantError = h.refreshTokenGrant(r, client)
+	default:
+		grantError = &oauth2.TokenErrorResponseParameter{Error: oauth2.TokenEtUnsupportedGrandType}
+	}
+	if grantError != nil {
+		oauth2.TokenErrorResponseHandler(w, r, grantError)
 		return
 	}
+	scopes := grant.scopes
 
 	// https://datatracker.ietf.org/doc/html/rfc6749#section-5.2
 	disallowedScopes := h.config.GetDisallowedScopes(client, scopes)
@@ -195,9 +114,9 @@ func (h *Handler) handlePostRequest(w http.ResponseWriter, r *http.Request) {
 	if grantType == oauth2.GtClientCredentials {
 		// https://datatracker.ietf.org/doc/html/rfc6749#section-4.4.3
 		// A refresh token SHOULD NOT be included for the client credentials grant
-		accessTokenResponse = h.tokenManager.CreateAccessTokenResponseWithoutRefreshToken(r, username, client, &authTime, scopes, requestedClaims, nonce)
+		accessTokenResponse = h.tokenManager.CreateAccessTokenResponseWithoutRefreshToken(r, grant.username, client, &grant.authTime, scopes, grant.requestedClaims, grant.nonce)
 	} else {
-		accessTokenResponse = h.tokenManager.CreateAccessTokenResponse(r, username, client, &authTime, scopes, requestedClaims, nonce, authCode, grantId)
+		accessTokenResponse = h.tokenManager.CreateAccessTokenResponse(r, grant.username, client, &grant.authTime, scopes, grant.requestedClaims, grant.nonce, grant.authorizationCode, grant.grantId)
 	}
 
 	jsonError := internalHttp.SendJson(accessTokenResponse, w, r)
@@ -205,4 +124,131 @@ func (h *Handler) handlePostRequest(w http.ResponseWriter, r *http.Request) {
 		h.errorHandler.InternalServerErrorHandler(w, r, jsonError)
 		return
 	}
+}
+
+// authorizationCodeGrant validates the authorization code grant.
+// https://datatracker.ietf.org/doc/html/rfc6749#section-4.1.3
+func (h *Handler) authorizationCodeGrant(r *http.Request, client *config.Client) (*tokenGrant, *oauth2.TokenErrorResponseParameter) {
+	code := r.PostFormValue(oauth2.ParameterCode)
+	// Taking the code removes it, so a code can only be redeemed once, even for concurrent requests
+	authorizationCode, authorizationCodeExists := h.authorizationCodeManager.TakeSession(code)
+	if !authorizationCodeExists {
+		h.tokenManager.RevokeAccessTokenByAuthorizationCode(code)
+		return nil, &oauth2.TokenErrorResponseParameter{Error: oauth2.TokenEtInvalidGrant}
+	}
+
+	// https://datatracker.ietf.org/doc/html/rfc6749#section-4.1.3
+	// The code must have been issued to the authenticated client
+	if authorizationCode.ClientId != client.Id {
+		log.Error("Authorization code issued for client %s was used by client %s", authorizationCode.ClientId, client.Id)
+		return nil, &oauth2.TokenErrorResponseParameter{Error: oauth2.TokenEtInvalidGrant}
+	}
+
+	// The redirect_uri must be identical to the one used in the authorization request
+	redirectUri := r.PostFormValue(oauth2.ParameterRedirectUri)
+	if redirectUri != authorizationCode.Redirect {
+		log.Error("Invalid redirect URI %s for authorization code of client %s", redirectUri, client.Id)
+		return nil, &oauth2.TokenErrorResponseParameter{Error: oauth2.TokenEtInvalidGrant}
+	}
+
+	// Codes are only issued after the user logged in, checked anyway as defence in depth
+	if authorizationCode.Username == "" {
+		return nil, &oauth2.TokenErrorResponseParameter{Error: oauth2.TokenEtInvalidGrant}
+	}
+
+	codeVerifier := r.PostFormValue(pkce.ParameterCodeVerifier) // https://datatracker.ietf.org/doc/html/rfc7636#section-4.1
+	// https://datatracker.ietf.org/doc/html/rfc7636#section-4.6
+	// When a code challenge was provided, the code verifier is mandatory
+	if authorizationCode.CodeChallenge != "" && codeVerifier == "" {
+		return nil, &oauth2.TokenErrorResponseParameter{Error: oauth2.TokenEtInvalidGrant}
+	}
+	if codeVerifier != "" {
+		codeChallengeMethod, codeChallengeMethodExists := pkce.CodeChallengeMethodFromString(authorizationCode.CodeChallengeMethod)
+		if !codeChallengeMethodExists {
+			return nil, &oauth2.TokenErrorResponseParameter{Error: oauth2.TokenEtInvalidRequest}
+		}
+		validPKCE := pkce.ValidatePKCE(codeChallengeMethod, authorizationCode.CodeChallenge, codeVerifier)
+		if !validPKCE {
+			return nil, &oauth2.TokenErrorResponseParameter{Error: oauth2.TokenEtInvalidRequest}
+		}
+	}
+
+	return &tokenGrant{
+		scopes:            authorizationCode.Scopes,
+		username:          authorizationCode.Username,
+		nonce:             authorizationCode.Nonce,
+		requestedClaims:   authorizationCode.RequestedClaims,
+		authTime:          authorizationCode.AuthTime,
+		authorizationCode: code,
+	}, nil
+}
+
+// passwordGrant validates the resource owner password credentials grant.
+// https://datatracker.ietf.org/doc/html/rfc6749#section-4.3.2
+func (h *Handler) passwordGrant(r *http.Request) (*tokenGrant, *oauth2.TokenErrorResponseParameter) {
+	usernameFrom := r.PostFormValue(oauth2.ParameterUsername)
+	passwordForm := r.PostFormValue(oauth2.ParameterPassword)
+	scopeForm := r.PostFormValue(oauth2.ParameterScope)
+
+	user, exists := h.validator.ValidateUserPassword(usernameFrom, passwordForm)
+	if !exists {
+		return nil, &oauth2.TokenErrorResponseParameter{Error: oauth2.TokenEtInvalidRequest}
+	}
+	return &tokenGrant{
+		scopes:   strings.Split(scopeForm, " "),
+		username: user.Username,
+	}, nil
+}
+
+// refreshTokenGrant validates the refresh token grant.
+// https://datatracker.ietf.org/doc/html/rfc6749#section-6
+func (h *Handler) refreshTokenGrant(r *http.Request, client *config.Client) (*tokenGrant, *oauth2.TokenErrorResponseParameter) {
+	if client.GetRefreshTTL() <= 0 {
+		return nil, &oauth2.TokenErrorResponseParameter{Error: oauth2.TokenEtInvalidRequest}
+	}
+
+	refreshTokenForm := r.PostFormValue(oauth2.ParameterRefreshToken)
+
+	// The client is verified before the refresh token is consumed,
+	// so a client presenting the refresh token of another client can not invalidate it
+	existingRefreshToken, existingRefreshTokenExists := h.tokenManager.GetRefreshToken(refreshTokenForm)
+	if existingRefreshTokenExists && existingRefreshToken.ClientId != client.Id {
+		log.Error("Refresh token issued for client %s was used by client %s", existingRefreshToken.ClientId, client.Id)
+		return nil, &oauth2.TokenErrorResponseParameter{Error: oauth2.TokenEtInvalidGrant}
+	}
+
+	// https://datatracker.ietf.org/doc/html/rfc6749#section-6
+	// The requested scope must not include any scope not originally granted, when omitted the original scope is used
+	scopeForm := r.PostFormValue(oauth2.ParameterScope)
+	var requestedScopes []string
+	if scopeForm != "" && existingRefreshTokenExists {
+		requestedScopes = strings.Split(scopeForm, " ")
+		for _, requestedScope := range requestedScopes {
+			if requestedScope != "" && !slices.Contains(existingRefreshToken.Scopes, requestedScope) {
+				log.Error("Scope %s was not granted originally for client %s", requestedScope, client.Id)
+				return nil, &oauth2.TokenErrorResponseParameter{Error: oauth2.TokenEtInvalidScope}
+			}
+		}
+	}
+
+	// https://datatracker.ietf.org/doc/html/rfc9700#section-4.14.2
+	// Refresh tokens are rotated, a new refresh token is issued and the used one becomes invalid,
+	// presenting a used refresh token again revokes all tokens of its grant
+	refreshToken, refreshTokenExists := h.tokenManager.TakeRefreshToken(refreshTokenForm)
+	if !refreshTokenExists || refreshToken.ClientId != client.Id {
+		return nil, &oauth2.TokenErrorResponseParameter{Error: oauth2.TokenEtInvalidGrant}
+	}
+
+	scopes := refreshToken.Scopes
+	if len(requestedScopes) > 0 {
+		scopes = requestedScopes
+	}
+
+	return &tokenGrant{
+		scopes:          scopes,
+		username:        refreshToken.Username,
+		requestedClaims: refreshToken.RequestedClaims,
+		authTime:        refreshToken.AuthTime,
+		grantId:         refreshToken.GrantId,
+	}, nil
 }

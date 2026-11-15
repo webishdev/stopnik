@@ -338,6 +338,59 @@ func Test_CreateAccessTokenResponseWithoutRefreshToken(t *testing.T) {
 	}
 }
 
+func Test_AuthorizationCodeReuseRevokesRefreshToken(t *testing.T) {
+	testConfig := createTestConfig(t, false, 100, 0, "../../../.test_files/ecdsa521key.pem")
+	tokenManager := GetTokenManagerInstance()
+	client, _ := testConfig.GetClient("foo")
+
+	request := httptest.NewRequest(http.MethodPost, endpoint.Token, nil)
+	accessTokenResponse := tokenManager.CreateAccessTokenResponse(request, "foo", client, nil, []string{"abc"}, nil, "", "reused-code", "")
+
+	_, refreshTokenTaken := tokenManager.TakeRefreshToken(accessTokenResponse.RefreshTokenValue)
+	if !refreshTokenTaken {
+		t.Fatal("refresh token should exist")
+	}
+	refreshedResponse := tokenManager.CreateAccessTokenResponse(request, "foo", client, nil, []string{"abc"}, nil, "", "", "")
+
+	tokenManager.RevokeAccessTokenByAuthorizationCode("reused-code")
+
+	_, accessTokenExists := tokenManager.GetAccessToken(accessTokenResponse.AccessTokenValue)
+	if accessTokenExists {
+		t.Error("access token issued for the code should have been revoked")
+	}
+
+	// Tokens of other grants are not affected
+	_, refreshedRefreshTokenExists := tokenManager.GetRefreshToken(refreshedResponse.RefreshTokenValue)
+	if !refreshedRefreshTokenExists {
+		t.Error("refresh token of another grant should stay active")
+	}
+}
+
+func Test_RefreshTokenKeepsGrant(t *testing.T) {
+	testConfig := createTestConfig(t, false, 100, 0, "../../../.test_files/ecdsa521key.pem")
+	tokenManager := GetTokenManagerInstance()
+	client, _ := testConfig.GetClient("foo")
+
+	request := httptest.NewRequest(http.MethodPost, endpoint.Token, nil)
+	initialResponse := tokenManager.CreateAccessTokenResponse(request, "foo", client, nil, []string{"abc"}, nil, "", "code-with-refresh", "")
+	refreshToken, _ := tokenManager.TakeRefreshToken(initialResponse.RefreshTokenValue)
+	refreshedResponse := tokenManager.CreateAccessTokenResponse(request, "foo", client, nil, []string{"abc"}, nil, "", "", refreshToken.GrantId)
+
+	refreshedRefreshToken, refreshedRefreshTokenExists := tokenManager.GetRefreshToken(refreshedResponse.RefreshTokenValue)
+	if !refreshedRefreshTokenExists || refreshedRefreshToken.GrantId != refreshToken.GrantId || refreshToken.GrantId == "" {
+		t.Fatal("refreshed tokens should belong to the same grant")
+	}
+
+	// Reusing the code also revokes the refresh token obtained by refreshing
+	tokenManager.RevokeAccessTokenByAuthorizationCode("code-with-refresh")
+
+	_, refreshedRefreshTokenExists = tokenManager.GetRefreshToken(refreshedResponse.RefreshTokenValue)
+	_, refreshedAccessTokenExists := tokenManager.GetAccessToken(refreshedResponse.AccessTokenValue)
+	if refreshedRefreshTokenExists || refreshedAccessTokenExists {
+		t.Error("tokens of the grant should have been revoked after reuse of the code")
+	}
+}
+
 func assertAuthorizationHeader(t *testing.T, tokenManager *Manager, authorizationHeader string, requestScopes []string) {
 	validAccessToken, valid := tokenManager.validateAccessTokenHeader(authorizationHeader)
 	if !valid {
