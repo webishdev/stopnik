@@ -34,7 +34,7 @@ func setupDynamicTest(t *testing.T, clientCheck ClientCheck) (string, *Config, *
 		}
 	}
 
-	config := &Config{baseDir: baseDir}
+	config := &Config{configDir: baseDir}
 	if initializationError := Initialize(config); initializationError != nil {
 		t.Fatal(initializationError)
 	}
@@ -166,7 +166,7 @@ func Test_DynamicStoreClientCheck(t *testing.T) {
 }
 
 func Test_DynamicStoreMissingDirectories(t *testing.T) {
-	config := &Config{baseDir: filepath.Join(t.TempDir(), "missing")}
+	config := &Config{configDir: filepath.Join(t.TempDir(), "missing")}
 	if initializationError := Initialize(config); initializationError != nil {
 		t.Fatal(initializationError)
 	}

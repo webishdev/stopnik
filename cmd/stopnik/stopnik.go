@@ -12,7 +12,7 @@ func main() {
 	isHelp := flag.Bool("help", false, "Show help message")
 	showVersion := flag.Bool("version", false, "Show version information")
 	askPassword := flag.Bool("password", false, "Ask for password to create a bcrypt hash")
-	configurationFile := flag.String("file", ".config/default/config.toml", "Static configuration file to use")
+	configurationDir := flag.String("config-dir", ".config/default", "Configuration directory containing config.toml, client.d, user.d and classification.d")
 	flag.Parse()
 
 	if *isHelp {
@@ -26,7 +26,7 @@ func main() {
 		os.Exit(0)
 	}
 
-	startError := start(configurationFile)
+	startError := start(configurationDir)
 	if startError != nil {
 		os.Exit(1)
 	}

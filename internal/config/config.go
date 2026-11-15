@@ -178,14 +178,12 @@ type Classification struct {
 	scopes    store.Set[string]
 }
 
-// Dynamic defines where the dynamic configuration is located and whether it should be watched for changes.
-// Relative directories are resolved against the directory of the static configuration file.
+// Dynamic defines whether the dynamic configuration should be watched for changes.
+// The dynamic configuration is always located in the client.d, user.d and classification.d directories
+// of the configuration directory.
 type Dynamic struct {
-	Watch           bool   `toml:"watch"`
-	Interval        int    `toml:"interval"`
-	Clients         string `toml:"clients"`
-	Users           string `toml:"users"`
-	Classifications string `toml:"classifications"`
+	Watch    bool `toml:"watch"`
+	Interval int  `toml:"interval"`
 }
 
 // Config defines the root entry for the static configuration.
@@ -197,7 +195,7 @@ type Config struct {
 	generatedSecret   string
 	logoImage         *[]byte
 	forwardAuthClient *Client
-	baseDir           string
+	configDir         string
 	dynamic           *atomic.Pointer[dynamicSnapshot]
 }
 

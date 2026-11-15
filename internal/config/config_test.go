@@ -953,31 +953,36 @@ func Test_MinimalConfiguration(t *testing.T) {
 func Test_DynamicDirectories(t *testing.T) {
 	type dirParameter struct {
 		name                    string
-		staticFile              string
-		dynamic                 Dynamic
+		configDir               string
+		expectedStaticFile      string
 		expectedClients         string
 		expectedUsers           string
 		expectedClassifications string
 	}
 
 	var dirParameters = []dirParameter{
-		{"Defaults next to static file", ".config/default/config.toml", Dynamic{}, ".config/default/client.d", ".config/default/user.d", ".config/default/classification.d"},
-		{"Relative to static file", "/etc/stopnik/config.toml", Dynamic{Clients: "c", Users: "../u", Classifications: "./x"}, "/etc/stopnik/c", "/etc/u", "/etc/stopnik/x"},
-		{"Absolute", "config.toml", Dynamic{Clients: "/a", Users: "/b", Classifications: "/c"}, "/a", "/b", "/c"},
+		{"Relative", ".config/default", ".config/default/config.toml", ".config/default/client.d", ".config/default/user.d", ".config/default/classification.d"},
+		{"Absolute", "/etc/stopnik", "/etc/stopnik/config.toml", "/etc/stopnik/client.d", "/etc/stopnik/user.d", "/etc/stopnik/classification.d"},
 	}
 
 	for _, test := range dirParameters {
 		t.Run(test.name, func(t *testing.T) {
+			var readFile string
 			configLoader := NewConfigLoader(func(filename string) ([]byte, error) {
+				readFile = filename
 				return make([]byte, 10), nil
 			}, func(in []byte, out interface{}) (err error) {
 				origin := out.(*Config)
-				*origin = Config{Server: Server{Addr: ":8080"}, Dynamic: test.dynamic}
+				*origin = Config{Server: Server{Addr: ":8080"}}
 				return nil
 			})
 
-			if loadError := configLoader.LoadConfig(test.staticFile, true); loadError != nil {
+			if loadError := configLoader.LoadConfig(test.configDir, true); loadError != nil {
 				t.Fatal(loadError)
+			}
+
+			if readFile != test.expectedStaticFile {
+				t.Errorf("static file %s did not match %s", readFile, test.expectedStaticFile)
 			}
 
 			config := GetConfigInstance()

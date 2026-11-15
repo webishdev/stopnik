@@ -13,6 +13,7 @@ import (
 	"github.com/webishdev/stopnik/internal/system"
 	logger "github.com/webishdev/stopnik/log"
 	"os"
+	"path/filepath"
 )
 
 // printVersion prints the provided version and git hash value.
@@ -40,11 +41,11 @@ func readPassword() {
 	fmt.Printf("Hashed value is: %s\n\n", result)
 }
 
-// start starts the STOPnik server configured by the provided static configurationFile.
+// start starts the STOPnik server configured by the provided configurationDir.
 // The static configuration is loaded once, the dynamic configuration (clients, users and classifications)
 // is loaded from its directories and watched for changes when enabled.
-func start(configurationFile *string) error {
-	currentConfig, configError := loadStaticConfiguration(*configurationFile)
+func start(configurationDir *string) error {
+	currentConfig, configError := loadStaticConfiguration(*configurationDir)
 	if configError != nil {
 		fmt.Printf("STOPnik %s - %s\n\n", Version, GitHash)
 		fmt.Printf("%v", configError)
@@ -52,7 +53,7 @@ func start(configurationFile *string) error {
 	}
 
 	logger.SetLogLevel(currentConfig.Server.LogLevel)
-	logger.Info("Config loaded from %s", *configurationFile)
+	logger.Info("Config loaded from %s", filepath.Join(*configurationDir, config.StaticFileName))
 	if currentConfig.Server.Issuer == "" {
 		logger.Warn("No issuer configured, the issuer will be derived from the Host header of each request, configure server.issuer to avoid manipulated issuer values")
 	}
@@ -78,11 +79,12 @@ func start(configurationFile *string) error {
 	return nil
 }
 
-// loadStaticConfiguration loads and validates the static configuration and makes it the current one.
+// loadStaticConfiguration loads and validates the static configuration from the given configuration directory
+// and makes it the current one.
 // Beside the configuration itself, the referenced server private key and TLS certificates are validated.
-func loadStaticConfiguration(name string) (*config.Config, error) {
+func loadStaticConfiguration(dir string) (*config.Config, error) {
 	configLoader := config.NewConfigLoader(os.ReadFile, toml.Unmarshal)
-	if configError := configLoader.LoadConfig(name, true); configError != nil {
+	if configError := configLoader.LoadConfig(dir, true); configError != nil {
 		return nil, configError
 	}
 	currentConfig := config.GetConfigInstance()

@@ -63,7 +63,7 @@ clients = "/clients"
 	if config.Server.SecureCookie == nil || *config.Server.SecureCookie {
 		t.Error("secure cookie should be decoded as false")
 	}
-	if !config.Dynamic.Watch || config.GetDynamicInterval() != 5*time.Second || config.Dynamic.Clients != "/clients" {
+	if !config.Dynamic.Watch || config.GetDynamicInterval() != 5*time.Second {
 		t.Errorf("dynamic not decoded as expected, %v", config.Dynamic)
 	}
 }

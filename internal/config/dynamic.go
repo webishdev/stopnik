@@ -124,25 +124,17 @@ func (config *Config) GetDynamicInterval() time.Duration {
 
 // GetClientsDir returns the directory which contains client configuration files.
 func (config *Config) GetClientsDir() string {
-	return config.resolveDir(config.Dynamic.Clients, "client.d")
+	return filepath.Join(config.configDir, "client.d")
 }
 
 // GetUsersDir returns the directory which contains user configuration files.
 func (config *Config) GetUsersDir() string {
-	return config.resolveDir(config.Dynamic.Users, "user.d")
+	return filepath.Join(config.configDir, "user.d")
 }
 
 // GetClassificationsDir returns the directory which contains classification configuration files.
 func (config *Config) GetClassificationsDir() string {
-	return config.resolveDir(config.Dynamic.Classifications, "classification.d")
-}
-
-func (config *Config) resolveDir(dir string, defaultDir string) string {
-	dir = cmp.Or(dir, defaultDir)
-	if filepath.IsAbs(dir) {
-		return dir
-	}
-	return filepath.Join(config.baseDir, dir)
+	return filepath.Join(config.configDir, "classification.d")
 }
 
 func pointers[T any](values []T) []*T {

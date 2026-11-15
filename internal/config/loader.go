@@ -2,6 +2,9 @@ package config
 
 import "path/filepath"
 
+// StaticFileName is the name of the static configuration file inside the configuration directory.
+const StaticFileName = "config.toml"
+
 // ReadFile function definition to read a file by name into []byte.
 type ReadFile func(filename string) ([]byte, error)
 
@@ -10,8 +13,9 @@ type Unmarshal func(in []byte, out interface{}) (err error)
 
 // Loader defines how the static configuration is loaded.
 type Loader interface {
-	// LoadConfig loads the given static configuration, validates if necessary and makes it the current one.
-	LoadConfig(name string, validate bool) error
+	// LoadConfig loads the static configuration from the given configuration directory,
+	// validates if necessary and makes it the current one.
+	LoadConfig(dir string, validate bool) error
 }
 
 type loader struct {
@@ -27,8 +31,8 @@ func NewConfigLoader(fileReader ReadFile, unmarshaler Unmarshal) Loader {
 	}
 }
 
-func (loader *loader) LoadConfig(name string, validate bool) error {
-	data, readError := loader.fileReader(name)
+func (loader *loader) LoadConfig(dir string, validate bool) error {
+	data, readError := loader.fileReader(filepath.Join(dir, StaticFileName))
 	if readError != nil {
 		return readError
 	}
@@ -46,7 +50,7 @@ func (loader *loader) LoadConfig(name string, validate bool) error {
 		}
 	}
 
-	config.baseDir = filepath.Dir(name)
+	config.configDir = dir
 
 	return Initialize(config)
 }

@@ -102,6 +102,7 @@ To continue a configuration must be provided.
 
 For the binary variant put the static configuration into `.config/default/config.toml` relative to the working directory,
 and clients, users and classifications into the `client.d`, `user.d` and `classification.d` folders next to it.
+Another configuration directory can be used with `-config-dir`.
 
 For the container variant the `.config/default` folder should be mounted into the container. It may be also necessary to mount the necessery TLS certificates and private keys used for signing tokens.
 

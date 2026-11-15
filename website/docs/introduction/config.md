@@ -7,9 +7,10 @@
 - The **dynamic configuration** contains [clients](#clients), [users](#users) and [classifications](#classification).
   Each entry is a single TOML file inside the folders `client.d`, `user.d` and `classification.d`.
 
-By default **STOPnik** will use the static configuration `.config/default/config.toml` relative to the working directory,
-another file can be used with the [`-file`](../advanced/cmd.md#configuration-file) parameter.
-The dynamic configuration folders are expected next to the static configuration file, e.g.
+By default **STOPnik** will use the configuration directory `.config/default` relative to the working directory,
+another directory can be used with the [`-config-dir`](../advanced/cmd.md#configuration-directory) parameter.
+The configuration directory contains the static configuration file `config.toml`
+and the dynamic configuration folders `client.d`, `user.d` and `classification.d`, e.g.
 
 ```
 .config/default/
@@ -50,7 +51,7 @@ As **STOPnik** is under heavy development right now, the configuration may chang
 
 ## Static configuration file
 
-The static configuration file (e.g. `.config/default/config.toml`) may contain different root options which are described here as followed
+The static configuration file (`config.toml` inside the configuration directory) may contain different root options which are described here as followed
 
 | Property                                         | Description                          | Required |
 |--------------------------------------------------|--------------------------------------|----------|
@@ -181,21 +182,17 @@ Root entry named `ui`
 
 Root entry named `dynamic`
 
-| Property          | Description                                                       | Required |
-|-------------------|-------------------------------------------------------------------|----------|
-| `watch`           | Watch the dynamic configuration folders for changes               | No       |
-| `interval`        | Seconds between checks for changes, defaults to `2`               | No       |
-| `clients`         | Folder containing client files, defaults to `client.d`            | No       |
-| `users`           | Folder containing user files, defaults to `user.d`                | No       |
-| `classifications` | Folder containing classification files, defaults to `classification.d` | No       |
+| Property   | Description                                         | Required |
+|------------|-----------------------------------------------------|----------|
+| `watch`    | Watch the dynamic configuration folders for changes | No       |
+| `interval` | Seconds between checks for changes, defaults to `2` | No       |
 
-Relative folders are resolved against the folder of the static configuration file.
+The dynamic configuration folders are always `client.d`, `user.d` and `classification.d` inside the configuration directory.
 
 ```toml
 [dynamic]
 watch = true
 interval = 5
-users = "/etc/stopnik/users"
 ```
 
 ## Dynamic configuration files

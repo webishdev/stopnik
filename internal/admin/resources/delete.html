@@ -1,0 +1,14 @@
+{{ define "content" }}
+<form method="post" action="{{ base }}/{{ .Kind.Name }}/{{ .ID }}/delete" class="form narrow">
+    <input type="hidden" name="hash" value="{{ .Hash }}" />
+    <section class="card danger-card">
+        <div class="danger-icon">{{ template "icon" "trash" }}</div>
+        <h2>Delete {{ lower .Kind.Singular }} {{ with .Entry }}{{ if .Label }}<em>{{ .Label }}</em>{{ end }}{{ end }}?</h2>
+        <p class="muted">A running STOPnik removes the {{ lower .Kind.Singular }} within a few seconds. This can not be undone.</p>
+        <div class="form-actions plain">
+            <button type="submit" class="button danger">Delete {{ lower .Kind.Singular }}</button>
+            <a class="button" href="{{ base }}/{{ .Kind.Name }}">Cancel</a>
+        </div>
+    </section>
+</form>
+{{ end }}

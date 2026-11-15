@@ -66,8 +66,8 @@ More details about **STOPnik** can be found at https://stopnik.webish.dev/
 
 Docker images for `linux/amd64` and `linux/arm64` are published to the GitHub Container Registry with every release.
 
-The image expects the static configuration at `/.config/default/config.toml` and the dynamic configuration
-(`client.d`, `user.d` and `classification.d`) next to it, e.g. to run with the [minimal configuration](.config/minimal)
+The image expects the configuration directory at `/.config/default`, containing the static configuration `config.toml`
+and the dynamic configuration (`client.d`, `user.d` and `classification.d`), e.g. to run with the [minimal configuration](.config/minimal)
 
 ```bash
 docker run --rm -p 8080:8080 -v "$(pwd)/.config/minimal:/.config/default:ro" ghcr.io/webishdev/stopnik:latest
@@ -93,9 +93,9 @@ And then start **STOPnik** with
 ./stopnik
 ```
 
-By default the static configuration is read from `.config/default/config.toml` in the current folder,
-clients, users and classifications are read from `client.d`, `user.d` and `classification.d` next to it.
-Another static configuration can be used with `./stopnik -file .config/minimal/config.toml`.
+By default the configuration directory `.config/default` in the current folder is used,
+the static configuration is read from `config.toml`, clients, users and classifications from `client.d`, `user.d` and `classification.d` inside it.
+Another configuration directory can be used with `./stopnik -config-dir .config/minimal`.
 
 Release binaries for specific platforms are built with the `Makefile` into the `bin` folder, e.g.
 

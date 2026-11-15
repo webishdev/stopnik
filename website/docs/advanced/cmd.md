@@ -4,8 +4,8 @@
 
 ```bash
 Usage of ./stopnik:
-  -file string
-        Static configuration file to use (default ".config/default/config.toml")
+  -config-dir string
+        Configuration directory containing config.toml, client.d, user.d and classification.d (default ".config/default")
   -help
         Show help message
   -password
@@ -23,12 +23,13 @@ The `-help` parameter will show the usage information.
 
 The `-version` parameter will show the version information.
 
-## Configuration file
+## Configuration directory
 
-The `-file <location>` parameter can be used to point to a static configuration file,
-otherwise **STOPnik** will try to read the `.config/default/config.toml` from the working directory.
+The `-config-dir <location>` parameter can be used to point to a configuration directory,
+otherwise **STOPnik** will use `.config/default` from the working directory.
 
-The dynamic configuration folders `client.d`, `user.d` and `classification.d` are expected next to the static configuration file,
+The configuration directory contains the static configuration file `config.toml`
+and the dynamic configuration folders `client.d`, `user.d` and `classification.d`,
 see [Configuration](../introduction/config.md).
 
 ## Password
@@ -73,7 +74,7 @@ With a salt, the hash is created for the value `<password>/!<salt>`.
 
 The separate `stopnik-admin` binary serves a web user interface to create, edit and delete
 the dynamic configuration files of clients, users and classifications.
-It reads the same static configuration file as **STOPnik** to find the `client.d`, `user.d` and `classification.d` folders
+It uses the same configuration directory as **STOPnik** to find the `client.d`, `user.d` and `classification.d` folders
 and validates every change with the same rules **STOPnik** uses when loading these files.
 A running **STOPnik** applies the changes when `dynamic.watch` is enabled.
 
@@ -83,8 +84,8 @@ Usage of ./stopnik-admin:
         Address the admin web user interface listens to, e.g. 0.0.0.0:9999 (default "localhost:9999")
   -base-path string
         Path prefix the admin web user interface is served under, e.g. /admin
-  -file string
-        Static configuration file to use (default ".config/default/config.toml")
+  -config-dir string
+        Configuration directory containing config.toml, client.d, user.d and classification.d (default ".config/default")
   -help
         Show help message
   -version

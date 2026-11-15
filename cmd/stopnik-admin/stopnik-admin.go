@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"path"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -27,7 +28,7 @@ func main() {
 	showVersion := flag.Bool("version", false, "Show version information")
 	addr := flag.String("addr", "localhost:9999", "Address the admin web user interface listens to, e.g. 0.0.0.0:9999")
 	basePath := flag.String("base-path", "", "Path prefix the admin web user interface is served under, e.g. /admin")
-	configurationFile := flag.String("file", ".config/default/config.toml", "Static configuration file to use")
+	configurationDir := flag.String("config-dir", ".config/default", "Configuration directory containing config.toml, client.d, user.d and classification.d")
 	flag.Parse()
 
 	if *isHelp {
@@ -39,23 +40,23 @@ func main() {
 		os.Exit(0)
 	}
 
-	if startError := start(*addr, *basePath, *configurationFile); startError != nil {
+	if startError := start(*addr, *basePath, *configurationDir); startError != nil {
 		fmt.Printf("STOPnik Admin %s - %s\n\n", Version, GitHash)
 		fmt.Printf("%v\n", startError)
 		os.Exit(1)
 	}
 }
 
-// start serves the admin web user interface below basePath for the dynamic configuration referenced by the static configurationFile.
+// start serves the admin web user interface below basePath for the dynamic configuration inside configurationDir.
 // Only users with the admin flag can sign in to the web user interface.
-func start(addr string, basePath string, configurationFile string) error {
+func start(addr string, basePath string, configurationDir string) error {
 	configLoader := config.NewConfigLoader(os.ReadFile, toml.Unmarshal)
-	if configError := configLoader.LoadConfig(configurationFile, true); configError != nil {
+	if configError := configLoader.LoadConfig(configurationDir, true); configError != nil {
 		return configError
 	}
 	currentConfig := config.GetConfigInstance()
 	logger.SetLogLevel(currentConfig.Server.LogLevel)
-	logger.Info("Config loaded from %s", configurationFile)
+	logger.Info("Config loaded from %s", filepath.Join(configurationDir, config.StaticFileName))
 
 	logger.Info("Managing clients in %s, users in %s and classifications in %s", currentConfig.GetClientsDir(), currentConfig.GetUsersDir(), currentConfig.GetClassificationsDir())
 
