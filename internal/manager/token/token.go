@@ -16,6 +16,7 @@ import (
 	"github.com/webishdev/stopnik/internal/store"
 	"github.com/webishdev/stopnik/internal/system"
 	"github.com/webishdev/stopnik/log"
+	"mime"
 	"net/http"
 	"slices"
 	"strings"
@@ -397,14 +398,33 @@ func (tokenManager *Manager) ValidateAccessTokenRequest(r *http.Request) (*Valid
 	// https://datatracker.ietf.org/doc/html/rfc6750#section-2.1
 	log.Debug("Checking authorization request header field")
 	authorizationHeader := r.Header.Get(internalHttp.Authorization)
-	if authorizationHeader == "" {
-		// https://datatracker.ietf.org/doc/html/rfc6750#section-2.2
+
+	// https://datatracker.ietf.org/doc/html/rfc6750#section-2.2
+	// The form-encoded body parameter is only used for POST requests with form-encoded content
+	formAccessToken := ""
+	if r.Method == http.MethodPost && isFormEncoded(r) {
 		log.Debug("Checking form-encoded body parameter")
-		accessTokenValue := r.PostFormValue("access_token")
-		return tokenManager.validateAccessToken(accessTokenValue)
+		formAccessToken = r.PostFormValue(oauth2.ParameterAccessToken)
+	}
+
+	// https://datatracker.ietf.org/doc/html/rfc6750#section-2
+	// Clients must not use more than one method to transmit the token in each request
+	if authorizationHeader != "" && formAccessToken != "" {
+		log.Error("Access token provided in authorization header and form-encoded body")
+		return &ValidAccessToken{}, false
+	}
+
+	if authorizationHeader == "" {
+		return tokenManager.validateAccessToken(formAccessToken)
 	} else {
 		return tokenManager.validateAccessTokenHeader(authorizationHeader)
 	}
+}
+
+// isFormEncoded returns whether the request has the content type application/x-www-form-urlencoded.
+func isFormEncoded(r *http.Request) bool {
+	mediaType, _, parseError := mime.ParseMediaType(r.Header.Get(internalHttp.ContentType))
+	return parseError == nil && mediaType == "application/x-www-form-urlencoded"
 }
 
 func (tokenManager *Manager) validateAccessTokenHeader(authorizationHeader string) (*ValidAccessToken, bool) {
@@ -647,14 +667,18 @@ func generateRefreshToken(config *config.Config, client *config.Client, tokenId 
 	return token
 }
 
+// getAuthorizationHeaderValue returns the token of a Bearer authorization header or nil.
+// https://datatracker.ietf.org/doc/html/rfc6750#section-2.1
+// credentials = "Bearer" 1*SP b64token, the scheme is case-insensitive.
 func getAuthorizationHeaderValue(authorizationHeader string) *string {
-	if authorizationHeader == "" || !strings.Contains(authorizationHeader, internalHttp.AuthBearer) {
+	scheme, token, found := strings.Cut(authorizationHeader, " ")
+	if !found || !strings.EqualFold(scheme, internalHttp.AuthBearer) {
 		return nil
 	}
-
-	replaceBearer := fmt.Sprintf("%s ", internalHttp.AuthBearer)
-	result := strings.Replace(authorizationHeader, replaceBearer, "", 1)
-	return &result
+	if token == "" || strings.ContainsAny(token, " \t") {
+		return nil
+	}
+	return &token
 }
 
 func addStringClaimOpenId(builder *openid.Builder, claimName string, claimValue string) {

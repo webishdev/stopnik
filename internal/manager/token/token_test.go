@@ -15,6 +15,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"reflect"
+	"strings"
 	"testing"
 )
 
@@ -388,6 +389,86 @@ func Test_RefreshTokenKeepsGrant(t *testing.T) {
 	_, refreshedAccessTokenExists := tokenManager.GetAccessToken(refreshedResponse.AccessTokenValue)
 	if refreshedRefreshTokenExists || refreshedAccessTokenExists {
 		t.Error("tokens of the grant should have been revoked after reuse of the code")
+	}
+}
+
+func Test_GetAuthorizationHeaderValue(t *testing.T) {
+	type headerParameter struct {
+		header   string
+		expected string
+		valid    bool
+	}
+
+	var headerParameters = []headerParameter{
+		{"Bearer abc", "abc", true},
+		{"bearer abc", "abc", true},
+		{"BEARER abc.def-ghi_jkl~", "abc.def-ghi_jkl~", true},
+		{"Bearer", "", false},
+		{"Bearer ", "", false},
+		{"Bearer abc def", "", false},
+		{"Bearer  abc", "", false},
+		{"Basic QmVhcmVyIGFiYw==", "", false},
+		{"xBearer abc", "", false},
+		{"Bearerabc", "", false},
+		{"Basic Bearer abc", "", false},
+		{"", "", false},
+	}
+
+	for _, test := range headerParameters {
+		t.Run(test.header, func(t *testing.T) {
+			value := getAuthorizationHeaderValue(test.header)
+			if test.valid && (value == nil || *value != test.expected) {
+				t.Errorf("expected %q, got %v", test.expected, value)
+			}
+			if !test.valid && value != nil {
+				t.Errorf("expected no value, got %q", *value)
+			}
+		})
+	}
+}
+
+func Test_ValidateAccessTokenRequest(t *testing.T) {
+	testConfig := createTestConfig(t, false, 0, 0, "../../../.test_files/ecdsa521key.pem")
+	tokenManager := GetTokenManagerInstance()
+	client, _ := testConfig.GetClient("foo")
+	accessTokenResponse := tokenManager.CreateAccessTokenResponse(httptest.NewRequest(http.MethodPost, endpoint.Token, nil), "foo", client, nil, []string{"abc"}, nil, "", "", "")
+	accessToken := accessTokenResponse.AccessTokenValue
+
+	type requestParameter struct {
+		name        string
+		method      string
+		contentType string
+		header      string
+		body        string
+		valid       bool
+	}
+
+	var requestParameters = []requestParameter{
+		{"Authorization header", http.MethodGet, "", "Bearer " + accessToken, "", true},
+		{"Form-encoded body", http.MethodPost, "application/x-www-form-urlencoded", "", "access_token=" + accessToken, true},
+		{"Form-encoded body with charset", http.MethodPost, "application/x-www-form-urlencoded; charset=utf-8", "", "access_token=" + accessToken, true},
+		{"Body without form content type", http.MethodPost, "text/plain", "", "access_token=" + accessToken, false},
+		{"Query parameter is ignored", http.MethodGet, "", "", "", false},
+		{"Header and body at the same time", http.MethodPost, "application/x-www-form-urlencoded", "Bearer " + accessToken, "access_token=" + accessToken, false},
+	}
+
+	for _, test := range requestParameters {
+		t.Run(test.name, func(t *testing.T) {
+			target := "/userinfo"
+			if test.name == "Query parameter is ignored" {
+				target = "/userinfo?access_token=" + accessToken
+			}
+			request := httptest.NewRequest(test.method, target, strings.NewReader(test.body))
+			if test.contentType != "" {
+				request.Header.Set(internalHttp.ContentType, test.contentType)
+			}
+			if test.header != "" {
+				request.Header.Set(internalHttp.Authorization, test.header)
+			}
+			if _, valid := tokenManager.ValidateAccessTokenRequest(request); valid != test.valid {
+				t.Errorf("result %t did not match %t", valid, test.valid)
+			}
+		})
 	}
 }
 
