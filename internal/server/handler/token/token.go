@@ -74,6 +74,7 @@ func (h *Handler) handlePostRequest(w http.ResponseWriter, r *http.Request) {
 	var requestedClaims *oidc.ClaimsParameter
 	nonce := ""
 	authCode := ""
+	grantId := ""
 	var authTime time.Time
 
 	if grantType == oauth2.GtAuthorizationCode {
@@ -175,6 +176,8 @@ func (h *Handler) handlePostRequest(w http.ResponseWriter, r *http.Request) {
 		username = refreshToken.Username
 		scopes = refreshToken.Scopes
 		authTime = refreshToken.AuthTime
+		requestedClaims = refreshToken.RequestedClaims
+		grantId = refreshToken.GrantId
 	} else {
 		oauth2.TokenErrorResponseHandler(w, r, &oauth2.TokenErrorResponseParameter{Error: oauth2.TokenEtUnsupportedGrandType})
 		return
@@ -188,7 +191,7 @@ func (h *Handler) handlePostRequest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	accessTokenResponse := h.tokenManager.CreateAccessTokenResponse(r, username, client, &authTime, scopes, requestedClaims, nonce, authCode)
+	accessTokenResponse := h.tokenManager.CreateAccessTokenResponse(r, username, client, &authTime, scopes, requestedClaims, nonce, authCode, grantId)
 
 	jsonError := internalHttp.SendJson(accessTokenResponse, w, r)
 	if jsonError != nil {

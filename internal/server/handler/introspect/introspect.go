@@ -11,15 +11,21 @@ import (
 	"net/http"
 	"slices"
 	"strings"
+	"time"
 )
 
 // response as described in https://datatracker.ietf.org/doc/html/rfc7662#section-2.2
 type response struct {
-	Active    bool             `json:"active"`
-	Scope     string           `json:"scope,omitempty"`
-	ClientId  string           `json:"client_id,omitempty"`
-	Username  string           `json:"username,omitempty"`
-	TokenType oauth2.TokenType `json:"token_type,omitempty"`
+	Active     bool             `json:"active"`
+	Scope      string           `json:"scope,omitempty"`
+	ClientId   string           `json:"client_id,omitempty"`
+	Username   string           `json:"username,omitempty"`
+	TokenType  oauth2.TokenType `json:"token_type,omitempty"`
+	Expiration int64            `json:"exp,omitempty"`
+	IssuedAt   int64            `json:"iat,omitempty"`
+	Subject    string           `json:"sub,omitempty"`
+	Audience   []string         `json:"aud,omitempty"`
+	Issuer     string           `json:"iss,omitempty"`
 }
 
 type Handler struct {
@@ -64,8 +70,16 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 		} else {
+			// https://datatracker.ietf.org/doc/html/rfc7662#section-2.1
+			// Public clients can not authenticate, so they could use the endpoint to scan for valid tokens
+			if client.GetClientType() != oauth2.CtConfidential {
+				log.Error("Public client %s is not allowed to introspect tokens", client.Id)
+				oauth2.TokenErrorStatusResponseHandler(w, r, http.StatusUnauthorized, &oauth2.TokenErrorResponseParameter{Error: oauth2.TokenEtInvalidClient})
+				return
+			}
+			// A client with the introspect flag, e.g. a resource server, may introspect tokens of all clients
 			if !client.Introspect {
-				oauth2.TokenErrorStatusResponseHandler(w, r, http.StatusServiceUnavailable, &oauth2.TokenErrorResponseParameter{Error: oauth2.TokenEtInvalidRequest})
+				oauth2.TokenErrorStatusResponseHandler(w, r, http.StatusForbidden, &oauth2.TokenErrorResponseParameter{Error: oauth2.TokenEtUnauthorizedClient})
 				return
 			}
 		}
@@ -108,6 +122,7 @@ func (h *Handler) checkRefreshToken(token string, introspectResponse *response) 
 		introspectResponse.Username = refreshToken.Username
 		introspectResponse.ClientId = refreshToken.ClientId
 		introspectResponse.Scope = strings.Join(refreshToken.Scopes, " ")
+		h.setTokenDetails(introspectResponse, refreshToken.ClientId, refreshToken.Username, refreshToken.IssuedAt, refreshToken.ExpiresAt)
 	}
 
 	return tokenExists
@@ -123,7 +138,25 @@ func (h *Handler) checkAccessToken(token string, introspectResponse *response) b
 		introspectResponse.ClientId = accessToken.ClientId
 		introspectResponse.Scope = strings.Join(accessToken.Scopes, " ")
 		introspectResponse.TokenType = accessToken.TokenType
+		h.setTokenDetails(introspectResponse, accessToken.ClientId, accessToken.Username, accessToken.IssuedAt, accessToken.ExpiresAt)
 	}
 
 	return tokenExists
+}
+
+// setTokenDetails sets the optional details of an active token, as described in
+// https://datatracker.ietf.org/doc/html/rfc7662#section-2.2
+func (h *Handler) setTokenDetails(introspectResponse *response, clientId string, username string, issuedAt time.Time, expiresAt time.Time) {
+	introspectResponse.Subject = username
+	introspectResponse.Issuer = h.config.GetIssuer()
+	if !issuedAt.IsZero() {
+		introspectResponse.IssuedAt = issuedAt.Unix()
+	}
+	if !expiresAt.IsZero() {
+		introspectResponse.Expiration = expiresAt.Unix()
+	}
+	client, clientExists := h.config.GetClient(clientId)
+	if clientExists {
+		introspectResponse.Audience = client.GetAudience()
+	}
 }

@@ -59,7 +59,7 @@ func Test_AccessTokenResponse(t *testing.T) {
 			}
 
 			request := httptest.NewRequest(http.MethodPost, endpoint.Token, nil)
-			accessTokenResponse := tokenManager.CreateAccessTokenResponse(request, "foo", client, nil, requestScopes, nil, "", test.authCode)
+			accessTokenResponse := tokenManager.CreateAccessTokenResponse(request, "foo", client, nil, requestScopes, nil, "", test.authCode, "")
 
 			assertTokenResponse(t, accessTokenResponse, test, client)
 
@@ -152,7 +152,7 @@ func Test_ForwardAuthClientId(t *testing.T) {
 			}
 
 			request := httptest.NewRequest(http.MethodPost, endpoint.Token, nil)
-			accessTokenResponse := tokenManager.CreateAccessTokenResponse(request, "foo", forwardAuthClient, nil, requestScopes, nil, "", test.authCode)
+			accessTokenResponse := tokenManager.CreateAccessTokenResponse(request, "foo", forwardAuthClient, nil, requestScopes, nil, "", test.authCode, "")
 
 			assertTokenResponse(t, accessTokenResponse, test, forwardAuthClient)
 		})
@@ -168,7 +168,7 @@ func Test_InvalidUserInToken(t *testing.T) {
 	}
 
 	request := httptest.NewRequest(http.MethodPost, endpoint.Token, nil)
-	accessTokenResponse := tokenManager.CreateAccessTokenResponse(request, "bar", client, nil, []string{"abc", "def"}, nil, "", "")
+	accessTokenResponse := tokenManager.CreateAccessTokenResponse(request, "bar", client, nil, []string{"abc", "def"}, nil, "", "", "")
 
 	_, valid := tokenManager.validateAccessTokenHeader(fmt.Sprintf("%s %s", internalHttp.AuthBearer, accessTokenResponse.AccessTokenValue))
 
@@ -237,7 +237,7 @@ func Test_TokenIssuerNotFromHostHeader(t *testing.T) {
 	request := httptest.NewRequest(http.MethodPost, endpoint.Token, nil)
 	request.Host = "evil.example"
 	requestScopes := []string{oidc.ScopeOpenId, oidc.ScopeOfflineAccess}
-	accessTokenResponse := tokenManager.CreateAccessTokenResponse(request, "foo", client, nil, requestScopes, nil, "", "")
+	accessTokenResponse := tokenManager.CreateAccessTokenResponse(request, "foo", client, nil, requestScopes, nil, "", "", "")
 
 	tokenValues := map[string]string{
 		"access token":  accessTokenResponse.AccessTokenValue,
@@ -263,7 +263,7 @@ func Test_TokenWithoutConfiguredKey(t *testing.T) {
 
 	request := httptest.NewRequest(http.MethodPost, endpoint.Token, nil)
 	requestScopes := []string{oidc.ScopeOpenId, oidc.ScopeOfflineAccess}
-	accessTokenResponse := tokenManager.CreateAccessTokenResponse(request, "foo", client, nil, requestScopes, nil, "", "")
+	accessTokenResponse := tokenManager.CreateAccessTokenResponse(request, "foo", client, nil, requestScopes, nil, "", "", "")
 
 	// Without configured keys every token is signed with the ephemeral server key, never with the server secret
 	for _, tokenValue := range []string{accessTokenResponse.AccessTokenValue, accessTokenResponse.RefreshTokenValue, accessTokenResponse.IdTokenValue} {

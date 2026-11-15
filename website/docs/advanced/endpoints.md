@@ -61,11 +61,25 @@ Following the [OAuth 2.0 Security Best Current Practice](https://datatracker.iet
 
 - `/introspect`
 
+Introspection is allowed for
+
+- confidential clients with `introspect` enabled, they may introspect tokens of all clients,
+  public clients are rejected with `401` and clients without `introspect` with `403`
+- access tokens containing the introspect scope (`server.introspectScope`)
+
+Active tokens are returned with `scope`, `client_id`, `username`, `token_type`, `exp`, `iat`, `sub`, `aud` and `iss`.
+
 ### OAuth 2.0 Token Revocation 
 
 [RFC 7009](https://datatracker.ietf.org/doc/html/rfc7009)
 
 - `/revoke`
+
+- Every client, including public clients, may revoke tokens which were issued to it, the `revoke` flag is not required.
+  Requests for tokens of other clients are answered with `200`, but the token stays valid.
+- Access tokens containing the revoke scope (`server.revokeScopeScope`) of a client with `revoke` enabled
+  may revoke tokens of all clients.
+- Revoking a refresh token also revokes all access tokens issued for the same authorization.
 
 ### OAuth 2.0 Authorization Server Metadata
 

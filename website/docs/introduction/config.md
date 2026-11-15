@@ -245,8 +245,8 @@ A client file may contain the following options
 | `accessTTL`               | Access token time to live                               | No       |
 | `refreshTTL`              | Refresh token time to live                              | No       |
 | `idTTL`                   | OpenId Connect ID token time to live                    | No       |
-| `introspect`              | Introspection scope                                     | No       |
-| `revoke`                  | Revocation scope                                        | No       |
+| `introspect`              | Allows a confidential client to introspect all tokens   | No       |
+| `revoke`                  | Allows the revoke scope to revoke tokens of all clients | No       |
 | `redirects`               | List of redirects URIs, see [Redirects](#redirects)     | Yes      |
 | `opaqueToken`             | Use opaque token                                        | No       |
 | `passwordFallbackAllowed` | Form auth allowed                                       | No       |

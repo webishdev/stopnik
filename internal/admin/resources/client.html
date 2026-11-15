@@ -37,8 +37,8 @@
         </header>
         <div class="grid">
             {{ template "switch" (switch "oidc" .Oidc "OpenID Connect" "Issue ID tokens and allow the user info endpoint.") }}
-            {{ template "switch" (switch "introspect" .Introspect "Token introspection" "Allow to inspect tokens.") }}
-            {{ template "switch" (switch "revoke" .Revoke "Token revocation" "Allow to revoke tokens.") }}
+            {{ template "switch" (switch "introspect" .Introspect "Token introspection" "Allow a confidential client to inspect tokens of all clients.") }}
+            {{ template "switch" (switch "revoke" .Revoke "Token revocation" "Allow the revoke scope to revoke tokens of all clients. Own tokens can always be revoked.") }}
             {{ template "switch" (switch "opaqueToken" .OpaqueToken "Opaque tokens" "Issue random tokens instead of JWTs.") }}
             {{ template "switch" (switch "passwordFallbackAllowed" .PasswordFallbackAllowed "Password fallback" "Allow the client secret as password for client authentication.") }}
         </div>

@@ -572,7 +572,7 @@ func testTokenRefreshTokenGrantType(t *testing.T, testConfig *config.Config) {
 		authorizationCodeManager.StartSession(authorizationCode)
 
 		request := httptest.NewRequest(http.MethodPost, endpoint.Token, nil)
-		accessTokenResponse := tokenManager.CreateAccessTokenResponse(request, user.Username, client, nil, scopes, nil, "", "")
+		accessTokenResponse := tokenManager.CreateAccessTokenResponse(request, user.Username, client, nil, scopes, nil, "", "", "")
 
 		tokenHandler := NewTokenHandler(requestValidator, authorizationCodeManager, tokenManager)
 

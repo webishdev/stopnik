@@ -75,7 +75,7 @@ func testOidcUserInfo(t *testing.T, testConfig *config.Config) {
 		}
 
 		request := httptest.NewRequest(http.MethodPost, endpoint.Token, nil)
-		tokenResponse := tokenManager.CreateAccessTokenResponse(request, "foo", client, nil, []string{"a:foo", "b:bar", oidc.ScopeProfile, oidc.ScopeEmail, oidc.ScopePhone, oidc.ScopeAddress}, nil, "", "")
+		tokenResponse := tokenManager.CreateAccessTokenResponse(request, "foo", client, nil, []string{"a:foo", "b:bar", oidc.ScopeProfile, oidc.ScopeEmail, oidc.ScopePhone, oidc.ScopeAddress}, nil, "", "", "")
 
 		oidcDiscoveryHandler := NewOidcUserInfoHandler(tokenManager)
 

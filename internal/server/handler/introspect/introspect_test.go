@@ -14,8 +14,10 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"reflect"
 	"strings"
 	"testing"
+	"time"
 	"uuid"
 )
 
@@ -45,7 +47,7 @@ func Test_Introspect(t *testing.T) {
 			},
 		},
 	}
-	testConfig := &config.Config{}
+	testConfig := &config.Config{Server: config.Server{Issuer: "https://auth.example.com"}}
 
 	initializationError := config.Initialize(testConfig)
 	if initializationError != nil {
@@ -253,7 +255,7 @@ func testIntrospect(t *testing.T, testConfig *config.Config) {
 			tokenManager := token.GetTokenManagerInstance()
 			sessionManager.StartSession(authSession)
 			request := httptest.NewRequest(http.MethodPost, endpoint.Token, nil)
-			accessTokenResponse := tokenManager.CreateAccessTokenResponse(request, user.Username, client, nil, scopes, nil, "", "")
+			accessTokenResponse := tokenManager.CreateAccessTokenResponse(request, user.Username, client, nil, scopes, nil, "", "", "")
 
 			introspectHandler := NewIntrospectHandler(requestValidator, tokenManager)
 
@@ -287,7 +289,67 @@ func testIntrospect(t *testing.T, testConfig *config.Config) {
 			if !introspectResponse.Active {
 				t.Errorf("Token should be active")
 			}
+
+			// https://datatracker.ietf.org/doc/html/rfc7662#section-2.2
+			now := time.Now().Unix()
+			if introspectResponse.Expiration <= now {
+				t.Errorf("exp %d should be in the future", introspectResponse.Expiration)
+			}
+			if introspectResponse.IssuedAt == 0 || introspectResponse.IssuedAt > now {
+				t.Errorf("iat %d should not be in the future", introspectResponse.IssuedAt)
+			}
+			if introspectResponse.Subject != "foo" {
+				t.Errorf("sub %s should be the username", introspectResponse.Subject)
+			}
+			if !reflect.DeepEqual(introspectResponse.Audience, client.GetAudience()) {
+				t.Errorf("aud %v should be the audience of the client", introspectResponse.Audience)
+			}
+			if introspectResponse.Issuer != testConfig.GetIssuer() {
+				t.Errorf("iss %s should be the configured issuer", introspectResponse.Issuer)
+			}
 		})
+	}
+}
+
+func Test_IntrospectPublicClient(t *testing.T) {
+	testConfig := &config.Config{Server: config.Server{Issuer: "https://auth.example.com"}}
+	initializationError := config.Initialize(testConfig)
+	if initializationError != nil {
+		t.Fatal(initializationError)
+	}
+	applyError := testConfig.ApplyEntries(config.Entries{
+		Clients: []config.Client{
+			{
+				Id:         "public",
+				Redirects:  []string{"https://example.com/callback"},
+				Introspect: true,
+			},
+		},
+	})
+	if applyError != nil {
+		t.Fatal(applyError)
+	}
+
+	client, _ := testConfig.GetClient("public")
+	tokenManager := token.GetTokenManagerInstance()
+	accessTokenResponse := tokenManager.CreateAccessTokenResponse(httptest.NewRequest(http.MethodPost, endpoint.Token, nil), "foo", client, nil, nil, nil, "", "", "")
+
+	bodyString := testCreateBody(
+		oauth2.ParameterClientId, "public",
+		oauth2.ParameterToken, accessTokenResponse.AccessTokenValue,
+	)
+	request := httptest.NewRequest(http.MethodPost, endpoint.Introspect, strings.NewReader(bodyString))
+	request.Header.Add(internalHttp.ContentType, "application/x-www-form-urlencoded")
+
+	rr := httptest.NewRecorder()
+	NewIntrospectHandler(validation.NewRequestValidator(), tokenManager).ServeHTTP(rr, request)
+
+	if rr.Code != http.StatusUnauthorized {
+		t.Errorf("handler returned wrong status code: got %v want %v", rr.Code, http.StatusUnauthorized)
+	}
+
+	if strings.Contains(rr.Body.String(), "active") {
+		t.Errorf("public client must not receive token details: %s", rr.Body.String())
 	}
 }
 
@@ -326,7 +388,7 @@ func testIntrospectWithoutHint(t *testing.T, testConfig *config.Config) {
 			tokenManager := token.GetTokenManagerInstance()
 			sessionManager.StartSession(authSession)
 			request := httptest.NewRequest(http.MethodPost, endpoint.Token, nil)
-			accessTokenResponse := tokenManager.CreateAccessTokenResponse(request, user.Username, client, nil, scopes, nil, "", "")
+			accessTokenResponse := tokenManager.CreateAccessTokenResponse(request, user.Username, client, nil, scopes, nil, "", "", "")
 
 			introspectHandler := NewIntrospectHandler(requestValidator, tokenManager)
 
@@ -398,7 +460,7 @@ func testIntrospectDisabled(t *testing.T, testConfig *config.Config) {
 			tokenManager := token.GetTokenManagerInstance()
 			sessionManager.StartSession(authSession)
 			request := httptest.NewRequest(http.MethodPost, endpoint.Token, nil)
-			accessTokenResponse := tokenManager.CreateAccessTokenResponse(request, user.Username, client, nil, scopes, nil, "", "")
+			accessTokenResponse := tokenManager.CreateAccessTokenResponse(request, user.Username, client, nil, scopes, nil, "", "", "")
 
 			introspectHandler := NewIntrospectHandler(requestValidator, tokenManager)
 
@@ -421,8 +483,8 @@ func testIntrospectDisabled(t *testing.T, testConfig *config.Config) {
 
 			introspectHandler.ServeHTTP(rr, request)
 
-			if rr.Code != http.StatusServiceUnavailable {
-				t.Errorf("handler returned wrong status code: got %v want %v", rr.Code, http.StatusServiceUnavailable)
+			if rr.Code != http.StatusForbidden {
+				t.Errorf("handler returned wrong status code: got %v want %v", rr.Code, http.StatusForbidden)
 			}
 		})
 	}

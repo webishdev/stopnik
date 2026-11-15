@@ -432,7 +432,7 @@ func (h *Handler) createLocationResponseQuery(r *http.Request, redirectURL *url.
 	query := newResponseParameters(redirectURL, responseTypes)
 
 	var idToken string
-	accessTokenResponse := h.tokenManager.CreateAccessTokenResponse(r, user.Username, client, &loginSession.StartTime, authSession.Scopes, authSession.RequestedClaims, authSession.Nonce, "")
+	accessTokenResponse := h.tokenManager.CreateAccessTokenResponse(r, user.Username, client, &loginSession.StartTime, authSession.Scopes, authSession.RequestedClaims, authSession.Nonce, "", "")
 	if slices.Contains(responseTypes, oauth2.RtToken) {
 		setImplicitGrantParameter(query, accessTokenResponse)
 	} else if slices.Contains(responseTypes, oauth2.RtCode) {

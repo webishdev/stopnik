@@ -167,6 +167,27 @@ func (tokenManager *Manager) RevokeRefreshToken(refreshToken *oauth2.RefreshToke
 	}
 }
 
+// RevokeGrant revokes all access and refresh tokens, which were issued for the grant with the given grantId.
+func (tokenManager *Manager) RevokeGrant(grantId string) {
+	if grantId == "" {
+		return
+	}
+	for _, currentClientStores := range tokenManager.allClientStores() {
+		accessTokenStore := *currentClientStores.accessTokenStore
+		for _, accessToken := range accessTokenStore.GetValues() {
+			if accessToken.GrantId == grantId {
+				accessTokenStore.Delete(accessToken.Key)
+			}
+		}
+		refreshTokenStore := *currentClientStores.refreshTokenStore
+		for _, refreshToken := range refreshTokenStore.GetValues() {
+			if refreshToken.GrantId == grantId {
+				refreshTokenStore.Delete(refreshToken.Key)
+			}
+		}
+	}
+}
+
 func (tokenManager *Manager) RevokeAccessTokenByAuthorizationCode(authorizationCode string) {
 	for _, currentClientStores := range tokenManager.allClientStores() {
 		authorizationCodeStore := *currentClientStores.authorizationCodeStore
@@ -180,8 +201,15 @@ func (tokenManager *Manager) RevokeAccessTokenByAuthorizationCode(authorizationC
 	}
 }
 
-func (tokenManager *Manager) CreateAccessTokenResponse(r *http.Request, username string, client *config.Client, authTime *time.Time, scopes []string, requestedClaims *oidc.ClaimsParameter, nonce string, authorizationCode string) oauth2.AccessTokenResponse {
+// CreateAccessTokenResponse creates and stores new tokens for the given client.
+// The tokens become part of the grant with the given grantId, an empty grantId starts a new grant.
+func (tokenManager *Manager) CreateAccessTokenResponse(r *http.Request, username string, client *config.Client, authTime *time.Time, scopes []string, requestedClaims *oidc.ClaimsParameter, nonce string, authorizationCode string, grantId string) oauth2.AccessTokenResponse {
 	log.Debug("Creating new access token for %s, access TTL %d, refresh TTL %d", client.Id, client.GetAccessTTL(), client.GetRefreshTTL())
+
+	if grantId == "" {
+		grantId = uuid.New().String()
+	}
+	issuedAt := time.Now()
 
 	currentClientStores := tokenManager.getClientStores(client)
 	accessTokenStore := *currentClientStores.accessTokenStore
@@ -195,7 +223,10 @@ func (tokenManager *Manager) CreateAccessTokenResponse(r *http.Request, username
 		TokenType: oauth2.TtBearer,
 		Username:  username,
 		ClientId:  client.Id,
+		GrantId:   grantId,
 		Scopes:    scopes,
+		IssuedAt:  issuedAt,
+		ExpiresAt: issuedAt.Add(accessTokenDuration),
 	}
 	if client.Oidc && requestedClaims != nil {
 		accessToken.RequestedClaims = requestedClaims
@@ -213,10 +244,13 @@ func (tokenManager *Manager) CreateAccessTokenResponse(r *http.Request, username
 		refreshTokenDuration := time.Minute * time.Duration(client.GetRefreshTTL())
 		refreshTokenKey := tokenManager.generateRefreshToken(username, client, scopes, refreshTokenDuration)
 		refreshToken := &oauth2.RefreshToken{
-			Key:      refreshTokenKey,
-			Username: username,
-			ClientId: client.Id,
-			Scopes:   scopes,
+			Key:       refreshTokenKey,
+			Username:  username,
+			ClientId:  client.Id,
+			GrantId:   grantId,
+			Scopes:    scopes,
+			IssuedAt:  issuedAt,
+			ExpiresAt: issuedAt.Add(refreshTokenDuration),
 		}
 
 		if authTime != nil {
