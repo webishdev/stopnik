@@ -4,6 +4,9 @@ import (
 	"bytes"
 	"log"
 	"log/slog"
+	"net/http"
+	"net/http/httptest"
+	"strings"
 	"testing"
 )
 
@@ -67,4 +70,83 @@ func Test_Log(t *testing.T) {
 		})
 	}
 
+}
+
+func Test_AccessLog(t *testing.T) {
+	type accessLogParameter struct {
+		name     string
+		method   func(r *http.Request)
+		expected string
+	}
+
+	var accessLogTests = []accessLogParameter{
+		{
+			name:     "Request",
+			method:   AccessLogRequest,
+			expected: "192.0.2.1:1234 - example.com - GET http://example.com/foo",
+		},
+		{
+			name: "Result",
+			method: func(r *http.Request) {
+				AccessLogResult(r, http.StatusOK, "OK")
+			},
+			expected: "192.0.2.1:1234 - example.com - GET http://example.com/foo - 200 OK",
+		},
+		{
+			name: "Invalid login",
+			method: func(r *http.Request) {
+				AccessLogInvalidLogin(r, "Invalid login for %s", "foo")
+			},
+			expected: "Invalid login for foo - 192.0.2.1:1234",
+		},
+	}
+
+	for _, test := range accessLogTests {
+		t.Run(test.name, func(t *testing.T) {
+			var buf bytes.Buffer
+			accessLogger.SetOutput(&buf)
+
+			request := httptest.NewRequest(http.MethodGet, "http://example.com/foo", nil)
+			test.method(request)
+
+			value := buf.String()
+
+			if !strings.Contains(value, test.expected) {
+				t.Errorf("Expected '%s' in '%s'", test.expected, value)
+			}
+		})
+	}
+}
+
+func Test_GetAddrFromRequest(t *testing.T) {
+	type addrParameter struct {
+		forwardedFor string
+		realIp       string
+		expected     string
+	}
+
+	var addrTests = []addrParameter{
+		{"", "", "192.0.2.1:1234"},
+		{"203.0.113.1", "", "192.0.2.1:1234, X-Forwarded-For: 203.0.113.1"},
+		{"", "203.0.113.2", "192.0.2.1:1234, X-Real-Ip: 203.0.113.2"},
+		{"203.0.113.1", "203.0.113.2", "192.0.2.1:1234, X-Forwarded-For: 203.0.113.1, X-Real-Ip: 203.0.113.2"},
+	}
+
+	for _, test := range addrTests {
+		t.Run(test.expected, func(t *testing.T) {
+			request := httptest.NewRequest(http.MethodGet, "/", nil)
+			if test.forwardedFor != "" {
+				request.Header.Set("X-Forwarded-For", test.forwardedFor)
+			}
+			if test.realIp != "" {
+				request.Header.Set("X-Real-Ip", test.realIp)
+			}
+
+			addr := getAddrFromRequest(request)
+
+			if addr != test.expected {
+				t.Errorf("Expected '%s', got '%s'", test.expected, addr)
+			}
+		})
+	}
 }
