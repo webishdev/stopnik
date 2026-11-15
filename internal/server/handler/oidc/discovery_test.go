@@ -5,9 +5,11 @@ import (
 	"fmt"
 	"github.com/webishdev/stopnik/internal/config"
 	"github.com/webishdev/stopnik/internal/endpoint"
+	"github.com/webishdev/stopnik/internal/oauth2"
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"reflect"
 	"testing"
 )
 
@@ -99,6 +101,27 @@ func Test_OidcConfigurationNotAllowedHttpMethods(t *testing.T) {
 				t.Errorf("handler returned wrong status code: got %v want %v", rr.Code, http.StatusMethodNotAllowed)
 			}
 		})
+	}
+}
+
+func Test_OidcConfigurationSupportedGrantAndResponseTypes(t *testing.T) {
+	initializeConfig(t, "", "")
+	oidcDiscoveryHandler := NewOidcDiscoveryHandler()
+
+	rr := httptest.NewRecorder()
+
+	oidcDiscoveryHandler.ServeHTTP(rr, httptest.NewRequest(http.MethodGet, endpoint.OidcDiscovery, nil))
+
+	oidcConfiguration := testOidcConfigurationParse(t, rr.Result())
+
+	expectedGrantTypes := []oauth2.GrantType{oauth2.GtAuthorizationCode, oauth2.GtRefreshToken}
+	if !reflect.DeepEqual(oidcConfiguration.GrantTypesSupported, expectedGrantTypes) {
+		t.Errorf("grant_types_supported %v did not match %v", oidcConfiguration.GrantTypesSupported, expectedGrantTypes)
+	}
+
+	expectedResponseTypes := []oauth2.ResponseType{oauth2.RtCode}
+	if !reflect.DeepEqual(oidcConfiguration.ResponseTypesSupported, expectedResponseTypes) {
+		t.Errorf("response_types_supported %v did not match %v", oidcConfiguration.ResponseTypesSupported, expectedResponseTypes)
 	}
 }
 

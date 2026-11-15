@@ -1278,10 +1278,16 @@ func Test_GetDisallowedScopes(t *testing.T) {
 	}
 
 	var scopeParameters = []scopeParameter{
-		{"All scopes allowed by default", Client{}, []string{"", "openid", "foo:bar"}, nil},
-		{"Reserved scopes not allowed by default", Client{}, []string{"openid", "stopnik:revoke", "stopnik:other"}, []string{"stopnik:revoke", "stopnik:other"}},
-		{"Configured introspect scope is reserved", Client{}, []string{"custom:introspect"}, []string{"custom:introspect"}},
+		{"No scopes allowed by default", Client{}, []string{"", "openid", "foo:bar"}, []string{"openid", "foo:bar"}},
+		{"Empty scope is ignored", Client{}, []string{""}, nil},
+		{"Reserved scopes not allowed by default", Client{}, []string{"stopnik:revoke", "stopnik:other", "custom:introspect"}, []string{"stopnik:revoke", "stopnik:other", "custom:introspect"}},
+		{"OpenId Connect scopes allowed by default for OpenId Connect client", Client{Oidc: true}, []string{"openid", "profile", "email", "address", "phone", "offline_access"}, nil},
+		{"Custom scope not allowed by default for OpenId Connect client", Client{Oidc: true}, []string{"openid", "foo:bar", "stopnik:revoke"}, []string{"foo:bar", "stopnik:revoke"}},
+		{"Forward auth scope allowed by default for forward auth client", Client{isForwardAuth: true}, []string{"forward:auth"}, nil},
+		{"Other scopes not allowed by default for forward auth client", Client{isForwardAuth: true}, []string{"forward:auth", "openid"}, []string{"openid"}},
+		{"Forward auth scope not allowed by default for regular client", Client{Oidc: true}, []string{"forward:auth"}, []string{"forward:auth"}},
 		{"Only configured scopes allowed", Client{Scopes: []string{"openid", "stopnik:introspect"}}, []string{"openid", "stopnik:introspect", "foo:bar"}, []string{"foo:bar"}},
+		{"Configured scopes replace default scopes", Client{Oidc: true, Scopes: []string{"openid"}}, []string{"openid", "profile"}, []string{"profile"}},
 	}
 
 	for _, test := range scopeParameters {
@@ -1303,10 +1309,17 @@ func Test_IsGrantTypeAllowed(t *testing.T) {
 	}
 
 	var grantTypeParameters = []grantTypeParameter{
-		{"All grant types allowed by default", Client{ClientSecret: "abc"}, oauth2.GtPassword, true},
-		{"Client credentials allowed for confidential client", Client{ClientSecret: "abc"}, oauth2.GtClientCredentials, true},
-		{"Client credentials not allowed for public client", Client{}, oauth2.GtClientCredentials, false},
+		{"Authorization code allowed by default", Client{ClientSecret: "abc"}, oauth2.GtAuthorizationCode, true},
+		{"Refresh token allowed by default", Client{ClientSecret: "abc"}, oauth2.GtRefreshToken, true},
+		{"Authorization code allowed by default for public client", Client{}, oauth2.GtAuthorizationCode, true},
+		{"Password not allowed by default", Client{ClientSecret: "abc"}, oauth2.GtPassword, false},
+		{"Implicit not allowed by default", Client{ClientSecret: "abc"}, oauth2.GtImplicit, false},
+		{"Client credentials not allowed by default", Client{ClientSecret: "abc"}, oauth2.GtClientCredentials, false},
+		{"Client credentials allowed for confidential client when configured", Client{ClientSecret: "abc", GrantTypes: []string{"client_credentials"}}, oauth2.GtClientCredentials, true},
+		{"Client credentials not allowed for public client", Client{GrantTypes: []string{"client_credentials"}}, oauth2.GtClientCredentials, false},
+		{"Password allowed when configured", Client{GrantTypes: []string{"password"}}, oauth2.GtPassword, true},
 		{"Only configured grant types allowed", Client{GrantTypes: []string{"authorization_code"}}, oauth2.GtPassword, false},
+		{"Refresh token not allowed when not configured", Client{GrantTypes: []string{"authorization_code"}}, oauth2.GtRefreshToken, false},
 		{"Configured grant types are case insensitive", Client{GrantTypes: []string{"Authorization_Code"}}, oauth2.GtAuthorizationCode, true},
 	}
 
@@ -1314,6 +1327,53 @@ func Test_IsGrantTypeAllowed(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			if allowed := test.client.IsGrantTypeAllowed(test.grantType); allowed != test.expected {
 				t.Errorf("result %t did not match %t", allowed, test.expected)
+			}
+		})
+	}
+}
+
+func Test_GetSupportedGrantAndResponseTypes(t *testing.T) {
+	type supportedParameter struct {
+		name                  string
+		clients               []Client
+		expectedGrantTypes    []oauth2.GrantType
+		expectedResponseTypes []oauth2.ResponseType
+	}
+
+	var supportedParameters = []supportedParameter{
+		{"No clients", nil, nil, nil},
+		{
+			"Default client",
+			[]Client{{Id: "foo", Redirects: []string{"https://example.com/callback"}}},
+			[]oauth2.GrantType{oauth2.GtAuthorizationCode, oauth2.GtRefreshToken},
+			[]oauth2.ResponseType{oauth2.RtCode},
+		},
+		{
+			"Union of all clients",
+			[]Client{
+				{Id: "foo", Redirects: []string{"https://example.com/callback"}},
+				{Id: "bar", ClientSecret: "abc", GrantTypes: []string{"client_credentials"}},
+				{Id: "moo", GrantTypes: []string{"implicit", "client_credentials"}},
+			},
+			[]oauth2.GrantType{oauth2.GtAuthorizationCode, oauth2.GtClientCredentials, oauth2.GtRefreshToken, oauth2.GtImplicit},
+			[]oauth2.ResponseType{oauth2.RtCode, oauth2.RtToken},
+		},
+		{
+			"Client credentials only for confidential client",
+			[]Client{{Id: "moo", GrantTypes: []string{"password", "client_credentials"}}},
+			[]oauth2.GrantType{oauth2.GtPassword},
+			nil,
+		},
+	}
+
+	for _, test := range supportedParameters {
+		t.Run(test.name, func(t *testing.T) {
+			testConfig := initializeTestEntries(t, Entries{Clients: test.clients})
+			if supportedGrantTypes := testConfig.GetSupportedGrantTypes(); !reflect.DeepEqual(supportedGrantTypes, test.expectedGrantTypes) {
+				t.Errorf("supported grant types %v did not match %v", supportedGrantTypes, test.expectedGrantTypes)
+			}
+			if supportedResponseTypes := testConfig.GetSupportedResponseTypes(); !reflect.DeepEqual(supportedResponseTypes, test.expectedResponseTypes) {
+				t.Errorf("supported response types %v did not match %v", supportedResponseTypes, test.expectedResponseTypes)
 			}
 		})
 	}

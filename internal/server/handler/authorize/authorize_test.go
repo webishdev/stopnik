@@ -1208,6 +1208,81 @@ func Test_AuthorizeRequestObjectNotSupported(t *testing.T) {
 	}
 }
 
+func Test_AuthorizeDefaultGrantTypesAndScopes(t *testing.T) {
+	testConfig := createTestConfig(t)
+
+	type defaultParameter struct {
+		name          string
+		clientId      string
+		responseType  string
+		scope         string
+		expectedError oauth2.AuthorizationErrorType
+	}
+
+	var defaultParameters = []defaultParameter{
+		{"Authorization code allowed by default", "minimal", oauth2.ParameterCode, "", ""},
+		{"Implicit not allowed by default", "minimal", oauth2.ParameterToken, "", oauth2.AuthorizationEtUnauthorizedClient},
+		{"Scope not allowed by default", "minimal", oauth2.ParameterCode, "foo:moo", oauth2.AuthorizationEtInvalidScope},
+		{"OpenId Connect scope not allowed by default for non OpenId Connect client", "minimal", oauth2.ParameterCode, "openid", oauth2.AuthorizationEtInvalidScope},
+		{"OpenId Connect scopes allowed by default for OpenId Connect client", "bar", oauth2.ParameterCode, "openid profile email address phone offline_access", ""},
+		{"Custom scope not allowed by default for OpenId Connect client", "bar", oauth2.ParameterCode, "openid foo:moo", oauth2.AuthorizationEtInvalidScope},
+		{"Reserved scope not allowed by default for OpenId Connect client", "bar", oauth2.ParameterCode, "openid stopnik:revoke", oauth2.AuthorizationEtInvalidScope},
+	}
+
+	for _, test := range defaultParameters {
+		t.Run(test.name, func(t *testing.T) {
+			parsedUri := createUri(t, endpoint.Authorization, func(query url.Values) {
+				query.Set(oauth2.ParameterClientId, test.clientId)
+				query.Set(oauth2.ParameterRedirectUri, "https://example.com/callback")
+				query.Set(oauth2.ParameterResponseType, test.responseType)
+				if test.scope != "" {
+					query.Set(oauth2.ParameterScope, test.scope)
+				}
+			})
+			requestValidator := validation.NewRequestValidator()
+			authSessionManager := session.GetAuthSessionManagerInstance()
+			cookieManager := cookie.GetCookieManagerInstance()
+			loginSessionManager := session.GetLoginSessionManagerInstance()
+			tokenManager := token.GetTokenManagerInstance()
+
+			user, _ := testConfig.GetUser("foo")
+			loginSession := &session.LoginSession{
+				Id:       uuid.New().String(),
+				Username: user.Username,
+			}
+			loginSessionManager.StartSession(loginSession)
+			authCookie, _ := cookieManager.CreateAuthCookie(user.Username, loginSession.Id)
+
+			authorizeHandler := NewAuthorizeHandler(requestValidator, cookieManager, authSessionManager, loginSessionManager, tokenManager, &template.Manager{})
+
+			rr := httptest.NewRecorder()
+			request := httptest.NewRequest(http.MethodGet, parsedUri.String(), nil)
+			request.AddCookie(&authCookie)
+
+			authorizeHandler.ServeHTTP(rr, request)
+
+			if rr.Code != http.StatusFound {
+				t.Fatalf("handler returned wrong status code: got %v want %v", rr.Code, http.StatusFound)
+			}
+
+			location, locationError := rr.Result().Location()
+			if locationError != nil {
+				t.Fatalf("location was not provided: %v", locationError)
+			}
+
+			errorQueryParameter := location.Query().Get(oauth2.ParameterError)
+			if errorQueryParameter != string(test.expectedError) {
+				t.Errorf("error query parameter %v did not match: %v", errorQueryParameter, test.expectedError)
+			}
+
+			codeQueryParameter := location.Query().Get(oauth2.ParameterCode)
+			if test.expectedError == "" && codeQueryParameter == "" {
+				t.Errorf("code query parameter was not set")
+			}
+		})
+	}
+}
+
 func createTestConfig(t *testing.T) *config.Config {
 	testConfigEntries := config.Entries{
 		Clients: []config.Client{
@@ -1215,6 +1290,8 @@ func createTestConfig(t *testing.T) *config.Config {
 				Id:           "foo",
 				ClientSecret: "d82c4eb5261cb9c8aa9855edd67d1bd10482f41529858d925094d173fa662aa91ff39bc5b188615273484021dfb16fd8284cf684ccf0fc795be3aa2fc1e6c181",
 				Redirects:    []string{"https://example.com/callback"},
+				Scopes:       []string{"foo:moo"},
+				GrantTypes:   []string{"authorization_code", "implicit"},
 			},
 			{
 				Id:           "bar",
@@ -1225,6 +1302,11 @@ func createTestConfig(t *testing.T) *config.Config {
 			{
 				Id:        "public",
 				Redirects: []string{"https://example.com/callback"},
+			},
+			{
+				Id:           "minimal",
+				ClientSecret: "d82c4eb5261cb9c8aa9855edd67d1bd10482f41529858d925094d173fa662aa91ff39bc5b188615273484021dfb16fd8284cf684ccf0fc795be3aa2fc1e6c181",
+				Redirects:    []string{"https://example.com/callback"},
 			},
 		},
 		Users: []config.User{

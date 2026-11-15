@@ -17,8 +17,6 @@ import (
 	"uuid"
 )
 
-const forwardAuthScope = "forward:auth"
-
 type Handler struct {
 	config                *config.Config
 	cookieManager         *cookie.Manager
@@ -123,7 +121,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		query.Set(oauth2.ParameterResponseType, string(oauth2.RtCode))
 		query.Set(oauth2.ParameterClientId, forwardAuthClient.Id)
 		query.Set(oauth2.ParameterState, forwardSessionState)
-		query.Set(oauth2.ParameterScope, forwardAuthScope)
+		query.Set(oauth2.ParameterScope, oauth2.ScopeForwardAuth)
 		query.Set(oauth2.ParameterRedirectUri, redirectUri.String())
 		query.Set(pkce.ParameterCodeChallengeMethod, string(pkce.S256))
 		query.Set(pkce.ParameterCodeChallenge, codeChallenge)

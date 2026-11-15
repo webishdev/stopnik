@@ -7,6 +7,7 @@ import (
 	"fmt"
 	internalHttp "github.com/webishdev/stopnik/internal/http"
 	"github.com/webishdev/stopnik/internal/oauth2"
+	"github.com/webishdev/stopnik/internal/oidc"
 	"github.com/webishdev/stopnik/internal/store"
 	"github.com/webishdev/stopnik/internal/system"
 	"github.com/webishdev/stopnik/log"
@@ -470,25 +471,23 @@ func (config *Config) GetRevokeScope() string {
 
 // GetDisallowedScopes returns the scopes from the given list, which the Client is not allowed to request.
 // When the Client has a list of scopes configured, only these scopes are allowed.
-// Otherwise, all scopes are allowed except reserved STOPnik scopes, such as the introspect and revoke scopes.
+// Otherwise, only the default scopes of the Client are allowed, see getDefaultScopes.
 func (config *Config) GetDisallowedScopes(client *Client, scopes []string) []string {
+	allowedScopes := client.Scopes
+	if len(allowedScopes) == 0 {
+		allowedScopes = client.getDefaultScopes()
+	}
+
 	var disallowedScopes []string
 	for _, scope := range scopes {
 		if scope == "" {
 			continue
 		}
-		if len(client.Scopes) > 0 && !slices.Contains(client.Scopes, scope) {
-			disallowedScopes = append(disallowedScopes, scope)
-		} else if len(client.Scopes) == 0 && config.isReservedScope(scope) {
+		if !slices.Contains(allowedScopes, scope) {
 			disallowedScopes = append(disallowedScopes, scope)
 		}
 	}
 	return disallowedScopes
-}
-
-// isReservedScope returns whether the scope is reserved for STOPnik and must be explicitly allowed for a Client.
-func (config *Config) isReservedScope(scope string) bool {
-	return strings.HasPrefix(scope, "stopnik:") || scope == config.GetIntrospectScope() || scope == config.GetRevokeScope()
 }
 
 // GetServerSecret returns the server secret.
@@ -543,6 +542,35 @@ func (config *Config) GetExpiredLoginMessage() string {
 // GetOidc returns whether one of the currently loaded clients has OIDC flag set or not.
 func (config *Config) GetOidc() bool {
 	return config.getDynamic().oidc
+}
+
+// GetSupportedGrantTypes returns the grant types which at least one of the currently loaded clients is allowed to use.
+func (config *Config) GetSupportedGrantTypes() []oauth2.GrantType {
+	allGrantTypes := []oauth2.GrantType{oauth2.GtAuthorizationCode, oauth2.GtClientCredentials, oauth2.GtPassword, oauth2.GtRefreshToken, oauth2.GtImplicit}
+	var supportedGrantTypes []oauth2.GrantType
+	for _, grantType := range allGrantTypes {
+		grantTypeAllowed := slices.ContainsFunc(config.GetClients(), func(client *Client) bool {
+			return client.IsGrantTypeAllowed(grantType)
+		})
+		if grantTypeAllowed {
+			supportedGrantTypes = append(supportedGrantTypes, grantType)
+		}
+	}
+	return supportedGrantTypes
+}
+
+// GetSupportedResponseTypes returns the response types which at least one of the currently loaded clients is allowed to use.
+func (config *Config) GetSupportedResponseTypes() []oauth2.ResponseType {
+	var supportedResponseTypes []oauth2.ResponseType
+	for _, grantType := range config.GetSupportedGrantTypes() {
+		switch grantType {
+		case oauth2.GtAuthorizationCode:
+			supportedResponseTypes = append(supportedResponseTypes, oauth2.RtCode)
+		case oauth2.GtImplicit:
+			supportedResponseTypes = append(supportedResponseTypes, oauth2.RtToken)
+		}
+	}
+	return supportedResponseTypes
 }
 
 // GetIssuer returns the issuer, either by mirroring from request, from Server configuration or default value.
@@ -674,9 +702,30 @@ func (client *Client) GetClientType() oauth2.ClientType {
 	}
 }
 
+// getDefaultScopes returns the scopes a Client is allowed to request, when no scopes are configured.
+// OpenId Connect clients are allowed to request the standard OpenId Connect scopes,
+// the ForwardAuth client is allowed to request the ForwardAuth scope, everything else must be configured.
+func (client *Client) getDefaultScopes() []string {
+	var defaultScopes []string
+	if client.Oidc {
+		// https://openid.net/specs/openid-connect-core-1_0.html#ScopeClaims
+		defaultScopes = append(defaultScopes, oidc.ScopeOpenId, oidc.ScopeProfile, oidc.ScopeEmail, oidc.ScopeAddress, oidc.ScopePhone, oidc.ScopeOfflineAccess)
+	}
+	if client.isForwardAuth {
+		defaultScopes = append(defaultScopes, oauth2.ScopeForwardAuth)
+	}
+	return defaultScopes
+}
+
+// defaultGrantTypes are the grant types a Client is allowed to use, when no grant types are configured.
+// https://datatracker.ietf.org/doc/html/rfc9700#section-2.1.2
+// https://datatracker.ietf.org/doc/html/rfc9700#section-2.4
+// The implicit and the password grant are deprecated and must be allowed explicitly.
+var defaultGrantTypes = []oauth2.GrantType{oauth2.GtAuthorizationCode, oauth2.GtRefreshToken}
+
 // IsGrantTypeAllowed returns whether the Client is allowed to use the given grant type.
 // When the Client has a list of grant types configured, only these grant types are allowed.
-// Otherwise, all grant types are allowed, except client credentials for public clients.
+// Otherwise, only the authorization code and refresh token grant types are allowed.
 func (client *Client) IsGrantTypeAllowed(grantType oauth2.GrantType) bool {
 	// https://datatracker.ietf.org/doc/html/rfc6749#section-4.4
 	// The client credentials grant type MUST only be used by confidential clients.
@@ -684,7 +733,7 @@ func (client *Client) IsGrantTypeAllowed(grantType oauth2.GrantType) bool {
 		return false
 	}
 	if len(client.GrantTypes) == 0 {
-		return true
+		return slices.Contains(defaultGrantTypes, grantType)
 	}
 	return slices.ContainsFunc(client.GrantTypes, func(configuredGrantType string) bool {
 		return strings.EqualFold(configuredGrantType, string(grantType))

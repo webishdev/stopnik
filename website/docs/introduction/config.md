@@ -256,24 +256,33 @@ This includes the query, a trailing slash and upper and lower case. Wildcards ar
 
 #### Scopes
 
-When `scopes` is not configured, a client may request any scope, except the reserved scopes for
-token introspection and revocation (`server.introspectScope`, `server.revokeScopeScope`, by default `stopnik:introspect`
-and `stopnik:revoke`) and all other scopes starting with `stopnik:`.
+When `scopes` is not configured, a client may only request its default scopes.
 
-When `scopes` is configured, a client may only request the listed scopes.
-Reserved scopes have to be listed explicitly to allow a client to request them.
-Do not forget to list scopes like `openid` or `offline_access` when using OpenId Connect.
+- A client with `oidc` enabled may request the OpenId Connect scopes
+  `openid`, `profile`, `email`, `address`, `phone` and `offline_access`.
+- All other clients may not request any scope.
+
+When `scopes` is configured, a client may only request the listed scopes, the default scopes are no longer applied.
+So do not forget to list scopes like `openid` or `offline_access` when using OpenId Connect.
+The reserved scopes for token introspection and revocation (`server.introspectScope`, `server.revokeScopeScope`,
+by default `stopnik:introspect` and `stopnik:revoke`) always have to be listed explicitly.
 
 Requests for scopes which are not allowed are rejected with `invalid_scope`.
 
 #### Grant types
 
-When `grantTypes` is not configured, a client may use all grant types, except `client_credentials` for public clients.
+When `grantTypes` is not configured, a client may only use the grant types `authorization_code` and `refresh_token`.
 
 When `grantTypes` is configured, a client may only use the listed grant types.
 Possible values are `authorization_code`, `implicit`, `password`, `client_credentials` and `refresh_token`.
+Public clients can never use `client_credentials`.
+
+The grant types `implicit` and `password` are deprecated and removed in OAuth 2.1,
+**STOPnik** logs a warning for each client which lists them.
 
 Requests for grant types which are not allowed are rejected with `unauthorized_client`.
+
+The metadata endpoints list the grant types and response types, which at least one of the loaded clients is allowed to use.
 
 ### Users
 

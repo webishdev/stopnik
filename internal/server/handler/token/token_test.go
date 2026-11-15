@@ -29,11 +29,18 @@ func Test_Token(t *testing.T) {
 				ClientSecret: "d82c4eb5261cb9c8aa9855edd67d1bd10482f41529858d925094d173fa662aa91ff39bc5b188615273484021dfb16fd8284cf684ccf0fc795be3aa2fc1e6c181",
 				Redirects:    []string{"https://example.com/callback"},
 				RefreshTTL:   100,
+				Scopes:       []string{"foo:bar", "moo:abc"},
+				GrantTypes:   []string{"authorization_code", "password", "client_credentials", "refresh_token"},
 			},
 			{
 				Id:         "bar",
 				Redirects:  []string{"https://example.com/callback"},
 				RefreshTTL: 100,
+			},
+			{
+				Id:           "minimal",
+				ClientSecret: "d82c4eb5261cb9c8aa9855edd67d1bd10482f41529858d925094d173fa662aa91ff39bc5b188615273484021dfb16fd8284cf684ccf0fc795be3aa2fc1e6c181",
+				Redirects:    []string{"https://example.com/callback"},
 			},
 		},
 		Users: []config.User{
@@ -413,6 +420,10 @@ func Test_TokenNotAllowedGrantTypeOrScope(t *testing.T) {
 		{"Reserved revoke scope", "foo", "bar", oauth2.GtPassword, "stopnik:revoke", oauth2.TokenEtInvalidScope},
 		{"Reserved scope with client credentials", "foo", "bar", oauth2.GtClientCredentials, "stopnik:revoke", oauth2.TokenEtInvalidScope},
 		{"Client credentials for public client", "bar", "", oauth2.GtClientCredentials, "foo:bar", oauth2.TokenEtUnauthorizedClient},
+		{"Password not allowed by default", "minimal", "bar", oauth2.GtPassword, "", oauth2.TokenEtUnauthorizedClient},
+		{"Implicit not allowed by default", "minimal", "bar", oauth2.GtImplicit, "", oauth2.TokenEtUnauthorizedClient},
+		{"Client credentials not allowed by default", "minimal", "bar", oauth2.GtClientCredentials, "", oauth2.TokenEtUnauthorizedClient},
+		{"Scope not configured for client", "foo", "bar", oauth2.GtPassword, "foo:bar other:scope", oauth2.TokenEtInvalidScope},
 	}
 
 	for _, test := range notAllowedParameters {

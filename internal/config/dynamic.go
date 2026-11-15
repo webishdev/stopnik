@@ -13,6 +13,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/webishdev/stopnik/internal/oauth2"
 	"github.com/webishdev/stopnik/log"
 )
 
@@ -55,6 +56,7 @@ func newDynamicSnapshot(clients []*Client, users []*User, classifications []*Cla
 		snapshot.clientMap[client.Id] = client
 		snapshot.clients = append(snapshot.clients, client)
 		snapshot.oidc = snapshot.oidc || client.Oidc
+		warnDeprecatedGrantTypes(client)
 	}
 
 	for _, user := range users {
@@ -72,6 +74,20 @@ func newDynamicSnapshot(clients []*Client, users []*User, classifications []*Cla
 	}
 
 	return snapshot, duplicates
+}
+
+// warnDeprecatedGrantTypes logs a warning when the given Client is allowed to use deprecated grant types.
+// https://datatracker.ietf.org/doc/html/rfc9700#section-2.1.2
+// https://datatracker.ietf.org/doc/html/rfc9700#section-2.4
+func warnDeprecatedGrantTypes(client *Client) {
+	for _, deprecatedGrantType := range []oauth2.GrantType{oauth2.GtPassword, oauth2.GtImplicit} {
+		grantTypeConfigured := slices.ContainsFunc(client.GrantTypes, func(configuredGrantType string) bool {
+			return strings.EqualFold(configuredGrantType, string(deprecatedGrantType))
+		})
+		if grantTypeConfigured {
+			log.Warn("Client %s uses the grant type %s, which is deprecated and removed in OAuth 2.1", client.Id, deprecatedGrantType)
+		}
+	}
 }
 
 // getDynamic returns the currently active dynamic configuration, never nil.

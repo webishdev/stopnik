@@ -122,17 +122,8 @@ func (h *DiscoveryHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				pkce.PLAIN,
 				pkce.S256,
 			},
-			GrantTypesSupported: []oauth2.GrantType{
-				oauth2.GtAuthorizationCode,
-				oauth2.GtClientCredentials,
-				oauth2.GtPassword,
-				oauth2.GtRefreshToken,
-				oauth2.GtImplicit,
-			},
-			ResponseTypesSupported: []oauth2.ResponseType{
-				oauth2.RtCode,
-				oauth2.RtToken,
-			},
+			GrantTypesSupported:    h.config.GetSupportedGrantTypes(),
+			ResponseTypesSupported: h.config.GetSupportedResponseTypes(),
 			ResponseModesSupported: []string{
 				"query",
 				"fragment",

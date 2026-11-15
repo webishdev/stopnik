@@ -5,9 +5,11 @@ import (
 	"fmt"
 	"github.com/webishdev/stopnik/internal/config"
 	"github.com/webishdev/stopnik/internal/endpoint"
+	"github.com/webishdev/stopnik/internal/oauth2"
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"reflect"
 	"testing"
 )
 
@@ -102,6 +104,36 @@ func Test_MetadataNotAllowedHttpMethods(t *testing.T) {
 	}
 }
 
+func Test_MetadataSupportedGrantAndResponseTypes(t *testing.T) {
+	testConfig := initializeConfig(t, "", "")
+	applyError := testConfig.ApplyEntries(config.Entries{
+		Clients: []config.Client{
+			{Id: "foo", Redirects: []string{"https://example.com/callback"}},
+			{Id: "bar", Redirects: []string{"https://example.com/callback"}, GrantTypes: []string{"implicit"}},
+		},
+	})
+	if applyError != nil {
+		t.Fatal(applyError)
+	}
+	metadataHandler := NewMetadataHandler()
+
+	rr := httptest.NewRecorder()
+
+	metadataHandler.ServeHTTP(rr, httptest.NewRequest(http.MethodGet, endpoint.Metadata, nil))
+
+	metadata := testMetadataParse(t, rr.Result())
+
+	expectedGrantTypes := []oauth2.GrantType{oauth2.GtAuthorizationCode, oauth2.GtRefreshToken, oauth2.GtImplicit}
+	if !reflect.DeepEqual(metadata.GrantTypesSupported, expectedGrantTypes) {
+		t.Errorf("grant_types_supported %v did not match %v", metadata.GrantTypesSupported, expectedGrantTypes)
+	}
+
+	expectedResponseTypes := []oauth2.ResponseType{oauth2.RtCode, oauth2.RtToken}
+	if !reflect.DeepEqual(metadata.ResponseTypesSupported, expectedResponseTypes) {
+		t.Errorf("response_types_supported %v did not match %v", metadata.ResponseTypesSupported, expectedResponseTypes)
+	}
+}
+
 func testMetadataParse(t *testing.T, r *http.Response) response {
 	responseBody, bodyReadErr := io.ReadAll(r.Body)
 
@@ -122,7 +154,7 @@ func testMetadataParse(t *testing.T, r *http.Response) response {
 	return metadataResponse
 }
 
-func initializeConfig(t *testing.T, basePath string, issuer string) {
+func initializeConfig(t *testing.T, basePath string, issuer string) *config.Config {
 	testConfig := &config.Config{
 		Server: config.Server{
 			BasePath: basePath,
@@ -133,4 +165,5 @@ func initializeConfig(t *testing.T, basePath string, issuer string) {
 	if initializationError != nil {
 		t.Fatal(initializationError)
 	}
+	return testConfig
 }

@@ -49,7 +49,7 @@
                 <label class="chip"><input type="checkbox" name="grantTypes" value="{{ . }}"{{ if $.Doc.HasGrantType . }} checked{{ end }} /><span>{{ . }}</span></label>
                 {{ end }}
             </div>
-            <p class="hint">When none is selected, the default grant types are allowed.</p>
+            <p class="hint">When none is selected, only <code>authorization_code</code> and <code>refresh_token</code> are allowed. <code>password</code> and <code>implicit</code> are deprecated.</p>
         </div>
     </section>
 
@@ -76,7 +76,7 @@
             <div class="field">
                 <label for="scopes">Scopes</label>
                 <textarea id="scopes" name="scopes" rows="3">{{ lines .Scopes }}</textarea>
-                <p class="hint">One scope per line.</p>
+                <p class="hint">One scope per line. When empty, only the OpenID Connect scopes are allowed for OpenID Connect clients.</p>
             </div>
             <div class="field">
                 <label for="audience">Audience</label>
